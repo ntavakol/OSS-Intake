@@ -41,15 +41,30 @@ def _key(v: str) -> list[tuple[int, int, str]]:
     return out
 
 
+def _tail_sign(rest: list[tuple[int, int, str]]) -> int:
+    """How extra trailing segments change a version: +1 newer, -1 older, 0 no change.
+
+    Zero segments change nothing (1.0 == 1.0.0). A pre-release marker makes it older
+    (1.0-rc1 < 1.0). Anything else makes it newer: numbers (1.0.1) and unrecognised suffixes,
+    which is how Debian security updates (10.42-1+deb12u1 > 10.42-1) and Maven qualifiers sort.
+    """
+    for kind, rank, _ in rest:
+        if kind == 1 and rank == 0:
+            continue
+        return -1 if kind == 0 and rank < 0 else 1
+    return 0
+
+
 def compare(a: str, b: str) -> int:
     ka, kb = _key(a), _key(b)
-    n = max(len(ka), len(kb))
-    for i in range(n):
-        x = ka[i] if i < len(ka) else (1, 0, "")  # missing segment == 0 release segment
-        y = kb[i] if i < len(kb) else (1, 0, "")
+    for x, y in zip(ka, kb, strict=False):
         if x != y:
             return -1 if x < y else 1
-    return 0
+    if len(ka) == len(kb):
+        return 0
+    if len(ka) > len(kb):
+        return _tail_sign(ka[len(kb):])
+    return -_tail_sign(kb[len(ka):])
 
 
 def split_fixed(value: str | list[str] | None) -> list[str]:

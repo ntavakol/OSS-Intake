@@ -146,7 +146,8 @@ an older branch is not counted for a newer one) and looks up when that version w
 
 Fix dates come from deps.dev for language packages, falling back to the GitHub release date for Go modules
 hosted on GitHub that deps.dev does not index. For Debian packages they come from the Debian security advisory
-that shipped the fix (DSA or DLA, as reported by Trivy and fetched from OSV). Packages with no dated source yet,
+that shipped the fix (DSA or DLA, as reported by Trivy), dated from the Debian security tracker's advisory lists,
+with OSV as a fallback. Debian fixes released in point releases without an advisory stay unknown. Packages with no dated source yet,
 currently Ubuntu, Alpine and the Go standard library, are counted as "fix date unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
 
 ## Example output

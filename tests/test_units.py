@@ -366,3 +366,30 @@ def test_go_github_release_fallback():
     assert g.fix_published == parse_datetime("2026-06-10")
     assert g.fix_date_source == "GitHub release grafana/grafana@v12.2.2"
     assert len(h.urls) == 1 and stats["found"] == 1
+
+
+@pytest.mark.parametrize("a,b,expected", [
+    ("10.42-1+deb12u1", "10.42-1", 1), ("1.6.39-2+deb12u4", "1.6.39-2+deb12u3", 1),
+    ("1.6.39-2+deb12u10", "1.6.39-2+deb12u9", 1), ("2.39-0ubuntu8.5", "2.39-0ubuntu8.4", 1),
+    ("1.0.0", "1.0", 0), ("1.0-beta", "1.0", -1), ("1.0-SNAPSHOT", "1.0", -1), ("1.0.1", "1.0", 1),
+])
+def test_version_suffix_ordering(a, b, expected):
+    assert versions.compare(a, b) == expected
+    assert versions.compare(b, a) == -expected
+
+
+def test_debian_tracker_dates(fixtures):
+    from oss_intake.enrich import debian_tracker
+
+    from .conftest import FakeHttp
+
+    parsed = debian_tracker.parse((fixtures / "debian_DLA_list.txt").read_text(encoding="utf-8"))
+    assert parsed == {"DLA-9001-1": parse_datetime("2026-10-21"), "DLA-9000-1": parse_datetime("2026-02-03")}
+    a = _f(vendor_ids=["DLA-9001-1", "DLA-9000-1"], purl="pkg:deb/debian/libsynthetic@1.0-1")
+    b = _f(vendor_ids=["DSA-9500-1"], purl="pkg:deb/debian/othersynthetic@2.0-1")
+    c = _f(vendor_ids=["DLA-1-1"], purl="pkg:deb/debian/x@1")
+    stats = debian_tracker.enrich(FakeHttp(), [a, b, c])
+    assert a.fix_published == parse_datetime("2026-02-03") and "DLA-9000-1" in a.fix_date_source
+    assert b.fix_published == parse_datetime("2026-01-15")
+    assert c.fix_published is None and stats["found"] == 2
+    assert sorted(stats["lists_loaded"]) == ["DLA:2", "DSA:1"]

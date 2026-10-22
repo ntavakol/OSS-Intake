@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, integrity, lag, likelihood, merge, report
-from .enrich import advisories, fixdates, github_releases, kev
+from .enrich import advisories, debian_tracker, fixdates, github_releases, kev
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -359,6 +359,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats = fixdates.enrich(net, findings)
             if fd_stats.get("errors"):
                 warnings.append(f"deps.dev lookups failed for {fd_stats['errors']} package versions")
+            deb = debian_tracker.enrich(net, findings)
+            fd_stats["debian_tracker"] = deb
+            if deb.get("errors"):
+                warnings.append("Debian security tracker lists could not be loaded; Debian fix dates fall back to OSV")
             adv = advisories.enrich(net, findings)
             fd_stats["advisory"] = adv
             if adv.get("errors"):

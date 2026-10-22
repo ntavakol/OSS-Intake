@@ -52,6 +52,14 @@ class FakeHttp(Http):
             return 200, load("kev.json")
         raise AssertionError(f"unexpected GET {url}")
 
+    def get_text(self, url):
+        self._check(url)
+        if url.endswith("/DSA/list"):
+            return 200, (FIX / "debian_DSA_list.txt").read_text(encoding="utf-8")
+        if url.endswith("/DLA/list"):
+            return 200, (FIX / "debian_DLA_list.txt").read_text(encoding="utf-8")
+        raise AssertionError(f"unexpected GET (text) {url}")
+
     def post_json(self, url, body):
         self._check(url)
         if url == "https://api.osv.dev/v1/querybatch":

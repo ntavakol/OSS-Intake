@@ -26,6 +26,9 @@ class Http:
     def post_json(self, url: str, body: Any) -> tuple[int, Any]:
         raise NotImplementedError
 
+    def get_text(self, url: str) -> tuple[int, str]:
+        raise NotImplementedError
+
 
 class RequestsHttp(Http):
     def __init__(self, timeout: int = DEFAULT_TIMEOUT, github_token: str | None = None) -> None:
@@ -62,6 +65,14 @@ class RequestsHttp(Http):
 
     def get_json(self, url: str, params: dict | None = None) -> tuple[int, Any]:
         return self._do("GET", url, params=params)
+
+    def get_text(self, url: str) -> tuple[int, str]:
+        try:
+            r = self._session.get(url, headers={"Accept": "text/plain"}, timeout=max(self._timeout, 120))
+        except self._requests.RequestException as exc:
+            raise HttpError(f"GET {urlparse(url).netloc}{urlparse(url).path}: {type(exc).__name__}") from None
+        # Decode explicitly; servers often send text/plain without a charset.
+        return r.status_code, r.content.decode("utf-8", errors="replace")
 
     def post_json(self, url: str, body: Any) -> tuple[int, Any]:
         return self._do("POST", url, json=body)

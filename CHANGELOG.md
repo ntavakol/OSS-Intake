@@ -12,8 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and 4, so fixes that accumulate after a release with no newer release raise the suggestion.
 - `note` column in findings.csv.
 - `--platform` (default `linux/amd64`) passed to both scanners so they scan the same image variant.
-- Fix dates for Debian packages from the DSA and DLA advisories Trivy reports, fetched from OSV
-  (`fix_date_source` column shows where each date came from). Ubuntu and Alpine stay unknown for now.
+- Fix dates for Debian packages from the DSA and DLA advisories Trivy reports, dated from the Debian security
+  tracker's advisory lists (OSV as fallback; it lacks recent DLAs). The `fix_date_source` column shows where
+  each date came from. Ubuntu and Alpine stay unknown for now.
 - GitHub release dates as a fallback fix date for Go modules hosted on GitHub that deps.dev does not index.
 - The likelihood section says when the scanned release is not the project's latest.
 - Likelihood confidence (normal or low) with reasons, shown in the summary and on the CLI.
@@ -34,6 +35,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   could only have hidden a higher level.
 - The OSV warning for OS-only images no longer suggests a misconfiguration.
 - Go modules at v2+ without a `/vN` path (Grafana, Tempo) are retried on deps.dev as `+incompatible` versions.
+- Version comparison treated unrecognised suffixes as pre-releases, so Debian security updates
+  (`10.42-1+deb12u1`) sorted below the original version (`10.42-1`).
 - When no listed fix is newer than the installed version, the finding is flagged for review instead of taking
   its date from an older version.
 

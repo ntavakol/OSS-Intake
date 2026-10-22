@@ -1,0 +1,6 @@
+[21 Oct 2026] DLA-9001-1 libsynthetic - security update
+	{CVE-2099-2000}
+	[bookworm] - libsynthetic 1.0-1+deb12u2
+[3 Feb 2026] DLA-9000-1 libsynthetic - security update
+	{CVE-2099-2001 CVE-2099-2002}
+	[bookworm] - libsynthetic 1.0-1+deb12u1
