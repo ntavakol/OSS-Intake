@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-22
+
+Fix date coverage for Ubuntu and Debian images, EPSS, and a CI hygiene audit of the assessed project.
+
 ### Added
 - Fix date coverage table per ecosystem in every report (and `coverage` in assessment.json), with the reason
   when an ecosystem has no date source, so readers can see how far to trust the lag numbers.
