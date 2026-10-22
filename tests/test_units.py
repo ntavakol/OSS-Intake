@@ -324,3 +324,22 @@ def test_flag_no_newer_fix():
     f = _f(installed="12.2.0", fixed_versions=["1.9.2-0.20260616075434-82ef13993059"])
     ok = _f(installed="1.0", fixed_versions=["1.1"])
     assert lag.flag_no_newer_fix([f, ok]) == 1 and "pseudo-versions" in f.note and not ok.note
+
+
+def test_distro_advisory_dates():
+    from oss_intake.enrich import advisories
+
+    class H:
+        def get_json(self, url, params=None):
+            dates = {"DSA-5001-1": "2026-03-01T00:00:00Z", "DLA-4001-1": "2026-02-01T00:00:00Z"}
+            vid = url.rsplit("/", 1)[1]
+            return (200, {"id": vid, "published": dates[vid]}) if vid in dates else (404, None)
+
+    deb = _f(vendor_ids=["DSA-5001-1", "DLA-4001-1"], purl="pkg:deb/debian/openssl@3.0.1")
+    other = _f(vendor_ids=["RHSA-2026:1234", "USN-1-1"], purl="pkg:rpm/redhat/x@1")
+    dated = _f(vendor_ids=["DSA-5001-1"], fix_published=parse_datetime("2026-01-01"))
+    stats = advisories.enrich(H(), [deb, other, dated])
+    assert deb.fix_published == parse_datetime("2026-02-01") and deb.fix_date_source == "advisory DLA-4001-1"
+    assert other.fix_published is None  # RHSA not used; USN-1-1 not in OSV
+    assert dated.fix_published == parse_datetime("2026-01-01")  # deps.dev date is not overwritten
+    assert stats == {"candidates": 2, "found": 1, "errors": 0}

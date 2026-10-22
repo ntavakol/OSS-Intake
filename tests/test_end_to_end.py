@@ -27,8 +27,8 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
     lag = a["lag"]
     assert lag["total"] == 7
     assert lag["with_fix"] == 6
-    assert lag["fix_date_known"] == 5 and lag["fix_date_unknown"] == 1  # the deb package has no fix date
-    assert lag["fix_available_at_release"] == 3
+    assert lag["fix_date_known"] == 6 and lag["fix_date_unknown"] == 0  # libc6 dated from its USN advisory
+    assert lag["fix_available_at_release"] == 4
     assert lag["fix_available_at_release_by_severity"]["CRITICAL"] == 1
     assert lag["fix_after_release"] == 2
     assert lag["oldest_available_fix"]["id"] == "CVE-2099-0001"
@@ -48,6 +48,9 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
     assert by_id["CVE-2099-0001"]["fix_available_at_release"] == "yes"
     assert by_id["CVE-2099-0006"]["severity"] == "CRITICAL" and by_id["CVE-2099-0006"]["sources"] == "osv"
     assert by_id["CVE-2099-0003"]["kev"] == "yes"
+    assert by_id["CVE-2099-1000"]["fix_published"] == "2026-02-10"
+    assert by_id["CVE-2099-1000"]["fix_date_source"] == "advisory USN-9999-1"
+    assert by_id["CVE-2099-0001"]["fix_date_source"] == "deps.dev"
     assert by_id["CVE-2099-0004"]["title"].startswith("'=")  # formula injection neutralised
     assert "triage_reachable" in rows[0]
 
@@ -153,3 +156,16 @@ def test_release_found_beyond_first_page():
     h = releases.fetch(_TagHttp(), "example/webapp", parse_datetime(AS_OF), image_tag="1.0.0")
     assert h["scanned_release"]["tag"] == "v1.0.0" and h["scanned_is_latest"] is False
     assert "v2.0.0" in h["newer_stable_releases"]
+
+
+def test_outdated_release_note(tmp_path, fixtures):
+    class OldTag(FakeHttp):
+        pass
+
+    out = tmp_path / "old"
+    code = cli.main(["--image", "example/webapp:1.9.0", "--repo", "example/webapp", "--out", str(out),
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy",
+                     "--as-of", AS_OF, "--likelihood", "--formats", "md"], http=OldTag())
+    assert code == 0
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "not the project's latest (newer: v2.0.0" in md

@@ -69,6 +69,7 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
                 pkg_type=rtype,
                 target=v.get("PkgPath") or target,
                 title=v.get("Title", "") or "",
+                vendor_ids=list(v.get("VendorIDs") or []),
                 url=v.get("PrimaryURL", "") or "",
                 sources={NAME},
             )

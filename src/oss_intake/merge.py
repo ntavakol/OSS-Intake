@@ -34,6 +34,9 @@ def merge(*groups: list[Finding]) -> list[Finding]:
                 cur.cvss = f.cvss
             if cur.published is None or (f.published and f.published < cur.published):
                 cur.published = f.published or cur.published
+            for vid in f.vendor_ids:
+                if vid not in cur.vendor_ids:
+                    cur.vendor_ids.append(vid)
             cur.purl = cur.purl or f.purl
             cur.target = cur.target or f.target
             cur.title = cur.title or f.title

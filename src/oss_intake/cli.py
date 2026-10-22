@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, integrity, lag, likelihood, merge, report
-from .enrich import fixdates, kev
+from .enrich import advisories, fixdates, kev
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -359,6 +359,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats = fixdates.enrich(net, findings)
             if fd_stats.get("errors"):
                 warnings.append(f"deps.dev lookups failed for {fd_stats['errors']} package versions")
+            adv = advisories.enrich(net, findings)
+            fd_stats["advisory"] = adv
+            if adv.get("errors"):
+                warnings.append(f"OSV advisory lookups failed for {adv['errors']} distro advisories")
         if not args.no_kev:
             try:
                 ids, version = kev.load(net)

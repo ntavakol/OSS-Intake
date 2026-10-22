@@ -107,6 +107,7 @@ class Finding:
     fix_date_source: str = ""
     kev: bool = False
     likely_fixed: bool = False
+    vendor_ids: list[str] = field(default_factory=list)
     note: str = ""
     # Release-lag (set by lag.compute)
     fix_available_at_release: bool | None = None

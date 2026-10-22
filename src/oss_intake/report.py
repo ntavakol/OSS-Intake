@@ -20,7 +20,7 @@ HEURISTIC_NOTE = (
 )
 CSV_FIELDS = [
     "id", "aliases", "severity", "cvss", "package", "pkg_type", "installed", "fixed_versions",
-    "fix_version_used", "fix_published", "fix_available_at_release", "days_fix_available",
+    "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "sources", "source_severity", "target",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
 ]
@@ -38,6 +38,7 @@ def finding_row(f: Finding) -> dict:
         "fixed_versions": ";".join(f.fixed_versions),
         "fix_version_used": f.fix_version_used or "",
         "fix_published": f.fix_published.date().isoformat() if f.fix_published else "",
+        "fix_date_source": f.fix_date_source,
         "fix_available_at_release": _tri(f.fix_available_at_release),
         "days_fix_available": "" if f.days_fix_available is None else f.days_fix_available,
         "cve_published": f.published.date().isoformat() if f.published else "",
@@ -144,8 +145,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         "p", f"A fix counts as existing before the release only if the fixed dependency version was "
              f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "
              f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
-             "still the latest. Fix dates come from deps.dev for language packages; OS packages have no "
-             "fix date and are counted as unknown.")]))
+             "still the latest. Fix dates come from deps.dev for language packages and from Debian (DSA, DLA) "
+             "and Ubuntu (USN) advisory dates for OS packages; Alpine and other OS packages without dated "
+             "advisories are counted as unknown.")]))
 
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))
                + (f" ({health['latest_release']['date'][:10]})" if health.get("latest_release") else "")],
@@ -172,7 +174,12 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                   + ("" if not lk.get("confidence_reasons") else
                      ". Treat a low level as 'not enough evidence', not 'low risk': "
                      + "; ".join(lk["confidence_reasons"]) + ".")),
-            ("p", HEURISTIC_NOTE)]))
+            ("p", HEURISTIC_NOTE)]
+            + ([("p", "The scanned release is not the project's latest (newer: "
+                      + ", ".join(health.get("newer_stable_releases", [])[:5])
+                      + "). The unshipped metric only applies to a latest release, so the main question here is "
+                        "whether to adopt a newer version; assess that version too.")]
+               if health.get("scanned_is_latest") is False else [])))
 
     ag = a.get("agreement") or {}
     if len(ag.get("enabled", [])) > 1:

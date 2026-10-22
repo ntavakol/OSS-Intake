@@ -12,6 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and 4, so fixes that accumulate after a release with no newer release raise the suggestion.
 - `note` column in findings.csv.
 - `--platform` (default `linux/amd64`) passed to both scanners so they scan the same image variant.
+- Fix dates for Debian and Ubuntu packages from the DSA, DLA and USN advisories Trivy reports, fetched from OSV
+  (`fix_date_source` column shows where each date came from). Alpine has no dated advisories and stays unknown.
+- The likelihood section says when the scanned release is not the project's latest.
 - Likelihood confidence (normal or low) with reasons, shown in the summary and on the CLI.
 
 ### Fixed

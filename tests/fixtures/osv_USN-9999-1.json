@@ -1,0 +1,8 @@
+{
+  "id": "USN-9999-1",
+  "published": "2026-02-10T12:00:00Z",
+  "upstream": [
+    "CVE-2099-1000"
+  ],
+  "summary": "synthetic glibc update"
+}

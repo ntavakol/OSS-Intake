@@ -37,7 +37,10 @@
           "FixedVersion": "2.39-0ubuntu8.5",
           "Severity": "MEDIUM",
           "Title": "synthetic libc issue",
-          "PublishedDate": "2026-02-01T10:15:00Z"
+          "PublishedDate": "2026-02-01T10:15:00Z",
+          "VendorIDs": [
+            "USN-9999-1"
+          ]
         }
       ]
     },
