@@ -14,8 +14,13 @@
    "Type": "ubuntu",
    "Packages": [
     {
+     "ID": "binutils@2.42-4ubuntu2.6",
      "Name": "binutils",
      "Version": "2.42",
+     "Release": "4ubuntu2.6",
+     "SrcName": "binutils",
+     "SrcVersion": "2.42",
+     "SrcRelease": "4ubuntu2.6",
      "Identifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
       "UID": "e1be4de25fee360d"
@@ -25,6 +30,7 @@
    "Vulnerabilities": [
     {
      "VulnerabilityID": "CVE-2025-11412",
+     "PkgID": "binutils@2.42-4ubuntu2.6",
      "PkgName": "binutils",
      "PkgIdentifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
@@ -49,6 +55,7 @@
     },
     {
      "VulnerabilityID": "CVE-2025-11413",
+     "PkgID": "binutils@2.42-4ubuntu2.6",
      "PkgName": "binutils",
      "PkgIdentifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
@@ -73,6 +80,7 @@
     },
     {
      "VulnerabilityID": "CVE-2025-11414",
+     "PkgID": "binutils@2.42-4ubuntu2.6",
      "PkgName": "binutils",
      "PkgIdentifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
@@ -97,6 +105,7 @@
     },
     {
      "VulnerabilityID": "CVE-2025-11494",
+     "PkgID": "binutils@2.42-4ubuntu2.6",
      "PkgName": "binutils",
      "PkgIdentifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
@@ -121,6 +130,7 @@
     },
     {
      "VulnerabilityID": "CVE-2025-11839",
+     "PkgID": "binutils@2.42-4ubuntu2.6",
      "PkgName": "binutils",
      "PkgIdentifier": {
       "PURL": "pkg:deb/ubuntu/binutils@2.42-4ubuntu2.6?arch=amd64&distro=ubuntu-24.04",
