@@ -12,7 +12,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, integrity, lag, likelihood, merge, report
+from . import __version__, coverage, integrity, lag, likelihood, merge, report
 from .enrich import advisories, debian_tracker, fixdates, github_releases, kev
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
@@ -402,6 +402,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "fix_dates": fd_stats,
         "kev": kev_info,
         "lag": lag_m,
+        "coverage": coverage.compute(findings),
         "health": health,
         "scorecard": sc,
         "likelihood": lk,

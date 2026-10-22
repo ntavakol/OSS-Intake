@@ -20,6 +20,7 @@ python -m pytest
   the test if code reaches an unexpected URL.
 - **Fixtures are synthetic.** Use `CVE-2099-*` and `GHSA-test-*` identifiers and fictional projects so
   fixtures cannot be mistaken for real advisories.
+  The exception is `tests/fixtures/real`, which holds trimmed output from public images only.
 - **No secrets, internal hostnames, employer or customer names** in code, fixtures, examples or commit
   messages.
 - **Keep dependencies minimal.** The runtime depends on `requests` only. Discuss new dependencies in an issue
@@ -30,6 +31,16 @@ python -m pytest
   with an explicit encoding.
 - Style: write plainly and avoid em dashes in documentation and output.
 - Add a `CHANGELOG.md` entry under "Unreleased" for user-visible changes.
+
+## Adding a real-image regression test
+
+When a real image exposes a bug, trim its raw scan into a fixture and pin the bug with a test:
+
+```bash
+python scripts/extract_regression_fixture.py <name> <reports-dir>/raw --match <package-substring> --os-sample 3
+```
+
+Fixtures in `tests/fixtures/real` come only from public images and keep only the rows a test needs.
 
 ## Adding a known-bad scanner version
 

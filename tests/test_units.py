@@ -393,3 +393,26 @@ def test_debian_tracker_dates(fixtures):
     assert b.fix_published == parse_datetime("2026-01-15")
     assert c.fix_published is None and stats["found"] == 2
     assert sorted(stats["lists_loaded"]) == ["DLA:2", "DSA:1"]
+
+
+def test_coverage_by_ecosystem():
+    from oss_intake import coverage
+
+    rows = [
+        _f(purl="pkg:maven/g/a@1.0", fix_published=parse_datetime("2026-01-01"), fix_date_source="deps.dev"),
+        _f(purl="pkg:maven/g/b@1.0"),
+        _f(purl="pkg:deb/ubuntu/libc6@2.39?distro=ubuntu-24.04"),
+        _f(purl="pkg:deb/debian/libpng16-16@1.6.39-2", fix_published=parse_datetime("2026-02-01"),
+           fix_date_source="advisory DLA-1-1 (Debian tracker)"),
+        _f(package="stdlib", purl="pkg:golang/stdlib@v1.24.1"),
+        _f(purl="pkg:apk/alpine/musl@1.2.5"),
+        _f(purl=None, pkg_type="binary"),
+        _f(purl="pkg:maven/g/c@1.0", likely_fixed=True),  # excluded
+        _f(purl="pkg:maven/g/d@1.0", fixed_versions=[]),  # no fix, excluded
+    ]
+    cov = {c["ecosystem"]: c for c in coverage.compute(rows)}
+    assert cov["maven"] == {"ecosystem": "maven", "with_fix": 2, "dated": 1, "percent": 50,
+                            "sources": {"deps.dev": 1}, "gap": ""}
+    assert cov["debian"]["sources"] == {"advisory": 1} and cov["debian"]["percent"] == 100
+    assert cov["ubuntu"]["gap"].startswith("no dated source")
+    assert set(cov) == {"maven", "debian", "ubuntu", "go-stdlib", "alpine", "binary"}

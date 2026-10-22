@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Fix date coverage table per ecosystem in every report (and `coverage` in assessment.json), with the reason
+  when an ecosystem has no date source, so readers can see how far to trust the lag numbers.
+- Regression tests on trimmed real scan output from public images, and `scripts/extract_regression_fixture.py`
+  to produce them.
+
 ## [0.1.0] - 2026-10-22
 
 First release. Validated against five public images on macOS (ShinyProxy, Grafana, Jenkins, nginx, rocker/shiny), and ShinyProxy also on Windows.

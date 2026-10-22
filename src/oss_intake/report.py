@@ -141,6 +141,15 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
+    cov = a.get("coverage") or []
+    if cov:
+        cov_rows = [[c["ecosystem"], c["with_fix"], c["dated"], f"{c['percent']}%",
+                     ", ".join(f"{k} {v}" for k, v in c["sources"].items()) or "none", c["gap"]] for c in cov]
+        secs.append(("Fix date coverage", [
+            ("table", ["Ecosystem", "Findings with fix", "Dated", "Coverage", "Date sources", "Why not dated"],
+             cov_rows),
+            ("p", "Release-lag numbers only count dated findings. Where coverage is low, the lag metrics and "
+                  "the likelihood suggestion understate what the scanners found for that ecosystem.")]))
     secs.append(("Release lag", [("table", ["Metric", "Value"], lag_rows), (
         "p", f"A fix counts as existing before the release only if the fixed dependency version was "
              f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "

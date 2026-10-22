@@ -56,6 +56,9 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
 
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "version matching, not proof of exploitability" in md
+    assert "## Fix date coverage" in md
+    cov = {c["ecosystem"]: c for c in a["coverage"]}
+    assert cov["maven"]["percent"] == 100 and cov["ubuntu"]["dated"] == 1
     assert "heuristic" in md
     assert "\u2014" not in md  # house style: no em dashes
     html = (out / "report.html").read_text(encoding="utf-8")
