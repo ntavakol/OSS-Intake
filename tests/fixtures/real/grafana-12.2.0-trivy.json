@@ -1,0 +1,5049 @@
+{
+ "SchemaVersion": 2,
+ "ArtifactName": "grafana/grafana:12.2.0",
+ "Metadata": {
+  "OS": {
+   "Family": "alpine",
+   "Name": "3.22.1"
+  }
+ },
+ "Results": [
+  {
+   "Target": "usr/share/grafana/bin/grafana",
+   "Class": "lang-pkgs",
+   "Type": "gobinary",
+   "Packages": [
+    {
+     "Name": "github.com/grafana/grafana",
+     "Version": "12.2.0",
+     "Identifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     }
+    },
+    {
+     "Name": "stdlib",
+     "Version": "v1.24.6",
+     "Identifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     }
+    },
+    {
+     "Name": "github.com/grafana/tempo",
+     "Version": "v1.5.1-0.20250529124718-87c2dc380cec",
+     "Identifier": {
+      "PURL": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+      "UID": "588431602d21b47d"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2025-41115",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "12.0.7, 12.1.4, 12.2.2, 1.9.2-0.20251106142618-ca5d89812015",
+     "Status": "fixed",
+     "Severity": "CRITICAL",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-w62r-7c53-fmc5"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 10
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 9.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 10
+      }
+     },
+     "PublishedDate": "2025-11-21T15:15:52.283Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42127",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "1.9.2-0.20260616075434-82ef13993059",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-3w66-95m3-8jxg"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-22T18:16:37.43Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42129",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "1.9.2-0.20260616075434-82ef13993059",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-f74p-cwhp-x2wx"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+       "V3Score": 7.7
+      }
+     },
+     "PublishedDate": "2026-06-22T14:17:36.34Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-9029",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "1.9.2-0.20260616075434-82ef13993059",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-9g84-39mm-q4p3"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 7.3
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 7.3
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 5.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 7.3
+      }
+     },
+     "PublishedDate": "2026-06-22T14:17:55.8Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-41117",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "12.2.5, 12.3.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-cqp7-wf4c-3xgc"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 6.8
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 6.8
+      }
+     },
+     "PublishedDate": "2026-02-12T09:16:07.63Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-10601",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "1.9.2-0.20260616075434-82ef13993059",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-9493-h4f5-633x"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 4.3
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L",
+       "V3Score": 5.4
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 4.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-06-22T14:16:25.167Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27877",
+     "PkgName": "github.com/grafana/grafana",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/grafana@12.2.0",
+      "UID": "72198acc7ef63a61"
+     },
+     "InstalledVersion": "12.2.0",
+     "FixedVersion": "1.9.2-0.20260325055210-3522153e07b4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-3q27-7qjq-p9c5"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 6.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-03-27T15:16:51.05Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-21728",
+     "PkgName": "github.com/grafana/tempo",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+      "UID": "588431602d21b47d"
+     },
+     "InstalledVersion": "v1.5.1-0.20250529124718-87c2dc380cec",
+     "FixedVersion": "2.8.4, 2.9.2, 2.10.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-p4r4-xvrq-gvmc"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-24T09:16:03.71Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-28377",
+     "PkgName": "github.com/grafana/tempo",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+      "UID": "588431602d21b47d"
+     },
+     "InstalledVersion": "v1.5.1-0.20250529124718-87c2dc380cec",
+     "FixedVersion": "2.10.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-ffqx-q65f-36jf"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-03-26T22:16:28.46Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27878",
+     "PkgName": "github.com/grafana/tempo",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+      "UID": "588431602d21b47d"
+     },
+     "InstalledVersion": "v1.5.1-0.20250529124718-87c2dc380cec",
+     "FixedVersion": "1.5.1-0.20260303204923-b13f74291d48",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-6xff-cpcq-vpw2"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-06-19T19:16:34.897Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-68121",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.13, 1.25.7, 1.26.0-rc.3",
+     "Status": "fixed",
+     "Severity": "CRITICAL",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4337"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 9.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 10
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 7.4
+      }
+     },
+     "PublishedDate": "2026-02-05T18:16:10.857Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61726",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4341"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.713Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61729",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2025-4155"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-12-02T19:15:51.447Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-111943",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.10, 1.27.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6809"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 6.8
+      }
+     },
+     "PublishedDate": "2026-10-21T01:17:20.797Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-25679",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4601"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:00.72Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27145",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5037"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:35.57Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32280",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4947"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.247Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32281",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4946"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.35Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32283",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4870"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.58Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33811",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4981"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.77Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33814",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4918"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33818",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5972"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:19.84Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39820",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4986"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39821",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5026"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+       "V3Score": 8.2
+      }
+     },
+     "PublishedDate": "2026-05-22T16:16:20.41Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39822",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4970"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.31Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39836",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4971"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.593Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42499",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4977"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:44.54Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42504",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5038"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:37.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56853",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6089"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.093Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56858",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6091"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 8.1
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.207Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56859",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6088"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.32Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56860",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6218"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.44Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56862",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6090"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.55Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78667",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6609"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78669",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6611"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.01Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97031",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6607"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.037Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-47912",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4010"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:18.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58183",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4014"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.357Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58185",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4011"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.45Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58187",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.9, 1.25.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4007"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.643Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58188",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4013"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.74Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58189",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4008"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.833Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61723",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4009"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61724",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4015"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.02Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61725",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4006"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.113Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61727",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4175"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2025-12-03T20:16:25.607Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61728",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4342"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.83Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61730",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4340"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.94Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27142",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.177Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32282",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4864"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.467Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32288",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4869"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.707Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32289",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4865"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.82Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39823",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4982"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.29Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39825",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4976"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.39Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39826",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4980"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.49Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42505",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5856"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.497Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42507",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5039"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:38.027Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56866",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6605"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.62Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78659",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.27Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78660",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6610"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.51Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78663",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6612"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+       "V3Score": 9.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.647Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94439",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6613"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.76Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94440",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6608"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.917Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94448",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6599"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.3Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97030",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6600"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.91Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97032",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6617"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.213Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58186",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2025-4012"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.547Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27139",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-4602"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.07Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56857",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "790f7b68607f29ea"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-6604"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 9.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 3.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.487Z"
+    }
+   ]
+  },
+  {
+   "Target": "usr/share/grafana/bin/grafana-cli",
+   "Class": "lang-pkgs",
+   "Type": "gobinary",
+   "Packages": [
+    {
+     "Name": "stdlib",
+     "Version": "v1.24.6",
+     "Identifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2025-68121",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.13, 1.25.7, 1.26.0-rc.3",
+     "Status": "fixed",
+     "Severity": "CRITICAL",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4337"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 9.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 10
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 7.4
+      }
+     },
+     "PublishedDate": "2026-02-05T18:16:10.857Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61726",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4341"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.713Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61729",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2025-4155"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-12-02T19:15:51.447Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-111943",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.10, 1.27.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6809"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 6.8
+      }
+     },
+     "PublishedDate": "2026-10-21T01:17:20.797Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-25679",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4601"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:00.72Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27145",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5037"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:35.57Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32280",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4947"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.247Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32281",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4946"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.35Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32283",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4870"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.58Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33811",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4981"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.77Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33814",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4918"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33818",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5972"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:19.84Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39820",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4986"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39821",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5026"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+       "V3Score": 8.2
+      }
+     },
+     "PublishedDate": "2026-05-22T16:16:20.41Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39822",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4970"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.31Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39836",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4971"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.593Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42499",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4977"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:44.54Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42504",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5038"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:37.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56853",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6089"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.093Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56858",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6091"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 8.1
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.207Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56859",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6088"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.32Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56860",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6218"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.44Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56862",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6090"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.55Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78667",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6609"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78669",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6611"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.01Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97031",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6607"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.037Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-47912",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4010"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:18.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58183",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4014"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.357Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58185",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4011"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.45Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58187",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.9, 1.25.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4007"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.643Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58188",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4013"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.74Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58189",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4008"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.833Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61723",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4009"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61724",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4015"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.02Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61725",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4006"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.113Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61727",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4175"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2025-12-03T20:16:25.607Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61728",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4342"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.83Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61730",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4340"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.94Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27142",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.177Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32282",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4864"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.467Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32288",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4869"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.707Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32289",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4865"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.82Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39823",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4982"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.29Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39825",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4976"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.39Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39826",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4980"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.49Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42505",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5856"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.497Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42507",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5039"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:38.027Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56866",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6605"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.62Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78659",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.27Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78660",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6610"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.51Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78663",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6612"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+       "V3Score": 9.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.647Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94439",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6613"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.76Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94440",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6608"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.917Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94448",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6599"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.3Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97030",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6600"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.91Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97032",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6617"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.213Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58186",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2025-4012"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.547Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27139",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-4602"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.07Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56857",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "f8d3415f4c0ec37f"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-6604"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 9.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 3.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.487Z"
+    }
+   ]
+  },
+  {
+   "Target": "usr/share/grafana/bin/grafana-server",
+   "Class": "lang-pkgs",
+   "Type": "gobinary",
+   "Packages": [
+    {
+     "Name": "stdlib",
+     "Version": "v1.24.6",
+     "Identifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2025-68121",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.13, 1.25.7, 1.26.0-rc.3",
+     "Status": "fixed",
+     "Severity": "CRITICAL",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4337"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 9.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 10
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 7.4
+      }
+     },
+     "PublishedDate": "2026-02-05T18:16:10.857Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61726",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4341"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.713Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61729",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2025-4155"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-12-02T19:15:51.447Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-111943",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.10, 1.27.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6809"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 6.8
+      }
+     },
+     "PublishedDate": "2026-10-21T01:17:20.797Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-25679",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4601"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:00.72Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27145",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5037"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:35.57Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32280",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4947"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.247Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32281",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4946"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.35Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32283",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4870"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.58Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33811",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4981"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.77Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33814",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4918"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:42.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33818",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5972"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:19.84Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39820",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4986"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39821",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5026"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+       "V3Score": 8.2
+      }
+     },
+     "PublishedDate": "2026-05-22T16:16:20.41Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39822",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4970"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.31Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39836",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4971"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.593Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42499",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-4977"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:44.54Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42504",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-5038"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:37.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56853",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6089"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.093Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56858",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6091"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 8.1
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.207Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56859",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6088"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.32Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56860",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6218"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.44Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56862",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.13, 1.26.6, 1.27.0-rc.3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6090"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-08-13T22:17:22.55Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78667",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6609"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.88Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78669",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6611"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.01Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97031",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "GO-2026-6607"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.037Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-47912",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4010"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:18.187Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58183",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4014"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.357Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58185",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4011"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.45Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58187",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.9, 1.25.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4007"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.643Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58188",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4013"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.74Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58189",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4008"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.833Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61723",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4009"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.927Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61724",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4015"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.02Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61725",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4006"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:20.113Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61727",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.11, 1.25.5",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2025-4175"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2025-12-03T20:16:25.607Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61728",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4342"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.83Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-61730",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.12, 1.25.6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4340"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-01-28T20:16:09.94Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27142",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.177Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32282",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4864"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 6.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+       "V3Score": 7.8
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.467Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32288",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4869"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.707Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-32289",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.9, 1.26.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "GO-2026-4865"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-04-08T02:16:03.82Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39823",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4982"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.29Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39825",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4976"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.39Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-39826",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.10, 1.26.3",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-4980"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+       "V3Score": 5.4
+      }
+     },
+     "PublishedDate": "2026-05-07T20:16:43.49Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42505",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.12, 1.26.5, 1.27.0-rc.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5856"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-07-08T17:17:21.497Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42507",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.11, 1.26.4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-5039"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-06-02T23:16:38.027Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56866",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6605"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.62Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78659",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6603"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.27Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78660",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6610"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.51Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-78663",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6612"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+       "V3Score": 9.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:03.647Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94439",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6613"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.76Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94440",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6608"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:04.917Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-94448",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6599"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.3Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97030",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6600"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:05.91Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-97032",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "GO-2026-6617"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:06.213Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-58186",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.24.8, 1.25.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2025-4012"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2025-10-29T23:16:19.547Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-27139",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.25.8, 1.26.1",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-4602"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 2.5
+      }
+     },
+     "PublishedDate": "2026-03-06T22:16:01.07Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56857",
+     "PkgName": "stdlib",
+     "PkgIdentifier": {
+      "PURL": "pkg:golang/stdlib@v1.24.6",
+      "UID": "e5016b127babfcc1"
+     },
+     "InstalledVersion": "v1.24.6",
+     "FixedVersion": "1.26.9, 1.27.2",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "VendorIDs": [
+      "GO-2026-6604"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 9.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 3.3
+      }
+     },
+     "PublishedDate": "2026-10-08T23:17:01.487Z"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,747 @@
+{
+ "SchemaVersion": 2,
+ "ArtifactName": "jenkins/jenkins:2.528-jdk21",
+ "Metadata": {
+  "OS": {
+   "Family": "debian",
+   "Name": "12.12"
+  }
+ },
+ "Results": [
+  {
+   "Target": "jenkins/jenkins:2.528-jdk21 (debian 12.12)",
+   "Class": "os-pkgs",
+   "Type": "debian",
+   "Packages": [
+    {
+     "Name": "ca-certificates",
+     "Version": "20230311+deb12u1",
+     "Identifier": {
+      "PURL": "pkg:deb/debian/ca-certificates@20230311%2Bdeb12u1?arch=all&distro=debian-12.12",
+      "UID": "90e5259cd7515743"
+     }
+    },
+    {
+     "Name": "curl",
+     "Version": "7.88.1",
+     "Identifier": {
+      "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64&distro=debian-12.12",
+      "UID": "70f0e682f215abe"
+     }
+    },
+    {
+     "Name": "libpcre2-8-0",
+     "Version": "10.42",
+     "Identifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     }
+    },
+    {
+     "Name": "libpng16-16",
+     "Version": "1.6.39",
+     "Identifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2026-103111",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "DLA-4816-1"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:L",
+       "V3Score": 7.6
+      }
+     },
+     "PublishedDate": "2026-09-30T05:16:45.863Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-86145",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+       "V3Score": 8.2
+      }
+     },
+     "PublishedDate": "2026-09-05T06:17:10.37Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-89157",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:H",
+       "V3Score": 7.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:L",
+       "V3Score": 5.7
+      }
+     },
+     "PublishedDate": "2026-09-11T04:18:03.753Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-89161",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.4
+      }
+     },
+     "PublishedDate": "2026-09-11T04:18:04.47Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-89156",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 2.9
+      }
+     },
+     "PublishedDate": "2026-09-11T04:18:03.23Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-89158",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:L",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:L",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-09-11T04:18:03.97Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-89160",
+     "PkgName": "libpcre2-8-0",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12",
+      "UID": "e1e889519893a026"
+     },
+     "InstalledVersion": "10.42-1",
+     "FixedVersion": "10.42-1+deb12u1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DLA-4772-1"
+     ],
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:L",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
+       "V3Score": 3.7
+      }
+     },
+     "PublishedDate": "2026-09-11T04:18:04.343Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-64720",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "DSA-6076-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 7.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 7.1
+      }
+     },
+     "PublishedDate": "2025-11-25T00:15:47.46Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-65018",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "DSA-6076-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+       "V3Score": 7.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+       "V3Score": 7.1
+      }
+     },
+     "PublishedDate": "2025-11-25T00:15:47.61Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-66293",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u1",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "VendorIDs": [
+      "DSA-6076-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 7.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 7.1
+      }
+     },
+     "PublishedDate": "2025-12-03T21:15:53.06Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-22695",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:H",
+       "V3Score": 7.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:H",
+       "V3Score": 7.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2026-01-12T23:15:52.597Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-22801",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u2",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 7.8
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:H",
+       "V3Score": 6.6
+      }
+     },
+     "PublishedDate": "2026-01-12T23:15:52.907Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-25646",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u3",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DSA-6138-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:L/VI:L/VA:H/SC:N/SI:N/SA:N",
+       "V3Score": 8.1,
+       "V40Score": 8.3
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+       "V3Score": 8.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:H",
+       "V3Score": 7
+      }
+     },
+     "PublishedDate": "2026-02-10T18:16:37.817Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-64505",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "DSA-6076-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:L",
+       "V3Score": 4.4
+      }
+     },
+     "PublishedDate": "2025-11-25T00:15:47.133Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-64506",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "DSA-6076-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+       "V3Score": 6.1
+      }
+     },
+     "PublishedDate": "2025-11-25T00:15:47.3Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33416",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "DSA-6189-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-03-26T17:16:38.443Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33636",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u4",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "DSA-6189-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:H",
+       "V3Score": 7.6
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:H",
+       "V3Score": 7.6
+      }
+     },
+     "PublishedDate": "2026-03-26T17:16:41.477Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-34757",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u5",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "nvd",
+     "VendorIDs": [
+      "DSA-6263-1"
+     ],
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 4.4
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 4.4
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 4.4
+      }
+     },
+     "PublishedDate": "2026-04-09T15:16:11.003Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-46675",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "FixedVersion": "1.6.39-2+deb12u6",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "VendorIDs": [
+      "DLA-4824-1"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.9
+      }
+     }
+    },
+    {
+     "VulnerabilityID": "CVE-2021-4214",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "Status": "affected",
+     "Severity": "LOW",
+     "SeveritySource": "debian",
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      }
+     },
+     "PublishedDate": "2022-08-24T16:15:10.037Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-28162",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "Status": "affected",
+     "Severity": "LOW",
+     "SeveritySource": "debian",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 6.2
+      }
+     },
+     "PublishedDate": "2026-01-27T16:16:14.63Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-28164",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "Status": "affected",
+     "Severity": "LOW",
+     "SeveritySource": "debian",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 5.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:N/I:N/A:H",
+       "V3Score": 5
+      }
+     },
+     "PublishedDate": "2026-01-27T16:16:14.76Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-3713",
+     "PkgName": "libpng16-16",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12",
+      "UID": "76eac056d22e97b8"
+     },
+     "InstalledVersion": "1.6.39-2",
+     "Status": "affected",
+     "Severity": "LOW",
+     "SeveritySource": "debian",
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:L",
+       "V3Score": 5.3
+      }
+     },
+     "PublishedDate": "2026-03-08T06:16:11.46Z"
+    },
+    {
+     "VulnerabilityID": "DLA-4726-1",
+     "PkgName": "ca-certificates",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/ca-certificates@20230311%2Bdeb12u1?arch=all&distro=debian-12.12",
+      "UID": "90e5259cd7515743"
+     },
+     "InstalledVersion": "20230311+deb12u1",
+     "FixedVersion": "20250419~deb12u1",
+     "Status": "fixed",
+     "Severity": "UNKNOWN",
+     "VendorIDs": [
+      "DLA-4726-1"
+     ]
+    },
+    {
+     "VulnerabilityID": "DLA-4845-1",
+     "PkgName": "ca-certificates",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/ca-certificates@20230311%2Bdeb12u1?arch=all&distro=debian-12.12",
+      "UID": "90e5259cd7515743"
+     },
+     "InstalledVersion": "20230311+deb12u1",
+     "FixedVersion": "20250419~deb12u2",
+     "Status": "fixed",
+     "Severity": "UNKNOWN",
+     "VendorIDs": [
+      "DLA-4845-1"
+     ]
+    },
+    {
+     "VulnerabilityID": "CVE-2026-5773",
+     "PkgName": "curl",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64&distro=debian-12.12",
+      "UID": "70f0e682f215abe"
+     },
+     "InstalledVersion": "7.88.1-10+deb12u14",
+     "FixedVersion": "7.88.1-10+deb12u15",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "nvd",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-05-13T13:01:56.307Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-3783",
+     "PkgName": "curl",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64&distro=debian-12.12",
+      "UID": "70f0e682f215abe"
+     },
+     "InstalledVersion": "7.88.1-10+deb12u14",
+     "FixedVersion": "7.88.1-10+deb12u15",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+       "V3Score": 5.3
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:N/A:N",
+       "V3Score": 5.7
+      }
+     },
+     "PublishedDate": "2026-03-11T11:16:00.08Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-3784",
+     "PkgName": "curl",
+     "PkgIdentifier": {
+      "PURL": "pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64&distro=debian-12.12",
+      "UID": "70f0e682f215abe"
+     },
+     "InstalledVersion": "7.88.1-10+deb12u14",
+     "FixedVersion": "7.88.1-10+deb12u15",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "CVSS": {
+      "julia": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+       "V3Score": 6.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+       "V3Score": 6.5
+      }
+     },
+     "PublishedDate": "2026-03-11T11:16:00.437Z"
+    }
+   ]
+  }
+ ]
+}

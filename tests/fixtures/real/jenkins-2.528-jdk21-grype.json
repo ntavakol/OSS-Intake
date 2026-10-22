@@ -1,0 +1,1536 @@
+{
+ "matches": [
+  {
+   "vulnerability": {
+    "id": "CVE-2026-33416",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u4",
+       "date": "2026-03-31",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 1.7,
+       "impactScore": 5.9
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-33416"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-33416"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-25646",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u3",
+       "date": "2026-02-17",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 8.1,
+       "exploitabilityScore": 2.3,
+       "impactScore": 5.9
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-25646"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-25646"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-86145",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-06",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "cve@mitre.org",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+      "metrics": {
+       "baseScore": 8.2,
+       "exploitabilityScore": 3.9,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-86145"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-86145"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-64720",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u1",
+       "date": "2025-12-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-64720"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-64720"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-33636",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u4",
+       "date": "2026-03-31",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:H",
+      "metrics": {
+       "baseScore": 7.6,
+       "exploitabilityScore": 2.9,
+       "impactScore": 4.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-33636"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-33636"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-66293",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u1",
+       "date": "2025-12-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-66293"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-66293"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-89157",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:H",
+      "metrics": {
+       "baseScore": 7.4,
+       "exploitabilityScore": 2.3,
+       "impactScore": 5.2
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-89157"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-89157"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-65018",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u1",
+       "date": "2025-12-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+      "metrics": {
+       "baseScore": 7.1,
+       "exploitabilityScore": 1.9,
+       "impactScore": 5.2
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-65018"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-65018"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-22695",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u2",
+       "date": "2026-02-27",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.1,
+       "exploitabilityScore": 1.9,
+       "impactScore": 5.2
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-22695"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-22695"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-103111",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u2",
+       "date": "2026-10-04",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "cve@mitre.org",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:L",
+      "metrics": {
+       "baseScore": 7.6,
+       "exploitabilityScore": 2.9,
+       "impactScore": 4.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-103111"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-103111"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-89156",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 5.9,
+       "exploitabilityScore": 2.3,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-89156"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-89156"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-89160",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:L",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-89160"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-89160"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-89158",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:L",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 2.3,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-89158"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-89158"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-64505",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u1",
+       "date": "2025-12-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 1.9,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-64505"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-64505"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-22801",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u2",
+       "date": "2026-02-27",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 7.8,
+       "exploitabilityScore": 1.9,
+       "impactScore": 5.9
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-22801"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-22801"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-89161",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "10.42-1+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "10.42-1+deb12u1",
+       "date": "2026-09-13",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 7.8,
+       "exploitabilityScore": 1.9,
+       "impactScore": 5.9
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-89161"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-89161"
+    }
+   ],
+   "artifact": {
+    "name": "libpcre2-8-0",
+    "version": "10.42-1",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=amd64&distro=debian-12.12&upstream=pcre2",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpcre2-8-0/copyright",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/usr/share/doc/libpcre2-8-0/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "layerID": "sha256:88466a243658a910cd71f34f9d0b8af62f0d0d5488294211a8980b0d02c71bac",
+      "accessPath": "/var/lib/dpkg/info/libpcre2-8-0:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-64506",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u1",
+       "date": "2025-12-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "security-advisories@github.com",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:H",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 1.9,
+       "impactScore": 4.3
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-64506"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-64506"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-34757",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u5"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u5",
+       "date": "2026-05-10",
+       "kind": "advisory"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 4.4,
+       "exploitabilityScore": 1.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-34757"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-34757"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2021-4214",
+    "severity": "Negligible",
+    "fix": {
+     "versions": [],
+     "state": "not-fixed"
+    },
+    "cvss": [],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2021-4214"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2021-4214"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-3713",
+    "severity": "Negligible",
+    "fix": {
+     "versions": [],
+     "state": "not-fixed"
+    },
+    "cvss": [],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-3713"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-3713"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-28162",
+    "severity": "Negligible",
+    "fix": {
+     "versions": [],
+     "state": "wont-fix"
+    },
+    "cvss": [],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-28162"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-28162"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-28164",
+    "severity": "Negligible",
+    "fix": {
+     "versions": [],
+     "state": "not-fixed"
+    },
+    "cvss": [],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2025-28164"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-28164"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-46675",
+    "severity": "Unknown",
+    "fix": {
+     "versions": [
+      "1.6.39-2+deb12u6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.6.39-2+deb12u6",
+       "date": "2026-10-06",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [],
+    "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-46675"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-46675"
+    }
+   ],
+   "artifact": {
+    "name": "libpng16-16",
+    "version": "1.6.39-2",
+    "type": "deb",
+    "purl": "pkg:deb/debian/libpng16-16@1.6.39-2?arch=amd64&distro=debian-12.12&upstream=libpng1.6",
+    "locations": [
+     {
+      "path": "/var/lib/dpkg/status",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/status",
+      "annotations": {
+       "evidence": "primary"
+      }
+     },
+     {
+      "path": "/usr/share/doc/libpng16-16/copyright",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/usr/share/doc/libpng16-16/copyright",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     },
+     {
+      "path": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "layerID": "sha256:6bdca6c4a11890293739b2f6dbc8ff46c68b7a3f123b31770327c858d34eca02",
+      "accessPath": "/var/lib/dpkg/info/libpng16-16:amd64.md5sums",
+      "annotations": {
+       "evidence": "supporting"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

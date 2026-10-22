@@ -1,0 +1,130 @@
+{
+ "SchemaVersion": 2,
+ "ArtifactName": "nginx:1.29.2-alpine",
+ "Metadata": {
+  "OS": {
+   "Family": "alpine",
+   "Name": "3.22.2"
+  }
+ },
+ "Results": [
+  {
+   "Target": "nginx:1.29.2-alpine (alpine 3.22.2)",
+   "Class": "os-pkgs",
+   "Type": "alpine",
+   "Packages": [
+    {
+     "Name": "busybox",
+     "Version": "1.37.0-r19",
+     "Identifier": {
+      "PURL": "pkg:apk/alpine/busybox@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "7526d65a1dd5459e"
+     }
+    },
+    {
+     "Name": "busybox-binsh",
+     "Version": "1.37.0-r19",
+     "Identifier": {
+      "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "b17a8c3e9420cfed"
+     }
+    },
+    {
+     "Name": "c-ares",
+     "Version": "1.34.5-r0",
+     "Identifier": {
+      "PURL": "pkg:apk/alpine/c-ares@1.34.5-r0?arch=x86_64&distro=3.22.2",
+      "UID": "489658b44ea611b3"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2024-58251",
+     "PkgName": "busybox",
+     "PkgIdentifier": {
+      "PURL": "pkg:apk/alpine/busybox@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "7526d65a1dd5459e"
+     },
+     "InstalledVersion": "1.37.0-r19",
+     "FixedVersion": "1.37.0-r20",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "PublishedDate": "2025-04-23T18:16:03.057Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-46394",
+     "PkgName": "busybox",
+     "PkgIdentifier": {
+      "PURL": "pkg:apk/alpine/busybox@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "7526d65a1dd5459e"
+     },
+     "InstalledVersion": "1.37.0-r19",
+     "FixedVersion": "1.37.0-r20",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "SeveritySource": "nvd",
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 3.3
+      }
+     },
+     "PublishedDate": "2025-04-23T16:15:48.713Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2024-58251",
+     "PkgName": "busybox-binsh",
+     "PkgIdentifier": {
+      "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "b17a8c3e9420cfed"
+     },
+     "InstalledVersion": "1.37.0-r19",
+     "FixedVersion": "1.37.0-r20",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "PublishedDate": "2025-04-23T18:16:03.057Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-46394",
+     "PkgName": "busybox-binsh",
+     "PkgIdentifier": {
+      "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r19?arch=x86_64&distro=3.22.2",
+      "UID": "b17a8c3e9420cfed"
+     },
+     "InstalledVersion": "1.37.0-r19",
+     "FixedVersion": "1.37.0-r20",
+     "Status": "fixed",
+     "Severity": "LOW",
+     "SeveritySource": "nvd",
+     "CVSS": {
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+       "V3Score": 3.3
+      }
+     },
+     "PublishedDate": "2025-04-23T16:15:48.713Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-33630",
+     "PkgName": "c-ares",
+     "PkgIdentifier": {
+      "PURL": "pkg:apk/alpine/c-ares@1.34.5-r0?arch=x86_64&distro=3.22.2",
+      "UID": "489658b44ea611b3"
+     },
+     "InstalledVersion": "1.34.5-r0",
+     "FixedVersion": "1.34.8-r0",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-09-03T19:17:27.42Z"
+    }
+   ]
+  }
+ ]
+}

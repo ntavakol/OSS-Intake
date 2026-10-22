@@ -1,0 +1,3471 @@
+{
+ "matches": [
+  {
+   "vulnerability": {
+    "id": "GO-2026-4341",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.12",
+      "1.25.6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.12",
+       "date": "2026-01-15",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.6",
+       "date": "2026-01-15",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/736712"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61726"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4337",
+    "severity": "Critical",
+    "fix": {
+     "versions": [
+      "1.24.13",
+      "1.25.7",
+      "1.26.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.13",
+       "date": "2026-02-04",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.7",
+       "date": "2026-02-04",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.0-rc.3",
+       "date": "2026-02-04",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 10,
+       "exploitabilityScore": 3.9,
+       "impactScore": 6.1
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://groups.google.com/g/golang-announce/c/K09ubi9FQFk"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-68121"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4601",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.8",
+      "1.26.1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.8",
+       "date": "2026-03-06",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.1",
+       "date": "2026-03-06",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/752180"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-25679"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4981",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/78803"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-33811"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4977",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/78987"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-42499"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4986",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/78566"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39820"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4918",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/761581"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-33814"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5026",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+      "metrics": {
+       "baseScore": 8.2,
+       "exploitabilityScore": 1.8,
+       "impactScore": 5.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/767220"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39821"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6612",
+    "severity": "Critical",
+    "fix": {
+     "versions": [
+      "1.26.9"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+      "metrics": {
+       "baseScore": 9.1,
+       "exploitabilityScore": 3.9,
+       "impactScore": 5.2
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847187"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-78663"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4009",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/75676"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61723"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4006",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/709860"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61725"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GHSA-p4r4-xvrq-gvmc",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "2.8.4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "2.8.4",
+       "date": "2026-05-05",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://github.com/advisories/GHSA-p4r4-xvrq-gvmc"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-21728"
+    }
+   ],
+   "artifact": {
+    "name": "github.com/grafana/tempo",
+    "version": "v1.5.1-0.20250529124718-87c2dc380cec",
+    "type": "go-module",
+    "purl": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4870",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.9",
+      "1.26.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.9",
+       "date": "2026-04-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.2",
+       "date": "2026-04-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/763767"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-32283"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4971",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/79006"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39836"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4947",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.9",
+      "1.26.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.9",
+       "date": "2026-04-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.2",
+       "date": "2026-04-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/758320"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-32280"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5037",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.11",
+      "1.26.4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.11",
+       "date": "2026-06-02",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.4",
+       "date": "2026-06-02",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "0b0ca135-0b70-47e7-9f44-1890c2a1c46c",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/783621"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-27145"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4342",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.12",
+      "1.25.6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.12",
+       "date": "2026-01-15",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.6",
+       "date": "2026-01-15",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 2.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/736713"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61728"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6603",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847185"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-78659"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6090",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/80528"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56862"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5972",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/80405"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-33818"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6088",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/80481"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56859"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6089",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/80205"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56853"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6611",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847186"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-78669"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5038",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.11",
+      "1.26.4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.11",
+       "date": "2026-06-02",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.4",
+       "date": "2026-06-02",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/79217"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-42504"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4155",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.11",
+      "1.25.5"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.11",
+       "date": "2025-12-02",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.5",
+       "date": "2025-12-02",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/725920"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61729"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6617",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847188"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-97032"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4007",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.9",
+      "1.25.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.9",
+       "date": "2025-10-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.3",
+       "date": "2025-10-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/75681"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-58187"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6608",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847307"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-94440"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6218",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 5.9,
+       "exploitabilityScore": 2.3,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/803681"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56860"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6607",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847312"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-97031"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4012",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/75672"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-58186"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4011",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/75671"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-58185"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4015",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/709859"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61724"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4013",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/709853"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-58188"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6609",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847309"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-78667"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4946",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.25.9",
+      "1.26.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.9",
+       "date": "2026-04-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.2",
+       "date": "2026-04-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/758061"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-32281"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4008",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/707776"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-58189"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4010",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.8",
+      "1.25.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.8",
+       "date": "2025-10-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.2",
+       "date": "2025-10-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/75678"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-47912"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GHSA-6xff-cpcq-vpw2",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.5.1-0.20260303204923-b13f74291d48"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.5.1-0.20260303204923-b13f74291d48",
+       "date": "2026-08-29",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 2.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://github.com/advisories/GHSA-6xff-cpcq-vpw2"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-27878"
+    }
+   ],
+   "artifact": {
+    "name": "github.com/grafana/tempo",
+    "version": "v1.5.1-0.20250529124718-87c2dc380cec",
+    "type": "go-module",
+    "purl": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6613",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847311"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-94439"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6605",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/847306"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56866"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6610",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "1.26.9"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/835145"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-78660"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4980",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/78981"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39826"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4976",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/770541"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39825"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5039",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.11",
+      "1.26.4"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.11",
+       "date": "2026-06-02",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.4",
+       "date": "2026-06-02",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/79346"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-42507"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-5856",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.12",
+      "1.26.5",
+      "1.27.0-rc.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.12",
+       "date": "2026-07-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.5",
+       "date": "2026-07-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.2",
+       "date": "2026-07-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/775960"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-42505"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4603",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.8",
+      "1.26.1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.8",
+       "date": "2026-03-06",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.1",
+       "date": "2026-03-06",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-27142"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4982",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.10",
+      "1.26.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.10",
+       "date": "2026-05-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.3",
+       "date": "2026-05-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/78913"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-39823"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6091",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.13",
+      "1.26.6",
+      "1.27.0-rc.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.13",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.6",
+       "date": "2026-08-13",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.0-rc.3",
+       "date": "2026-08-13",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/issue/80435"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-56858"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4340",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.12",
+      "1.25.6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.12",
+       "date": "2026-01-15",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.6",
+       "date": "2026-01-15",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 5.3,
+       "exploitabilityScore": 3.9,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/724120"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61730"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2025-4175",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.24.11",
+      "1.25.5"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.24.11",
+       "date": "2025-12-02",
+       "kind": "release"
+      },
+      {
+       "version": "1.25.5",
+       "date": "2025-12-02",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/723900"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2025-61727"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4865",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.25.9",
+      "1.26.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.9",
+       "date": "2026-04-07",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.2",
+       "date": "2026-04-07",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/763762"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-32289"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GHSA-ffqx-q65f-36jf",
+    "severity": "High",
+    "fix": {
+     "versions": [
+      "2.10.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "2.10.3",
+       "date": "2026-05-07",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "metrics": {
+       "baseScore": 7.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://github.com/advisories/GHSA-ffqx-q65f-36jf"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-28377"
+    }
+   ],
+   "artifact": {
+    "name": "github.com/grafana/tempo",
+    "version": "v1.5.1-0.20250529124718-87c2dc380cec",
+    "type": "go-module",
+    "purl": "pkg:golang/github.com/grafana/tempo@v1.5.1-0.20250529124718-87c2dc380cec",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6599",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/839866"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-94448"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6600",
+    "severity": "Medium",
+    "fix": {
+     "versions": [
+      "1.26.9",
+      "1.27.2"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.9",
+       "date": "2026-10-08",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.2",
+       "date": "2026-10-08",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.1,
+       "exploitabilityScore": 2.9,
+       "impactScore": 2.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://go.dev/cl/840925"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-97030"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-6809",
+    "severity": "Unknown",
+    "fix": {
+     "versions": [
+      "1.26.10",
+      "1.27.3"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.26.10",
+       "date": "2026-10-20",
+       "kind": "release"
+      },
+      {
+       "version": "1.27.3",
+       "date": "2026-10-20",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [],
+    "dataSource": "https://go.dev/cl/851047"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-111943"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "GO-2026-4602",
+    "severity": "Low",
+    "fix": {
+     "versions": [
+      "1.25.8",
+      "1.26.1"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.25.8",
+       "date": "2026-03-06",
+       "kind": "release"
+      },
+      {
+       "version": "1.26.1",
+       "date": "2026-03-06",
+       "kind": "release"
+      }
+     ]
+    },
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N",
+      "metrics": {
+       "baseScore": 2.5,
+       "exploitabilityScore": 1.1,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "dataSource": "https://groups.google.com/g/golang-announce/c/EdhZqrQ98hk"
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-27139"
+    }
+   ],
+   "artifact": {
+    "name": "stdlib",
+    "version": "go1.24.6",
+    "type": "go-module",
+    "purl": "pkg:golang/stdlib@1.24.6",
+    "locations": [
+     {
+      "path": "/usr/share/grafana/bin/grafana",
+      "layerID": "sha256:2104ff86dc6fd5f0313bf293932a51bc61c4a73e0208a9910546d55157bd5f73",
+      "accessPath": "/usr/share/grafana/bin/grafana",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

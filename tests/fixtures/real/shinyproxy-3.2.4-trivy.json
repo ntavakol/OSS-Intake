@@ -1,0 +1,187 @@
+{
+ "SchemaVersion": 2,
+ "ArtifactName": "openanalytics/shinyproxy:3.2.4",
+ "Metadata": {
+  "OS": {
+   "Family": "ubuntu",
+   "Name": "24.04"
+  }
+ },
+ "Results": [
+  {
+   "Target": "Java",
+   "Class": "lang-pkgs",
+   "Type": "jar",
+   "Packages": [
+    {
+     "Name": "com.microsoft.sqlserver:mssql-jdbc",
+     "Version": "12.10.2",
+     "Identifier": {
+      "PURL": "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@12.10.2",
+      "UID": "94d72e3bcfe3d6bf"
+     }
+    },
+    {
+     "Name": "com.microsoft.sqlserver:mssql-jdbc",
+     "Version": "12.10.2.jre11",
+     "Identifier": {
+      "PURL": "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@12.10.2.jre11",
+      "UID": "f3dddcb9621b2907"
+     }
+    },
+    {
+     "Name": "commons-io:commons-io",
+     "Version": "2.19.0",
+     "Identifier": {
+      "PURL": "pkg:maven/commons-io/commons-io@2.19.0",
+      "UID": "f4eaa6006d8ade7d"
+     }
+    },
+    {
+     "Name": "commons-io:commons-io",
+     "Version": "2.8.0",
+     "Identifier": {
+      "PURL": "pkg:maven/commons-io/commons-io@2.8.0",
+      "UID": "9bc9a5739e2fdcb6"
+     }
+    },
+    {
+     "Name": "org.postgresql:postgresql",
+     "Version": "42.7.10",
+     "Identifier": {
+      "PURL": "pkg:maven/org.postgresql/postgresql@42.7.10",
+      "UID": "7eef7ccdc5a269b8"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2025-59250",
+     "PkgName": "com.microsoft.sqlserver:mssql-jdbc",
+     "PkgIdentifier": {
+      "PURL": "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@12.10.2",
+      "UID": "94d72e3bcfe3d6bf"
+     },
+     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/mssql-jdbc-12.10.2.jre11.jar",
+     "InstalledVersion": "12.10.2",
+     "FixedVersion": "10.2.4.jre11, 11.2.4.jre11, 12.2.1.jre11, 12.6.5.jre11, 12.8.2.jre11, 12.10.2.jre11, 13.2.1.jre11",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-m494-w24q-6f7w"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 8.1
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N",
+       "V3Score": 8.1
+      }
+     },
+     "PublishedDate": "2025-10-14T17:16:07.24Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2024-47554",
+     "PkgName": "commons-io:commons-io",
+     "PkgIdentifier": {
+      "PURL": "pkg:maven/commons-io/commons-io@2.8.0",
+      "UID": "9bc9a5739e2fdcb6"
+     },
+     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/velocity-engine-core-2.3.jar",
+     "InstalledVersion": "2.8.0",
+     "FixedVersion": "2.14.0",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-78wr-2p64-hpwj"
+     ],
+     "CVSS": {
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+       "V3Score": 7.5,
+       "V40Score": 8.7
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+       "V3Score": 4.3
+      }
+     },
+     "PublishedDate": "2024-10-03T12:15:02.613Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-42198",
+     "PkgName": "org.postgresql:postgresql",
+     "PkgIdentifier": {
+      "PURL": "pkg:maven/org.postgresql/postgresql@42.7.10",
+      "UID": "7eef7ccdc5a269b8"
+     },
+     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
+     "InstalledVersion": "42.7.10",
+     "FixedVersion": "42.7.11",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-98qh-xjc8-98pq"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "ghsa": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+       "V3Score": 7.5
+      }
+     },
+     "PublishedDate": "2026-04-29T16:16:25.427Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-54291",
+     "PkgName": "org.postgresql:postgresql",
+     "PkgIdentifier": {
+      "PURL": "pkg:maven/org.postgresql/postgresql@42.7.10",
+      "UID": "7eef7ccdc5a269b8"
+     },
+     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
+     "InstalledVersion": "42.7.10",
+     "FixedVersion": "42.7.12",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "ghsa",
+     "VendorIDs": [
+      "GHSA-j92g-9f8w-j867"
+     ],
+     "CVSS": {
+      "bitnami": {
+       "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:L/SA:N",
+       "V40Score": 8.2
+      },
+      "ghsa": {
+       "V40Vector": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:L/SA:N",
+       "V40Score": 8.2
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+       "V3Score": 5.9
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+       "V3Score": 5.9
+      }
+     },
+     "PublishedDate": "2026-07-06T19:17:08.407Z"
+    }
+   ]
+  }
+ ]
+}
