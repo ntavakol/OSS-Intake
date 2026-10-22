@@ -20,7 +20,9 @@ Items agreed for later versions, roughly in priority order.
 - EPSS scores alongside KEV.
 - Check a target project's own GitHub Actions workflows for unpinned actions and known-bad action versions
   (for example `aquasecurity/trivy-action` below 0.35.0 or `setup-trivy` below 0.2.6).
-- Distro fix dates for OS packages (Debian, Ubuntu and Alpine security trackers).
+- Ubuntu fix dates: Trivy reports no USN IDs, so match each finding to its USN in OSV by source package,
+  release and fixed version. Alpine fix dates (secdb has fixed versions but no dates; aports history may).
+- Go standard library fix dates from Go release history.
 
 ## Scanner management
 - An optional, opt-in scanner downloader: exact version only, SHA-256 against the release checksums file and

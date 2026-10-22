@@ -145,9 +145,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         "p", f"A fix counts as existing before the release only if the fixed dependency version was "
              f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "
              f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
-             "still the latest. Fix dates come from deps.dev for language packages and from Debian (DSA, DLA) "
-             "and Ubuntu (USN) advisory dates for OS packages; Alpine and other OS packages without dated "
-             "advisories are counted as unknown.")]))
+             "still the latest. Fix dates come from deps.dev for language packages (GitHub release dates for Go "
+             "modules deps.dev lacks) and from Debian advisory dates (DSA, DLA) for Debian packages. Ubuntu, "
+             "Alpine and the Go standard library have no dated source yet and are counted as unknown.")]))
 
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))
                + (f" ({health['latest_release']['date'][:10]})" if health.get("latest_release") else "")],

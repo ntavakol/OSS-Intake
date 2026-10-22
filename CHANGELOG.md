@@ -12,8 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and 4, so fixes that accumulate after a release with no newer release raise the suggestion.
 - `note` column in findings.csv.
 - `--platform` (default `linux/amd64`) passed to both scanners so they scan the same image variant.
-- Fix dates for Debian and Ubuntu packages from the DSA, DLA and USN advisories Trivy reports, fetched from OSV
-  (`fix_date_source` column shows where each date came from). Alpine has no dated advisories and stays unknown.
+- Fix dates for Debian packages from the DSA and DLA advisories Trivy reports, fetched from OSV
+  (`fix_date_source` column shows where each date came from). Ubuntu and Alpine stay unknown for now.
+- GitHub release dates as a fallback fix date for Go modules hosted on GitHub that deps.dev does not index.
 - The likelihood section says when the scanned release is not the project's latest.
 - Likelihood confidence (normal or low) with reasons, shown in the summary and on the CLI.
 

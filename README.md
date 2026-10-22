@@ -144,10 +144,10 @@ an older branch is not counted for a newer one) and looks up when that version w
 | Days a fix has been available | Assessment date minus the fixed version's publish date |
 | CVE published before release | Secondary signal. A CVE can be public before any fix exists, so this overstates lag on its own |
 
-Fix dates come from deps.dev for language packages. For Debian and Ubuntu packages they come from the
-distro security advisory that shipped the fix (DSA, DLA or USN, as reported by Trivy and fetched from OSV).
-Packages with no dated source, such as Alpine and the Go standard library, are counted as "fix date unknown"
-rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
+Fix dates come from deps.dev for language packages, falling back to the GitHub release date for Go modules
+hosted on GitHub that deps.dev does not index. For Debian packages they come from the Debian security advisory
+that shipped the fix (DSA or DLA, as reported by Trivy and fetched from OSV). Packages with no dated source yet,
+currently Ubuntu, Alpine and the Go standard library, are counted as "fix date unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
 
 ## Example output
 

@@ -343,3 +343,26 @@ def test_distro_advisory_dates():
     assert other.fix_published is None  # RHSA not used; USN-1-1 not in OSV
     assert dated.fix_published == parse_datetime("2026-01-01")  # deps.dev date is not overwritten
     assert stats == {"candidates": 2, "found": 1, "errors": 0}
+
+
+def test_go_github_release_fallback():
+    from oss_intake.enrich import github_releases
+
+    class H:
+        urls = []
+
+        def get_json(self, url, params=None):
+            self.urls.append(url)
+            if url.endswith("/grafana/grafana/releases/tags/v12.2.2"):
+                return 200, {"tag_name": "v12.2.2", "published_at": "2026-06-10T00:00:00Z"}
+            return 404, None
+
+    h = H()
+    g = _f(package="github.com/grafana/grafana", installed="12.2.0", fixed_versions=["12.2.2"],
+           purl="pkg:golang/github.com/grafana/grafana@v12.2.0")
+    std = _f(package="stdlib", installed="1.24.1", fixed_versions=["1.24.4"], purl="pkg:golang/stdlib@v1.24.1")
+    npm = _f(package="x", purl="pkg:npm/x@1.0")
+    stats = github_releases.enrich(h, [g, std, npm])
+    assert g.fix_published == parse_datetime("2026-06-10")
+    assert g.fix_date_source == "GitHub release grafana/grafana@v12.2.2"
+    assert len(h.urls) == 1 and stats["found"] == 1

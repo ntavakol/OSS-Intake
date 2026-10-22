@@ -1,10 +1,10 @@
 """Fix dates for OS packages from distro security advisories, fetched from OSV.
 
-deps.dev only covers language packages. For Debian and Ubuntu, Trivy reports the advisory that
-shipped each fix (DSA-/DLA- for Debian, USN- for Ubuntu) in VendorIDs. OSV mirrors those
+deps.dev only covers language packages. For Debian, Trivy reports the advisory that shipped each
+fix (DSA-/DLA-) in VendorIDs. USN- IDs are used if present, but Trivy 0.76 reports none for Ubuntu. OSV mirrors those
 advisories, and an advisory's publication date is when the fixed package was released to that
-distro, which is the fix date that release lag needs. Alpine publishes no dated advisories,
-so Alpine fixes stay unknown rather than guessed.
+distro, which is the fix date that release lag needs. Alpine publishes no dated advisories and
+Ubuntu findings carry no advisory IDs, so both stay unknown rather than guessed.
 """
 
 from __future__ import annotations

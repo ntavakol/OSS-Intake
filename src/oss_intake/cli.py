@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, integrity, lag, likelihood, merge, report
-from .enrich import advisories, fixdates, kev
+from .enrich import advisories, fixdates, github_releases, kev
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -363,6 +363,11 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["advisory"] = adv
             if adv.get("errors"):
                 warnings.append(f"OSV advisory lookups failed for {adv['errors']} distro advisories")
+            ghr = github_releases.enrich(net, findings)
+            fd_stats["github_release"] = ghr
+            if ghr.get("skipped_limit"):
+                warnings.append(f"{ghr['skipped_limit']} Go fix dates skipped to stay within GitHub rate limits; "
+                                "set GITHUB_TOKEN to look them all up")
         if not args.no_kev:
             try:
                 ids, version = kev.load(net)
