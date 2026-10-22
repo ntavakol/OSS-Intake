@@ -102,6 +102,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--image` | Image with explicit tag or digest |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |
+| `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |
 | `--scanners` | `auto` (default: Trivy and OSV, plus Grype if found) or a list such as `trivy,grype,osv` |
 | `--trivy-version`, `--grype-version` | Required scanner version; the run fails on mismatch |
 | `--trivy-sha256`, `--grype-sha256` | Expected SHA-256 of the executable |
@@ -202,7 +203,11 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 - The OpenSSF Scorecard API only covers repositories in its scheduled dataset. "Not scored" is not a
   negative signal.
 - Release matching expects GitHub releases whose tags resemble the image tag (`1.2.3`, `v1.2.3`,
-  `name-1.2.3`). Use `--release-tag` or `--release-date` otherwise.
+  `name-1.2.3`, `release-1.2.3`), and also tries the tag without a variant suffix (`2.528-jdk21` matches
+  `jenkins-2.528`). If nothing matches, lag metrics are not computed rather than measured against the
+  wrong release. Use `--release-tag` or `--release-date` in that case.
+- Fix dates are unavailable for OS packages and the Go standard library. When more than half of the fixes lack
+  a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
 - Only GitHub-hosted projects get health signals in this version.
 
 Planned work is in [BACKLOG.md](BACKLOG.md).

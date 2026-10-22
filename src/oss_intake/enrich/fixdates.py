@@ -43,6 +43,11 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         if not sn or not fix:
             stats["unsupported"] += 1
             continue
+        if sn[0] == "go":
+            if sn[1] == "stdlib":
+                stats["unsupported"] += 1
+                continue
+            fix = fix if fix.startswith("v") else f"v{fix}"  # Trivy/Grype omit the v; deps.dev requires it
         key = (sn[0], sn[1], fix)
         if key not in cache:
             stats["looked_up"] += 1

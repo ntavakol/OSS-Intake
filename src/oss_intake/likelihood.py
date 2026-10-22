@@ -91,6 +91,8 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "archived": 1 if health.get("archived") else 0,
         "scorecard_score": scorecard.get("score") if scorecard.get("status") == "ok" else None,
         "fix_date_unknown": lag.get("fix_date_unknown", 0),
+        "with_fix": lag.get("with_fix", 0),
+        "release_date_known": 1 if lag.get("release_date") else 0,
     }
 
 
@@ -101,7 +103,23 @@ def _match(cond: dict, m: dict) -> bool:
     return OPS[cond["op"]](val, cond["value"])
 
 
+def confidence(m: dict) -> tuple[str, list[str]]:
+    """How much of the evidence the date-based rules need was actually available."""
+    reasons = []
+    with_fix = m.get("with_fix") or 0
+    unknown = m.get("fix_date_unknown") or 0
+    if with_fix and unknown / with_fix > 0.5:
+        reasons.append(f"fix dates unknown for {unknown} of {with_fix} findings with fixes (often OS or Go "
+                       "stdlib packages), so lag-based rules see only part of the picture")
+    if not m.get("release_date_known"):
+        reasons.append("no release date, so lag-based rules cannot fire")
+    if m.get("critical_fix_unshipped") is None:
+        reasons.append("unshipped metric unavailable (no matched release)")
+    return ("low" if reasons else "normal"), reasons
+
+
 def evaluate(cfg: dict, m: dict) -> dict:
+    conf, conf_reasons = confidence(m)
     for r in cfg["rules"]:
         all_ok = all(_match(c, m) for c in r.get("all", []))
         any_list = r.get("any", [])
@@ -114,6 +132,8 @@ def evaluate(cfg: dict, m: dict) -> dict:
                 "metrics": m,
                 "heuristic": True,
                 "custom_config": cfg is not DEFAULT_CONFIG,
+                "confidence": conf,
+                "confidence_reasons": conf_reasons,
             }
     return {"level": None, "label": "No rule matched", "reason": "", "metrics": m, "heuristic": True,
-            "custom_config": cfg is not DEFAULT_CONFIG}
+            "custom_config": cfg is not DEFAULT_CONFIG, "confidence": conf, "confidence_reasons": conf_reasons}

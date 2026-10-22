@@ -120,6 +120,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="comma list of trivy,grype,osv. 'auto' (default) = trivy + osv, plus grype if found")
     s.add_argument("--image-src", choices=["docker", "containerd", "podman", "remote"],
                    help="where scanners read the image; 'remote' pulls from the registry without Docker")
+    s.add_argument("--platform", default="linux/amd64",
+                   help="image platform both scanners must use (default linux/amd64, so an Apple Silicon "
+                        "host scans the same variant as a typical server); pass '' for scanner defaults")
     for tool in ("trivy", "grype"):
         s.add_argument(f"--{tool}-path", help=f"explicit path to the {tool} executable")
         s.add_argument(f"--{tool}-version", help=f"required {tool} version; the run fails on mismatch")
@@ -239,11 +242,12 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"))
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict()}
     log(f"running {tool} {info['version']} on {args.image}", args.quiet)
-    raw = mod.scan(path, args.image, args.image_src, getattr(args, f"{tool}_arg"), args.timeout)
+    raw = mod.scan(path, args.image, args.image_src, getattr(args, f"{tool}_arg"), args.timeout,
+                   args.platform or None)
     (out / "raw" / f"{tool}.json").write_bytes(raw)
     if tool == "trivy" and args.sbom:
         (out / "raw" / "sbom.cdx.json").write_bytes(
-            mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout))
+            mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout, args.platform or None))
     return load_json_bytes(raw, tool)
 
 
@@ -270,7 +274,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         raise UsageError("--from-*-json needs --image to label the report")
     out = prepare_out(args.out)
     log(f"plan: image={args.image or '-'} repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
-        f"image-src={args.image_src or 'scanner default'} out={out} formats={','.join(formats)}", args.quiet)
+        f"image-src={args.image_src or 'scanner default'} "
+        f"platform={args.platform or 'scanner default'} out={out} formats={','.join(formats)}", args.quiet)
 
     net = None if args.offline else (http or RequestsHttp())
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
@@ -326,7 +331,9 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
 
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
     if release_override:
-        health.setdefault("scanned_release", {})["tag"] = args.release_tag or "(set by --release-date)"
+        if not health.get("scanned_release"):
+            health["scanned_release"] = {}
+        health["scanned_release"]["tag"] = args.release_tag or "(set by --release-date)"
     if findings and not release_date:
         if args.repo and args.offline:
             hint = "--offline skips the GitHub lookup; drop --offline or pass --release-date."
@@ -365,7 +372,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
-        "inputs": {"image": args.image, "repo": args.repo, "image_src": args.image_src,
+        "inputs": {"image": args.image, "repo": args.repo, "image_src": args.image_src, "platform": args.platform,
                    "release_tag": args.release_tag, "release_date": args.release_date,
                    "min_severity": args.min_severity},
         "scanners": scanners_meta,
@@ -399,7 +406,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     print(f"findings={lag_m['total']} critical={sev['CRITICAL']} high={sev['HIGH']} "
           f"with_fix={lag_m['with_fix']} fix_before_release={lag_m['fix_available_at_release']} "
           f"fix_date_unknown={lag_m['fix_date_unknown']}"
-          + (f" likelihood={lk['level']}({lk['label']})" if lk else ""))
+          + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else ""))
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)

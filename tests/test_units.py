@@ -234,3 +234,53 @@ def test_unshipped_likelihood_rule():
     assert likelihood.evaluate(cfg, {**base, "high_fix_unshipped": 10})["level"] == 3
     assert likelihood.evaluate(cfg, {**base, "critical_fix_unshipped": 1, "days_since_latest_release": 200})[
         "level"] == 4
+
+
+def test_go_fix_version_gets_v_prefix():
+    from oss_intake.enrich import fixdates
+
+    class H:
+        urls = []
+
+        def get_json(self, url, params=None):
+            self.urls.append(url)
+            return 200, {"publishedAt": "2026-01-01T00:00:00Z"}
+
+    h = H()
+    go = _f(package="golang.org/x/net", installed="0.30.0", fixed_versions=["0.38.0"],
+            purl="pkg:golang/golang.org/x/net@v0.30.0")
+    std = _f(package="stdlib", installed="1.24.1", fixed_versions=["1.24.4"], purl="pkg:golang/stdlib@v1.24.1")
+    stats = fixdates.enrich(h, [go, std])
+    assert h.urls == ["https://api.deps.dev/v3/systems/go/packages/golang.org%2Fx%2Fnet/versions/v0.38.0"]
+    assert go.fix_published and stats["unsupported"] == 1
+
+
+def test_likelihood_confidence():
+    m = {"with_fix": 100, "fix_date_unknown": 90, "release_date_known": 1, "critical_fix_unshipped": 0}
+    assert likelihood.confidence(m)[0] == "low"
+    m = {"with_fix": 100, "fix_date_unknown": 10, "release_date_known": 1, "critical_fix_unshipped": 0}
+    assert likelihood.confidence(m) == ("normal", [])
+
+
+def test_scanner_platform_flags():
+    from oss_intake.scanners import grype as g
+    from oss_intake.scanners import trivy as t
+
+    captured = {}
+
+    def fake_run(cmd, timeout):
+        captured.setdefault("cmds", []).append(cmd)
+        return b"{}"
+
+    import oss_intake.scanners.grype as gm
+    import oss_intake.scanners.trivy as tm
+    orig_g, orig_t = gm.run, tm.run
+    gm.run = tm.run = fake_run
+    try:
+        g.scan("grype", "a/b:1", "remote", [], 10, "linux/amd64")
+        t.scan("trivy", "a/b:1", "remote", [], 10, "linux/amd64")
+    finally:
+        gm.run, tm.run = orig_g, orig_t
+    gcmd, tcmd = captured["cmds"]
+    assert gcmd[1] == "registry:a/b:1" and "--platform" in gcmd and "-q" not in gcmd
+    assert tcmd[tcmd.index("--platform") + 1] == "linux/amd64"

@@ -12,9 +12,22 @@ API = "https://api.github.com"
 
 
 def _candidates(tag: str, repo_name: str) -> list[str]:
+    """Release tags that an image tag may correspond to.
+
+    Image tags often add a variant suffix (2.528-jdk21, 1.29.2-alpine, 12.2.0-ubuntu); those are
+    tried with the suffix removed as well, most specific first.
+    """
     t = tag.strip()
-    bare = t.lstrip("vV")
-    return [t, bare, f"v{bare}", f"{repo_name}-{bare}", f"{repo_name}-v{bare}", f"release-{bare}"]
+    bases = [t.lstrip("vV")]
+    head = bases[0].split("-", 1)[0]
+    if head != bases[0] and head[:1].isdigit():
+        bases.append(head)
+    out: list[str] = []
+    for bare in bases:
+        for c in (bare, f"v{bare}", f"{repo_name}-{bare}", f"{repo_name}-v{bare}", f"release-{bare}"):
+            if c not in out:
+                out.append(c)
+    return [t] + [c for c in out if c != t]
 
 
 def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
@@ -73,13 +86,14 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
                 break
         if scanned is None:
             out["warnings"].append(
-                f"No GitHub release matches '{wanted}'. Release-lag uses the latest release date instead; "
-                "pass --release-tag or --release-date to set it explicitly."
+                f"No GitHub release matches '{wanted}', so release-lag metrics are not computed (using the "
+                "latest release date instead would overstate lag). Pass --release-tag or --release-date."
             )
-    chosen = scanned or latest
-    out["scanned_release"] = {"tag": chosen["tag"], "date": chosen["date"].isoformat(),
-                              "matched": scanned is not None}
-    out["scanned_is_latest"] = chosen["tag"] == latest["tag"]
-    newer = [r for r in stable if r["date"] > chosen["date"]]
-    out["newer_stable_releases"] = [r["tag"] for r in newer]
+    if scanned is None:
+        out["scanned_release"] = None
+        out["scanned_is_latest"] = None
+        return out
+    out["scanned_release"] = {"tag": scanned["tag"], "date": scanned["date"].isoformat(), "matched": True}
+    out["scanned_is_latest"] = scanned["tag"] == latest["tag"]
+    out["newer_stable_releases"] = [r["tag"] for r in stable if r["date"] > scanned["date"]]
     return out

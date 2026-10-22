@@ -36,7 +36,10 @@ def run(cmd: list[str], timeout: int) -> bytes:
     except OSError as exc:
         raise ScannerError(f"could not run {Path(cmd[0]).name}: {exc}") from None
     if proc.returncode != 0:
-        tail = proc.stderr.decode("utf-8", errors="replace").strip().splitlines()[-5:]
+        err = proc.stderr.decode("utf-8", errors="replace").strip()
+        if not err:
+            err = proc.stdout.decode("utf-8", errors="replace").strip() or "(no output; rerun the scanner by hand)"
+        tail = err.splitlines()[-5:]
         raise ScannerError(f"{Path(cmd[0]).name} exited {proc.returncode}: " + " | ".join(tail))
     return proc.stdout
 

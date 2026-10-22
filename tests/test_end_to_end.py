@@ -116,8 +116,20 @@ def test_scorecard_404_is_not_scored():
 
 def test_release_tag_not_found_warns():
     h = releases.fetch(FakeHttp(), "example/webapp", parse_datetime(AS_OF), image_tag="3.0.0")
-    assert h["scanned_release"]["matched"] is False
+    assert h["scanned_release"] is None and h["scanned_is_latest"] is None  # no silent fallback
     assert any("No GitHub release matches" in w for w in h["warnings"])
+
+
+@pytest.mark.parametrize("tag", ["2.0.0-alpine", "v2.0.0", "2.0.0-jdk21"])
+def test_release_tag_variant_suffix(tag):
+    h = releases.fetch(FakeHttp(), "example/webapp", parse_datetime(AS_OF), image_tag=tag)
+    assert h["scanned_release"]["tag"] == "v2.0.0"
+
+
+def test_release_candidates():
+    c = releases._candidates("2.528-jdk21", "jenkins")
+    assert "jenkins-2.528" in c and c[0] == "2.528-jdk21"
+    assert "release-1.29.2" in releases._candidates("1.29.2-alpine", "nginx")
 
 
 def test_github_token_only_sent_to_github(monkeypatch):

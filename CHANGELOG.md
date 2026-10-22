@@ -11,6 +11,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Forward-looking "unshipped" metric (`--unshipped-days`, default 90) and matching likelihood rules at levels 3
   and 4, so fixes that accumulate after a release with no newer release raise the suggestion.
 - `note` column in findings.csv.
+- `--platform` (default `linux/amd64`) passed to both scanners so they scan the same image variant.
+- Likelihood confidence (normal or low) with reasons, shown in the summary and on the CLI.
 
 ### Fixed
 - Build labels such as `.jre11` made a version sort below its unlabelled form, so the nearest fix could be
@@ -18,6 +20,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Findings where the installed version equals a listed fix apart from a build label are flagged as likely
   already fixed and excluded from lag.
 - The "no release date" warning now gives the actual reason (for example `--offline`).
+- Go fix versions were looked up on deps.dev without the required leading `v`, so no Go fix dates were found.
+- An unmatched image tag no longer falls back to the latest release date, which overstated lag. Variant
+  suffixes such as `-jdk21` and `-alpine` are now stripped when matching release tags.
+- Grype ran with `-q`, which hid its error messages.
 
 ## [0.1.0] - 2026-10-22
 

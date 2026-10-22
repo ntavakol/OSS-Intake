@@ -168,6 +168,10 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         secs.append(("Likelihood suggestion (heuristic)", [
             ("p", f"Suggested likelihood: {lk['level']} ({lk['label']}). {lk['reason']}."
                   + (" Custom rules were used." if lk.get("custom_config") else " Default rules were used.")),
+            ("p", "Confidence: " + lk.get("confidence", "normal")
+                  + ("" if not lk.get("confidence_reasons") else
+                     ". Treat a low level as 'not enough evidence', not 'low risk': "
+                     + "; ".join(lk["confidence_reasons"]) + ".")),
             ("p", HEURISTIC_NOTE)]))
 
     ag = a.get("agreement") or {}

@@ -19,20 +19,24 @@ def version_info(binary: str) -> dict:
     return {"version": str(version), "db_updated": db.get("UpdatedAt"), "db_next_update": db.get("NextUpdate")}
 
 
-def _base_cmd(binary: str, image_src: str | None, extra: list[str]) -> list[str]:
+def _base_cmd(binary: str, image_src: str | None, extra: list[str], platform: str | None = None) -> list[str]:
     cmd = [binary, "image", "--quiet", "--timeout", "20m"]
     if image_src:
         cmd += ["--image-src", image_src]
+    if platform:
+        cmd += ["--platform", platform]
     return cmd + list(extra)
 
 
-def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int) -> bytes:
-    cmd = _base_cmd(binary, image_src, extra) + ["--format", "json", "--scanners", "vuln", image]
+def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
+         platform: str | None = None) -> bytes:
+    cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "json", "--scanners", "vuln", image]
     return run(cmd, timeout)
 
 
-def sbom(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int) -> bytes:
-    cmd = _base_cmd(binary, image_src, extra) + ["--format", "cyclonedx", image]
+def sbom(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
+         platform: str | None = None) -> bytes:
+    cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "cyclonedx", image]
     return run(cmd, timeout)
 
 

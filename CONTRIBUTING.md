@@ -6,7 +6,7 @@ Thanks for helping. Issues and pull requests are welcome.
 
 ```bash
 git clone https://github.com/ntavakol/OSS-Intake
-cd oss-intake
+cd OSS-Intake
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate    Windows: .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"

@@ -21,8 +21,13 @@ def source_for(image: str, image_src: str | None) -> str:
     return _SOURCE_PREFIX.get(image_src or "", "") + image
 
 
-def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int) -> bytes:
-    cmd = [binary, source_for(image, image_src), "-o", "json", "-q"] + list(extra)
+def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
+         platform: str | None = None) -> bytes:
+    # No -q: it also suppresses error messages. stderr is captured, so progress output is harmless.
+    cmd = [binary, source_for(image, image_src), "-o", "json"]
+    if platform:
+        cmd += ["--platform", platform]
+    cmd += list(extra)
     return run(cmd, timeout)
 
 
