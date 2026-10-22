@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-19",
+  "repo": {
+    "name": "github.com/example/webapp"
+  },
+  "scorecard": {
+    "version": "v5"
+  },
+  "score": 3.4,
+  "checks": [
+    {
+      "name": "Maintained",
+      "score": 10,
+      "reason": "active",
+      "details": null,
+      "documentation": {
+        "url": "x",
+        "short": "y"
+      }
+    },
+    {
+      "name": "Branch-Protection",
+      "score": 0,
+      "reason": "none",
+      "details": null,
+      "documentation": {
+        "url": "x",
+        "short": "y"
+      }
+    },
+    {
+      "name": "Signed-Releases",
+      "score": -1,
+      "reason": "n/a",
+      "details": null,
+      "documentation": {
+        "url": "x",
+        "short": "y"
+      }
+    }
+  ]
+}

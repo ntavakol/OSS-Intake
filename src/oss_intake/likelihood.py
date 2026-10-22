@@ -1,0 +1,119 @@
+"""Optional likelihood suggestion for a 5x5 risk matrix.
+
+THIS IS A HEURISTIC. It turns observable signals (unshipped fixes, project activity,
+KEV membership) into a starting point for a human assessor. It does not know whether
+vulnerable code is reachable, exposed or mitigated in your deployment.
+
+Rules are evaluated top to bottom; the first rule whose conditions all match wins.
+A rule may have "all" (every condition must match) and/or "any" (at least one must match).
+Supply your own rules with --likelihood-config FILE (same JSON shape as DEFAULT_RULES).
+"""
+
+from __future__ import annotations
+
+import json
+import operator
+from pathlib import Path
+
+OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le, "==": operator.eq,
+       "!=": operator.ne}
+
+DEFAULT_CONFIG = {
+    "scale": {"1": "Rare", "2": "Unlikely", "3": "Possible", "4": "Likely", "5": "Almost certain"},
+    "rules": [
+        {"level": 5, "reason": "A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped",
+         "all": [{"metric": "kev_with_fix", "op": ">=", "value": 1}]},
+        {"level": 4, "reason": "Critical fixes were available before release and the project shows weak upkeep",
+         "all": [{"metric": "critical_fix_at_release", "op": ">=", "value": 1}],
+         "any": [{"metric": "days_since_latest_release", "op": ">", "value": 180},
+                 {"metric": "archived", "op": "==", "value": 1},
+                 {"metric": "scorecard_score", "op": "<", "value": 4}]},
+        {"level": 4, "reason": "Critical fixes have been available for a long time and the project has not "
+                               "released since",
+         "all": [{"metric": "critical_fix_unshipped", "op": ">=", "value": 1},
+                 {"metric": "days_since_latest_release", "op": ">", "value": 180}]},
+        {"level": 3, "reason": "Critical, or several high, fixes were available before release and not shipped",
+         "any": [{"metric": "critical_fix_at_release", "op": ">=", "value": 1},
+                 {"metric": "high_fix_at_release", "op": ">=", "value": 5}]},
+        {"level": 3, "reason": "Critical, or many high, fixes have been available upstream for a long time with "
+                               "no newer release",
+         "any": [{"metric": "critical_fix_unshipped", "op": ">=", "value": 1},
+                 {"metric": "high_fix_unshipped", "op": ">=", "value": 10}]},
+        {"level": 2, "reason": "High or critical findings exist with upstream fixes",
+         "any": [{"metric": "critical_with_fix", "op": ">=", "value": 1},
+                 {"metric": "high_with_fix", "op": ">=", "value": 1}]},
+        {"level": 1, "reason": "No high or critical findings with available fixes", "all": []},
+    ],
+}
+
+
+class ConfigError(Exception):
+    pass
+
+
+def load_config(path: str | None) -> dict:
+    if not path:
+        return DEFAULT_CONFIG
+    try:
+        cfg = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ConfigError(f"cannot read likelihood config: {exc}") from None
+    validate(cfg)
+    return cfg
+
+
+def validate(cfg: dict) -> None:
+    if not isinstance(cfg.get("rules"), list) or not cfg["rules"]:
+        raise ConfigError("likelihood config needs a non-empty 'rules' list")
+    for i, r in enumerate(cfg["rules"]):
+        if not isinstance(r.get("level"), int) or not 1 <= r["level"] <= 5:
+            raise ConfigError(f"rule {i}: 'level' must be an integer 1 to 5")
+        for kind in ("all", "any"):
+            for c in r.get(kind, []):
+                if c.get("op") not in OPS or "metric" not in c or "value" not in c:
+                    raise ConfigError(f"rule {i}: each condition needs metric, op ({', '.join(OPS)}) and value")
+
+
+def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
+    sev_at = lag.get("fix_available_at_release_by_severity", {})
+    sev_fix = lag.get("with_fix_by_severity", {})
+    sev_un = lag.get("unshipped_by_severity")
+    return {
+        "critical_fix_at_release": sev_at.get("CRITICAL", 0),
+        "high_fix_at_release": sev_at.get("HIGH", 0),
+        "critical_with_fix": sev_fix.get("CRITICAL", 0),
+        "high_with_fix": sev_fix.get("HIGH", 0),
+        "kev_with_fix": lag.get("kev_with_fix", 0),
+        "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None else None,
+        "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else None,
+        "max_days_fix_available": lag.get("max_days_fix_available"),
+        "days_since_latest_release": health.get("days_since_latest_release"),
+        "archived": 1 if health.get("archived") else 0,
+        "scorecard_score": scorecard.get("score") if scorecard.get("status") == "ok" else None,
+        "fix_date_unknown": lag.get("fix_date_unknown", 0),
+    }
+
+
+def _match(cond: dict, m: dict) -> bool:
+    val = m.get(cond["metric"])
+    if val is None:
+        return False  # unknown signals never trigger a rule
+    return OPS[cond["op"]](val, cond["value"])
+
+
+def evaluate(cfg: dict, m: dict) -> dict:
+    for r in cfg["rules"]:
+        all_ok = all(_match(c, m) for c in r.get("all", []))
+        any_list = r.get("any", [])
+        any_ok = any(_match(c, m) for c in any_list) if any_list else True
+        if all_ok and any_ok:
+            return {
+                "level": r["level"],
+                "label": cfg.get("scale", {}).get(str(r["level"]), str(r["level"])),
+                "reason": r.get("reason", ""),
+                "metrics": m,
+                "heuristic": True,
+                "custom_config": cfg is not DEFAULT_CONFIG,
+            }
+    return {"level": None, "label": "No rule matched", "reason": "", "metrics": m, "heuristic": True,
+            "custom_config": cfg is not DEFAULT_CONFIG}

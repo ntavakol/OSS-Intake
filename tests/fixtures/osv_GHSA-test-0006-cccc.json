@@ -1,0 +1,35 @@
+{
+  "id": "GHSA-test-0006-cccc",
+  "aliases": [
+    "CVE-2099-0006"
+  ],
+  "published": "2026-06-20T00:00:00Z",
+  "summary": "synthetic jackson issue found only by OSV",
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    }
+  ],
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "Maven",
+        "name": "com.fasterxml.jackson.core:jackson-databind"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "2.0.0"
+            },
+            {
+              "fixed": "2.17.3"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

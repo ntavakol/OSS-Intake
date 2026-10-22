@@ -1,0 +1,123 @@
+{
+  "matches": [
+    {
+      "vulnerability": {
+        "id": "GHSA-test-0001-aaaa",
+        "dataSource": "https://github.com/advisories/GHSA-test-0001-aaaa",
+        "namespace": "github:language:java",
+        "severity": "Critical",
+        "cvss": [
+          {
+            "version": "3.1",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "metrics": {
+              "baseScore": 9.8
+            }
+          }
+        ],
+        "fix": {
+          "versions": [
+            "6.1.12"
+          ],
+          "state": "fixed"
+        }
+      },
+      "relatedVulnerabilities": [
+        {
+          "id": "CVE-2099-0001",
+          "cvss": []
+        }
+      ],
+      "artifact": {
+        "name": "spring-web",
+        "version": "6.1.10",
+        "type": "java-archive",
+        "purl": "pkg:maven/org.springframework/spring-web@6.1.10?package-id=abc",
+        "locations": [
+          {
+            "path": "/opt/webapp/webapp.jar"
+          }
+        ]
+      }
+    },
+    {
+      "vulnerability": {
+        "id": "GHSA-test-0005-bbbb",
+        "dataSource": "https://github.com/advisories/GHSA-test-0005-bbbb",
+        "namespace": "github:language:java",
+        "severity": "High",
+        "cvss": [
+          {
+            "version": "3.1",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "metrics": {
+              "baseScore": 7.5
+            }
+          }
+        ],
+        "fix": {
+          "versions": [
+            "2.17.1"
+          ],
+          "state": "fixed"
+        }
+      },
+      "relatedVulnerabilities": [
+        {
+          "id": "CVE-2099-0005",
+          "cvss": []
+        }
+      ],
+      "artifact": {
+        "name": "jackson-databind",
+        "version": "2.17.0",
+        "type": "java-archive",
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.17.0",
+        "locations": [
+          {
+            "path": "/opt/webapp/webapp.jar"
+          }
+        ]
+      }
+    },
+    {
+      "vulnerability": {
+        "id": "CVE-2099-1000",
+        "dataSource": "https://github.com/advisories/CVE-2099-1000",
+        "namespace": "github:language:java",
+        "severity": "Medium",
+        "cvss": [
+          {
+            "version": "3.1",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "metrics": {
+              "baseScore": 7.5
+            }
+          }
+        ],
+        "fix": {
+          "versions": [
+            "2.39-0ubuntu8.5"
+          ],
+          "state": "fixed"
+        }
+      },
+      "relatedVulnerabilities": [],
+      "artifact": {
+        "name": "libc6",
+        "version": "2.39-0ubuntu8.4",
+        "type": "deb",
+        "purl": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.4?arch=amd64&distro=ubuntu-24.04",
+        "locations": [
+          {
+            "path": "/var/lib/dpkg/status"
+          }
+        ]
+      }
+    }
+  ],
+  "descriptor": {
+    "name": "grype",
+    "version": "0.121.0"
+  }
+}

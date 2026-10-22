@@ -1,0 +1,11 @@
+{
+  "catalogVersion": "2026.10.20",
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2099-0003"
+    },
+    {
+      "cveID": "CVE-2099-9999"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Keeps SHA-pinned actions current. Dependabot updates the SHA and the version comment;
+  # review each bump against the action's release notes before merging.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

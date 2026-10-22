@@ -1,0 +1,50 @@
+{
+  "id": "GHSA-test-0001-aaaa",
+  "aliases": [
+    "CVE-2099-0001"
+  ],
+  "published": "2026-01-10T07:00:00Z",
+  "summary": "synthetic spring-web issue",
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    }
+  ],
+  "database_specific": {
+    "severity": "CRITICAL"
+  },
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "Maven",
+        "name": "org.springframework:spring-web",
+        "purl": "pkg:maven/org.springframework/spring-web"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "6.1.0"
+            },
+            {
+              "fixed": "6.1.12"
+            }
+          ]
+        },
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "0"
+            },
+            {
+              "fixed": "5.3.39"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

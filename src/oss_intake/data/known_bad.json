@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "updated": "2026-10-22",
+  "tools": {
+    "trivy": [
+      {
+        "versions": ["0.69.4"],
+        "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
+        "note": "Malicious release published 2026-03-19 during the Trivy supply chain compromise. Treat any host or pipeline that ran it as compromised and rotate credentials."
+      },
+      {
+        "versions": ["0.69.5", "0.69.6"],
+        "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
+        "note": "Malicious container image tags pushed to Docker Hub on 2026-03-22 with no matching GitHub release."
+      }
+    ],
+    "grype": []
+  }
+}

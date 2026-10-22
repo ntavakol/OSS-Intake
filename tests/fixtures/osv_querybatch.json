@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "vulns": [
+        {
+          "id": "GHSA-test-0001-aaaa",
+          "modified": "2026-01-11T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "vulns": [
+        {
+          "id": "GHSA-test-0006-cccc",
+          "modified": "2026-07-02T00:00:00Z"
+        }
+      ]
+    },
+    {}
+  ]
+}
