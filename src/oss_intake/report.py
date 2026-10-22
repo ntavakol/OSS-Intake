@@ -161,9 +161,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
              f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "
              f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
              "still the latest. Fix dates come from deps.dev for language packages (GitHub release dates for Go "
-             "modules deps.dev lacks), from Debian advisories (DSA, DLA) and from Ubuntu Security Notices. "
-             "Alpine and the Go standard library have no dated source yet and are counted as unknown; see "
-             "the coverage table above.")]))
+             "modules deps.dev lacks), from Debian advisories (DSA, DLA), Ubuntu Security Notices and Red Hat "
+             "advisories (RHSA). Alpine, Amazon Linux and the Go standard library have no dated source yet "
+             "and are counted as unknown; see the coverage table above.")]))
 
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))
                + (f" ({health['latest_release']['date'][:10]})" if health.get("latest_release") else "")],

@@ -10,13 +10,14 @@ from .models import Finding
 GAP_REASON = {
     "ubuntu": "no Ubuntu Security Notice matched the CVE, package and fixed version",
     "alpine": "Alpine publishes no fix dates",
-    "redhat": "RHSA/ALAS advisories not used yet; in backlog",
+    "redhat": "fixes without a Red Hat advisory ID, or the advisory could not be fetched",
+    "amazon": "Trivy reports no ALAS advisory IDs for Amazon Linux; no dated source yet",
     "go-stdlib": "Go standard library is not on deps.dev",
     "binary": "runtime detected from a binary, no package registry to date it",
     "debian": "fixes shipped in point releases have no advisory",
 }
 _DISTRO = {"debian": "debian", "ubuntu": "ubuntu", "alpine": "alpine", "redhat": "redhat", "rhel": "redhat",
-           "centos": "redhat", "rocky": "redhat", "almalinux": "redhat", "amazon": "redhat", "fedora": "redhat"}
+           "centos": "redhat", "rocky": "redhat", "almalinux": "redhat", "amazon": "amazon", "fedora": "fedora"}
 
 
 def ecosystem(f: Finding) -> str:

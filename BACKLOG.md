@@ -18,7 +18,7 @@ Items agreed for later versions, roughly in priority order.
 
 ## Signals
 - Alpine fix dates (secdb has fixed versions but no dates; aports history may).
-- Red Hat family fix dates (RHSA, ALAS) for UBI, RHEL, Rocky and Amazon Linux images.
+- Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Go standard library fix dates from Go release history.
 
 ## Scanner management

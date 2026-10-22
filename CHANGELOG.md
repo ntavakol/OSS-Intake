@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Red Hat family fix dates (RHEL, UBI) from the RHSA advisories Trivy reports, dated from Red Hat's CSAF
+  documents. Amazon Linux gets its own coverage row; Trivy reports no ALAS IDs, so it stays unknown.
+
 ## [0.1.1] - 2026-10-22
 
 Fix date coverage for Ubuntu and Debian images, EPSS, and a CI hygiene audit of the assessed project.

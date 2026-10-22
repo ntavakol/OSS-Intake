@@ -570,3 +570,31 @@ def test_workflow_fetch():
             return 404, None
 
     assert wf.fetch(Missing(), "o/r")["status"] == "none"
+
+
+def test_redhat_csaf_dates():
+    from oss_intake import coverage
+    from oss_intake.enrich import redhat
+
+    class H:
+        calls = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(url)
+            if url.endswith("RHSA-2026:42736.json"):
+                return 200, {"document": {"tracking": {"initial_release_date": "2026-07-21T16:04:00+00:00",
+                                                       "current_release_date": "2026-08-01T00:00:00+00:00"}}}
+            return 404, None
+
+    h = H()
+    a = _f(vendor_ids=["RHSA-2026:42736"], purl="pkg:rpm/redhat/acl@2.3.1-4.el9?distro=redhat-9.6")
+    b = _f(vendor_ids=["RHSA-2026:42736"], purl="pkg:rpm/redhat/libacl@2.3.1-4.el9")
+    c = _f(vendor_ids=["RHSA-2026:99999"], purl="pkg:rpm/redhat/x@1")
+    d = _f(vendor_ids=["DSA-1-1"], purl="pkg:deb/debian/y@1")
+    stats = redhat.enrich(h, [a, b, c, d])
+    assert a.fix_published == parse_datetime("2026-07-21T16:04:00+00:00")
+    assert a.fix_date_source == "advisory RHSA-2026:42736 (Red Hat)" and b.fix_published == a.fix_published
+    assert c.fix_published is None and d.fix_published is None
+    assert len(h.calls) == 2 and stats == {"candidates": 3, "advisories_fetched": 2, "found": 2, "errors": 0}
+    assert coverage.ecosystem(a) == "redhat"
+    assert coverage.ecosystem(_f(purl="pkg:rpm/amazon/glibc@2.34")) == "amazon"
