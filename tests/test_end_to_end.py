@@ -140,3 +140,16 @@ def test_github_token_only_sent_to_github(monkeypatch):
     for url in ("https://api.osv.dev/v1/querybatch", "https://api.github.com.evil.example/x",
                 "https://api.deps.dev/v3/systems"):
         assert "Authorization" not in h._headers(url)
+
+
+class _TagHttp(FakeHttp):
+    def get_json(self, url, params=None):
+        if url == "https://api.github.com/repos/example/webapp/releases/tags/v1.0.0":
+            return 200, {"tag_name": "v1.0.0", "published_at": "2024-01-01T00:00:00Z", "prerelease": False}
+        return super().get_json(url, params)
+
+
+def test_release_found_beyond_first_page():
+    h = releases.fetch(_TagHttp(), "example/webapp", parse_datetime(AS_OF), image_tag="1.0.0")
+    assert h["scanned_release"]["tag"] == "v1.0.0" and h["scanned_is_latest"] is False
+    assert "v2.0.0" in h["newer_stable_releases"]

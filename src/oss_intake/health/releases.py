@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from statistics import median
+from urllib.parse import quote
 
 from ..http import Http, HttpError
 from ..models import days_between, parse_datetime
@@ -80,10 +81,20 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
     scanned = None
     if wanted:
         by_tag = {r["tag"]: r for r in releases}
-        for c in ([release_tag] if release_tag else _candidates(wanted, name)):
+        candidates = [release_tag] if release_tag else _candidates(wanted, name)
+        for c in candidates:
             if c in by_tag:
                 scanned = by_tag[c]
                 break
+        if scanned is None:
+            # The list above is the newest 100 releases only. Projects with many patch and backport
+            # releases (Grafana, for example) push older tags off it, so ask for each candidate directly.
+            for c in candidates:
+                st, rel = http.get_json(f"{API}/repos/{owner}/{name}/releases/tags/{quote(c, safe='')}")
+                dt = parse_datetime((rel or {}).get("published_at")) if st == 200 and isinstance(rel, dict) else None
+                if dt and not rel.get("draft"):
+                    scanned = {"tag": rel.get("tag_name", c), "date": dt, "prerelease": bool(rel.get("prerelease"))}
+                    break
         if scanned is None:
             out["warnings"].append(
                 f"No GitHub release matches '{wanted}', so release-lag metrics are not computed (using the "

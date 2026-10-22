@@ -300,8 +300,12 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         except HttpError as exc:
             warnings.append(f"OSV lookup failed, continuing without it: {exc}")
         if not purls:
-            warnings.append("Trivy report lists no language packages; OSV had nothing to query "
-                            "(was the report generated with --list-all-pkgs=false?)")
+            if any(r.get("Class") == "lang-pkgs" for r in trivy_report.get("Results") or []):
+                warnings.append("Trivy found language packages but listed none in the report, so OSV had "
+                                "nothing to query (was the report generated with --list-all-pkgs=false?)")
+            else:
+                warnings.append("No language packages in the image (OS packages only), so OSV was not queried; "
+                                "Trivy and Grype cover OS packages")
 
     findings = merge.merge(*groups)
     findings = [f for f in findings if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]

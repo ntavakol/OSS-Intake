@@ -120,11 +120,15 @@ def confidence(m: dict) -> tuple[str, list[str]]:
 
 def evaluate(cfg: dict, m: dict) -> dict:
     conf, conf_reasons = confidence(m)
+    top = max(r["level"] for r in cfg["rules"])
     for r in cfg["rules"]:
         all_ok = all(_match(c, m) for c in r.get("all", []))
         any_list = r.get("any", [])
         any_ok = any(_match(c, m) for c in any_list) if any_list else True
         if all_ok and any_ok:
+            if r["level"] == top:
+                # Missing evidence can only hide a higher level; at the top of the scale it changes nothing.
+                conf, conf_reasons = "normal", []
             return {
                 "level": r["level"],
                 "label": cfg.get("scale", {}).get(str(r["level"]), str(r["level"])),

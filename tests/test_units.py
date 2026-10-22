@@ -284,3 +284,12 @@ def test_scanner_platform_flags():
     gcmd, tcmd = captured["cmds"]
     assert gcmd[1] == "registry:a/b:1" and "--platform" in gcmd and "-q" not in gcmd
     assert tcmd[tcmd.index("--platform") + 1] == "linux/amd64"
+
+
+def test_confidence_ignored_at_top_level():
+    m = {"kev_with_fix": 1, "with_fix": 100, "fix_date_unknown": 90, "release_date_known": 0,
+         "critical_fix_unshipped": None}
+    r = likelihood.evaluate(likelihood.DEFAULT_CONFIG, m)
+    assert r["level"] == 5 and r["confidence"] == "normal"
+    r = likelihood.evaluate(likelihood.DEFAULT_CONFIG, {**m, "kev_with_fix": 0, "high_with_fix": 3})
+    assert r["level"] == 2 and r["confidence"] == "low"

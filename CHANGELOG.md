@@ -24,6 +24,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - An unmatched image tag no longer falls back to the latest release date, which overstated lag. Variant
   suffixes such as `-jdk21` and `-alpine` are now stripped when matching release tags.
 - Grype ran with `-q`, which hid its error messages.
+- Release tags older than the newest 100 releases were not found (seen with Grafana); each candidate tag is now
+  looked up directly.
+- Likelihood confidence is no longer reported as low when the top level (KEV) fired, since missing evidence
+  could only have hidden a higher level.
+- The OSV warning for OS-only images no longer suggests a misconfiguration.
 
 ## [0.1.0] - 2026-10-22
 
