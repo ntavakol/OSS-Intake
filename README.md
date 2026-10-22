@@ -115,7 +115,8 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--as-of` | Fix the assessment date for reproducible reports |
 | `--min-severity` | Drop findings below a severity |
 | `--formats` | Any of `csv,md,json,html` (default all) |
-| `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV) |
+| `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS) |
+| `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates` | Skip one enrichment source |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
@@ -180,8 +181,10 @@ Off by default. With `--likelihood`, the first matching rule wins:
 | Level | Default rule |
 |---|---|
 | 5 Almost certain | A CISA KEV vulnerability has a fix the project has not shipped |
+| 4 Likely | A finding with an upstream fix has an EPSS score of 0.5 or more |
 | 4 Likely | A critical fix existed before release, and the project has not released for 180 days, is archived or scores under 4 on Scorecard |
 | 4 Likely | A critical fix is unshipped and the project has not released for 180 days |
+| 3 Possible | A finding with an upstream fix has an EPSS score of 0.1 or more |
 | 3 Possible | A critical fix, or 5 or more high fixes, existed before release |
 | 3 Possible | A critical fix, or 10 or more high fixes, are unshipped |
 | 2 Unlikely | Any high or critical finding has an upstream fix |
@@ -190,7 +193,7 @@ Off by default. With `--likelihood`, the first matching rule wins:
 Unknown signals (no Scorecard score, say) never trigger a rule. To use your own rules, copy
 `DEFAULT_CONFIG` from [likelihood.py](src/oss_intake/likelihood.py) into a JSON file and pass
 `--likelihood-config`. The available metrics are `critical_fix_at_release`, `high_fix_at_release`,
-`critical_with_fix`, `high_with_fix`, `critical_fix_unshipped`, `high_fix_unshipped`, `kev_with_fix`, `max_days_fix_available`, `days_since_latest_release`,
+`critical_with_fix`, `high_with_fix`, `critical_fix_unshipped`, `high_fix_unshipped`, `kev_with_fix`, `max_epss_with_fix`, `max_days_fix_available`, `days_since_latest_release`,
 `archived`, `scorecard_score` and `fix_date_unknown`.
 
 ## Limitations

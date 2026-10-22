@@ -12,6 +12,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   to produce them.
 - Ubuntu fix dates from Ubuntu Security Notices in OSV, matched strictly on CVE, release, source package and
   fixed version. Trivy source package fields (`SrcName`, `SrcVersion`, `SrcRelease`) are now kept.
+- EPSS exploit probability per CVE (FIRST API, `epss` and `epss_percentile` columns, `--no-epss`), with default
+  likelihood rules at level 4 (EPSS 0.5 or more on a finding with a fix) and level 3 (0.1 or more).
 
 ## [0.1.0] - 2026-10-22
 

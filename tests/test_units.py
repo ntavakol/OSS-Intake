@@ -481,3 +481,27 @@ def test_trivy_source_package_fields():
 
     f = tv.parse(report)[0][0]
     assert (f.src_name, f.src_version, f.os_release) == ("gnupg2", "2.4.4-2ubuntu17.3", "ubuntu 24.04")
+
+
+def test_epss_rules_and_batching():
+    from oss_intake.enrich import epss as ep
+
+    class H:
+        calls = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(params["cve"].split(","))
+            return 200, {"data": [{"cve": c, "epss": "0.5", "percentile": "0.99", "date": "2026-10-21"}
+                                  for c in params["cve"].split(",")]}
+
+    fs = [_f(vuln_id=f"CVE-2099-{i:04d}") for i in range(150)] + [_f(vuln_id="GHSA-x", aliases={"CVE-2099-9999"})]
+    h = H()
+    stats = ep.enrich(h, fs)
+    assert [len(c) for c in h.calls] == [100, 51] and stats["scored"] == 151
+    assert fs[-1].epss == 0.5
+    cfg = likelihood.DEFAULT_CONFIG
+    base = {"kev_with_fix": 0, "with_fix": 10, "fix_date_unknown": 0, "release_date_known": 1,
+            "critical_fix_unshipped": 0}
+    assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.6})["level"] == 4
+    assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.12})["level"] == 3
+    assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.01, "high_with_fix": 1})["level"] == 2

@@ -23,6 +23,9 @@ DEFAULT_CONFIG = {
     "rules": [
         {"level": 5, "reason": "A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped",
          "all": [{"metric": "kev_with_fix", "op": ">=", "value": 1}]},
+        {"level": 4, "reason": "A finding with an upstream fix has a high predicted exploitation probability "
+                               "(EPSS 0.5 or more)",
+         "all": [{"metric": "max_epss_with_fix", "op": ">=", "value": 0.5}]},
         {"level": 4, "reason": "Critical fixes were available before release and the project shows weak upkeep",
          "all": [{"metric": "critical_fix_at_release", "op": ">=", "value": 1}],
          "any": [{"metric": "days_since_latest_release", "op": ">", "value": 180},
@@ -32,6 +35,9 @@ DEFAULT_CONFIG = {
                                "released since",
          "all": [{"metric": "critical_fix_unshipped", "op": ">=", "value": 1},
                  {"metric": "days_since_latest_release", "op": ">", "value": 180}]},
+        {"level": 3, "reason": "A finding with an upstream fix has a notable predicted exploitation probability "
+                               "(EPSS 0.1 or more)",
+         "all": [{"metric": "max_epss_with_fix", "op": ">=", "value": 0.1}]},
         {"level": 3, "reason": "Critical, or several high, fixes were available before release and not shipped",
          "any": [{"metric": "critical_fix_at_release", "op": ">=", "value": 1},
                  {"metric": "high_fix_at_release", "op": ">=", "value": 5}]},
@@ -84,6 +90,7 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "critical_with_fix": sev_fix.get("CRITICAL", 0),
         "high_with_fix": sev_fix.get("HIGH", 0),
         "kev_with_fix": lag.get("kev_with_fix", 0),
+        "max_epss_with_fix": lag.get("max_epss_with_fix"),
         "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None else None,
         "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else None,
         "max_days_fix_available": lag.get("max_days_fix_available"),

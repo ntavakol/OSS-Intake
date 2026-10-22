@@ -59,3 +59,8 @@ def test_grafana_go_pseudo_versions_and_incompatible():
 def test_os_ecosystem_detection(name, eco):
     t, _ = trivy.parse(_load(name))
     assert t and {coverage.ecosystem(f) for f in t} == {eco}
+
+
+def test_rocker_ubuntu_source_package_fields():
+    t, _ = trivy.parse(_load("rocker-shiny-4.5.1-trivy.json"))
+    assert t and all(f.src_name and "ubuntu" in f.src_version and f.os_release == "ubuntu 24.04" for f in t)

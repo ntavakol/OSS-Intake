@@ -17,7 +17,6 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
-- EPSS scores alongside KEV.
 - Check a target project's own GitHub Actions workflows for unpinned actions and known-bad action versions
   (for example `aquasecurity/trivy-action` below 0.35.0 or `setup-trivy` below 0.2.6).
 - Alpine fix dates (secdb has fixed versions but no dates; aports history may).

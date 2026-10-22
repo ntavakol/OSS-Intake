@@ -106,6 +106,8 @@ class Finding:
     fix_published: datetime | None = None
     fix_date_source: str = ""
     kev: bool = False
+    epss: float | None = None
+    epss_percentile: float | None = None
     likely_fixed: bool = False
     vendor_ids: list[str] = field(default_factory=list)
     src_name: str = ""  # OS source package (Trivy SrcName), needed to match distro notices

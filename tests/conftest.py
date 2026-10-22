@@ -48,6 +48,10 @@ class FakeHttp(Http):
             return 404, {"message": "Not Found"}
         if url.startswith("https://api.securityscorecards.dev/"):
             return (200, load("scorecard.json")) if self.scorecard_status == 200 else (self.scorecard_status, None)
+        if url == "https://api.first.org/data/v1/epss":
+            wanted = set((params or {}).get("cve", "").split(","))
+            data = load("epss.json")
+            return 200, {**data, "data": [r for r in data["data"] if r["cve"] in wanted]}
         if "known_exploited_vulnerabilities" in url:
             return 200, load("kev.json")
         raise AssertionError(f"unexpected GET {url}")

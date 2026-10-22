@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, coverage, integrity, lag, likelihood, merge, report
-from .enrich import advisories, debian_tracker, fixdates, github_releases, kev, ubuntu
+from .enrich import advisories, debian_tracker, epss, fixdates, github_releases, kev, ubuntu
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -149,6 +149,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="no network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV); scanners may still pull")
     s.add_argument("--no-fix-dates", action="store_true", help="skip deps.dev fix date lookups")
     s.add_argument("--no-kev", action="store_true", help="skip the CISA KEV catalogue")
+    s.add_argument("--no-epss", action="store_true", help="skip FIRST EPSS exploit probability scores")
     s.add_argument("--no-scorecard", action="store_true", help="skip OpenSSF Scorecard")
     s.add_argument("--likelihood", action="store_true", help="include the 5x5 likelihood heuristic")
     s.add_argument("--likelihood-config", metavar="FILE", help="custom likelihood rules (JSON); implies --likelihood")
@@ -354,6 +355,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 4. Enrichment.
     fd_stats: dict = {}
     kev_info: dict = {"status": "skipped"}
+    epss_info: dict = {"status": "skipped"}
     if net and findings:
         if not args.no_fix_dates:
             fd_stats = fixdates.enrich(net, findings)
@@ -386,6 +388,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             except HttpError as exc:
                 kev_info = {"status": "error", "note": str(exc)}
                 warnings.append(f"CISA KEV catalogue unavailable: {exc}")
+        if not args.no_epss:
+            epss_info = {"status": "ok", **epss.enrich(net, findings)}
+            if epss_info["errors"]:
+                warnings.append(f"EPSS lookups failed for {epss_info['errors']} batch(es); EPSS signals are partial")
 
     if args.grace_days < 0 or args.unshipped_days < 0:
         raise UsageError("--grace-days and --unshipped-days must be zero or more")
@@ -405,6 +411,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "agreement": merge.source_agreement(findings, enabled),
         "fix_dates": fd_stats,
         "kev": kev_info,
+        "epss": epss_info,
         "lag": lag_m,
         "coverage": coverage.compute(findings),
         "health": health,

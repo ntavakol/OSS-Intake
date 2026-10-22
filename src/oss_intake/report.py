@@ -21,7 +21,8 @@ HEURISTIC_NOTE = (
 CSV_FIELDS = [
     "id", "aliases", "severity", "cvss", "package", "pkg_type", "installed", "fixed_versions",
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
-    "cve_published", "cve_published_before_release", "kev", "sources", "source_severity", "target",
+    "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
+    "source_severity", "target",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
 ]
 
@@ -44,6 +45,8 @@ def finding_row(f: Finding) -> dict:
         "cve_published": f.published.date().isoformat() if f.published else "",
         "cve_published_before_release": _tri(f.published_before_release),
         "kev": "yes" if f.kev else "",
+        "epss": "" if f.epss is None else f"{f.epss:.4f}",
+        "epss_percentile": "" if f.epss_percentile is None else f"{f.epss_percentile:.3f}",
         "sources": ";".join(sorted(f.sources)),
         "source_severity": ";".join(f"{k}:{v}" for k, v in sorted(f.source_severity.items())),
         "target": f.target,
@@ -141,6 +144,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
+    if lag.get("epss_scored"):
+        lag_rows.append(["Highest EPSS among findings with a fix (30-day exploitation probability)",
+                         f"{lag['max_epss_with_fix']:.3f}" if lag.get("max_epss_with_fix") is not None else "n/a"])
     cov = a.get("coverage") or []
     if cov:
         cov_rows = [[c["ecosystem"], c["with_fix"], c["dated"], f"{c['percent']}%",

@@ -103,4 +103,6 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
             "days": days_between(oldest_pub.published, as_of),
         },
         "kev_with_fix": sum(1 for f in with_fix if f.kev),
+        "max_epss_with_fix": max((f.epss for f in with_fix if f.epss is not None), default=None),
+        "epss_scored": sum(1 for f in findings if f.epss is not None),
     }

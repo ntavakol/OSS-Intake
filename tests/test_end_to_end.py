@@ -48,6 +48,9 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
     assert by_id["CVE-2099-0001"]["fix_available_at_release"] == "yes"
     assert by_id["CVE-2099-0006"]["severity"] == "CRITICAL" and by_id["CVE-2099-0006"]["sources"] == "osv"
     assert by_id["CVE-2099-0003"]["kev"] == "yes"
+    assert by_id["CVE-2099-0003"]["epss"] == "0.6123" and by_id["CVE-2099-0001"]["epss_percentile"] == "0.800"
+    assert a["epss"]["scored"] == 2 and a["epss"]["model_date"] == "2026-10-21"
+    assert a["lag"]["max_epss_with_fix"] == pytest.approx(0.6123)
     assert by_id["CVE-2099-1000"]["fix_published"] == "2026-02-10"
     assert by_id["CVE-2099-1000"]["fix_date_source"] == "advisory USN-9999-1"
     assert by_id["CVE-2099-0001"]["fix_date_source"] == "deps.dev"
