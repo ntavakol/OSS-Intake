@@ -1,0 +1,188 @@
+{
+ "SchemaVersion": 2,
+ "ArtifactName": "registry.access.redhat.com/ubi9/ubi:9.6",
+ "Metadata": {
+  "OS": {
+   "Family": "redhat",
+   "Name": "9.6"
+  }
+ },
+ "Results": [
+  {
+   "Target": "registry.access.redhat.com/ubi9/ubi:9.6 (redhat 9.6)",
+   "Class": "os-pkgs",
+   "Type": "redhat",
+   "Packages": [
+    {
+     "ID": "acl@2.3.1-4.el9.x86_64",
+     "Name": "acl",
+     "Version": "2.3.1",
+     "Release": "4.el9",
+     "SrcName": "acl",
+     "SrcVersion": "2.3.1",
+     "SrcRelease": "4.el9",
+     "Identifier": {
+      "PURL": "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "249962deb4e4622b"
+     }
+    },
+    {
+     "ID": "attr@2.5.1-3.el9.x86_64",
+     "Name": "attr",
+     "Version": "2.5.1",
+     "Release": "3.el9",
+     "SrcName": "attr",
+     "SrcVersion": "2.5.1",
+     "SrcRelease": "3.el9",
+     "Identifier": {
+      "PURL": "pkg:rpm/redhat/attr@2.5.1-3.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "44685d98dbbaa0f9"
+     }
+    },
+    {
+     "ID": "coreutils-single@8.32-39.el9.x86_64",
+     "Name": "coreutils-single",
+     "Version": "8.32",
+     "Release": "39.el9",
+     "SrcName": "coreutils",
+     "SrcVersion": "8.32",
+     "SrcRelease": "39.el9",
+     "Identifier": {
+      "PURL": "pkg:rpm/redhat/coreutils-single@8.32-39.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "7b361df482e8f066"
+     }
+    }
+   ],
+   "Vulnerabilities": [
+    {
+     "VulnerabilityID": "CVE-2026-54369",
+     "PkgID": "acl@2.3.1-4.el9.x86_64",
+     "PkgName": "acl",
+     "PkgIdentifier": {
+      "PURL": "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "249962deb4e4622b"
+     },
+     "InstalledVersion": "2.3.1-4.el9",
+     "FixedVersion": "2.4.0-1.el9_8",
+     "Status": "fixed",
+     "Severity": "HIGH",
+     "SeveritySource": "redhat",
+     "VendorIDs": [
+      "RHSA-2026:42736"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 7.1
+      }
+     },
+     "PublishedDate": "2026-06-29T14:16:57.487Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-54370",
+     "PkgID": "acl@2.3.1-4.el9.x86_64",
+     "PkgName": "acl",
+     "PkgIdentifier": {
+      "PURL": "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "249962deb4e4622b"
+     },
+     "InstalledVersion": "2.3.1-4.el9",
+     "FixedVersion": "2.4.0-1.el9_8",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "redhat",
+     "VendorIDs": [
+      "RHSA-2026:42736"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 6.3
+      }
+     },
+     "PublishedDate": "2026-06-29T14:16:57.67Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-54371",
+     "PkgID": "attr@2.5.1-3.el9.x86_64",
+     "PkgName": "attr",
+     "PkgIdentifier": {
+      "PURL": "pkg:rpm/redhat/attr@2.5.1-3.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "44685d98dbbaa0f9"
+     },
+     "InstalledVersion": "2.5.1-3.el9",
+     "FixedVersion": "2.6.0-1.el9_8",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "redhat",
+     "VendorIDs": [
+      "RHSA-2026:60226"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N",
+       "V3Score": 6.3
+      }
+     },
+     "PublishedDate": "2026-06-29T14:16:57.823Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2025-5278",
+     "PkgID": "coreutils-single@8.32-39.el9.x86_64",
+     "PkgName": "coreutils-single",
+     "PkgIdentifier": {
+      "PURL": "pkg:rpm/redhat/coreutils-single@8.32-39.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "7b361df482e8f066"
+     },
+     "InstalledVersion": "8.32-39.el9",
+     "FixedVersion": "8.32-41.el9_8",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "redhat",
+     "VendorIDs": [
+      "RHSA-2026:28911"
+     ],
+     "CVSS": {
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:L",
+       "V3Score": 4.4
+      }
+     },
+     "PublishedDate": "2025-05-27T21:15:23.197Z"
+    },
+    {
+     "VulnerabilityID": "CVE-2026-56392",
+     "PkgID": "coreutils-single@8.32-39.el9.x86_64",
+     "PkgName": "coreutils-single",
+     "PkgIdentifier": {
+      "PURL": "pkg:rpm/redhat/coreutils-single@8.32-39.el9?arch=x86_64&distro=redhat-9.6",
+      "UID": "7b361df482e8f066"
+     },
+     "InstalledVersion": "8.32-39.el9",
+     "FixedVersion": "8.32-41.el9_8.1",
+     "Status": "fixed",
+     "Severity": "MEDIUM",
+     "SeveritySource": "redhat",
+     "VendorIDs": [
+      "RHSA-2026:66403"
+     ],
+     "CVSS": {
+      "julia": {
+       "V40Vector": "CVSS:4.0/AV:L/AC:L/AT:P/PR:N/UI:A/VC:N/VI:L/VA:L/SC:N/SI:N/SA:N",
+       "V40Score": 1.8
+      },
+      "nvd": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:H",
+       "V3Score": 6.1
+      },
+      "redhat": {
+       "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:L",
+       "V3Score": 4.4
+      }
+     },
+     "PublishedDate": "2026-07-24T09:16:25.147Z"
+    }
+   ]
+  }
+ ]
+}
