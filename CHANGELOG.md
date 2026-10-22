@@ -29,6 +29,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Likelihood confidence is no longer reported as low when the top level (KEV) fired, since missing evidence
   could only have hidden a higher level.
 - The OSV warning for OS-only images no longer suggests a misconfiguration.
+- Go modules at v2+ without a `/vN` path (Grafana, Tempo) are retried on deps.dev as `+incompatible` versions.
+- When no listed fix is newer than the installed version, the finding is flagged for review instead of taking
+  its date from an older version.
 
 ## [0.1.0] - 2026-10-22
 

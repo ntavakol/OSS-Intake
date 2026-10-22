@@ -45,6 +45,7 @@ def test_version_compare(a, b, expected):
 
 def test_nearest_fix_picks_same_line():
     assert versions.nearest_fix("6.1.10", ["6.1.12", "5.3.39", "6.2.1"]) == "6.1.12"
+    assert versions.nearest_fix("12.2.0", ["1.9.2-0.20260616075434-82ef13993059"]) is None
     assert versions.split_fixed("6.1.12, 5.3.39") == ["6.1.12", "5.3.39"]
 
 
@@ -293,3 +294,33 @@ def test_confidence_ignored_at_top_level():
     assert r["level"] == 5 and r["confidence"] == "normal"
     r = likelihood.evaluate(likelihood.DEFAULT_CONFIG, {**m, "kev_with_fix": 0, "high_with_fix": 3})
     assert r["level"] == 2 and r["confidence"] == "low"
+
+
+def test_go_incompatible_retry():
+    from oss_intake.enrich import fixdates
+
+    class H:
+        urls = []
+
+        def get_json(self, url, params=None):
+            self.urls.append(url)
+            if url.endswith("v12.2.2%2Bincompatible"):
+                return 200, {"publishedAt": "2026-07-01T00:00:00Z"}
+            return 404, None
+
+    h = H()
+    f = _f(package="github.com/grafana/grafana", installed="12.2.0", fixed_versions=["12.2.2"],
+           purl="pkg:golang/github.com/grafana/grafana@v12.2.0")
+    v2 = _f(package="github.com/x/y/v3", installed="3.0.0", fixed_versions=["3.1.0"],
+            purl="pkg:golang/github.com/x/y/v3@v3.0.0")
+    fixdates.enrich(h, [f, v2])
+    assert f.fix_published == parse_datetime("2026-07-01")
+    assert sum("incompatible" in u for u in h.urls) == 1  # /v3 module is not retried
+
+
+def test_flag_no_newer_fix():
+    from oss_intake import lag
+
+    f = _f(installed="12.2.0", fixed_versions=["1.9.2-0.20260616075434-82ef13993059"])
+    ok = _f(installed="1.0", fixed_versions=["1.1"])
+    assert lag.flag_no_newer_fix([f, ok]) == 1 and "pseudo-versions" in f.note and not ok.note

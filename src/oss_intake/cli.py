@@ -310,6 +310,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     findings = merge.merge(*groups)
     findings = [f for f in findings if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     n_label = lag.flag_label_matches(findings)
+    n_older = lag.flag_no_newer_fix(findings)
+    if n_older:
+        warnings.append(f"{n_older} finding(s) list only fixes at or below the installed version; noted in "
+                        "findings.csv for manual review and left without a fix date")
     if n_label:
         warnings.append(f"{n_label} finding(s) have an installed version equal to a listed fix apart from a "
                         "build label (e.g. .jre11); flagged as likely already fixed and excluded from lag")

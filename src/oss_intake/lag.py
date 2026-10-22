@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from statistics import median
 
 from .models import SEVERITIES, Finding, days_between
-from .versions import label_only_match
+from .versions import label_only_match, nearest_fix
 
 DEFAULT_GRACE_DAYS = 14
 DEFAULT_UNSHIPPED_DAYS = 90
@@ -21,6 +21,17 @@ def flag_label_matches(findings: list[Finding]) -> int:
             f.likely_fixed = True
             f.note = (f"Installed {f.installed} equals listed fix {match} apart from a build label; "
                       "likely already fixed. Check the target path and confirm.")
+            n += 1
+    return n
+
+
+def flag_no_newer_fix(findings: list[Finding]) -> int:
+    """Mark findings whose listed fixes are all at or below the installed version."""
+    n = 0
+    for f in findings:
+        if f.fixed_versions and not f.likely_fixed and nearest_fix(f.installed, f.fixed_versions) is None:
+            f.note = (f"No listed fix ({', '.join(f.fixed_versions)}) is newer than installed {f.installed}; "
+                      "scanner data may be wrong (often Go pseudo-versions). Check manually.")
             n += 1
     return n
 

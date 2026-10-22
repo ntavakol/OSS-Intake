@@ -66,10 +66,14 @@ def split_fixed(value: str | list[str] | None) -> list[str]:
 
 
 def nearest_fix(installed: str, fixed: list[str]) -> str | None:
-    """Smallest fixed version strictly greater than installed (the shortest upgrade path)."""
+    """Smallest fixed version strictly greater than installed (the shortest upgrade path).
+
+    Returns None when no listed fix is newer than the installed version. That is a scanner data
+    anomaly (often Go pseudo-versions) and must not be papered over by picking an older "fix".
+    """
     candidates = [f for f in fixed if compare(f, installed) > 0]
     if not candidates:
-        return fixed[0] if fixed else None
+        return None
     best = candidates[0]
     for c in candidates[1:]:
         if compare(c, best) < 0:

@@ -7,6 +7,7 @@ publication date instead would overstate lag when a CVE is disclosed before its 
 
 from __future__ import annotations
 
+import re
 from urllib.parse import quote, unquote
 
 from ..http import Http, HttpError
@@ -14,6 +15,7 @@ from ..models import Finding, parse_datetime
 from ..versions import nearest_fix
 
 API = "https://api.deps.dev/v3/systems"
+_GO_MAJOR_SUFFIX = re.compile(r"/v\d+$")
 _SYSTEMS = {"maven": "maven", "npm": "npm", "pypi": "pypi", "golang": "go", "cargo": "cargo", "nuget": "nuget"}
 
 
@@ -51,17 +53,29 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         key = (sn[0], sn[1], fix)
         if key not in cache:
             stats["looked_up"] += 1
-            url = f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/{quote(fix, safe='')}"
+            versions_to_try = [fix]
+            if sn[0] == "go" and not _GO_MAJOR_SUFFIX.search(sn[1]) and _major(fix) >= 2:
+                # Modules at v2+ without a /vN path suffix are recorded as vX.Y.Z+incompatible.
+                versions_to_try.append(f"{fix}+incompatible")
+            cache[key] = None
             try:
-                status, data = http.get_json(url)
+                for v in versions_to_try:
+                    url = f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/{quote(v, safe='')}"
+                    status, data = http.get_json(url)
+                    if status == 200 and isinstance(data, dict) and data.get("publishedAt"):
+                        cache[key] = data["publishedAt"]
+                        break
             except HttpError:
                 stats["errors"] += 1
-                cache[key] = None
                 continue
-            cache[key] = data.get("publishedAt") if status == 200 and isinstance(data, dict) else None
         published = parse_datetime(cache[key])
         if published:
             f.fix_published = published
             f.fix_date_source = "deps.dev"
             stats["found"] += 1
     return stats
+
+
+def _major(v: str) -> int:
+    m = re.match(r"v?(\d+)", v)
+    return int(m.group(1)) if m else 0
