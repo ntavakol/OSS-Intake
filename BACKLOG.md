@@ -17,8 +17,6 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
-- Check a target project's own GitHub Actions workflows for unpinned actions and known-bad action versions
-  (for example `aquasecurity/trivy-action` below 0.35.0 or `setup-trivy` below 0.2.6).
 - Alpine fix dates (secdb has fixed versions but no dates; aports history may).
 - Red Hat family fix dates (RHSA, ALAS) for UBI, RHEL, Rocky and Amazon Linux images.
 - Go standard library fix dates from Go release history.

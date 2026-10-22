@@ -181,6 +181,26 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         h_rows.append(["OpenSSF Scorecard", sc.get("note") or sc.get("status", "n/a")])
     secs.append(("Project health", [("table", ["Signal", "Value"], h_rows)]))
 
+    wf = health.get("workflows") or {}
+    if wf.get("status") == "ok":
+        checked = str(wf["files"]) + (f" ({wf['files_skipped']} more not checked)" if wf["files_skipped"] else "")
+        w_rows = [["Workflow files checked", checked],
+                  ["Action references", wf["uses_total"]],
+                  ["Pinned to a full commit SHA", _v(wf["pinned_percent"], "%")],
+                  ["Known-bad action versions", len(wf["known_bad"]) or "none"],
+                  ["Files without a top-level permissions block",
+                   ", ".join(wf["no_top_level_permissions"]) or "none"],
+                  ["Files granting write-all", ", ".join(wf["write_all"]) or "none"],
+                  ["Files using pull_request_target", ", ".join(wf["pull_request_target"]) or "none"]]
+        blocks = [("table", ["Check", "Result"], w_rows)]
+        for kb in wf["known_bad"]:
+            blocks.append(("p", f"{kb['file']}: {kb['uses']} ({kb['reference']}). {kb['note']}"))
+        blocks.append(("p", "These checks describe how exposed the project's own releases are to tampering in CI. "
+                            "They do not change the likelihood suggestion."))
+        secs.append(("Project CI hygiene (GitHub Actions)", blocks))
+    elif wf.get("status") in ("none", "error"):
+        secs.append(("Project CI hygiene (GitHub Actions)", [("p", wf.get("note", ""))]))
+
     lk = a.get("likelihood")
     if lk:
         secs.append(("Likelihood suggestion (heuristic)", [

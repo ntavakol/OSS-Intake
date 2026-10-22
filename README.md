@@ -20,6 +20,8 @@ CISA KEV membership).
 - Looks up when each fixed dependency version was published ([deps.dev](https://deps.dev)) and compares that
   with the project's GitHub release date.
 - Reports release cadence from the GitHub API and the OpenSSF Scorecard score where one exists.
+- Audits the project's own GitHub Actions workflows: unpinned actions, known-bad action versions (such as the
+  compromised `trivy-action` tags), missing or write-all token permissions, and `pull_request_target` triggers.
 - Optionally suggests a likelihood value for a 5x5 risk matrix from configurable rules, clearly labelled
   as a heuristic.
 - Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html`, plus the raw

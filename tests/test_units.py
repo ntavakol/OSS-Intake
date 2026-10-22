@@ -505,3 +505,68 @@ def test_epss_rules_and_batching():
     assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.6})["level"] == 4
     assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.12})["level"] == 3
     assert likelihood.evaluate(cfg, {**base, "max_epss_with_fix": 0.01, "high_with_fix": 1})["level"] == 2
+
+
+WORKFLOW_GOOD = """name: ci
+on: [push]
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./local-action
+      - uses: docker://alpine:3.20
+"""
+WORKFLOW_BAD = """on:
+  pull_request_target:
+permissions: write-all
+jobs:
+  scan:
+    steps:
+      - uses: actions/setup-python@v5
+      - name: scan
+        uses: aquasecurity/trivy-action@0.28.0
+      - uses: "aquasecurity/setup-trivy@ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12" # v0.2.6
+      - uses: aquasecurity/trivy-action/sub@ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12
+"""
+
+
+def test_workflow_analysis():
+    from oss_intake.health import workflows as wf
+
+    kb = integrity.load_known_bad()["actions"]
+    good = wf.analyse("ci.yml", WORKFLOW_GOOD, kb)
+    assert good == {"file": "ci.yml", "uses": 1, "unpinned": [], "known_bad": [], "top_level_permissions": True,
+                    "write_all": False, "pull_request_target": False}
+    bad = wf.analyse("scan.yml", WORKFLOW_BAD, kb)
+    assert bad["unpinned"] == ["actions/setup-python@v5", "aquasecurity/trivy-action@0.28.0"]
+    assert [b["version"] for b in bad["known_bad"]] == ["0.28.0", "unknown"]  # setup-trivy v0.2.6 is fine
+    assert bad["write_all"] and bad["pull_request_target"]
+
+
+def test_workflow_fetch():
+    import base64
+
+    from oss_intake.health import workflows as wf
+
+    class H:
+        def get_json(self, url, params=None):
+            if url.endswith("/contents/.github/workflows"):
+                return 200, [{"type": "file", "name": "ci.yml", "path": ".github/workflows/ci.yml"},
+                             {"type": "file", "name": "scan.yaml", "path": ".github/workflows/scan.yaml"},
+                             {"type": "file", "name": "README.md", "path": ".github/workflows/README.md"}]
+            text = WORKFLOW_GOOD if url.endswith("ci.yml") else WORKFLOW_BAD
+            return 200, {"encoding": "base64", "content": base64.b64encode(text.encode()).decode()}
+
+    r = wf.fetch(H(), "o/r")
+    assert r["files"] == 2 and r["uses_total"] == 5 and r["unpinned"] == 2 and r["pinned_percent"] == 60
+    assert r["no_top_level_permissions"] == [] and r["write_all"] == ["scan.yaml"]
+    assert len(r["known_bad"]) == 2 and r["known_bad"][0]["file"] == "scan.yaml"
+
+    class Missing:
+        def get_json(self, url, params=None):
+            return 404, None
+
+    assert wf.fetch(Missing(), "o/r")["status"] == "none"

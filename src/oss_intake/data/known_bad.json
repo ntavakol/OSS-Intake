@@ -4,16 +4,35 @@
   "tools": {
     "trivy": [
       {
-        "versions": ["0.69.4"],
+        "versions": [
+          "0.69.4"
+        ],
         "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
         "note": "Malicious release published 2026-03-19 during the Trivy supply chain compromise. Treat any host or pipeline that ran it as compromised and rotate credentials."
       },
       {
-        "versions": ["0.69.5", "0.69.6"],
+        "versions": [
+          "0.69.5",
+          "0.69.6"
+        ],
         "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
         "note": "Malicious container image tags pushed to Docker Hub on 2026-03-22 with no matching GitHub release."
       }
     ],
     "grype": []
-  }
+  },
+  "actions": [
+    {
+      "action": "aquasecurity/trivy-action",
+      "below": "0.35.0",
+      "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
+      "note": "76 of 77 tags were force-pushed to malicious commits on 2026-03-19. Use 0.35.0 or later, pinned by SHA."
+    },
+    {
+      "action": "aquasecurity/setup-trivy",
+      "below": "0.2.6",
+      "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
+      "note": "All tags before the recreated 0.2.6 were replaced with malicious commits. Use 0.2.6 or later, pinned by SHA."
+    }
+  ]
 }

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from . import __version__, coverage, integrity, lag, likelihood, merge, report
 from .enrich import advisories, debian_tracker, epss, fixdates, github_releases, kev, ubuntu
-from .health import releases, scorecard
+from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
 from .scanners import ScannerError, find_executable, load_json_bytes
@@ -150,6 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-fix-dates", action="store_true", help="skip deps.dev fix date lookups")
     s.add_argument("--no-kev", action="store_true", help="skip the CISA KEV catalogue")
     s.add_argument("--no-epss", action="store_true", help="skip FIRST EPSS exploit probability scores")
+    s.add_argument("--no-workflows", action="store_true",
+                   help="skip the audit of the project's GitHub Actions workflows")
     s.add_argument("--no-scorecard", action="store_true", help="skip OpenSSF Scorecard")
     s.add_argument("--likelihood", action="store_true", help="include the 5x5 likelihood heuristic")
     s.add_argument("--likelihood-config", metavar="FILE", help="custom likelihood rules (JSON); implies --likelihood")
@@ -335,6 +337,11 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 sc = scorecard.fetch(net, args.repo)
             except HttpError as exc:
                 sc = {"status": "error", "note": str(exc)}
+        if not args.no_workflows:
+            health["workflows"] = workflows.fetch(net, args.repo)
+            for kb in health["workflows"].get("known_bad", []):
+                warnings.append(f"Project workflow {kb['file']} uses {kb['uses']}, a known-bad action version "
+                                f"({kb['reference']})")
     elif args.repo:
         warnings.append("--offline: release cadence and Scorecard skipped")
 

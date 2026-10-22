@@ -14,6 +14,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   fixed version. Trivy source package fields (`SrcName`, `SrcVersion`, `SrcRelease`) are now kept.
 - EPSS exploit probability per CVE (FIRST API, `epss` and `epss_percentile` columns, `--no-epss`), with default
   likelihood rules at level 4 (EPSS 0.5 or more on a finding with a fix) and level 3 (0.1 or more).
+- Audit of the target project's GitHub Actions workflows: unpinned actions, known-bad action versions
+  (`trivy-action` below 0.35.0, `setup-trivy` below 0.2.6), missing or write-all permissions, and
+  `pull_request_target` triggers. Reported only; it does not change the likelihood. `--no-workflows` to skip.
 
 ## [0.1.0] - 2026-10-22
 
