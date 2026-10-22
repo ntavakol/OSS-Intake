@@ -50,13 +50,30 @@ def _cvss(v: dict) -> float | None:
     return None
 
 
+def _src_version(p: dict) -> str:
+    v = p.get("SrcVersion") or ""
+    if not v:
+        return ""
+    if p.get("SrcRelease"):
+        v = f"{v}-{p['SrcRelease']}"
+    if p.get("SrcEpoch"):
+        v = f"{p['SrcEpoch']}:{v}"
+    return v
+
+
 def parse(report: dict) -> tuple[list[Finding], dict]:
     findings: list[Finding] = []
+    meta_os = (report.get("Metadata") or {}).get("OS") or {}
+    os_release = f"{meta_os.get('Family', '')} {meta_os.get('Name', '')}".strip().lower()
     for result in report.get("Results") or []:
         target = result.get("Target", "")
         rtype = result.get("Type", "")
+        is_os = result.get("Class") == "os-pkgs"
+        by_id = {p.get("ID"): p for p in result.get("Packages") or [] if p.get("ID")}
+        by_name = {p.get("Name"): p for p in result.get("Packages") or [] if p.get("Name")}
         for v in result.get("Vulnerabilities") or []:
             ident = v.get("PkgIdentifier") or {}
+            pkg = by_id.get(v.get("PkgID")) or by_name.get(v.get("PkgName")) or {}
             f = Finding(
                 vuln_id=v.get("VulnerabilityID", ""),
                 package=v.get("PkgName", ""),
@@ -70,6 +87,9 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
                 target=v.get("PkgPath") or target,
                 title=v.get("Title", "") or "",
                 vendor_ids=list(v.get("VendorIDs") or []),
+                src_name=pkg.get("SrcName", "") if is_os else "",
+                src_version=_src_version(pkg) if is_os else "",
+                os_release=os_release if is_os else "",
                 url=v.get("PrimaryURL", "") or "",
                 sources={NAME},
             )

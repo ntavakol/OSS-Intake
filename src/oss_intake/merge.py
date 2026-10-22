@@ -37,6 +37,9 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             for vid in f.vendor_ids:
                 if vid not in cur.vendor_ids:
                     cur.vendor_ids.append(vid)
+            cur.src_name = cur.src_name or f.src_name
+            cur.src_version = cur.src_version or f.src_version
+            cur.os_release = cur.os_release or f.os_release
             cur.purl = cur.purl or f.purl
             cur.target = cur.target or f.target
             cur.title = cur.title or f.title

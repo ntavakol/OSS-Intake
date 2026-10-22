@@ -32,11 +32,12 @@ def trim_trivy(report: dict, needles: list[str], os_sample: int) -> dict:
         if not vulns:
             continue
         names = {v.get("PkgName") for v in vulns}
-        keep = ("VulnerabilityID", "PkgName", "PkgIdentifier", "PkgPath", "InstalledVersion", "FixedVersion",
+        keep = ("VulnerabilityID", "PkgID", "PkgName", "PkgIdentifier", "PkgPath", "InstalledVersion", "FixedVersion",
                 "Status", "Severity", "SeveritySource", "VendorIDs", "CVSS", "PublishedDate")
         results.append({
             "Target": r.get("Target"), "Class": r.get("Class"), "Type": r.get("Type"),
-            "Packages": [{"Name": p.get("Name"), "Version": p.get("Version"), "Identifier": p.get("Identifier")}
+            "Packages": [{k: p[k] for k in ("ID", "Name", "Version", "Release", "Epoch", "SrcName", "SrcVersion",
+                                            "SrcRelease", "SrcEpoch", "Identifier") if k in p}
                          for p in r.get("Packages") or [] if p.get("Name") in names],
             "Vulnerabilities": [{k: v[k] for k in keep if k in v} for v in vulns],
         })

@@ -108,6 +108,9 @@ class Finding:
     kev: bool = False
     likely_fixed: bool = False
     vendor_ids: list[str] = field(default_factory=list)
+    src_name: str = ""  # OS source package (Trivy SrcName), needed to match distro notices
+    src_version: str = ""
+    os_release: str = ""  # e.g. "ubuntu 24.04", for OS package findings
     note: str = ""
     # Release-lag (set by lag.compute)
     fix_available_at_release: bool | None = None

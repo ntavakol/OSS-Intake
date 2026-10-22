@@ -8,7 +8,7 @@ from .models import Finding
 
 # Why each ecosystem lacks a date source, shown when coverage is low.
 GAP_REASON = {
-    "ubuntu": "no dated source yet (Trivy reports no USN IDs); in backlog",
+    "ubuntu": "no Ubuntu Security Notice matched the CVE, package and fixed version",
     "alpine": "Alpine publishes no fix dates",
     "redhat": "RHSA/ALAS advisories not used yet; in backlog",
     "go-stdlib": "Go standard library is not on deps.dev",

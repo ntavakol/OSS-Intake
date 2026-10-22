@@ -10,6 +10,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   when an ecosystem has no date source, so readers can see how far to trust the lag numbers.
 - Regression tests on trimmed real scan output from public images, and `scripts/extract_regression_fixture.py`
   to produce them.
+- Ubuntu fix dates from Ubuntu Security Notices in OSV, matched strictly on CVE, release, source package and
+  fixed version. Trivy source package fields (`SrcName`, `SrcVersion`, `SrcRelease`) are now kept.
 
 ## [0.1.0] - 2026-10-22
 

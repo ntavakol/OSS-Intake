@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, coverage, integrity, lag, likelihood, merge, report
-from .enrich import advisories, debian_tracker, fixdates, github_releases, kev
+from .enrich import advisories, debian_tracker, fixdates, github_releases, kev, ubuntu
 from .health import releases, scorecard
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -363,6 +363,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["debian_tracker"] = deb
             if deb.get("errors"):
                 warnings.append("Debian security tracker lists could not be loaded; Debian fix dates fall back to OSV")
+            ubu = ubuntu.enrich(net, findings)
+            fd_stats["ubuntu"] = ubu
+            if ubu.get("errors"):
+                warnings.append("Ubuntu notice lookups in OSV failed; Ubuntu fix dates may be incomplete")
             adv = advisories.enrich(net, findings)
             fd_stats["advisory"] = adv
             if adv.get("errors"):

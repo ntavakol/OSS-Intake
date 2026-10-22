@@ -414,5 +414,70 @@ def test_coverage_by_ecosystem():
     assert cov["maven"] == {"ecosystem": "maven", "with_fix": 2, "dated": 1, "percent": 50,
                             "sources": {"deps.dev": 1}, "gap": ""}
     assert cov["debian"]["sources"] == {"advisory": 1} and cov["debian"]["percent"] == 100
-    assert cov["ubuntu"]["gap"].startswith("no dated source")
+    assert cov["ubuntu"]["gap"].startswith("no Ubuntu Security Notice")
     assert set(cov) == {"maven", "debian", "ubuntu", "go-stdlib", "alpine", "binary"}
+
+
+def test_ubuntu_ecosystem_names():
+    from oss_intake.enrich import ubuntu
+
+    assert ubuntu.osv_ecosystem("ubuntu 24.04") == "Ubuntu:24.04:LTS"
+    assert ubuntu.osv_ecosystem("ubuntu 22.04.5") == "Ubuntu:22.04:LTS"
+    assert ubuntu.osv_ecosystem("ubuntu 24.10") == "Ubuntu:24.10"
+    assert ubuntu.osv_ecosystem("ubuntu 23.04") == "Ubuntu:23.04"
+    assert ubuntu.osv_ecosystem("debian 12.7") is None
+
+
+def test_ubuntu_usn_matching():
+    from oss_intake.enrich import ubuntu
+
+    usn = {"id": "USN-9001-1", "published": "2026-03-05T10:00:00Z", "upstream": ["CVE-2099-3000"],
+           "affected": [
+               {"package": {"ecosystem": "Ubuntu:22.04:LTS", "name": "gnupg2"},
+                "ranges": [{"events": [{"introduced": "0"}, {"fixed": "2.2.27-3ubuntu2.9"}]}]},
+               {"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "gnupg2"},
+                "ranges": [{"events": [{"introduced": "0"}, {"fixed": "2.4.4-2ubuntu17.4"}]}]}]}
+    other = {"id": "USN-9002-1", "published": "2026-01-01T00:00:00Z", "upstream": ["CVE-2099-3000"],
+             "affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "gnupg2"},
+                           "ranges": [{"events": [{"fixed": "2.4.4-2ubuntu17.1"}]}]}]}
+
+    class H:
+        posted = []
+
+        def post_json(self, url, body):
+            self.posted.append(body)
+            return 200, {"results": [{"vulns": [{"id": "UBUNTU-CVE-2099-3000"}, {"id": "USN-9001-1"},
+                                                 {"id": "USN-9002-1"}]}]}
+
+        def get_json(self, url, params=None):
+            vid = url.rsplit("/", 1)[1]
+            return 200, {"USN-9001-1": usn, "USN-9002-1": other}[vid]
+
+    def ub(**kw):
+        return _f(purl="pkg:deb/ubuntu/gpgv@2.4.4-2ubuntu17.3", installed="2.4.4-2ubuntu17.3",
+                  src_name="gnupg2", src_version="2.4.4-2ubuntu17.3", os_release="ubuntu 24.04", **kw)
+
+    hit = ub(vuln_id="CVE-2099-3000", fixed_versions=["2.4.4-2ubuntu17.4"])
+    wrong_fix = ub(vuln_id="CVE-2099-3000", fixed_versions=["2.4.4-2ubuntu17.9"])
+    wrong_cve = ub(vuln_id="CVE-2099-3999", fixed_versions=["2.4.4-2ubuntu17.4"])
+    h = H()
+    stats = ubuntu.enrich(h, [hit, wrong_fix, wrong_cve])
+    assert hit.fix_published == parse_datetime("2026-03-05T10:00:00Z") and hit.fix_date_source == "advisory USN-9001-1"
+    assert wrong_fix.fix_published is None and wrong_cve.fix_published is None  # strict matching
+    assert stats["found"] == 1 and stats["notices_fetched"] == 2 and stats["packages_queried"] == 1
+    q = h.posted[0]["queries"][0]
+    assert q == {"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "gnupg2"}, "version": "2.4.4-2ubuntu17.3"}
+
+
+def test_trivy_source_package_fields():
+    report = {"Metadata": {"OS": {"Family": "ubuntu", "Name": "24.04"}}, "Results": [{
+        "Class": "os-pkgs", "Type": "ubuntu",
+        "Packages": [{"ID": "gpgv@2.4.4-2ubuntu17.3", "Name": "gpgv", "SrcName": "gnupg2",
+                      "SrcVersion": "2.4.4", "SrcRelease": "2ubuntu17.3"}],
+        "Vulnerabilities": [{"VulnerabilityID": "CVE-2099-3000", "PkgID": "gpgv@2.4.4-2ubuntu17.3",
+                             "PkgName": "gpgv", "InstalledVersion": "2.4.4-2ubuntu17.3",
+                             "FixedVersion": "2.4.4-2ubuntu17.4", "Severity": "HIGH"}]}]}
+    from oss_intake.scanners import trivy as tv
+
+    f = tv.parse(report)[0][0]
+    assert (f.src_name, f.src_version, f.os_release) == ("gnupg2", "2.4.4-2ubuntu17.3", "ubuntu 24.04")
