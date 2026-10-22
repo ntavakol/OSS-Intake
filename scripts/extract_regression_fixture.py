@@ -67,8 +67,11 @@ def main() -> None:
     ap.add_argument("--match", nargs="*", default=[])
     ap.add_argument("--os-sample", type=int, default=0)
     args = ap.parse_args()
+    src = args.raw_dir / "trivy.json"
+    if not src.is_file():
+        raise SystemExit(f"error: {src} not found. RAW_DIR must be a report's raw/ folder, e.g. reports/app/raw")
     OUT.mkdir(parents=True, exist_ok=True)
-    trivy = json.loads((args.raw_dir / "trivy.json").read_text(encoding="utf-8"))
+    trivy = json.loads(src.read_text(encoding="utf-8"))
     t = trim_trivy(trivy, args.match, args.os_sample)
     (OUT / f"{args.name}-trivy.json").write_text(json.dumps(t, indent=1) + "\n", encoding="utf-8")
     n = sum(len(r["Vulnerabilities"]) for r in t["Results"])

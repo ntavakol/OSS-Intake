@@ -64,3 +64,10 @@ def test_os_ecosystem_detection(name, eco):
 def test_rocker_ubuntu_source_package_fields():
     t, _ = trivy.parse(_load("rocker-shiny-4.5.1-trivy.json"))
     assert t and all(f.src_name and "ubuntu" in f.src_version and f.os_release == "ubuntu 24.04" for f in t)
+
+
+def test_ubi_redhat_advisories():
+    t, _ = trivy.parse(_load("ubi9-9.6-trivy.json"))
+    assert t and {coverage.ecosystem(f) for f in t} == {"redhat"}
+    assert all(any(v.startswith("RHSA-") for v in f.vendor_ids) for f in t)
+    assert lag.flag_no_newer_fix(t) == 0  # el9 -> el9_8 release ordering
