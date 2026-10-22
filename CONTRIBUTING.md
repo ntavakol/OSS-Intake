@@ -5,7 +5,7 @@ Thanks for helping. Issues and pull requests are welcome.
 ## Development setup
 
 ```bash
-git clone https://github.com/<your-github-username>/oss-intake
+git clone https://github.com/ntavakol/OSS-Intake
 cd oss-intake
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate    Windows: .venv\Scripts\Activate.ps1

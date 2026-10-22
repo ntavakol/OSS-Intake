@@ -42,7 +42,7 @@ CISA KEV membership).
 Python 3.10 or later on Windows, macOS or Linux. No administrator rights are needed.
 
 ```bash
-pipx install git+https://github.com/<your-github-username>/oss-intake
+pipx install git+https://github.com/ntavakol/OSS-Intake
 ```
 
 Windows PowerShell without pipx:
@@ -51,7 +51,7 @@ Windows PowerShell without pipx:
 py -m pip install --user pipx
 py -m pipx ensurepath
 # open a new terminal, then
-pipx install git+https://github.com/<your-github-username>/oss-intake
+pipx install git+https://github.com/ntavakol/OSS-Intake
 ```
 
 If `oss-intake` is "not recognized" after `pip install --user`, the per-user Scripts folder is not on PATH.
