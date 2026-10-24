@@ -13,6 +13,11 @@ Items agreed for later versions, roughly in priority order.
   browser, which conflicts with the minimal-dependency goal. Until then, print `report.html` to PDF from a
   browser; the page is self-contained and prints cleanly.
 - SARIF output for code-scanning dashboards.
+- README screenshots of the HTML report (light and dark, desktop and phone). No real project may be identifiable:
+  mask the image, repository and package identifiers. Rendering from the synthetic test fixtures (example/webapp,
+  CVE-2099-* IDs) is not enough on its own: they use real library names (spring-web, jackson-databind), so
+  package names must be masked there too, or the fixtures given made-up names. Generate them with a script
+  (Playwright, already used for checks) so they can be refreshed when the layout changes.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
