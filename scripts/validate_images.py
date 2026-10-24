@@ -27,7 +27,13 @@ def run_one(image: str, repo: str | None, extra: list[str], out: Path, common: l
     proc = subprocess.run(cmd, capture_output=True, text=True)
     row = {"image": image, "repo": repo or "-", "exit": proc.returncode, "seconds": round(time.time() - start)}
     errors = [ln for ln in proc.stderr.splitlines() if "error:" in ln]
-    row["error"] = errors[-1].split("error:", 1)[1].strip()[:140] if errors else ""
+    if errors:
+        row["error"] = errors[-1].split("error:", 1)[1].strip()[:140]
+    elif proc.returncode not in (0, 3):
+        lines = [ln for ln in proc.stderr.splitlines() if ln.strip()]
+        row["error"] = (lines[-1].strip() if lines else "no error output")[:140]
+    else:
+        row["error"] = ""
     a_path = out / "assessment.json"
     if proc.returncode in (0, 3) and a_path.exists():
         a = json.loads(a_path.read_text(encoding="utf-8"))
@@ -56,6 +62,10 @@ def main() -> None:
     args = ap.parse_args()
     if not args.image_list.is_file():
         raise SystemExit(f"error: {args.image_list} not found")
+    probe = subprocess.run([sys.executable, "-c", "import oss_intake"], capture_output=True)
+    if probe.returncode != 0:
+        raise SystemExit(f"error: oss_intake is not installed for {sys.executable}; run this script with the "
+                         "Python of the environment oss-intake is installed in (for example the venv's bin/python)")
     common = ["--image-src", "remote", "--min-severity", "HIGH", "--likelihood", "--quiet"]
     if args.trivy_sha256:
         common += ["--trivy-sha256", args.trivy_sha256]
