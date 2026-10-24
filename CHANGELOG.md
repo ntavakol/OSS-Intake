@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-25
+
+Ubuntu fixes dated from Launchpad, and a more accurate CI hygiene check. mongo 7.0.14 (Ubuntu 22.04):
+every fixable finding dated (Ubuntu 326/326, Go standard library 196/196, Go modules 28/28).
+
 ### Added
 - Ubuntu fix dates from Launchpad's publishing history when no Ubuntu Security Notice matched: the earliest
   publication of the exact fixed version to the image's release in the Release, Security or Updates pocket.
@@ -16,6 +21,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
   a concern (seen on Jenkins, whose three such workflows check out no PR code).
 - The `target` column in findings.csv lists every location a merged finding was seen in, `;`-separated, instead
   of only the first (for example one Go CVE in each of MongoDB's tool binaries).
+- The OSV Ubuntu notice warning says how many lookups failed and whether Launchpad covered them.
 
 ## [0.1.6] - 2026-10-25
 

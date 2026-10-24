@@ -47,7 +47,8 @@ def _query(http: Http, queries: list[dict]) -> list[list[str]]:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
-    stats = {"candidates": 0, "packages_queried": 0, "notices_fetched": 0, "found": 0, "errors": 0}
+    stats = {"candidates": 0, "packages_queried": 0, "notices_fetched": 0, "notices_total": 0, "found": 0,
+             "errors": 0, "query_failed": False}
     todo = [f for f in findings if not f.fix_published and not f.likely_fixed and f.fixed_versions
             and f.src_name and osv_ecosystem(f.os_release)]
     if not todo:
@@ -64,6 +65,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         ids_per_key = _query(http, queries)
     except HttpError:
         stats["errors"] += 1
+        stats["query_failed"] = True
         return stats
     stats["packages_queried"] = len(keys)
 
@@ -71,6 +73,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     for ids in ids_per_key:
         for vid in ids:
             if vid.startswith("USN-") and vid not in notices:
+                stats["notices_total"] += 1
                 try:
                     status, data = http.get_json(f"{API}/vulns/{vid}")
                 except HttpError:

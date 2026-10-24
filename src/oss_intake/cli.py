@@ -417,9 +417,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 warnings.append(f"Red Hat advisory lookups failed for {rh['errors']} advisories; dates may be partial")
             ubu = ubuntu.enrich(net, findings)
             fd_stats["ubuntu"] = ubu
-            if ubu.get("errors"):
-                warnings.append("Ubuntu notice lookups in OSV failed; Ubuntu fix dates may be incomplete")
             ulp = ubuntu_launchpad.enrich(net, findings)
+            if ubu.get("errors"):
+                what = ("the OSV package query failed" if ubu.get("query_failed")
+                        else f"{ubu['errors']} of {ubu['notices_total']} Ubuntu notice lookups in OSV failed")
+                covered = (" Launchpad publishing history was used for the rest." if not ulp.get("errors")
+                           else " Some Ubuntu fix dates may be missing.")
+                warnings.append(what[0].upper() + what[1:] + "." + covered)
             fd_stats["ubuntu_launchpad"] = ulp
             if ulp.get("errors"):
                 warnings.append("Launchpad publishing history lookups failed; some Ubuntu fix dates may be missing")
