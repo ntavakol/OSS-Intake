@@ -41,9 +41,14 @@ def trim_trivy(report: dict, needles: list[str], os_sample: int) -> dict:
                          for p in r.get("Packages") or [] if p.get("Name") in names],
             "Vulnerabilities": [{k: v[k] for k in keep if k in v} for v in vulns],
         })
-    os_info = (report.get("Metadata") or {}).get("OS")
+    meta = report.get("Metadata") or {}
+    keep_meta = {}
+    if meta.get("OS"):
+        keep_meta["OS"] = meta["OS"]
+    if (meta.get("ImageConfig") or {}).get("created"):
+        keep_meta["ImageConfig"] = {"created": meta["ImageConfig"]["created"]}
     return {"SchemaVersion": report.get("SchemaVersion"), "ArtifactName": report.get("ArtifactName"),
-            "Metadata": {"OS": os_info} if os_info else {}, "Results": results}
+            "Metadata": keep_meta, "Results": results}
 
 
 def trim_grype(report: dict, needles: list[str]) -> dict:

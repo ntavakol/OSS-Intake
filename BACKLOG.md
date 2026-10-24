@@ -7,7 +7,6 @@ Items agreed for later versions, roughly in priority order.
 - Dependency manifests and lockfiles: `requirements.txt`, `poetry.lock`, `renv.lock`, `package-lock.json`,
   `pom.xml`. Release lag then applies to source releases rather than images.
 - Non-GitHub forges (GitLab, Codeberg) for release cadence.
-- Release date from the image itself (OCI `created` annotation) when no GitHub release matches.
 
 ## Outputs
 - PDF report. Deferred because it needs either a heavy dependency (WeasyPrint, ReportLab) or a headless

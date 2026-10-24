@@ -140,6 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="a fix must predate the release by this many days to count as missed (default 14)")
     s.add_argument("--unshipped-days", type=int, default=lag.DEFAULT_UNSHIPPED_DAYS,
                    help="days a fix must be public, with no newer release, to count as unshipped (default 90)")
+    s.add_argument("--no-image-date", action="store_true",
+                   help="do not fall back to the image build date when no release date is known")
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
                    help="drop findings below this severity")
@@ -346,10 +348,21 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         warnings.append("--offline: release cadence and Scorecard skipped")
 
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
+    release_date_source = "--release-date" if release_override else ("GitHub release" if release_date else None)
     if release_override:
         if not health.get("scanned_release"):
             health["scanned_release"] = {}
         health["scanned_release"]["tag"] = args.release_tag or "(set by --release-date)"
+    image_created = parse_datetime(scan_info.get("image_created"))
+    if not release_date and image_created and not args.no_image_date:
+        # Lag against the build date answers "were fixes available when this image was built and
+        # left out?". That is a fair question for an image, but not the same as a project release.
+        release_date, release_date_source = image_created, "image build date"
+        health["scanned_release"] = {"tag": "(image build date)", "date": image_created.isoformat(),
+                                     "matched": False}
+        warnings.append(f"No release date from GitHub or --release-date; using the image build date "
+                        f"{image_created.date().isoformat()} for release-lag metrics. The unshipped metric "
+                        "needs a matched release and stays unavailable. Use --no-image-date to disable.")
     if findings and not release_date:
         if args.repo and args.offline:
             hint = "--offline skips the GitHub lookup; drop --offline or pass --release-date."
@@ -423,7 +436,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "fix_dates": fd_stats,
         "kev": kev_info,
         "epss": epss_info,
-        "lag": lag_m,
+        "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),
         "health": health,
         "scorecard": sc,

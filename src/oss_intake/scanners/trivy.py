@@ -101,6 +101,8 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         "artifact": report.get("ArtifactName"),
         "created_at": report.get("CreatedAt"),
         "os": f"{os_info.get('Family', '')} {os_info.get('Name', '')}".strip() or None,
+        # OCI image config 'created': when the image was built. Fallback release date for lag.
+        "image_created": (meta.get("ImageConfig") or {}).get("created"),
         "repo_digests": meta.get("RepoDigests") or [],
         "targets": [
             {"target": r.get("Target"), "class": r.get("Class"), "type": r.get("Type"),

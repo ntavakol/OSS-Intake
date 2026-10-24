@@ -8,6 +8,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - Red Hat family fix dates (RHEL, UBI) from the RHSA advisories Trivy reports, dated from Red Hat's CSAF
   documents. Amazon Linux gets its own coverage row; Trivy reports no ALAS IDs, so it stays unknown.
+- When no GitHub release matches and `--release-date` is not given, the image's build date (OCI config
+  `created`) is used as the release date for lag metrics, labelled as such. `--no-image-date` disables it.
 
 ## [0.1.1] - 2026-10-22
 

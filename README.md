@@ -216,7 +216,9 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 - Release matching expects GitHub releases whose tags resemble the image tag (`1.2.3`, `v1.2.3`,
   `name-1.2.3`, `release-1.2.3`), and also tries the tag without a variant suffix (`2.528-jdk21` matches
   `jenkins-2.528`). If nothing matches, lag metrics are not computed rather than measured against the
-  wrong release. Use `--release-tag` or `--release-date` in that case.
+  wrong release. Use `--release-tag` or `--release-date` in that case. Failing both, the image's build date is
+  used and labelled "image build date": lag then means "fixes that existed when the image was built"
+  (disable with `--no-image-date`).
 - Fix dates are unavailable for OS packages and the Go standard library. When more than half of the fixes lack
   a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
 - Only GitHub-hosted projects get health signals in this version.

@@ -175,3 +175,25 @@ def test_outdated_release_note(tmp_path, fixtures):
     assert code == 0
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "not the project's latest (newer: v2.0.0" in md
+
+
+@pytest.mark.parametrize("extra,source", [([], "image build date"), (["--no-image-date"], None),
+                                          (["--release-date", "2026-01-01"], "--release-date")])
+def test_image_build_date_fallback(tmp_path, fixtures, extra, source):
+    report = json.loads((fixtures / "trivy.json").read_text(encoding="utf-8"))
+    report["Metadata"]["ImageConfig"] = {"created": "2026-04-20T08:00:00Z"}
+    src = tmp_path / "trivy.json"
+    src.write_text(json.dumps(report), encoding="utf-8")
+    out = tmp_path / "r"
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--from-trivy-json", str(src), "--formats", "json,md", "--as-of", AS_OF, *extra])
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["lag"]["release_date_source"] == source
+    if source == "image build date":
+        assert a["lag"]["release_date"].startswith("2026-04-20")
+        assert a["lag"]["unshipped"] is None  # needs a matched release
+        assert any("image build date" in w for w in a["warnings"])
+        assert "from image build date" in (out / "summary.md").read_text(encoding="utf-8")
+    elif source is None:
+        assert a["lag"]["release_date"] is None

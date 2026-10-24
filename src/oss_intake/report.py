@@ -103,7 +103,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
 
     scope_rows = [["Image", _v(inp.get("image"))], ["Repository", _v(inp.get("repo"))],
                   ["Release used for lag", _v((health.get("scanned_release") or {}).get("tag"))
-                   + (f" ({lag['release_date'][:10]})" if lag.get("release_date") else "")],
+                   + (f" ({lag['release_date'][:10]})" if lag.get("release_date") else "")
+                   + (f", from {lag['release_date_source']}" if lag.get("release_date_source") else "")],
                   ["Assessment date", a["as_of"][:10]]]
     for name, s in a["scanners"].items():
         if s.get("enabled"):
