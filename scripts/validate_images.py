@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 def run_one(image: str, repo: str | None, extra: list[str], out: Path, common: list[str]) -> dict:
-    cmd = [sys.executable, "-m", "oss_intake", "--image", image, "--out", str(out), "--formats", "md,json,csv"]
+    cmd = [sys.executable, "-m", "oss_intake", "--image", image, "--out", str(out), "--formats", "md,json,csv,html"]
     if repo:
         cmd += ["--repo", repo]
     cmd += common + extra

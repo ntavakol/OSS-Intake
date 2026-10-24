@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Go standard library fix dates from the Go release history (go.dev/doc/devel/release), one fetch for all
+  versions. Trivy (`v1.22.7`) and Grype (`go1.22.7`) version forms are both handled. In validation the standard
+  library was the largest undated group on Go-based images (redis 64, traefik 61, mongo 130 HIGH+ findings).
+- `scripts/validate_images.py` also writes report.html for each image.
+
 ### Changed
 - New HTML report layout: summary tiles, a severity bar, severity pills, and colour-coded values with fixed
   thresholds (days a fix has been available, CVSS, EPSS, Scorecard, fix-date coverage, CI hygiene), light and

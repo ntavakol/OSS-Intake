@@ -96,8 +96,8 @@ def lag_note(lag: dict) -> str:
             f"for {lag['unshipped_days']} days or more while the scanned release is still the latest. Fix dates "
             "come from deps.dev and Packagist for language packages (GitHub release dates for Go modules deps.dev "
             "lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security Notices and Red Hat "
-            "advisories (RHSA), and Alpine aports commits. Amazon Linux and the Go standard library have no dated "
-            "source yet and are counted as unknown; see the fix date coverage table.")
+            "advisories (RHSA), Alpine aports commits, and the Go release history for the Go standard library. "
+            "Amazon Linux has no dated source yet and is counted as unknown; see the fix date coverage table.")
 
 def _v(x: object, suffix: str = "") -> str:
     return "n/a" if x is None or x == "" else f"{x}{suffix}"

@@ -12,7 +12,7 @@ GAP_REASON = {
     "alpine": "no aports commit named the CVE or the fixed version (common for -rN rebuilds)",
     "redhat": "fixes without a Red Hat advisory ID, or the advisory could not be fetched",
     "amazon": "Trivy reports no ALAS advisory IDs for Amazon Linux; no dated source yet",
-    "go-stdlib": "Go standard library is not on deps.dev",
+    "go-stdlib": "fixed Go version not found in the Go release history",
     "binary": "runtime detected from a binary, no package registry to date it",
     "debian": "fix not yet in a point release, or no advisory or point release entry matched",
 }

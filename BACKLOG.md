@@ -17,7 +17,9 @@ Items agreed for later versions, roughly in priority order.
 
 ## Signals
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
-- Go standard library fix dates from Go release history.
+- Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
+  For the OS layer, lag against the image build date may be fairer than against the project's release date;
+  consider reporting both.
 - CVSS provenance: record the CVSS version and the database the score came from (NVD, GHSA, distro) in
   findings.csv and the HTML hover text. Today the report keeps the highest v3.x base score across sources, which
   is cautious but not traceable, and can sit beside a distro severity rating that disagrees with it.

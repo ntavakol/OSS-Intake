@@ -21,6 +21,7 @@ from .enrich import (
     epss,
     fixdates,
     github_releases,
+    golang_stdlib,
     kev,
     packagist,
     redhat,
@@ -432,6 +433,11 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["packagist"] = pk
             if pk.get("errors"):
                 warnings.append(f"Packagist lookups failed for {pk['errors']} PHP packages")
+            gos = golang_stdlib.enrich(net, findings)
+            fd_stats["go_stdlib"] = gos
+            if gos.get("errors"):
+                warnings.append("Go release history (go.dev) could not be loaded; Go standard library fixes stay "
+                                "undated")
             ghr = github_releases.enrich(net, findings)
             fd_stats["github_release"] = ghr
             if ghr.get("skipped_limit"):

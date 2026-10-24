@@ -806,3 +806,24 @@ def test_debian_tracker_matches_fixed_version_without_cve():
     assert f.fix_published == parse_datetime("2026-01-26")
     assert f.fix_date_source == "advisory DSA-9600-1 (Debian tracker, by fixed version)"
     assert stats["found_by_version"] == 1
+
+
+def test_go_stdlib_dates_from_release_history():
+    from oss_intake.enrich import golang_stdlib
+
+    from .conftest import FakeHttp
+
+    trivy = _f(vuln_id="CVE-2099-4001", package="stdlib", purl="pkg:golang/stdlib@v1.22.7", installed="v1.22.7",
+               fixed_versions=["1.22.8", "1.23.2"])
+    grype = _f(vuln_id="CVE-2099-4002", package="stdlib", purl="pkg:golang/stdlib@go1.22.7", installed="go1.22.7",
+               fixed_versions=["1.23.0"])
+    unknown = _f(vuln_id="CVE-2099-4003", package="stdlib", purl="pkg:golang/stdlib@v1.22.7", installed="v1.22.7",
+                 fixed_versions=["1.22.99"])
+    module = _f(vuln_id="CVE-2099-4004", package="golang.org/x/net", purl="pkg:golang/golang.org/x/net@v0.1.0",
+                installed="v0.1.0", fixed_versions=["0.2.0"])
+    stats = golang_stdlib.enrich(FakeHttp(), [trivy, grype, unknown, module])
+    assert trivy.fix_published == parse_datetime("2024-10-01") and trivy.fix_date_source == "Go release go1.22.8"
+    assert grype.fix_published == parse_datetime("2024-08-13")
+    assert unknown.fix_published is None and module.fix_published is None
+    assert stats["found"] == 2 and stats["releases_loaded"] == 5
+    assert golang_stdlib.norm("go1.20") == "1.20.0" and golang_stdlib.norm("v1.22.7") == "1.22.7"

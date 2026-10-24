@@ -157,8 +157,9 @@ Security Notice (USN) that fixed the CVE in that release and source package at t
 For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy reports, dated from Red Hat's
 CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the
 CVE, or the fixed version for a new upstream release (set `GITHUB_TOKEN`, one request per package).
-Packages with no dated source yet, currently Amazon Linux and the Go standard library, are counted as "fix date
-unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
+For the Go standard library they come from the Go release history (go.dev/doc/devel/release).
+Packages with no dated source yet, currently Amazon Linux and runtimes detected only from a binary, are counted as
+"fix date unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
 
 ## Example output
 
@@ -226,7 +227,7 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
   wrong release. Use `--release-tag` or `--release-date` in that case. Failing both, the image's build date is
   used and labelled "image build date": lag then means "fixes that existed when the image was built"
   (disable with `--no-image-date`).
-- Fix dates are unavailable for OS packages and the Go standard library. When more than half of the fixes lack
+- Fix dates are unavailable for Amazon Linux and for runtimes found only in binaries. When more than half of the fixes lack
   a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
 - Only GitHub-hosted projects get health signals in this version.
 - Trivy does not catalogue installed R (CRAN) packages, so R libraries inside an image are not assessed.

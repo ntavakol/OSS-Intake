@@ -117,8 +117,8 @@ def confidence(m: dict) -> tuple[str, list[str]]:
     with_fix = m.get("with_fix") or 0
     unknown = m.get("fix_date_unknown") or 0
     if with_fix and unknown / with_fix > 0.5:
-        reasons.append(f"fix dates unknown for {unknown} of {with_fix} findings with fixes (often OS or Go "
-                       "stdlib packages), so lag-based rules see only part of the picture")
+        reasons.append(f"fix dates unknown for {unknown} of {with_fix} findings with fixes (often OS packages "
+                       "or binaries), so lag-based rules see only part of the picture")
     if not m.get("release_date_known"):
         reasons.append("no release date, so lag-based rules cannot fire")
     if m.get("critical_fix_unshipped") is None and m.get("scanned_is_latest") is not False:
