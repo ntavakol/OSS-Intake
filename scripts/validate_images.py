@@ -42,6 +42,7 @@ def run_one(image: str, repo: str | None, extra: list[str], out: Path, common: l
             "likelihood": f"{lk.get('level')} {lk.get('confidence', '')}".strip() if lk else "-",
             "sources": ",".join(s for s, v in a["scanners"].items() if v.get("enabled")),
             "warnings": len(a.get("warnings") or []),
+            "driver": ", ".join(sorted({e["package"] for e in lag.get("kev_findings") or []})[:3]) or "-",
         })
     return row
 
@@ -74,7 +75,7 @@ def main() -> None:
               flush=True)
         rows.append(row)
     cols = ["image", "exit", "findings", "crit", "high", "with_fix", "dated", "coverage", "release", "before_rel",
-            "unshipped", "likelihood", "sources", "warnings", "error"]
+            "unshipped", "likelihood", "driver", "sources", "warnings", "error"]
     lines = ["| " + " | ".join(cols) + " |", "|" + "|".join("---" for _ in cols) + "|"]
     for r in rows:
         lines.append("| " + " | ".join(str(r.get(c, "")).replace("|", "/") for c in cols) + " |")

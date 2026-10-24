@@ -36,6 +36,11 @@ def flag_no_newer_fix(findings: list[Finding]) -> int:
     return n
 
 
+def _brief(f: Finding) -> dict:
+    return {"id": f.vuln_id, "package": f.package, "severity": f.severity, "epss": f.epss,
+            "sources": sorted(f.sources), "pkg_type": f.pkg_type}
+
+
 def compute(findings: list[Finding], release_date: datetime | None, as_of: datetime,
             grace_days: int = DEFAULT_GRACE_DAYS, unshipped_days: int = DEFAULT_UNSHIPPED_DAYS,
             scanned_is_latest: bool | None = None) -> dict:
@@ -103,6 +108,10 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
             "days": days_between(oldest_pub.published, as_of),
         },
         "kev_with_fix": sum(1 for f in with_fix if f.kev),
+        # Evidence behind the strongest signals, so a reader can see which component drives the likelihood.
+        "kev_findings": [_brief(f) for f in with_fix if f.kev][:5],
+        "top_epss_findings": [_brief(f) for f in sorted((f for f in with_fix if f.epss is not None),
+                                                        key=lambda f: -f.epss)[:3]],
         "max_epss_with_fix": max((f.epss for f in with_fix if f.epss is not None), default=None),
         "epss_scored": sum(1 for f in findings if f.epss is not None),
     }

@@ -209,6 +209,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         secs.append(("Likelihood suggestion (heuristic)", [
             ("p", f"Suggested likelihood: {lk['level']} ({lk['label']}). {lk['reason']}."
                   + (" Custom rules were used." if lk.get("custom_config") else " Default rules were used.")),
+            ("p", "Driven by: " + _drivers(lag)),
             ("p", "Confidence: " + lk.get("confidence", "normal")
                   + ("" if not lk.get("confidence_reasons") else
                      ". Treat a low level as 'not enough evidence', not 'low risk': "
@@ -246,6 +247,23 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if a.get("warnings"):
         secs.append(("Warnings", [("list", a["warnings"])]))
     return secs
+
+
+def _describe(e: dict) -> str:
+    where = "found only by Grype from a binary" if e["sources"] == ["grype"] and e["pkg_type"] in ("binary", "") \
+        else ("found only by " + e["sources"][0] if len(e["sources"]) == 1 else "found by " + ", ".join(e["sources"]))
+    epss = f", EPSS {e['epss']:.2f}" if e.get("epss") is not None else ""
+    return f"{e['id']} in {e['package']} ({e['severity']}{epss}; {where})"
+
+
+def _drivers(lag: dict) -> str:
+    parts = []
+    if lag.get("kev_findings"):
+        parts.append("known exploited: " + "; ".join(_describe(e) for e in lag["kev_findings"]))
+    if lag.get("top_epss_findings"):
+        parts.append("highest EPSS: " + "; ".join(_describe(e) for e in lag["top_epss_findings"]))
+    return (". ".join(parts) + ". Check these components first; they may not be the project's own code.") \
+        if parts else "no KEV or EPSS signal; see the release lag table."
 
 
 def _md_cell(x: object) -> str:

@@ -11,6 +11,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - PHP Composer fix dates from Packagist release times.
 - Release tags with a prefix (`R4.5.1`, `server-31.0.9`) match an image tag on the version number, when
   exactly one release carries it.
+- The likelihood section names the findings behind it (KEV and highest EPSS), with the component and which
+  scanner found them, so a reader can see when a bundled runtime (for example Chrome found by Grype in a
+  binary) rather than the project's own code drives the rating.
+- Distro advisory IDs from Grype matches are kept, so Grype-only OS findings can be dated.
 
 ### Fixed
 - The unshipped metric showed 0 for releases that are not the project's latest; it is now n/a, and no longer

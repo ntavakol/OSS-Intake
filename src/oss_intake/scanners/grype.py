@@ -75,6 +75,9 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
             pkg_type=art.get("type", ""),
             target=(locations[0].get("path", "") if locations else ""),
             aliases={r.get("id") for r in related if r.get("id")},
+            # Recent Grype databases list distro advisories (RHSA, DSA, USN...) for a match; keeping them
+            # lets Grype-only OS findings be dated like Trivy's.
+            vendor_ids=[a["id"] for a in vuln.get("advisories") or [] if isinstance(a, dict) and a.get("id")],
             url=vuln.get("dataSource", "") or "",
             title=(vuln.get("description") or "")[:200],
             sources={NAME},

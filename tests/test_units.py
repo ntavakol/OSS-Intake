@@ -630,3 +630,29 @@ def test_packagist_dates():
     assert g.fix_published == parse_datetime("2024-07-24T11:22:20+00:00") and g.fix_date_source == "Packagist"
     assert g2.fix_published == parse_datetime("2025-03-27T13:37:11+00:00")
     assert missing.fix_published is None and len(h.calls) == 2 and stats["found"] == 2
+
+
+def test_likelihood_drivers_name_the_component():
+    from oss_intake import lag, report
+
+    chrome = _f(vuln_id="CVE-2099-7", package="chrome", pkg_type="binary", purl=None,
+                fix_published=parse_datetime("2026-01-01"), kev=True, epss=0.9)
+    chrome.sources = {"grype"}
+    app = _f(vuln_id="CVE-2099-8", package="flask", epss=0.2, fix_published=parse_datetime("2026-01-01"))
+    app.sources = {"trivy", "osv"}
+    m = lag.compute([chrome, app], parse_datetime("2026-04-30"), parse_datetime("2026-10-22"))
+    assert [e["id"] for e in m["kev_findings"]] == ["CVE-2099-7"]
+    assert [e["id"] for e in m["top_epss_findings"]] == ["CVE-2099-7", "CVE-2099-8"]
+    text = report._drivers(m)
+    assert "CVE-2099-7 in chrome (CRITICAL, EPSS 0.90; found only by Grype from a binary)" in text
+    assert "found by osv, trivy" in text
+
+
+def test_grype_advisories_become_vendor_ids():
+    report = {"matches": [{"vulnerability": {"id": "CVE-2099-9", "severity": "High",
+                                             "fix": {"state": "fixed", "versions": ["9.0-1.el9_8"]},
+                                             "advisories": [{"id": "RHSA-2026:1111", "link": "x"}]},
+                           "artifact": {"name": "vim-minimal", "version": "9.0-1.el9", "type": "rpm",
+                                        "purl": "pkg:rpm/redhat/vim-minimal@9.0-1.el9"}}]}
+    f = grype.parse(report)[0][0]
+    assert f.vendor_ids == ["RHSA-2026:1111"]
