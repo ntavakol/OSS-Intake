@@ -4,7 +4,9 @@ Reads .github/workflows through the GitHub contents API and checks, without a YA
   * third-party actions not pinned to a full 40-character commit SHA (tags can be force-pushed)
   * known-bad action versions (from data/known_bad.json, e.g. trivy-action below 0.35.0)
   * no top-level permissions block, or write-all (the token may default to write access)
-  * pull_request_target triggers (run with the base repository's secrets)
+  * pull_request_target triggers (run with the base repository's secrets), and whether the same file checks
+    out the pull request's own code, which is the combination that lets an outside contributor run code
+    with those secrets. The trigger alone is the normal, safe way to label or comment on PRs.
 This describes how exposed the project's releases are to tampering. It does not change the
 likelihood rules, which are about exploitation of the vulnerabilities found in the artifact.
 """
@@ -25,6 +27,9 @@ _USES = re.compile(r"""^\s*(?:-\s*)?uses:\s*["']?([^"'\s#]+)""", re.MULTILINE)
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _TOP_PERMS = re.compile(r"^permissions:\s*(.*)$", re.MULTILINE)
 _PRT = re.compile(r"\bpull_request_target\b")
+# References to the PR's own code: checkout of the head SHA/ref, the PR merge ref, or gh pr checkout.
+_PR_CODE = re.compile(r"github\.event\.pull_request\.head\.(?:sha|ref)|github\.head_ref\b|refs/pull/|"
+                      r"\bgh\s+pr\s+checkout\b")
 
 
 def _version_from_ref(ref: str, line_comment: str) -> str | None:
@@ -62,6 +67,7 @@ def analyse(name: str, text: str, known_bad: list[dict]) -> dict:
         "top_level_permissions": bool(perms),
         "write_all": bool(perms and "write-all" in perms.group(1)),
         "pull_request_target": bool(_PRT.search(text)),
+        "pull_request_target_pr_code": bool(_PRT.search(text) and _PR_CODE.search(text)),
     }
 
 
@@ -100,5 +106,6 @@ def fetch(http: Http, repo: str) -> dict:
         "no_top_level_permissions": [r["file"] for r in results if not r["top_level_permissions"]],
         "write_all": [r["file"] for r in results if r["write_all"]],
         "pull_request_target": [r["file"] for r in results if r["pull_request_target"]],
+        "pull_request_target_pr_code": [r["file"] for r in results if r["pull_request_target_pr_code"]],
         "details": results,
     }

@@ -320,13 +320,16 @@ def _ci(a: dict) -> str:
              (len(wf["known_bad"]), "r") if wf["known_bad"] else ("none", "g")]]
     for label, key, tone in (("Files without a top-level permissions block", "no_top_level_permissions", "a"),
                              ("Files granting write-all", "write_all", "r"),
-                             ("Files using pull_request_target", "pull_request_target", "a")):
-        v = listed(wf[key], tone)
+                             ("Files using pull_request_target", "pull_request_target", "n"),
+                             ("pull_request_target that also checks out PR code", "pull_request_target_pr_code", "r")):
+        v = listed(wf.get(key, []), tone)
         rows.append([Raw(_dot(v[1]) + _e(label)), v])
     body = _table(["Check", "Result"], rows)
     for kb in wf["known_bad"]:
         body += _note(f"{kb['file']}: {kb['uses']} ({kb['reference']}). {kb['note']}")
-    body += _note("These checks describe how exposed the project's own releases are to tampering in CI. "
+    body += _note("pull_request_target on its own is the usual, safe way to label or comment on pull requests; it "
+                  "becomes a risk when the same workflow checks out and runs the pull request's code. "
+                  "These checks describe how exposed the project's own releases are to tampering in CI. "
                   "They do not change the likelihood suggestion.")
     return _section("Project CI hygiene (GitHub Actions)", body)
 

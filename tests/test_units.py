@@ -539,7 +539,7 @@ def test_workflow_analysis():
     kb = integrity.load_known_bad()["actions"]
     good = wf.analyse("ci.yml", WORKFLOW_GOOD, kb)
     assert good == {"file": "ci.yml", "uses": 1, "unpinned": [], "known_bad": [], "top_level_permissions": True,
-                    "write_all": False, "pull_request_target": False}
+                    "write_all": False, "pull_request_target": False, "pull_request_target_pr_code": False}
     bad = wf.analyse("scan.yml", WORKFLOW_BAD, kb)
     assert bad["unpinned"] == ["actions/setup-python@v5", "aquasecurity/trivy-action@0.28.0"]
     assert [b["version"] for b in bad["known_bad"]] == ["0.28.0", "unknown"]  # setup-trivy v0.2.6 is fine
@@ -853,3 +853,29 @@ def test_release_used_wording():
         "no matching release; image build date 2024-10-03 used"
     assert release_used({"release_date": "2026-04-30T15:01:38", "release_date_source": "GitHub release"},
                         {"scanned_release": {"tag": "v3.2.4"}}) == "v3.2.4 (2026-04-30), from GitHub release"
+
+
+def test_pull_request_target_with_pr_checkout():
+    from oss_intake.health import workflows as wf
+
+    label_only = "on:\n  pull_request_target:\npermissions:\n  pull-requests: write\njobs:\n  l:\n    steps:\n" \
+                 "      - uses: eps1lon/actions-label-merge-conflict@0273be72a0bbd58fcd71d0d6c02c209b50d1e5e1\n"
+    risky = label_only + "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n" \
+                         "        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n"
+    plain_pr = "on: pull_request\njobs:\n  t:\n    steps:\n      - run: echo ${{ github.head_ref }}\n"
+    assert wf.analyse("a.yml", label_only, [])["pull_request_target_pr_code"] is False
+    assert wf.analyse("b.yml", risky, [])["pull_request_target_pr_code"] is True
+    assert wf.analyse("c.yml", plain_pr, [])["pull_request_target_pr_code"] is False
+
+
+def test_merge_keeps_every_location():
+    from oss_intake import merge
+
+    a = _f(vuln_id="CVE-2099-6001", package="stdlib", purl="pkg:golang/stdlib@v1.21.12", installed="v1.21.12",
+           target="usr/bin/bsondump", sources={"trivy"})
+    b = _f(vuln_id="CVE-2099-6001", package="stdlib", purl="pkg:golang/stdlib@v1.21.12", installed="v1.21.12",
+           target="usr/bin/mongodump", sources={"trivy"})
+    c = _f(vuln_id="CVE-2099-6001", package="stdlib", purl="pkg:golang/stdlib@v1.21.12", installed="v1.21.12",
+           target="/usr/bin/bsondump", sources={"grype"})
+    (m,) = merge.merge([a, b], [c])
+    assert m.target == "usr/bin/bsondump;usr/bin/mongodump"

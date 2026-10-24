@@ -203,7 +203,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                   ["Files without a top-level permissions block",
                    ", ".join(wf["no_top_level_permissions"]) or "none"],
                   ["Files granting write-all", ", ".join(wf["write_all"]) or "none"],
-                  ["Files using pull_request_target", ", ".join(wf["pull_request_target"]) or "none"]]
+                  ["Files using pull_request_target", ", ".join(wf["pull_request_target"]) or "none"],
+                  ["pull_request_target that also checks out PR code",
+                   ", ".join(wf.get("pull_request_target_pr_code", [])) or "none"]]
         blocks = [("table", ["Check", "Result"], w_rows)]
         for kb in wf["known_bad"]:
             blocks.append(("p", f"{kb['file']}: {kb['uses']} ({kb['reference']}). {kb['note']}"))

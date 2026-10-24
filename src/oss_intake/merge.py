@@ -7,6 +7,16 @@ from .models import SEVERITY_ORDER, Finding, canonical_id
 SOURCE_PRIORITY = ["trivy", "grype", "osv"]
 
 
+def _add_target(cur: Finding, target: str) -> None:
+    """Keep every location a finding was seen in (one CVE in several binaries), ';'-separated.
+    Trivy writes paths without the leading slash, Grype with it; compare without."""
+    if not target:
+        return
+    have = [t for t in cur.target.split(";") if t] if cur.target else []
+    if target.lstrip("/") not in {t.lstrip("/") for t in have}:
+        cur.target = ";".join(have + [target])
+
+
 def merge(*groups: list[Finding]) -> list[Finding]:
     merged: dict[tuple[str, str, str], Finding] = {}
     for group in groups:
@@ -41,7 +51,7 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             cur.src_version = cur.src_version or f.src_version
             cur.os_release = cur.os_release or f.os_release
             cur.purl = cur.purl or f.purl
-            cur.target = cur.target or f.target
+            _add_target(cur, f.target)
             cur.title = cur.title or f.title
             cur.url = cur.url or f.url
     out = list(merged.values())

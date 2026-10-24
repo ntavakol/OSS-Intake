@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- CI hygiene: `pull_request_target` is now reported separately from the risky case, a workflow that also checks
+  out the pull request's code. The trigger alone (labelling, commenting) is common and safe, and was presented as
+  a concern (seen on Jenkins, whose three such workflows check out no PR code).
+- The `target` column in findings.csv lists every location a merged finding was seen in, `;`-separated, instead
+  of only the first (for example one Go CVE in each of MongoDB's tool binaries).
+
 ## [0.1.6] - 2026-10-25
 
 New HTML report layout with CVSS, and Go standard library fix dates. Validated on redis 7.4.1, traefik v3.1.6,
