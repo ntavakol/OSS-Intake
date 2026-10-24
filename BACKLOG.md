@@ -21,6 +21,15 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
+- Exploit availability per finding, beside CVSS and EPSS: report the strongest evidence found, as a level with an
+  "as of" date: in CISA KEV > Metasploit module or Nuclei template (weaponised) > Exploit-DB entry > GitHub
+  proof of concept only > none indexed. Sources that need no key and can be fetched in bulk: Metasploit's
+  modules metadata file (CVE references per module), the nuclei-templates repository, Exploit-DB's CSV (CVE
+  column), and the nomi-sec PoC-in-GitHub index. Optional with a token: VulnCheck KEV and XDB (validated
+  proofs of concept). GitHub proofs of concept are noisy (fake, sometimes malicious), so they rank lowest.
+  Wording must say that "none indexed" is not evidence that no exploit exists. Decide whether weaponised
+  levels feed the likelihood rules (for example Metasploit or Nuclei on a fixable finding gives level 4).
+  Probe each source's current file format before building.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;
