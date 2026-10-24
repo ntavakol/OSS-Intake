@@ -1,3 +1,3 @@
 """oss-intake: assess third-party open source software before adoption."""
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
