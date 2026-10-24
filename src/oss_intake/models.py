@@ -109,6 +109,7 @@ class Finding:
     epss: float | None = None
     epss_percentile: float | None = None
     likely_fixed: bool = False
+    excluded: str = ""  # reason the finding is kept but left out of lag and likelihood, e.g. "kernel-headers"
     vendor_ids: list[str] = field(default_factory=list)
     src_name: str = ""  # OS source package (Trivy SrcName), needed to match distro notices
     src_version: str = ""

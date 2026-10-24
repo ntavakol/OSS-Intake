@@ -17,6 +17,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Distro advisory IDs from Grype matches are kept, so Grype-only OS findings can be dated.
 
 ### Fixed
+- Kernel CVEs matched to kernel header packages (`linux-libc-dev`, `kernel-headers`, `linux-headers-*`) drove
+  the likelihood to "almost certain" on images where they cannot apply: containers run on the host's kernel.
+  They are now kept in findings.csv with a note but excluded from lag and likelihood
+  (`--include-kernel-headers` restores the old behaviour).
 - The unshipped metric showed 0 for releases that are not the project's latest; it is now n/a, and no longer
   lowers likelihood confidence, since it does not apply.
 

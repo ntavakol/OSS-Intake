@@ -136,6 +136,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                                  f" (critical {lag['unshipped_by_severity']['CRITICAL']}, "
                                  f"high {lag['unshipped_by_severity']['HIGH']})")],
         ["Likely already fixed (build label mismatch)", lag["likely_fixed_label_match"]],
+        ["Kernel CVEs on kernel header packages (excluded: containers use the host kernel)",
+         lag.get("excluded_kernel_headers", 0)],
         ["Fix published after the release", lag["fix_after_release"]],
         ["CVE published before the release (secondary)", lag["cve_published_before_release"]],
         ["Median days a fix has been available", _v(lag["median_days_fix_available"])],
@@ -232,11 +234,11 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                  "Single-source findings deserve a closer look rather than automatic dismissal.")]))
 
     rows = []
-    ranked = sorted(findings, key=lambda f: (f.likely_fixed, -SEVERITY_ORDER[f.severity],
+    ranked = sorted(findings, key=lambda f: (f.likely_fixed or bool(f.excluded), -SEVERITY_ORDER[f.severity],
                                              not f.fix_available_at_release, not f.has_fix,
                                              -(f.days_fix_available or 0), f.vuln_id))
     for f in ranked[:top]:
-        before = ("likely fixed" if f.likely_fixed else "no fix" if not f.has_fix
+        before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
         rows.append([f.vuln_id, f.severity, f.package, f.installed,
                      f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])

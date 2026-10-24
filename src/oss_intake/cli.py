@@ -142,6 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="days a fix must be public, with no newer release, to count as unshipped (default 90)")
     s.add_argument("--no-image-date", action="store_true",
                    help="do not fall back to the image build date when no release date is known")
+    s.add_argument("--include-kernel-headers", action="store_true",
+                   help="count kernel CVEs on kernel header packages (linux-libc-dev...) in lag and likelihood")
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
                    help="drop findings below this severity")
@@ -315,6 +317,12 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     findings = merge.merge(*groups)
     findings = [f for f in findings if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     n_label = lag.flag_label_matches(findings)
+    if not args.include_kernel_headers:
+        n_kh = lag.flag_kernel_headers(findings)
+        if n_kh:
+            warnings.append(f"{n_kh} kernel CVE finding(s) on kernel header packages (e.g. linux-libc-dev) are "
+                            "excluded from lag and likelihood: containers use the host kernel. They remain in "
+                            "findings.csv; --include-kernel-headers keeps them in")
     n_older = lag.flag_no_newer_fix(findings)
     if n_older:
         warnings.append(f"{n_older} finding(s) list only fixes at or below the installed version; noted in "

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from statistics import median
 
@@ -21,6 +22,30 @@ def flag_label_matches(findings: list[Finding]) -> int:
             f.likely_fixed = True
             f.note = (f"Installed {f.installed} equals listed fix {match} apart from a build label; "
                       "likely already fixed. Check the target path and confirm.")
+            n += 1
+    return n
+
+
+_KERNEL_HEADERS = re.compile(r"^(linux-libc-dev|linux-headers(-[\w.+~-]+)?|kernel-headers|linux-api-headers)$")
+
+
+def flag_kernel_headers(findings: list[Finding]) -> int:
+    """Kernel CVEs matched to kernel header packages do not apply to a container.
+
+    Scanners attach every Linux kernel CVE to linux-libc-dev (Debian/Ubuntu), kernel-headers (RHEL)
+    and similar. These packages only hold headers for compiling; a container runs on the host's
+    kernel, so the CVEs cannot be exploited through the image. They are kept in findings.csv with a
+    note but left out of release lag and the likelihood.
+    """
+    n = 0
+    for f in findings:
+        purl = f.purl or ""
+        is_os = purl.startswith(("pkg:deb/", "pkg:rpm/", "pkg:apk/")) or f.os_release
+        if is_os and _KERNEL_HEADERS.match(f.package):
+            f.excluded = "kernel-headers"
+            f.note = ("Kernel CVE on a kernel headers package. Containers run on the host's kernel, so this is "
+                      "not exploitable through the image; assess the host kernel instead. Excluded from lag "
+                      "and likelihood.")
             n += 1
     return n
 
@@ -53,14 +78,14 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
     """
     cutoff = release_date - timedelta(days=grace_days) if release_date else None
     for f in findings:
-        if f.fix_published and not f.likely_fixed:
+        if f.fix_published and not f.likely_fixed and not f.excluded:
             f.days_fix_available = days_between(f.fix_published, as_of)
             if cutoff:
                 f.fix_available_at_release = f.fix_published < cutoff
         if f.published and release_date:
             f.published_before_release = f.published < release_date
 
-    with_fix = [f for f in findings if f.has_fix and not f.likely_fixed]
+    with_fix = [f for f in findings if f.has_fix and not f.likely_fixed and not f.excluded]
     likely_fixed = [f for f in findings if f.likely_fixed]
     dated = [f for f in with_fix if f.fix_published]
     within_grace = [f for f in dated if release_date and cutoff <= f.fix_published < release_date]
@@ -81,6 +106,7 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
         "unshipped_days": unshipped_days,
         "scanned_is_latest": scanned_is_latest,
         "likely_fixed_label_match": len(likely_fixed),
+        "excluded_kernel_headers": sum(1 for f in findings if f.excluded == "kernel-headers"),
         "fix_within_grace": len(within_grace),
         "unshipped": None if unshipped is None else len(unshipped),
         "unshipped_by_severity": None if unshipped is None else by_sev(unshipped),

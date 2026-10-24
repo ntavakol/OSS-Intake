@@ -206,6 +206,9 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 - Trivy and Grype detect packages independently, so their disagreement is informative. OSV is queried with
   Trivy's package list, so it is an independent database check, not an independent detector.
 - Severity is the highest any source reported, which is conservative. Per-source severities are in the CSV.
+- Kernel CVEs reported against kernel header packages (`linux-libc-dev` and similar) are excluded from lag and
+  likelihood, because a container uses the host's kernel. They stay in findings.csv with a note; assess the host
+  kernel separately. Use `--include-kernel-headers` to count them.
 - Version comparison is ecosystem-agnostic and approximate. It only affects which fix date is used. Build
   labels (`.jre11`, `-jre`, `-android`) are ignored when comparing.
 - Scanners can read a JAR's version without its build label and report an already-fixed build as vulnerable

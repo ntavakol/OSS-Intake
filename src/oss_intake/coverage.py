@@ -44,7 +44,7 @@ def ecosystem(f: Finding) -> str:
 def compute(findings: list[Finding]) -> list[dict]:
     rows: dict[str, dict] = defaultdict(lambda: {"with_fix": 0, "dated": 0, "sources": defaultdict(int)})
     for f in findings:
-        if not f.fixed_versions or f.likely_fixed:
+        if not f.fixed_versions or f.likely_fixed or f.excluded:
             continue
         r = rows[ecosystem(f)]
         r["with_fix"] += 1

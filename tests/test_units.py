@@ -656,3 +656,19 @@ def test_grype_advisories_become_vendor_ids():
                                         "purl": "pkg:rpm/redhat/vim-minimal@9.0-1.el9"}}]}
     f = grype.parse(report)[0][0]
     assert f.vendor_ids == ["RHSA-2026:1111"]
+
+
+def test_kernel_headers_excluded_from_lag_and_likelihood():
+    from oss_intake import lag
+
+    kh = _f(vuln_id="CVE-2099-50", package="linux-libc-dev", purl="pkg:deb/ubuntu/linux-libc-dev@6.8.0-1",
+            kev=True, epss=0.94, fix_published=parse_datetime("2026-01-01"))
+    rh = _f(vuln_id="CVE-2099-51", package="kernel-headers", purl="pkg:rpm/redhat/kernel-headers@5.14.0")
+    app = _f(vuln_id="CVE-2099-52", package="libssl3", purl="pkg:deb/ubuntu/libssl3@3.0", epss=0.56,
+             fix_published=parse_datetime("2026-01-01"))
+    npm_named = _f(vuln_id="CVE-2099-53", package="linux-headers", purl="pkg:npm/linux-headers@1.0")
+    assert lag.flag_kernel_headers([kh, rh, app, npm_named]) == 2
+    assert kh.excluded and rh.excluded and not app.excluded and not npm_named.excluded
+    m = lag.compute([kh, rh, app, npm_named], parse_datetime("2026-04-30"), parse_datetime("2026-10-22"))
+    assert m["kev_with_fix"] == 0 and m["max_epss_with_fix"] == 0.56 and m["excluded_kernel_headers"] == 2
+    assert m["total"] == 4 and m["with_fix"] == 2
