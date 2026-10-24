@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-24
+
+Validated on six more images (UBI 9.6, python:3.13-slim, Superset 5.0.0, rocker/r-ver 4.5.1, Node-RED 4.1.0,
+Nextcloud 31.0.9). Most important change: kernel CVEs on kernel header packages no longer drive the likelihood.
+
 ### Added
 - `scripts/validate_images.py` and `scripts/validate-images.txt`: scan a list of public images and write one
   summary table, for validating changes against real data.
