@@ -5,12 +5,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-25
+
+Debian fixes without a security advisory are now dated. Nextcloud 31.0.9 (Debian 13): Debian fix date coverage
+1,774 of 1,779 (100%), 673 of them from point releases.
+
 ### Added
 - Debian fixes that shipped without a DSA or DLA are dated from the point release that included the exact fixed
   version, read from the suite's ChangeLog on deb.debian.org. Fixes still in proposed-updates stay undated, with a
   note. On Nextcloud 31.0.9 (Debian 13) most undated Debian fixes were of this kind.
 - Debian findings are also matched to an advisory by exact fixed version when the scanner reports no advisory ID,
   or the advisory does not list that CVE.
+
+### Fixed
+- `scripts/validate_images.py` stops with a clear message when run with a Python that does not have oss-intake
+  installed, instead of reporting every image as failed with no error.
 
 ## [0.1.4] - 2026-10-24
 
