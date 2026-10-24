@@ -104,7 +104,8 @@ def lag_note(lag: dict) -> str:
             f"least {lag['grace_days']} days before the project's release date. 'Unshipped' counts fixes public "
             f"for {lag['unshipped_days']} days or more while the scanned release is still the latest. Fix dates "
             "come from deps.dev and Packagist for language packages (GitHub release dates for Go modules deps.dev "
-            "lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security Notices and Red Hat "
+            "lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security Notices and "
+            "Launchpad publishing history, Red Hat "
             "advisories (RHSA), Alpine aports commits, and the Go release history for the Go standard library. "
             "Amazon Linux has no dated source yet and is counted as unknown; see the fix date coverage table.")
 

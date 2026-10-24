@@ -46,6 +46,15 @@ class FakeHttp(Http):
             return 200, load("github_releases.json")
         if url.startswith("https://api.github.com/repos/"):
             return 404, {"message": "Not Found"}
+        if url == "https://api.launchpad.net/1.0/ubuntu/series":
+            return 200, {"entries": [{"version": "22.04", "name": "jammy",
+                                      "self_link": "https://api.launchpad.net/1.0/ubuntu/jammy"},
+                                     {"version": "24.04", "name": "noble",
+                                      "self_link": "https://api.launchpad.net/1.0/ubuntu/noble"}]}
+        if url == "https://api.launchpad.net/1.0/ubuntu/+archive/primary":
+            key = f"{(params or {}).get('source_name')}/{(params or {}).get('version')}"
+            data = load("launchpad.json")
+            return 200, {"entries": data.get(key, [])}
         if url.startswith("https://api.securityscorecards.dev/"):
             return (200, load("scorecard.json")) if self.scorecard_status == 200 else (self.scorecard_status, None)
         if url == "https://api.first.org/data/v1/epss":

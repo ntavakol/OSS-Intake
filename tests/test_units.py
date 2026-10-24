@@ -414,7 +414,7 @@ def test_coverage_by_ecosystem():
     assert cov["maven"] == {"ecosystem": "maven", "with_fix": 2, "dated": 1, "percent": 50,
                             "sources": {"deps.dev": 1}, "gap": ""}
     assert cov["debian"]["sources"] == {"advisory": 1} and cov["debian"]["percent"] == 100
-    assert cov["ubuntu"]["gap"].startswith("no Ubuntu Security Notice")
+    assert cov["ubuntu"]["gap"].startswith("fixed version not published")
     assert set(cov) == {"maven", "debian", "ubuntu", "go-stdlib", "alpine", "binary"}
 
 
@@ -879,3 +879,27 @@ def test_merge_keeps_every_location():
            target="/usr/bin/bsondump", sources={"grype"})
     (m,) = merge.merge([a, b], [c])
     assert m.target == "usr/bin/bsondump;usr/bin/mongodump"
+
+
+def test_ubuntu_launchpad_dates():
+    from oss_intake.enrich import ubuntu_launchpad
+
+    from .conftest import FakeHttp
+
+    def ubu(**kw):
+        return _f(os_release="ubuntu 22.04", purl=f"pkg:deb/ubuntu/{kw['package']}@{kw['installed']}", **kw)
+
+    ssl = ubu(vuln_id="CVE-2099-7001", package="libssl3", src_name="openssl", installed="3.0.2-0ubuntu1.20",
+              fixed_versions=["3.0.2-0ubuntu1.25"])
+    perl = ubu(vuln_id="CVE-2099-7002", package="perl", installed="5.34.0-3ubuntu1.5",
+               fixed_versions=["5.34.0-3ubuntu1.7"])
+    esm = ubu(vuln_id="CVE-2099-7003", package="libfoo", installed="1.0-1", fixed_versions=["1.0-1ubuntu0.1~esm1"])
+    other = _f(vuln_id="CVE-2099-7004", package="x", installed="1.0-1", fixed_versions=["1.0-2"],
+               os_release="ubuntu 18.04", purl="pkg:deb/ubuntu/x@1.0-1")
+    http = FakeHttp()
+    stats = ubuntu_launchpad.enrich(http, [ssl, perl, esm, other])
+    assert ssl.fix_published == parse_datetime("2026-06-09T18:01:02.123+00:00")  # Proposed (earlier) ignored
+    assert ssl.fix_date_source == "Launchpad publication (Security)"
+    assert perl.fix_date_source == "Launchpad publication (Updates)"
+    assert esm.fix_published is None and other.fix_published is None
+    assert stats["found"] == 2 and stats["lookups"] == 3

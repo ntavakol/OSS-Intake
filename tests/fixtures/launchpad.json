@@ -1,0 +1,10 @@
+{
+  "openssl/3.0.2-0ubuntu1.25": [
+    {"date_published": "2026-06-09T18:01:02.123+00:00", "pocket": "Security", "status": "Published"},
+    {"date_published": "2026-06-09T19:30:00+00:00", "pocket": "Updates", "status": "Published"},
+    {"date_published": "2026-05-28T10:00:00+00:00", "pocket": "Proposed", "status": "Superseded"}
+  ],
+  "perl/5.34.0-3ubuntu1.7": [
+    {"date_published": "2026-06-24T08:00:00+00:00", "pocket": "Updates", "status": "Published"}
+  ]
+}

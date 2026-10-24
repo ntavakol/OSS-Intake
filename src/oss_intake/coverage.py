@@ -8,7 +8,7 @@ from .models import Finding
 
 # Why each ecosystem lacks a date source, shown when coverage is low.
 GAP_REASON = {
-    "ubuntu": "no Ubuntu Security Notice matched the CVE, package and fixed version",
+    "ubuntu": "fixed version not published to the release in Launchpad (Ubuntu Pro/ESM fixes are not public)",
     "alpine": "no aports commit named the CVE or the fixed version (common for -rN rebuilds)",
     "redhat": "fixes without a Red Hat advisory ID, or the advisory could not be fetched",
     "amazon": "Trivy reports no ALAS advisory IDs for Amazon Linux; no dated source yet",

@@ -26,6 +26,7 @@ from .enrich import (
     packagist,
     redhat,
     ubuntu,
+    ubuntu_launchpad,
 )
 from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
@@ -418,6 +419,12 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["ubuntu"] = ubu
             if ubu.get("errors"):
                 warnings.append("Ubuntu notice lookups in OSV failed; Ubuntu fix dates may be incomplete")
+            ulp = ubuntu_launchpad.enrich(net, findings)
+            fd_stats["ubuntu_launchpad"] = ulp
+            if ulp.get("errors"):
+                warnings.append("Launchpad publishing history lookups failed; some Ubuntu fix dates may be missing")
+            if ulp.get("skipped_limit"):
+                warnings.append(f"{ulp['skipped_limit']} Ubuntu fix dates skipped to cap Launchpad requests")
             alp = alpine.enrich(net, findings)
             fd_stats["alpine"] = alp
             if alp.get("skipped_limit"):

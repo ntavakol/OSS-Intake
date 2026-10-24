@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Ubuntu fix dates from Launchpad's publishing history when no Ubuntu Security Notice matched: the earliest
+  publication of the exact fixed version to the image's release in the Release, Security or Updates pocket.
+  On mongo 7.0.14 (Ubuntu 22.04) the probe found every sampled undated fix, most in the Security pocket.
+
 ### Changed
 - CI hygiene: `pull_request_target` is now reported separately from the risky case, a workflow that also checks
   out the pull request's code. The trigger alone (labelling, commenting) is common and safe, and was presented as

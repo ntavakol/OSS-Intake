@@ -153,7 +153,9 @@ that shipped the fix (DSA or DLA, by the scanner's advisory ID or the exact fixe
 security tracker's advisory lists, with OSV as a fallback. Fixes that shipped without an advisory are dated from the
 Debian point release (13.6 and so on) that included the fixed version, from the suite's ChangeLog; fixes still in
 proposed-updates stay unknown, with a note. For Ubuntu packages they come from the Ubuntu
-Security Notice (USN) that fixed the CVE in that release and source package at that version, found through OSV.
+Security Notice (USN) that fixed the CVE in that release and source package at that version, found through OSV;
+failing that, from Launchpad's publishing history: when that exact version was first published to the release in
+the Release, Security or Updates pocket.
 For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy reports, dated from Red Hat's
 CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the
 CVE, or the fixed version for a new upstream release (set `GITHUB_TOKEN`, one request per package).
