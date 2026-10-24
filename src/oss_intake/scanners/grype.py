@@ -61,6 +61,9 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         locations = art.get("locations") or []
         name = art.get("name", "")
         purl = art.get("purl") or ""
+        version = art.get("version", "")
+        if name == "stdlib" and purl.startswith("pkg:golang/") and version.startswith("go"):
+            version = "v" + version[2:]  # Grype writes go1.22.7, Trivy v1.22.7; same binary must merge
         if purl.startswith("pkg:maven/"):
             # Report Maven packages as group:artifact, matching Trivy and OSV.
             path = purl[len("pkg:maven/"):].split("@", 1)[0].split("?", 1)[0]
@@ -69,7 +72,7 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         f = Finding(
             vuln_id=vuln.get("id", ""),
             package=name,
-            installed=art.get("version", ""),
+            installed=version,
             severity=normalise_severity(vuln.get("severity")),
             fixed_versions=fixed,
             cvss=cvss,

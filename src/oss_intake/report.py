@@ -90,6 +90,15 @@ def write_json(path: Path, a: dict, findings: list[Finding]) -> None:
 
 # ---------- Shared summary model used by Markdown and HTML ----------
 
+def release_used(lag: dict, health: dict) -> str:
+    date = (lag.get("release_date") or "")[:10]
+    src = lag.get("release_date_source") or ""
+    if src == "image build date":
+        return f"no matching release; image build date {date} used"
+    tag = (health.get("scanned_release") or {}).get("tag") or "n/a"
+    return tag + (f" ({date})" if date else "") + (f", from {src}" if src else "")
+
+
 def lag_note(lag: dict) -> str:
     return (f"A fix counts as existing before the release only if the fixed dependency version was published at "
             f"least {lag['grace_days']} days before the project's release date. 'Unshipped' counts fixes public "
@@ -110,9 +119,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     secs: list[tuple[str, list]] = []
 
     scope_rows = [["Image", _v(inp.get("image"))], ["Repository", _v(inp.get("repo"))],
-                  ["Release used for lag", _v((health.get("scanned_release") or {}).get("tag"))
-                   + (f" ({lag['release_date'][:10]})" if lag.get("release_date") else "")
-                   + (f", from {lag['release_date_source']}" if lag.get("release_date_source") else "")],
+                  ["Release used for lag", release_used(lag, health)],
                   ["Assessment date", a["as_of"][:10]]]
     for name, s in a["scanners"].items():
         if s.get("enabled"):

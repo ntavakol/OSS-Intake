@@ -360,9 +360,9 @@ def _agreement(a: dict) -> str:
 
 def _scope(a: dict) -> str:
     inp, lag, health = a["inputs"], a["lag"], a["health"]
-    rel = ((health.get("scanned_release") or {}).get("tag") or "n/a") \
-        + (f" ({lag['release_date'][:10]})" if lag.get("release_date") else "") \
-        + (f", from {lag['release_date_source']}" if lag.get("release_date_source") else "")
+    from .report import release_used
+
+    rel = release_used(lag, health)
     rows = [["Image", _code(inp["image"]) if inp.get("image") else "n/a"],
             ["Repository", _code(inp["repo"]) if inp.get("repo") else "n/a"],
             ["Release used for lag", rel], ["Assessment date", a["as_of"][:10]]]

@@ -827,3 +827,29 @@ def test_go_stdlib_dates_from_release_history():
     assert unknown.fix_published is None and module.fix_published is None
     assert stats["found"] == 2 and stats["releases_loaded"] == 5
     assert golang_stdlib.norm("go1.20") == "1.20.0" and golang_stdlib.norm("v1.22.7") == "1.22.7"
+
+
+def test_grype_go_stdlib_version_merges_with_trivy():
+    from oss_intake import merge
+    from oss_intake.scanners import grype
+
+    report = {"matches": [{
+        "vulnerability": {"id": "CVE-2099-5001", "severity": "High", "fix": {"state": "fixed", "versions": ["1.18.3"]}},
+        "artifact": {"name": "stdlib", "version": "go1.18.2", "type": "go-module",
+                     "purl": "pkg:golang/stdlib@1.18.2"}}]}
+    (g,), _ = grype.parse(report)
+    assert g.installed == "v1.18.2"
+    t = _f(vuln_id="CVE-2099-5001", package="stdlib", purl="pkg:golang/stdlib@v1.18.2", installed="v1.18.2",
+           fixed_versions=["1.18.3"], sources={"trivy"})
+    merged = merge.merge([t], [g])
+    assert len(merged) == 1 and merged[0].sources == {"trivy", "grype"}
+
+
+def test_release_used_wording():
+    from oss_intake.report import release_used
+
+    assert release_used({"release_date": "2024-10-03T00:00:00", "release_date_source": "image build date"},
+                        {"scanned_release": {"tag": "(image build date)"}}) == \
+        "no matching release; image build date 2024-10-03 used"
+    assert release_used({"release_date": "2026-04-30T15:01:38", "release_date_source": "GitHub release"},
+                        {"scanned_release": {"tag": "v3.2.4"}}) == "v3.2.4 (2026-04-30), from GitHub release"

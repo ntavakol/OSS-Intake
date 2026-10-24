@@ -11,6 +11,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   library was the largest undated group on Go-based images (redis 64, traefik 61, mongo 130 HIGH+ findings).
 - `scripts/validate_images.py` also writes report.html for each image.
 
+### Fixed
+- Go standard library findings from Trivy (`v1.18.2`) and Grype (`go1.18.2`) for the same binary were not merged,
+  so they appeared twice and inflated the Grype-only count (seen on mongo:7.0.14).
+- When the image build date stands in for a release, the scope line now says so plainly instead of
+  "(image build date) (date), from image build date".
+
 ### Changed
 - New HTML report layout: summary tiles, a severity bar, severity pills, and colour-coded values with fixed
   thresholds (days a fix has been available, CVSS, EPSS, Scorecard, fix-date coverage, CI hygiene), light and

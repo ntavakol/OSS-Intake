@@ -194,7 +194,8 @@ def test_image_build_date_fallback(tmp_path, fixtures, extra, source):
         assert a["lag"]["release_date"].startswith("2026-04-20")
         assert a["lag"]["unshipped"] is None  # needs a matched release
         assert any("image build date" in w for w in a["warnings"])
-        assert "from image build date" in (out / "summary.md").read_text(encoding="utf-8")
+        assert "no matching release; image build date 2026-04-20 used" in (out / "summary.md").read_text(
+            encoding="utf-8")
     elif source is None:
         assert a["lag"]["release_date"] is None
 
