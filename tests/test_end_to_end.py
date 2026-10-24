@@ -197,3 +197,28 @@ def test_image_build_date_fallback(tmp_path, fixtures, extra, source):
         assert "from image build date" in (out / "summary.md").read_text(encoding="utf-8")
     elif source is None:
         assert a["lag"]["release_date"] is None
+
+
+@pytest.mark.parametrize("tag,expected", [("4.5.1", "R4.5.1"), ("31.0.9", "server-31.0.9")])
+def test_release_tag_prefix_by_version_core(tag, expected):
+    class Prefixed(FakeHttp):
+        def get_json(self, url, params=None):
+            if url == "https://api.github.com/repos/example/webapp/releases":
+                return 200, [{"tag_name": expected, "published_at": "2026-05-01T00:00:00Z", "prerelease": False},
+                             {"tag_name": "R4.4.3", "published_at": "2025-03-01T00:00:00Z", "prerelease": False}]
+            return super().get_json(url, params)
+
+    h = releases.fetch(Prefixed(), "example/webapp", parse_datetime(AS_OF), image_tag=tag)
+    assert h["scanned_release"]["tag"] == expected
+
+
+def test_release_tag_core_ambiguous_is_not_guessed():
+    class Ambiguous(FakeHttp):
+        def get_json(self, url, params=None):
+            if url == "https://api.github.com/repos/example/webapp/releases":
+                return 200, [{"tag_name": "api-1.2.0", "published_at": "2026-05-01T00:00:00Z"},
+                             {"tag_name": "ui-1.2.0", "published_at": "2026-05-02T00:00:00Z"}]
+            return super().get_json(url, params)
+
+    h = releases.fetch(Ambiguous(), "example/webapp", parse_datetime(AS_OF), image_tag="1.2.0")
+    assert h["scanned_release"] is None

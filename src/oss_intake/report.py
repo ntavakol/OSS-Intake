@@ -131,7 +131,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
          lag["fix_available_at_release"]],
         [f"Fix published within {lag['grace_days']} days before the release (not counted)", lag["fix_within_grace"]],
         [f"Fix public {lag['unshipped_days']}+ days with no newer release (unshipped)",
-         _v(lag["unshipped"]) + ("" if lag["unshipped"] is None else
+         ("n/a (scanned release is not the latest)" if lag.get("scanned_is_latest") is False
+          else _v(lag["unshipped"])) + ("" if lag["unshipped"] is None else
                                  f" (critical {lag['unshipped_by_severity']['CRITICAL']}, "
                                  f"high {lag['unshipped_by_severity']['HIGH']})")],
         ["Likely already fixed (build label mismatch)", lag["likely_fixed_label_match"]],
@@ -161,7 +162,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         "p", f"A fix counts as existing before the release only if the fixed dependency version was "
              f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "
              f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
-             "still the latest. Fix dates come from deps.dev for language packages (GitHub release dates for Go "
+             "still the latest. Fix dates come from deps.dev and Packagist for language packages (GitHub release "
+             "dates for Go "
              "modules deps.dev lacks), from Debian advisories (DSA, DLA), Ubuntu Security Notices and Red Hat "
              "advisories (RHSA). Alpine, Amazon Linux and the Go standard library have no dated source yet "
              "and are counted as unknown; see the coverage table above.")]))

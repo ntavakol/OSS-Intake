@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - `scripts/validate_images.py` and `scripts/validate-images.txt`: scan a list of public images and write one
   summary table, for validating changes against real data.
+- PHP Composer fix dates from Packagist release times.
+- Release tags with a prefix (`R4.5.1`, `server-31.0.9`) match an image tag on the version number, when
+  exactly one release carries it.
+
+### Fixed
+- The unshipped metric showed 0 for releases that are not the project's latest; it is now n/a, and no longer
+  lowers likelihood confidence, since it does not apply.
 
 ## [0.1.2] - 2026-10-24
 

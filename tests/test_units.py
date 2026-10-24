@@ -221,7 +221,7 @@ def test_grace_and_unshipped():
     assert m["fix_available_at_release"] == 1 and m["fix_within_grace"] == 1
     assert m["unshipped"] == 3 and m["unshipped_by_severity"]["CRITICAL"] == 3
     m0 = lag.compute([early], rel, as_of, grace_days=0, scanned_is_latest=False)
-    assert m0["unshipped"] == 0
+    assert m0["unshipped"] is None  # not the latest release: n/a, not 0
     assert lag.compute([early], rel, as_of)["unshipped"] is None  # unknown without health data
 
 
@@ -598,3 +598,35 @@ def test_redhat_csaf_dates():
     assert len(h.calls) == 2 and stats == {"candidates": 3, "advisories_fetched": 2, "found": 2, "errors": 0}
     assert coverage.ecosystem(a) == "redhat"
     assert coverage.ecosystem(_f(purl="pkg:rpm/amazon/glibc@2.34")) == "amazon"
+
+
+def test_confidence_not_lowered_for_older_release():
+    m = {"with_fix": 10, "fix_date_unknown": 0, "release_date_known": 1, "critical_fix_unshipped": None,
+         "scanned_is_latest": False}
+    assert likelihood.confidence(m) == ("normal", [])
+    assert likelihood.confidence({**m, "scanned_is_latest": None})[0] == "low"
+
+
+def test_packagist_dates():
+    from oss_intake.enrich import packagist
+
+    class H:
+        calls = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(url)
+            if url.endswith("/p2/guzzlehttp/guzzle.json"):
+                return 200, {"packages": {"guzzlehttp/guzzle": [
+                    {"version": "7.9.3", "time": "2025-03-27T13:37:11+00:00"},
+                    {"version": "v7.9.2", "time": "2024-07-24T11:22:20+00:00"}]}}
+            return 404, None
+
+    h = H()
+    g = _f(purl="pkg:composer/guzzlehttp/guzzle@7.9.1", installed="7.9.1", fixed_versions=["7.9.2"])
+    g2 = _f(vuln_id="CVE-2099-2", purl="pkg:composer/guzzlehttp/guzzle@7.9.1", installed="7.9.1",
+            fixed_versions=["7.9.3"])
+    missing = _f(purl="pkg:composer/acme/none@1.0", installed="1.0", fixed_versions=["1.1"])
+    stats = packagist.enrich(h, [g, g2, missing])
+    assert g.fix_published == parse_datetime("2024-07-24T11:22:20+00:00") and g.fix_date_source == "Packagist"
+    assert g2.fix_published == parse_datetime("2025-03-27T13:37:11+00:00")
+    assert missing.fix_published is None and len(h.calls) == 2 and stats["found"] == 2

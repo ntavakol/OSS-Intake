@@ -60,8 +60,8 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
     dated = [f for f in with_fix if f.fix_published]
     within_grace = [f for f in dated if release_date and cutoff <= f.fix_published < release_date]
     unshipped = None
-    if scanned_is_latest is not None:
-        unshipped = [f for f in dated if scanned_is_latest and (f.days_fix_available or 0) >= unshipped_days]
+    if scanned_is_latest:  # only defined for the project's latest release; None (n/a) otherwise
+        unshipped = [f for f in dated if (f.days_fix_available or 0) >= unshipped_days]
     at_release = [f for f in dated if f.fix_available_at_release]
     days = [f.days_fix_available for f in dated if f.days_fix_available is not None]
     oldest = min(dated, key=lambda f: f.fix_published) if dated else None

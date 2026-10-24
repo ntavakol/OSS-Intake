@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, coverage, integrity, lag, likelihood, merge, report
-from .enrich import advisories, debian_tracker, epss, fixdates, github_releases, kev, redhat, ubuntu
+from .enrich import advisories, debian_tracker, epss, fixdates, github_releases, kev, packagist, redhat, ubuntu
 from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -397,6 +397,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["advisory"] = adv
             if adv.get("errors"):
                 warnings.append(f"OSV advisory lookups failed for {adv['errors']} distro advisories")
+            pk = packagist.enrich(net, findings)
+            fd_stats["packagist"] = pk
+            if pk.get("errors"):
+                warnings.append(f"Packagist lookups failed for {pk['errors']} PHP packages")
             ghr = github_releases.enrich(net, findings)
             fd_stats["github_release"] = ghr
             if ghr.get("skipped_limit"):

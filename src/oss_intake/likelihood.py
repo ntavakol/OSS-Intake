@@ -100,6 +100,7 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "fix_date_unknown": lag.get("fix_date_unknown", 0),
         "with_fix": lag.get("with_fix", 0),
         "release_date_known": 1 if lag.get("release_date") else 0,
+        "scanned_is_latest": lag.get("scanned_is_latest"),
     }
 
 
@@ -120,8 +121,9 @@ def confidence(m: dict) -> tuple[str, list[str]]:
                        "stdlib packages), so lag-based rules see only part of the picture")
     if not m.get("release_date_known"):
         reasons.append("no release date, so lag-based rules cannot fire")
-    if m.get("critical_fix_unshipped") is None:
-        reasons.append("unshipped metric unavailable (no matched release)")
+    if m.get("critical_fix_unshipped") is None and m.get("scanned_is_latest") is not False:
+        # Not applicable to an older release (not missing evidence), so only a missing match counts.
+        reasons.append("unshipped metric unavailable (no matched GitHub release)")
     return ("low" if reasons else "normal"), reasons
 
 

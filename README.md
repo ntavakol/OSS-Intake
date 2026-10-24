@@ -147,7 +147,7 @@ an older branch is not counted for a newer one) and looks up when that version w
 | Days a fix has been available | Assessment date minus the fixed version's publish date |
 | CVE published before release | Secondary signal. A CVE can be public before any fix exists, so this overstates lag on its own |
 
-Fix dates come from deps.dev for language packages, falling back to the GitHub release date for Go modules
+Fix dates come from deps.dev for language packages, from Packagist for PHP Composer packages, falling back to the GitHub release date for Go modules
 hosted on GitHub that deps.dev does not index. For Debian packages they come from the Debian security advisory
 that shipped the fix (DSA or DLA, as reported by Trivy), dated from the Debian security tracker's advisory lists,
 with OSV as a fallback. Debian fixes released in point releases without an advisory stay unknown. For Ubuntu packages they come from the Ubuntu
@@ -222,6 +222,9 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 - Fix dates are unavailable for OS packages and the Go standard library. When more than half of the fixes lack
   a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
 - Only GitHub-hosted projects get health signals in this version.
+- Trivy does not catalogue installed R (CRAN) packages, so R libraries inside an image are not assessed.
+- Runtimes detected from binaries (`binary` in the coverage table) have no package registry to date fixes
+  from, so they always show as "fix date unknown".
 
 Planned work is in [BACKLOG.md](BACKLOG.md).
 

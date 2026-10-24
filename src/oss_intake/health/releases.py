@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from statistics import median
 from urllib.parse import quote
@@ -29,6 +30,12 @@ def _candidates(tag: str, repo_name: str) -> list[str]:
             if c not in out:
                 out.append(c)
     return [t] + [c for c in out if c != t]
+
+
+def _version_core(tag: str) -> str:
+    """'R4.5.1' -> '4.5.1', 'v2.0.0' -> '2.0.0', '2.528-jdk21' -> '2.528'; '' if no version."""
+    m = re.search(r"(\d+(?:\.\d+)+)", tag)
+    return m.group(1) if m else ""
 
 
 def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
@@ -86,6 +93,13 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
             if c in by_tag:
                 scanned = by_tag[c]
                 break
+        if scanned is None and not release_tag:
+            # Tags such as "R4.5.1" or "server-31.0.9": match on the version number alone, but only
+            # when exactly one release carries it, so a guess is never made between candidates.
+            want = _version_core(wanted)
+            hits = [r for r in releases if want and _version_core(r["tag"]) == want]
+            if len(hits) == 1:
+                scanned = hits[0]
         if scanned is None:
             # The list above is the newest 100 releases only. Projects with many patch and backport
             # releases (Grafana, for example) push older tags off it, so ask for each candidate directly.
