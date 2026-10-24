@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Alpine fix dates from the aports commit history (GitHub mirror): the earliest commit on the image's release
+  branch that names the CVE, or the fixed version for a new upstream release. Rebuilds of the same version
+  (`-r1` and up) need the CVE or exact version in the commit, otherwise they stay unknown.
+
 ## [0.1.3] - 2026-10-24
 
 Validated on six more images (UBI 9.6, python:3.13-slim, Superset 5.0.0, rocker/r-ver 4.5.1, Node-RED 4.1.0,

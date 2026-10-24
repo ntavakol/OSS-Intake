@@ -167,7 +167,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
              "still the latest. Fix dates come from deps.dev and Packagist for language packages (GitHub release "
              "dates for Go "
              "modules deps.dev lacks), from Debian advisories (DSA, DLA), Ubuntu Security Notices and Red Hat "
-             "advisories (RHSA). Alpine, Amazon Linux and the Go standard library have no dated source yet "
+             "advisories (RHSA), and Alpine aports commits. Amazon Linux and the Go standard library have no "
+             "dated source yet "
              "and are counted as unknown; see the coverage table above.")]))
 
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))

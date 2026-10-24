@@ -672,3 +672,50 @@ def test_kernel_headers_excluded_from_lag_and_likelihood():
     m = lag.compute([kh, rh, app, npm_named], parse_datetime("2026-04-30"), parse_datetime("2026-10-22"))
     assert m["kev_with_fix"] == 0 and m["max_epss_with_fix"] == 0.56 and m["excluded_kernel_headers"] == 2
     assert m["total"] == 4 and m["with_fix"] == 2
+
+
+def test_alpine_aports_matching():
+    from oss_intake.enrich import alpine
+
+    commits = {
+        "main/busybox/APKBUILD": [
+            {"sha": "aaaa1111bbbb", "commit": {"message": "main/busybox: patch CVE-2099-60",
+                                                "committer": {"date": "2025-11-21T10:00:00Z"}}},
+            {"sha": "cccc2222dddd", "commit": {"message": "main/busybox: upgrade to 1.37.0",
+                                                "committer": {"date": "2024-10-20T10:00:00Z"}}}],
+        "main/openssl/APKBUILD": [
+            {"sha": "eeee3333ffff", "commit": {"message": "main/openssl: security upgrade to 3.5.6",
+                                                "committer": {"date": "2026-04-09T10:00:00Z"}}},
+            {"sha": "9999aaaa0000", "commit": {"message": "main/openssl: upgrade to 3.5.60-beta",
+                                                "committer": {"date": "2026-01-01T10:00:00Z"}}}],
+        "main/curl/APKBUILD": [
+            {"sha": "1234abcd5678", "commit": {"message": "main/curl: security upgrade to 8.14.1",
+                                                "committer": {"date": "2025-06-04T10:00:00Z"}}}],
+    }
+
+    class H:
+        calls = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(params)
+            assert url == alpine.API and params["sha"] == "3.22-stable"
+            return (200, commits[params["path"]]) if params["path"] in commits else (404, None)
+
+    def apk(**kw):
+        return _f(os_release="alpine 3.22.2", purl=f"pkg:apk/alpine/{kw['package']}@{kw['installed']}", **kw)
+
+    busy = apk(vuln_id="CVE-2099-60", package="busybox", installed="1.37.0-r19", fixed_versions=["1.37.0-r20"])
+    ssl = apk(vuln_id="CVE-2099-61", package="libcrypto3", src_name="openssl", installed="3.5.4-r0",
+              fixed_versions=["3.5.6-r0"])
+    curl = apk(vuln_id="CVE-2099-62", package="curl", installed="8.14.1-r2", fixed_versions=["8.14.1-r4"])
+    none = apk(vuln_id="CVE-2099-63", package="ghostpkg", installed="1.0-r0", fixed_versions=["1.1-r0"])
+    h = H()
+    stats = alpine.enrich(h, [busy, ssl, curl, none])
+    assert busy.fix_published == parse_datetime("2025-11-21T10:00:00Z") and busy.fix_date_source.startswith(
+        "aports commit aaaa1111")
+    assert ssl.fix_published == parse_datetime("2026-04-09T10:00:00Z")  # 3.5.60-beta must not match 3.5.6
+    assert curl.fix_published is None  # rebuild -r4: "upgrade to 8.14.1" describes the base version
+    assert none.fix_published is None
+    assert stats["found"] == 2 and stats["packages"] == 4
+    assert [c["path"] for c in h.calls].count("community/ghostpkg/APKBUILD") == 1  # tries community after main
+    assert alpine.branch_for("alpine 3.22.2") == "3.22-stable" and alpine.branch_for("debian 12") is None

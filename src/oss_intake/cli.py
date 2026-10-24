@@ -13,7 +13,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__, coverage, integrity, lag, likelihood, merge, report
-from .enrich import advisories, debian_tracker, epss, fixdates, github_releases, kev, packagist, redhat, ubuntu
+from .enrich import (
+    advisories,
+    alpine,
+    debian_tracker,
+    epss,
+    fixdates,
+    github_releases,
+    kev,
+    packagist,
+    redhat,
+    ubuntu,
+)
 from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
@@ -401,6 +412,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["ubuntu"] = ubu
             if ubu.get("errors"):
                 warnings.append("Ubuntu notice lookups in OSV failed; Ubuntu fix dates may be incomplete")
+            alp = alpine.enrich(net, findings)
+            fd_stats["alpine"] = alp
+            if alp.get("skipped_limit"):
+                warnings.append(f"{alp['skipped_limit']} Alpine fix dates skipped to stay within GitHub rate limits")
+            if alp.get("errors"):
+                warnings.append("Alpine aports history lookups failed for some packages (set GITHUB_TOKEN for "
+                                "higher GitHub API limits)")
             adv = advisories.enrich(net, findings)
             fd_stats["advisory"] = adv
             if adv.get("errors"):

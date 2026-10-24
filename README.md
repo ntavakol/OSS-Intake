@@ -153,7 +153,9 @@ that shipped the fix (DSA or DLA, as reported by Trivy), dated from the Debian s
 with OSV as a fallback. Debian fixes released in point releases without an advisory stay unknown. For Ubuntu packages they come from the Ubuntu
 Security Notice (USN) that fixed the CVE in that release and source package at that version, found through OSV.
 For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy reports, dated from Red Hat's
-CSAF document. Packages with no dated source yet, currently Alpine, Amazon Linux and the Go standard library, are counted as "fix date
+CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the
+CVE, or the fixed version for a new upstream release (set `GITHUB_TOKEN`, one request per package).
+Packages with no dated source yet, currently Amazon Linux and the Go standard library, are counted as "fix date
 unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
 
 ## Example output

@@ -16,7 +16,6 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
-- Alpine fix dates (secdb has fixed versions but no dates; aports history may).
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Go standard library fix dates from Go release history.
 
