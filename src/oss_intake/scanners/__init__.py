@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
+
+# Docker or containerd failing to export a locally stored image (pruned layers, other-platform pulls).
+LOCAL_IMAGE_ERROR = re.compile(r"unable to export the image|content digest sha256:[0-9a-f]+: not found|"
+                               r"unable to inspect the image", re.IGNORECASE)
 
 
 class ScannerError(Exception):
@@ -40,7 +45,11 @@ def run(cmd: list[str], timeout: int) -> bytes:
         if not err:
             err = proc.stdout.decode("utf-8", errors="replace").strip() or "(no output; rerun the scanner by hand)"
         tail = err.splitlines()[-5:]
-        raise ScannerError(f"{Path(cmd[0]).name} exited {proc.returncode}: " + " | ".join(tail))
+        msg = f"{Path(cmd[0]).name} exited {proc.returncode}: " + " | ".join(tail)
+        if LOCAL_IMAGE_ERROR.search(err):
+            msg += (" (the local container engine could not export the image; rerun with --image-src remote to pull "
+                    "it from the registry, or remove and re-pull the local copy)")
+        raise ScannerError(msg)
     return proc.stdout
 
 

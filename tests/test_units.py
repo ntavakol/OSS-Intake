@@ -750,3 +750,17 @@ def test_grype_os_package_keeps_distro_and_source():
                      "purl": "pkg:apk/alpine/nghttp2-libs@1.65.0-r0", "upstreams": [{"name": "nghttp2"}]}}]}
     (f,), _ = grype.parse(report)
     assert f.os_release == "alpine 3.22.2" and f.src_name == "nghttp2"
+
+
+def test_local_image_export_error_suggests_remote(tmp_path):
+    import sys
+
+    import pytest
+
+    from oss_intake.scanners import ScannerError, run
+
+    script = tmp_path / "fake.py"
+    script.write_text("import sys; sys.stderr.write('FATAL unable to export the image: content digest "
+                      "sha256:8e5b: not found'); sys.exit(1)")
+    with pytest.raises(ScannerError, match="--image-src remote"):
+        run([sys.executable, str(script)], 30)
