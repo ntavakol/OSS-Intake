@@ -903,3 +903,42 @@ def test_ubuntu_launchpad_dates():
     assert perl.fix_date_source == "Launchpad publication (Updates)"
     assert esm.fix_published is None and other.fix_published is None
     assert stats["found"] == 2 and stats["lookups"] == 3
+
+
+def test_cvss_provenance_and_v4_fallback():
+    from oss_intake import merge
+    from oss_intake.cvss import better
+    from oss_intake.scanners import grype, trivy
+
+    assert better((5.0, "3.1", "nvd"), (9.0, "4.0", "ghsa"))  # any v3 beats v4
+    assert not better((9.0, "4.0", "ghsa"), (5.0, "3.1", "nvd"))
+    assert better((7.5, "3.1", "nvd"), (5.3, "3.1", "redhat"))
+
+    rep = {"Results": [{"Target": "x", "Class": "lang-pkgs", "Type": "jar", "Vulnerabilities": [
+        {"VulnerabilityID": "CVE-2099-8001", "PkgName": "a", "InstalledVersion": "1", "Severity": "HIGH",
+         "SeveritySource": "redhat", "CVSS": {"nvd": {"V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                                                       "V3Score": 9.8},
+                                               "redhat": {"V3Vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+                                                          "V3Score": 3.7}}},
+        {"VulnerabilityID": "CVE-2099-8002", "PkgName": "b", "InstalledVersion": "1", "Severity": "LOW",
+         "CVSS": {"ghsa": {"V40Vector": "CVSS:4.0/AV:L/AC:L/AT:P/PR:N/UI:A/VC:N/VI:L/VA:L/SC:N/SI:N/SA:N",
+                           "V40Score": 1.8}}}]}]}
+    a, b = trivy.parse(rep)[0]
+    assert (a.cvss, a.cvss_version, a.cvss_source) == (9.8, "3.1", "nvd")  # highest v3 across sources
+    assert (b.cvss, b.cvss_version, b.cvss_source) == (1.8, "4.0", "ghsa")
+
+    g = {"matches": [{
+        "vulnerability": {"id": "GHSA-xxxx", "namespace": "github:language:java", "severity": "Medium",
+                          "fix": {"state": "fixed", "versions": ["2"]},
+                          "cvss": [{"version": "4.0", "vector": "CVSS:4.0/AV:N", "metrics": {"baseScore": 6.9}}]},
+        "relatedVulnerabilities": [{"id": "CVE-2099-8002", "namespace": "nvd:cpe",
+                                    "cvss": [{"version": "3.1", "vector": "CVSS:3.1/AV:N",
+                                              "metrics": {"baseScore": 5.3}}]}],
+        "artifact": {"name": "b", "version": "1", "type": "java-archive", "purl": "pkg:maven/x/b@1"}}]}
+    (gb,), _ = grype.parse(g)
+    assert (gb.cvss, gb.cvss_version, gb.cvss_source) == (5.3, "3.1", "nvd")  # related v3 replaces v4
+
+    b.purl = gb.purl = "pkg:maven/x/b@1"
+    b.vuln_id = gb.vuln_id = "CVE-2099-8002"
+    (m,) = merge.merge([b], [gb])
+    assert (m.cvss, m.cvss_version, m.cvss_source) == (5.3, "3.1", "nvd")

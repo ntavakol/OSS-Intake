@@ -5,6 +5,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- CVSS provenance: findings.csv has `cvss_version` and `cvss_source` (nvd, ghsa, redhat, debian...), the Markdown
+  top findings show them next to the score, and the HTML report shows them on hover.
+- CVSS v4 scores (from Trivy and Grype) are used when no source gives a v3 score, marked "v4" in the reports. A v3
+  score always takes precedence; the two scales are not comparable. OSV publishes vectors only, and v4 needs the
+  full lookup tables to score, so OSV contributes v3 only.
+
+### Changed
+- Trivy's CVSS is now the highest v3 score across the sources it lists, not the score from the source of its
+  severity rating, so the report's "highest across sources" holds for every finding. Where a distro rates a CVE
+  lower than NVD, the severity column keeps the distro rating and the CVSS source shows where the score came from.
+
 ## [0.1.7] - 2026-10-25
 
 Ubuntu fixes dated from Launchpad, and a more accurate CI hygiene check. mongo 7.0.14 (Ubuntu 22.04):

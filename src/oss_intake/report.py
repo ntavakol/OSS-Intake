@@ -18,7 +18,8 @@ HEURISTIC_NOTE = (
     "starting point for an assessor, not a risk rating."
 )
 CSV_FIELDS = [
-    "id", "aliases", "severity", "cvss", "package", "pkg_type", "installed", "fixed_versions",
+    "id", "aliases", "severity", "cvss", "cvss_version", "cvss_source", "package", "pkg_type", "installed",
+    "fixed_versions",
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
@@ -32,6 +33,8 @@ def finding_row(f: Finding) -> dict:
         "aliases": ";".join(sorted(f.aliases)),
         "severity": f.severity,
         "cvss": "" if f.cvss is None else f"{f.cvss:.1f}",
+        "cvss_version": f.cvss_version,
+        "cvss_source": f.cvss_source,
         "package": f.package,
         "pkg_type": f.pkg_type,
         "installed": f.installed,
@@ -97,6 +100,19 @@ def release_used(lag: dict, health: dict) -> str:
         return f"no matching release; image build date {date} used"
     tag = (health.get("scanned_release") or {}).get("tag") or "n/a"
     return tag + (f" ({date})" if date else "") + (f", from {src}" if src else "")
+
+
+def cvss_text(f: Finding) -> str:
+    """'9.8 (3.1, nvd)'; v4 scores are marked so they are not read on the v3 scale."""
+    if f.cvss is None:
+        return "n/a"
+    detail = ", ".join(x for x in (f.cvss_version, f.cvss_source) if x)
+    return f"{f.cvss:.1f}" + (f" ({detail})" if detail else "")
+
+
+CVSS_NOTE = ("CVSS: the highest v3.x base score any source reported, with its version and source database; a v4 "
+             "score is shown only when no source has a v3 score. Sources can disagree, and a distro's severity "
+             "rating can differ from an upstream CVSS score.")
 
 
 def lag_note(lag: dict) -> str:
@@ -250,12 +266,12 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     for f in ranked[:top]:
         before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
-        rows.append([f.vuln_id, f.severity, "n/a" if f.cvss is None else f"{f.cvss:.1f}", f.package, f.installed,
+        rows.append([f.vuln_id, f.severity, cvss_text(f), f.package, f.installed,
                      f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])
     if rows:
         secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "CVSS", "Package", "Installed", "Fix",
                                                                "Fix before release", "Days fix available"],
-                                                     rows), ("p", "Full list: findings.csv")]))
+                                                     rows), ("p", CVSS_NOTE), ("p", "Full list: findings.csv")]))
     if a.get("warnings"):
         secs.append(("Warnings", [("list", a["warnings"])]))
     return secs

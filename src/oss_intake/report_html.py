@@ -398,7 +398,12 @@ def _top(findings: list[Finding], top: int) -> str:
             before = ("no fix", "")
         else:
             before = ({True: ("yes", "r"), False: ("no", "")}.get(f.fix_available_at_release, ("unknown", "")))
-        cvss = ("n/a", "muted") if f.cvss is None else (f"{f.cvss:.1f}", tone_cvss(f.cvss))
+        if f.cvss is None:
+            cvss = ("n/a", "muted")
+        else:
+            tip = "CVSS " + (f.cvss_version or "version unknown") + (f" from {f.cvss_source}" if f.cvss_source else "")
+            v4 = '<small class="v4"> v4</small>' if f.cvss_version.startswith("4") else ""
+            cvss = (Raw(f'<span title="{_e(tip)}">{f.cvss:.1f}</span>{v4}'), tone_cvss(f.cvss))
         days = f.days_fix_available
         rows.append([(f.vuln_id, "mono nw"), _pill(f.severity), cvss, (f.package, "mono"), (f.installed, "mono"),
                      (f.fix_version_used or ";".join(f.fixed_versions) or "none", "mono"), before,
@@ -407,7 +412,8 @@ def _top(findings: list[Finding], top: int) -> str:
     legend = ('<div class="legend"><span>Days fix available:</span><span><span class="dot r"></span>90+ days</span>'
               '<span><span class="dot a"></span>30 to 89 days</span><span><span class="dot g"></span>under 30 days'
               '</span><span>Before release: "yes" means the fix existed but was not shipped</span>'
-              '<span>CVSS: highest v3 base score reported by the sources</span></div>')
+              '<span>CVSS: highest v3.x score across sources; hover for version and source; '
+              '"v4" marks a v4 score used because no v3 score exists</span></div>')
     return _section(f"Top {len(rows)} findings", legend + _table(
         ["ID", "Severity", "CVSS", "Package", "Installed", "Fix", "Before release", "Days available"],
         rows, {2, 7}, rcls) + _note("Full list, with every CVSS score and EPSS value: findings.csv"))
@@ -483,7 +489,7 @@ letter-spacing:.03em;white-space:nowrap}
 .p-unk{background:var(--grey-bg);color:var(--grey);border:1px solid var(--grey)}
 td.c,span.c{color:var(--crit);font-weight:700}td.r,span.r{color:var(--red);font-weight:600}
 td.a,span.a{color:var(--amber);font-weight:600}td.g,span.g{color:var(--green);font-weight:600}
-td.muted{color:var(--muted)}
+td.muted{color:var(--muted)}small.v4{font-size:.7em;font-weight:600;color:var(--muted)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
 .dot.c{background:var(--crit)}.dot.r{background:var(--red)}.dot.a{background:var(--amber)}
 .dot.g{background:var(--green)}.dot.n{background:var(--grey)}

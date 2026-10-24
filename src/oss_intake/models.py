@@ -92,6 +92,8 @@ class Finding:
     severity: str = "UNKNOWN"
     fixed_versions: list[str] = field(default_factory=list)
     cvss: float | None = None
+    cvss_version: str = ""  # "3.1", "3.0" or "4.0"; v4 is used only when no source gave a v3 score
+    cvss_source: str = ""  # database the score came from: nvd, ghsa, redhat, debian...
     published: datetime | None = None
     purl: str | None = None
     pkg_type: str = ""

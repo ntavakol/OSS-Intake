@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..cvss import better, version_of
 from ..models import Finding, normalise_severity
 from . import ScannerError, load_json_bytes, run
 
@@ -31,14 +32,33 @@ def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeo
     return run(cmd, timeout)
 
 
-def _best_cvss(entries: list[dict]) -> float | None:
+_HOSTS = {"github.com": "ghsa", "nvd.nist.gov": "nvd", "security-tracker.debian.org": "debian",
+          "ubuntu.com": "ubuntu", "access.redhat.com": "redhat", "alpinelinux.org": "alpine", "osv.dev": "osv"}
+
+
+def _source(v: dict) -> str:
+    """Database a Grype record came from: namespace 'github:language:java' -> ghsa, 'nvd:cpe' -> nvd,
+    'debian:distro:debian:12' -> debian; failing that, the dataSource host."""
+    ns = str(v.get("namespace") or "")
+    if ns:
+        head = ns.split(":", 1)[0].lower()
+        return "ghsa" if head == "github" else head
+    url = str(v.get("dataSource") or "")
+    for host, name in _HOSTS.items():
+        if host in url:
+            return name
+    return ""
+
+
+def _best_cvss(entries: list[dict], source: str) -> tuple[float, str, str] | None:
     best = None
     for c in entries or []:
-        if not str(c.get("version", "")).startswith("3"):
-            continue
         score = (c.get("metrics") or {}).get("baseScore")
-        if score is not None and (best is None or float(score) > best):
-            best = float(score)
+        if score is None:
+            continue
+        cand = (float(score), version_of(c.get("vector"), str(c.get("version", ""))), source)
+        if cand[1][:1] in ("3", "4") and better(cand, best):
+            best = cand
     return best
 
 
@@ -52,12 +72,11 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         related = m.get("relatedVulnerabilities") or []
         fix = vuln.get("fix") or {}
         fixed = list(fix.get("versions") or []) if fix.get("state") == "fixed" else []
-        cvss = _best_cvss(vuln.get("cvss") or [])
-        if cvss is None:
-            for r in related:
-                cvss = _best_cvss(r.get("cvss") or [])
-                if cvss is not None:
-                    break
+        cvss = _best_cvss(vuln.get("cvss") or [], _source(vuln))
+        for r in related:
+            rel = _best_cvss(r.get("cvss") or [], _source(r))
+            if better(rel, cvss) and (cvss is None or not cvss[1].startswith("3")):
+                cvss = rel  # related records (usually NVD) only fill a missing v3 score
         locations = art.get("locations") or []
         name = art.get("name", "")
         purl = art.get("purl") or ""
@@ -75,7 +94,9 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
             installed=version,
             severity=normalise_severity(vuln.get("severity")),
             fixed_versions=fixed,
-            cvss=cvss,
+            cvss=cvss[0] if cvss else None,
+            cvss_version=cvss[1] if cvss else "",
+            cvss_source=cvss[2] if cvss else "",
             purl=art.get("purl"),
             pkg_type=art.get("type", ""),
             target=(locations[0].get("path", "") if locations else ""),

@@ -41,6 +41,26 @@ def base_score(vector: str) -> float | None:
     return _roundup(min(impact + exploitability, 10))
 
 
+def version_of(vector: str | None, fallback: str = "") -> str:
+    """'CVSS:3.1/AV:N/...' -> '3.1'."""
+    if vector and vector.startswith("CVSS:"):
+        return vector[5:].split("/", 1)[0]
+    return fallback
+
+
+def better(candidate: tuple[float, str, str] | None, current: tuple[float, str, str] | None) -> bool:
+    """(score, version, source): any v3 score beats a v4 score (the two scales are not comparable, and v3
+    is what most tooling and policy still use); within the same major version the higher score wins."""
+    if candidate is None or candidate[0] is None:
+        return False
+    if current is None or current[0] is None:
+        return True
+    rank_c, rank_cur = candidate[1].startswith("3"), current[1].startswith("3")
+    if rank_c != rank_cur:
+        return rank_c
+    return candidate[0] > current[0]
+
+
 def severity_from_score(score: float | None) -> str:
     if score is None:
         return "UNKNOWN"

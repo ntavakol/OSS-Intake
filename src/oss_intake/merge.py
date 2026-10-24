@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .cvss import better
 from .models import SEVERITY_ORDER, Finding, canonical_id
 
 SOURCE_PRIORITY = ["trivy", "grype", "osv"]
@@ -40,8 +41,8 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             # Conservative: keep the highest severity any source reported.
             if SEVERITY_ORDER[f.severity] > SEVERITY_ORDER[cur.severity]:
                 cur.severity = f.severity
-            if f.cvss is not None and (cur.cvss is None or f.cvss > cur.cvss):
-                cur.cvss = f.cvss
+            if better((f.cvss, f.cvss_version, f.cvss_source), (cur.cvss, cur.cvss_version, cur.cvss_source)):
+                cur.cvss, cur.cvss_version, cur.cvss_source = f.cvss, f.cvss_version, f.cvss_source
             if cur.published is None or (f.published and f.published < cur.published):
                 cur.published = f.published or cur.published
             for vid in f.vendor_ids:

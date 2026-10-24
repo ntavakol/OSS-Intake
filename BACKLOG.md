@@ -25,11 +25,6 @@ Items agreed for later versions, roughly in priority order.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;
   consider reporting both.
-- CVSS provenance: record the CVSS version and the database the score came from (NVD, GHSA, distro) in
-  findings.csv and the HTML hover text. Today the report keeps the highest v3.x base score across sources, which
-  is cautious but not traceable, and can sit beside a distro severity rating that disagrees with it.
-- CVSS v4: use the v4 score, marked as v4, when an advisory publishes no v3 score (common in newer GitHub
-  advisories); those findings currently show n/a.
 
 ## Scanner management
 - An optional, opt-in scanner downloader: exact version only, SHA-256 against the release checksums file and

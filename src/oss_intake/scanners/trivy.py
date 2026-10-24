@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..cvss import better, version_of
 from ..models import Finding, normalise_severity, parse_datetime
 from ..versions import split_fixed
 from . import ScannerError, load_json_bytes, run
@@ -40,14 +41,20 @@ def sbom(binary: str, image: str, image_src: str | None, extra: list[str], timeo
     return run(cmd, timeout)
 
 
-def _cvss(v: dict) -> float | None:
+def _cvss(v: dict) -> tuple[float | None, str, str]:
+    """Highest v3 score across the sources Trivy lists (nvd, ghsa, redhat...); a v4 score only when no
+    source has v3. Returns (score, version, source); ties go to the preference order."""
     table = v.get("CVSS") or {}
-    order = [v.get("SeveritySource")] + _CVSS_PREF + list(table)
-    for src in order:
-        entry = table.get(src) if src else None
-        if entry and entry.get("V3Score") is not None:
-            return float(entry["V3Score"])
-    return None
+    order = [v.get("SeveritySource")] + _CVSS_PREF + sorted(table)
+    best = None
+    for src in dict.fromkeys(s for s in order if s):
+        entry = table.get(src) or {}
+        for score_key, vector_key, default in (("V3Score", "V3Vector", "3"), ("V40Score", "V40Vector", "4.0")):
+            if entry.get(score_key) is not None:
+                cand = (float(entry[score_key]), version_of(entry.get(vector_key), default), src)
+                if better(cand, best):
+                    best = cand
+    return best if best else (None, "", "")
 
 
 def _src_version(p: dict) -> str:
@@ -74,13 +81,16 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         for v in result.get("Vulnerabilities") or []:
             ident = v.get("PkgIdentifier") or {}
             pkg = by_id.get(v.get("PkgID")) or by_name.get(v.get("PkgName")) or {}
+            cvss_score, cvss_ver, cvss_src = _cvss(v)
             f = Finding(
                 vuln_id=v.get("VulnerabilityID", ""),
                 package=v.get("PkgName", ""),
                 installed=v.get("InstalledVersion", ""),
                 severity=normalise_severity(v.get("Severity")),
                 fixed_versions=split_fixed(v.get("FixedVersion")),
-                cvss=_cvss(v),
+                cvss=cvss_score,
+                cvss_version=cvss_ver,
+                cvss_source=cvss_src,
                 published=parse_datetime(v.get("PublishedDate")),
                 purl=ident.get("PURL"),
                 pkg_type=rtype,

@@ -6,7 +6,7 @@ so OSV acts as an independent vulnerability DATABASE check, not an independent D
 
 from __future__ import annotations
 
-from ..cvss import base_score, severity_from_score
+from ..cvss import base_score, severity_from_score, version_of
 from ..http import Http, HttpError
 from ..models import Finding, normalise_purl, normalise_severity, parse_datetime, purl_without_version
 from ..versions import split_fixed
@@ -82,17 +82,20 @@ def _fixed_for(vuln: dict, purl: str) -> list[str]:
     return split_fixed(fixed)
 
 
-def _severity(vuln: dict) -> tuple[str, float | None]:
-    score = None
+def _severity(vuln: dict) -> tuple[str, float | None, str]:
+    """Severity, v3 base score and its version. OSV gives vectors only; v4 scores need the full CVSS v4
+    lookup tables to compute, so OSV contributes v3 scores only."""
+    score, version = None, ""
     for s in vuln.get("severity") or []:
         if str(s.get("type", "")).startswith("CVSS_V3"):
             score = base_score(s.get("score", ""))
             if score is not None:
+                version = version_of(s.get("score", ""), "3")
                 break
     sev = normalise_severity((vuln.get("database_specific") or {}).get("severity"))
     if sev == "UNKNOWN":
         sev = severity_from_score(score)
-    return sev, score
+    return sev, score, version
 
 
 def scan(http: Http, purls: list[str]) -> list[Finding]:
@@ -107,7 +110,7 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 status, data = http.get_json(f"{API}/vulns/{vid}")
                 cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid}
             v = cache[vid]
-            sev, score = _severity(v)
+            sev, score, cvss_ver = _severity(v)
             f = Finding(
                 vuln_id=vid,
                 package=name.replace("/", ":") if purl.startswith("pkg:maven/") else name,
@@ -115,6 +118,8 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 severity=sev,
                 fixed_versions=_fixed_for(v, purl),
                 cvss=score,
+                cvss_version=cvss_ver if score is not None else "",
+                cvss_source=("ghsa" if vid.startswith("GHSA-") else "osv") if score is not None else "",
                 published=parse_datetime(v.get("published")),
                 purl=purl,
                 pkg_type=purl[4:].split("/", 1)[0],
