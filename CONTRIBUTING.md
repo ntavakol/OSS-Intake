@@ -32,6 +32,17 @@ python -m pytest
 - Style: write plainly and avoid em dashes in documentation and output.
 - Add a `CHANGELOG.md` entry under "Unreleased" for user-visible changes.
 
+## Validating against real images
+
+`scripts/validate_images.py` runs oss-intake over a list of public images and writes one summary table:
+
+```bash
+python scripts/validate_images.py scripts/validate-images.txt --out reports-validate \
+  --trivy-sha256 <hash> --grype-sha256 <hash>
+```
+
+Share `reports-validate/summary.md` when reporting a problem. Edit the list to add images.
+
 ## Adding a real-image regression test
 
 When a real image exposes a bug, trim its raw scan into a fixture and pin the bug with a test:

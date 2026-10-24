@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `scripts/validate_images.py` and `scripts/validate-images.txt`: scan a list of public images and write one
+  summary table, for validating changes against real data.
+
 ## [0.1.2] - 2026-10-24
 
 Red Hat family fix dates and an image build date fallback for projects without matching GitHub releases.
