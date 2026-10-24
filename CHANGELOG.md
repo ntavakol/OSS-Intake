@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-24
+
+Red Hat family fix dates and an image build date fallback for projects without matching GitHub releases.
+
 ### Added
 - Red Hat family fix dates (RHEL, UBI) from the RHSA advisories Trivy reports, dated from Red Hat's CSAF
   documents. Amazon Linux gets its own coverage row; Trivy reports no ALAS IDs, so it stays unknown.

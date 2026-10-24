@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oss-intake"
-version = "0.1.1"
+version = "0.1.2"
 description = "Assess third-party open source software before adoption: known vulnerabilities, release lag and project health."
 readme = "README.md"
 license = { text = "Apache-2.0" }
