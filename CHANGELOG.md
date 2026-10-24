@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Debian fixes that shipped without a DSA or DLA are dated from the point release that included the exact fixed
+  version, read from the suite's ChangeLog on deb.debian.org. Fixes still in proposed-updates stay undated, with a
+  note. On Nextcloud 31.0.9 (Debian 13) most undated Debian fixes were of this kind.
+- Debian findings are also matched to an advisory by exact fixed version when the scanner reports no advisory ID,
+  or the advisory does not list that CVE.
+
 ## [0.1.4] - 2026-10-24
 
 Alpine fix dates, and a version comparison fix that affected every distro image.

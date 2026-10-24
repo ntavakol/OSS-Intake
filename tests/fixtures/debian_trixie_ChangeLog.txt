@@ -1,0 +1,21 @@
+=========================================================================
+[Date: Sat, 19 Sep 2026 10:00:00 -0000] [ftpmaster: Archive Administrator]
+Accepted:
+synthpending (3.0-1+deb13u1) trixie; urgency=medium
+
+  * Fix CVE-2099-3003.
+
+=========================================
+Sat, 11 Jul 2026 - Debian 13.6 released
+=========================================
+synthweb (2.4.68-1~deb13u1) trixie; urgency=medium
+
+  * New upstream release, fixes CVE-2099-3001.
+  * Upstream notes: fix leak of released call (not a banner).
+
+=========================================
+Sat, 10 Jan 2026 - Debian 13.3 released
+=========================================
+synthglib (2.84.4-3~deb13u2) trixie; urgency=medium
+
+  * Fix CVE-2099-3002.

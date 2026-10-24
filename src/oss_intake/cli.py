@@ -16,6 +16,7 @@ from . import __version__, coverage, integrity, lag, likelihood, merge, report
 from .enrich import (
     advisories,
     alpine,
+    debian_releases,
     debian_tracker,
     epss,
     fixdates,
@@ -404,6 +405,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             fd_stats["debian_tracker"] = deb
             if deb.get("errors"):
                 warnings.append("Debian security tracker lists could not be loaded; Debian fix dates fall back to OSV")
+            dpr = debian_releases.enrich(net, findings)
+            fd_stats["debian_point_release"] = dpr
+            if dpr.get("errors"):
+                warnings.append("Debian point release ChangeLog could not be loaded; point-release fixes stay undated")
             rh = redhat.enrich(net, findings)
             fd_stats["redhat"] = rh
             if rh.get("errors"):

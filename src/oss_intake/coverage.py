@@ -14,7 +14,7 @@ GAP_REASON = {
     "amazon": "Trivy reports no ALAS advisory IDs for Amazon Linux; no dated source yet",
     "go-stdlib": "Go standard library is not on deps.dev",
     "binary": "runtime detected from a binary, no package registry to date it",
-    "debian": "fixes shipped in point releases have no advisory",
+    "debian": "fix not yet in a point release, or no advisory or point release entry matched",
 }
 _DISTRO = {"debian": "debian", "ubuntu": "ubuntu", "alpine": "alpine", "redhat": "redhat", "rhel": "redhat",
            "centos": "redhat", "rocky": "redhat", "almalinux": "redhat", "amazon": "amazon", "fedora": "fedora"}

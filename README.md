@@ -149,8 +149,10 @@ an older branch is not counted for a newer one) and looks up when that version w
 
 Fix dates come from deps.dev for language packages, from Packagist for PHP Composer packages, falling back to the GitHub release date for Go modules
 hosted on GitHub that deps.dev does not index. For Debian packages they come from the Debian security advisory
-that shipped the fix (DSA or DLA, as reported by Trivy), dated from the Debian security tracker's advisory lists,
-with OSV as a fallback. Debian fixes released in point releases without an advisory stay unknown. For Ubuntu packages they come from the Ubuntu
+that shipped the fix (DSA or DLA, by the scanner's advisory ID or the exact fixed version), dated from the Debian
+security tracker's advisory lists, with OSV as a fallback. Fixes that shipped without an advisory are dated from the
+Debian point release (13.6 and so on) that included the fixed version, from the suite's ChangeLog; fixes still in
+proposed-updates stay unknown, with a note. For Ubuntu packages they come from the Ubuntu
 Security Notice (USN) that fixed the CVE in that release and source package at that version, found through OSV.
 For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy reports, dated from Red Hat's
 CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the

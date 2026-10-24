@@ -62,6 +62,9 @@ class FakeHttp(Http):
             return 200, (FIX / "debian_DSA_list.txt").read_text(encoding="utf-8")
         if url.endswith("/DLA/list"):
             return 200, (FIX / "debian_DLA_list.txt").read_text(encoding="utf-8")
+        if url.startswith("https://deb.debian.org/debian/dists/") and url.endswith("/ChangeLog"):
+            p = FIX / f"debian_{url.split('/')[-2]}_ChangeLog.txt"
+            return (200, p.read_text(encoding="utf-8")) if p.exists() else (404, "")
         raise AssertionError(f"unexpected GET (text) {url}")
 
     def post_json(self, url, body):

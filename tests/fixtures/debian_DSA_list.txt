@@ -1,3 +1,6 @@
 [15 Jan 2026] DSA-9500-1 othersynthetic - security update
 	{CVE-2099-2003}
 	[bookworm] - othersynthetic 2.0-1+deb12u1
+[26 Jan 2026] DSA-9600-1 synthmagick - security update
+	{CVE-2099-3010}
+	[trixie] - synthmagick 8:7.1.1.43+dfsg1-1+deb13u5

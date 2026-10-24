@@ -392,7 +392,7 @@ def test_debian_tracker_dates(fixtures):
     assert a.fix_published == parse_datetime("2026-02-03") and "DLA-9000-1" in a.fix_date_source
     assert b.fix_published == parse_datetime("2026-01-15")
     assert c.fix_published is None and stats["found"] == 2
-    assert sorted(stats["lists_loaded"]) == ["DLA:2", "DSA:1"]
+    assert sorted(stats["lists_loaded"]) == ["DLA:2", "DSA:2"]
 
 
 def test_coverage_by_ecosystem():
@@ -764,3 +764,45 @@ def test_local_image_export_error_suggests_remote(tmp_path):
                       "sha256:8e5b: not found'); sys.exit(1)")
     with pytest.raises(ScannerError, match="--image-src remote"):
         run([sys.executable, str(script)], 30)
+
+
+def test_debian_point_release_dates():
+    from oss_intake.enrich import debian_releases
+
+    from .conftest import FakeHttp
+
+    def deb(**kw):
+        return _f(os_release="debian 13.1", purl=f"pkg:deb/debian/{kw['package']}@{kw['installed']}", **kw)
+
+    web = deb(vuln_id="CVE-2099-3001", package="synthweb-bin", src_name="synthweb", installed="2.4.65-2",
+              fixed_versions=["2.4.68-1~deb13u1"])
+    glib = deb(vuln_id="CVE-2099-3002", package="synthglib", installed="2.84.4-3~deb13u1",
+               fixed_versions=["2.84.4-3~deb13u2"])
+    pend = deb(vuln_id="CVE-2099-3003", package="synthpending", installed="3.0-1", fixed_versions=["3.0-1+deb13u1"])
+    other = deb(vuln_id="CVE-2099-3004", package="nothere", installed="1.0-1", fixed_versions=["1.0-1+deb13u1"])
+    hdr = deb(vuln_id="CVE-2099-3005", package="linux-libc-dev", installed="6.1-1", fixed_versions=["6.2-1"],
+              excluded="kernel-headers")
+    old = _f(os_release="debian 12.9", purl="pkg:deb/debian/x@1.0-1", package="x", installed="1.0-1",
+             fixed_versions=["1.0-1+deb12u1"])
+    stats = debian_releases.enrich(FakeHttp(), [web, glib, pend, other, hdr, old])
+    assert web.fix_published == parse_datetime("2026-07-11") and web.fix_date_source == "point release Debian 13.6"
+    assert glib.fix_published == parse_datetime("2026-01-10")
+    assert pend.fix_published is None and "proposed-updates" in pend.note
+    assert other.fix_published is None and hdr.fix_published is None and old.fix_published is None
+    assert stats["found"] == 2 and stats["pending"] == 1 and stats["suites_loaded"] == ["trixie:3"]
+    assert debian_releases.codename_for("debian 13.1") == "trixie"
+    assert debian_releases.codename_for("ubuntu 24.04") is None
+
+
+def test_debian_tracker_matches_fixed_version_without_cve():
+    from oss_intake.enrich import debian_tracker
+
+    from .conftest import FakeHttp
+
+    f = _f(vuln_id="CVE-2099-3011", package="synthmagick-common", src_name="synthmagick", os_release="debian 13.1",
+           purl="pkg:deb/debian/synthmagick-common@8:7.1.1.43+dfsg1-1+deb13u4",
+           installed="8:7.1.1.43+dfsg1-1+deb13u4", fixed_versions=["8:7.1.1.43+dfsg1-1+deb13u5"])
+    stats = debian_tracker.enrich(FakeHttp(), [f])
+    assert f.fix_published == parse_datetime("2026-01-26")
+    assert f.fix_date_source == "advisory DSA-9600-1 (Debian tracker, by fixed version)"
+    assert stats["found_by_version"] == 1

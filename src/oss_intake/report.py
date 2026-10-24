@@ -166,7 +166,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
              f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
              "still the latest. Fix dates come from deps.dev and Packagist for language packages (GitHub release "
              "dates for Go "
-             "modules deps.dev lacks), from Debian advisories (DSA, DLA), Ubuntu Security Notices and Red Hat "
+             "modules deps.dev lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security "
+             "Notices and Red Hat "
              "advisories (RHSA), and Alpine aports commits. Amazon Linux and the Go standard library have no "
              "dated source yet "
              "and are counted as unknown; see the coverage table above.")]))
