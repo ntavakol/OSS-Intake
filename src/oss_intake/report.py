@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import html
 import json
 from pathlib import Path
 
@@ -91,6 +90,15 @@ def write_json(path: Path, a: dict, findings: list[Finding]) -> None:
 
 # ---------- Shared summary model used by Markdown and HTML ----------
 
+def lag_note(lag: dict) -> str:
+    return (f"A fix counts as existing before the release only if the fixed dependency version was published at "
+            f"least {lag['grace_days']} days before the project's release date. 'Unshipped' counts fixes public "
+            f"for {lag['unshipped_days']} days or more while the scanned release is still the latest. Fix dates "
+            "come from deps.dev and Packagist for language packages (GitHub release dates for Go modules deps.dev "
+            "lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security Notices and Red Hat "
+            "advisories (RHSA), and Alpine aports commits. Amazon Linux and the Go standard library have no dated "
+            "source yet and are counted as unknown; see the fix date coverage table.")
+
 def _v(x: object, suffix: str = "") -> str:
     return "n/a" if x is None or x == "" else f"{x}{suffix}"
 
@@ -160,17 +168,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
              cov_rows),
             ("p", "Release-lag numbers only count dated findings. Where coverage is low, the lag metrics and "
                   "the likelihood suggestion understate what the scanners found for that ecosystem.")]))
-    secs.append(("Release lag", [("table", ["Metric", "Value"], lag_rows), (
-        "p", f"A fix counts as existing before the release only if the fixed dependency version was "
-             f"published at least {lag['grace_days']} days before the project's release date. 'Unshipped' "
-             f"counts fixes public for {lag['unshipped_days']} days or more while the scanned release is "
-             "still the latest. Fix dates come from deps.dev and Packagist for language packages (GitHub release "
-             "dates for Go "
-             "modules deps.dev lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security "
-             "Notices and Red Hat "
-             "advisories (RHSA), and Alpine aports commits. Amazon Linux and the Go standard library have no "
-             "dated source yet "
-             "and are counted as unknown; see the coverage table above.")]))
+    secs.append(("Release lag", [("table", ["Metric", "Value"], lag_rows), ("p", lag_note(lag))]))
 
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))
                + (f" ({health['latest_release']['date'][:10]})" if health.get("latest_release") else "")],
@@ -242,10 +240,10 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     for f in ranked[:top]:
         before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
-        rows.append([f.vuln_id, f.severity, f.package, f.installed,
+        rows.append([f.vuln_id, f.severity, "n/a" if f.cvss is None else f"{f.cvss:.1f}", f.package, f.installed,
                      f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])
     if rows:
-        secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "Package", "Installed", "Fix",
+        secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "CVSS", "Package", "Installed", "Fix",
                                                                "Fix before release", "Days fix available"],
                                                      rows), ("p", "Full list: findings.csv")]))
     if a.get("warnings"):
@@ -294,41 +292,8 @@ def write_markdown(path: Path, a: dict, findings: list[Finding], top: int = 25) 
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-_CSS = """
-:root{--bg:#fff;--fg:#1b1f24;--muted:#57606a;--line:#d0d7de;--head:#f6f8fa;--accent:#0b5cad}
-@media (prefers-color-scheme: dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9da7b3;--line:#30363d;
---head:#161b22;--accent:#58a6ff}}
-body{background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
-margin:0 auto;max-width:1100px;padding:24px 16px}
-h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.15rem;margin:28px 0 8px;color:var(--accent)}
-p{color:var(--muted);max-width:80ch}.meta{color:var(--muted);font-size:.85rem}
-.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}
-th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
-th{background:var(--head)}td{font-variant-numeric:tabular-nums}
-"""
-
-
 def write_html(path: Path, a: dict, findings: list[Finding], top: int = 50) -> None:
-    e = html.escape
-    title = a["inputs"].get("image") or a["inputs"].get("repo") or "assessment"
-    parts = ["<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
-             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
-             f"<title>OSS intake: {e(title)}</title><style>{_CSS}</style></head><body>",
-             f"<h1>OSS intake assessment: {e(title)}</h1>",
-             f"<div class=\"meta\">Generated by oss-intake {e(a['tool']['version'])} on "
-             f"{e(a['generated_at'][:19])}Z</div>"]
-    for heading, blocks in summary_sections(a, findings, top):
-        parts.append(f"<h2>{e(heading)}</h2>")
-        for b in blocks:
-            if b[0] == "p":
-                parts.append(f"<p>{e(b[1])}</p>")
-            elif b[0] == "list":
-                parts.append("<ul>" + "".join(f"<li>{e(str(i))}</li>" for i in b[1]) + "</ul>")
-            else:
-                _, headers, rows = b
-                parts.append("<div class=\"wrap\"><table><thead><tr>"
-                             + "".join(f"<th>{e(h)}</th>" for h in headers) + "</tr></thead><tbody>")
-                parts += ["<tr>" + "".join(f"<td>{e(str(c))}</td>" for c in r) + "</tr>" for r in rows]
-                parts.append("</tbody></table></div>")
-    parts.append("</body></html>")
-    path.write_text("".join(parts), encoding="utf-8")
+    from . import report_html
+
+    lag = a["lag"]
+    report_html.write(path, a, findings, top, CAVEAT, HEURISTIC_NOTE, lag_note(lag))

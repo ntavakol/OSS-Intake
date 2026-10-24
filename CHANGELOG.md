@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- New HTML report layout: summary tiles, a severity bar, severity pills, and colour-coded values with fixed
+  thresholds (days a fix has been available, CVSS, EPSS, Scorecard, fix-date coverage, CI hygiene), light and
+  dark mode, and a print style. Still one self-contained file with no scripts.
+- The top findings table shows the CVSS v3 base score, in the HTML and Markdown reports.
+
 ## [0.1.5] - 2026-10-25
 
 Debian fixes without a security advisory are now dated. Nextcloud 31.0.9 (Debian 13): Debian fix date coverage
