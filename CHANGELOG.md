@@ -10,6 +10,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   branch that names the CVE, or the fixed version for a new upstream release. Rebuilds of the same version
   (`-r1` and up) need the CVE or exact version in the commit, otherwise they stay unknown.
 
+### Fixed
+- Package revisions were compared as part of the version, so Alpine `2.41-r9` sorted above `2.41.6-r0`
+  (and Debian `2.41-9` above `2.41.6-1`, RPM likewise), and real fixes were flagged as "no newer fix".
+  The upstream version is now compared first, then the revision.
+- Grype-only OS findings now keep the distro release and source package, so they can be dated.
+
 ## [0.1.3] - 2026-10-24
 
 Validated on six more images (UBI 9.6, python:3.13-slim, Superset 5.0.0, rocker/r-ver 4.5.1, Node-RED 4.1.0,

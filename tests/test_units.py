@@ -719,3 +719,34 @@ def test_alpine_aports_matching():
     assert stats["found"] == 2 and stats["packages"] == 4
     assert [c["path"] for c in h.calls].count("community/ghostpkg/APKBUILD") == 1  # tries community after main
     assert alpine.branch_for("alpine 3.22.2") == "3.22-stable" and alpine.branch_for("debian 12") is None
+
+
+def test_compare_package_revisions():
+    from oss_intake.versions import compare, nearest_fix
+
+    assert compare("2.41.6-r0", "2.41-r9") > 0  # Alpine: upstream version first, then -rN
+    assert compare("10.0_p1-r10", "10.0_p1-r7") > 0
+    assert compare("2.41.6-1", "2.41-9") > 0  # Debian revision
+    assert compare("10.42-1+deb12u1", "10.42-1") > 0
+    assert compare("2.41.6-1.el9", "2.41-9.el9_4") > 0  # RPM release
+    assert compare("2.41-10.el9", "2.41-9.el9") > 0
+    assert compare("1.2.3", "1.2.3-r0") == 0
+    assert nearest_fix("2.41-r9", ["2.41.6-r0", "2.41.6-r1"]) == "2.41.6-r0"
+
+
+def test_alpine_cve_match_needs_boundary():
+    from oss_intake.enrich.alpine import _matches
+
+    assert _matches("main/curl: patch CVE-2026-5545", {"CVE-2026-5545"}, "8.14.1", "3")
+    assert not _matches("main/curl: patch CVE-2026-55450", {"CVE-2026-5545"}, "8.14.1", "3")
+
+
+def test_grype_os_package_keeps_distro_and_source():
+    from oss_intake.scanners import grype
+
+    report = {"distro": {"name": "alpine", "version": "3.22.2"}, "matches": [{
+        "vulnerability": {"id": "CVE-2099-1", "severity": "High", "fix": {"state": "fixed", "versions": ["1.68.1-r0"]}},
+        "artifact": {"name": "nghttp2-libs", "version": "1.65.0-r0", "type": "apk",
+                     "purl": "pkg:apk/alpine/nghttp2-libs@1.65.0-r0", "upstreams": [{"name": "nghttp2"}]}}]}
+    (f,), _ = grype.parse(report)
+    assert f.os_release == "alpine 3.22.2" and f.src_name == "nghttp2"

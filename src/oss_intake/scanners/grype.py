@@ -44,6 +44,8 @@ def _best_cvss(entries: list[dict]) -> float | None:
 
 def parse(report: dict) -> tuple[list[Finding], dict]:
     findings: list[Finding] = []
+    distro = report.get("distro") or {}
+    os_release = f"{distro.get('name', '')} {distro.get('version', '')}".strip().lower() if distro.get("name") else ""
     for m in report.get("matches") or []:
         vuln = m.get("vulnerability") or {}
         art = m.get("artifact") or {}
@@ -82,6 +84,10 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
             title=(vuln.get("description") or "")[:200],
             sources={NAME},
         )
+        if f.pkg_type in ("apk", "deb", "rpm"):
+            f.os_release = os_release
+            upstreams = [u.get("name") for u in art.get("upstreams") or [] if isinstance(u, dict) and u.get("name")]
+            f.src_name = upstreams[0] if upstreams else ""
         f.source_severity[NAME] = f.severity
         findings.append(f)
     desc = report.get("descriptor") or {}

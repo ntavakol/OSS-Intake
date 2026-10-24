@@ -34,7 +34,7 @@ def _is_alpine(f: Finding) -> bool:
 
 
 def _matches(message: str, cve_ids: set[str], ver: str, rel: str) -> bool:
-    if any(c in message for c in cve_ids):
+    if any(re.search(rf"(?<![\w-]){re.escape(c)}(?!\d)", message) for c in cve_ids):
         return True
     if re.search(rf"(?<![\w.]){re.escape(ver)}-r{re.escape(rel)}(?![\w.])", message):
         return True

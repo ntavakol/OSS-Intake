@@ -55,7 +55,28 @@ def _tail_sign(rest: list[tuple[int, int, str]]) -> int:
     return 0
 
 
+# Package revision after the last hyphen: Alpine 2.41-r9, Debian 10.42-1+deb12u1, RPM 2.41-9.el9_4.
+# Compared after the upstream version, otherwise 2.41-r9 would read as 2.41.9 and sort above 2.41.6.
+_REVISION = re.compile(r"^(.+)-(r?\d+(?:[.+~_][0-9A-Za-z.+~_]*)?)$")
+
+
+def _split_revision(v: str) -> tuple[str, str]:
+    v = v.strip()
+    m = _REVISION.match(v)
+    return (m.group(1), m.group(2)) if m else (v, "")
+
+
 def compare(a: str, b: str) -> int:
+    (base_a, rev_a), (base_b, rev_b) = _split_revision(a), _split_revision(b)
+    if rev_a or rev_b:
+        c = _compare(base_a, base_b)
+        if c:
+            return c
+        return _compare(rev_a.lstrip("r") or "0", rev_b.lstrip("r") or "0")
+    return _compare(a, b)
+
+
+def _compare(a: str, b: str) -> int:
     ka, kb = _key(a), _key(b)
     for x, y in zip(ka, kb, strict=False):
         if x != y:
