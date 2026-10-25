@@ -117,8 +117,8 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--as-of` | Fix the assessment date for reproducible reports |
 | `--min-severity` | Drop findings below a severity |
 | `--formats` | Any of `csv,md,json,html` (default all) |
-| `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS) |
-| `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates` | Skip one enrichment source |
+| `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
+| `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
@@ -184,6 +184,15 @@ The summary also covers scope (scanner versions, database dates, hash verificati
 agreement between sources and any warnings. See [docs/validation.md](docs/validation.md) for checking the
 tool against a real public image.
 
+## Exploit availability and advisory conditions
+
+Each finding gets the strongest public exploit evidence found: known exploited (CISA KEV), weaponised (a
+Metasploit module or Nuclei template), public (Exploit-DB), proof of concept (GitHub repositories only, which
+are noisy and sometimes malicious), or none indexed. "None indexed" means none was found in those sources, not
+that none exists; when a source cannot be reached the finding is "not checked" instead. The `conditions`
+column quotes the advisory's own statement of when the finding applies (for example "only if the application
+uses XsltView"), word for word, so the assessor can check it against the deployment.
+
 ## Likelihood heuristic
 
 Off by default. With `--likelihood`, the first matching rule wins:
@@ -191,10 +200,12 @@ Off by default. With `--likelihood`, the first matching rule wins:
 | Level | Default rule |
 |---|---|
 | 5 Almost certain | A CISA KEV vulnerability has a fix the project has not shipped |
+| 4 Likely | A finding with an upstream fix has a ready-to-use exploit (Metasploit module or Nuclei template) |
 | 4 Likely | A finding with an upstream fix has an EPSS score of 0.5 or more |
 | 4 Likely | A critical fix existed before release, and the project has not released for 180 days, is archived or scores under 4 on Scorecard |
 | 4 Likely | A critical fix is unshipped and the project has not released for 180 days |
 | 3 Possible | A finding with an upstream fix has an EPSS score of 0.1 or more |
+| 3 Possible | A finding with an upstream fix has a published exploit (Exploit-DB) |
 | 3 Possible | A critical fix, or 5 or more high fixes, existed before release |
 | 3 Possible | A critical fix, or 10 or more high fixes, are unshipped |
 | 2 Unlikely | Any high or critical finding has an upstream fix |

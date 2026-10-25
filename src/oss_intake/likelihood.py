@@ -23,6 +23,9 @@ DEFAULT_CONFIG = {
     "rules": [
         {"level": 5, "reason": "A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped",
          "all": [{"metric": "kev_with_fix", "op": ">=", "value": 1}]},
+        {"level": 4, "reason": "A finding with an upstream fix has a ready-to-use public exploit "
+                               "(Metasploit module or Nuclei template)",
+         "all": [{"metric": "weaponised_with_fix", "op": ">=", "value": 1}]},
         {"level": 4, "reason": "A finding with an upstream fix has a high predicted exploitation probability "
                                "(EPSS 0.5 or more)",
          "all": [{"metric": "max_epss_with_fix", "op": ">=", "value": 0.5}]},
@@ -38,6 +41,8 @@ DEFAULT_CONFIG = {
         {"level": 3, "reason": "A finding with an upstream fix has a notable predicted exploitation probability "
                                "(EPSS 0.1 or more)",
          "all": [{"metric": "max_epss_with_fix", "op": ">=", "value": 0.1}]},
+        {"level": 3, "reason": "A finding with an upstream fix has a published exploit (Exploit-DB)",
+         "all": [{"metric": "public_exploit_with_fix", "op": ">=", "value": 1}]},
         {"level": 3, "reason": "Critical, or several high, fixes were available before release and not shipped",
          "any": [{"metric": "critical_fix_at_release", "op": ">=", "value": 1},
                  {"metric": "high_fix_at_release", "op": ">=", "value": 5}]},
@@ -90,6 +95,8 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "critical_with_fix": sev_fix.get("CRITICAL", 0),
         "high_with_fix": sev_fix.get("HIGH", 0),
         "kev_with_fix": lag.get("kev_with_fix", 0),
+        "weaponised_with_fix": lag.get("weaponised_with_fix") if lag.get("exploits_checked") else None,
+        "public_exploit_with_fix": lag.get("public_exploit_with_fix") if lag.get("exploits_checked") else None,
         "max_epss_with_fix": lag.get("max_epss_with_fix"),
         "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None else None,
         "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else None,

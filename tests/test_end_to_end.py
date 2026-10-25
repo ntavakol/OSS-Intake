@@ -56,6 +56,12 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
     assert by_id["CVE-2099-0001"]["fix_date_source"] == "deps.dev"
     assert by_id["CVE-2099-0004"]["title"].startswith("'=")  # formula injection neutralised
     assert "triage_reachable" in rows[0]
+    assert by_id["CVE-2099-0002"]["exploit_level"] == "weaponised"
+    assert by_id["CVE-2099-0003"]["exploit_level"] == "kev"
+    assert a["exploits"]["sources"] == {"metasploit": 1, "nuclei": 1, "exploit-db": 1}
+    assert a["lag"]["exploits_checked"] is True
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "weaponised" in html
 
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "version matching, not proof of exploitability" in md

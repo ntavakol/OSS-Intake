@@ -63,7 +63,8 @@ def flag_no_newer_fix(findings: list[Finding]) -> int:
 
 def _brief(f: Finding) -> dict:
     return {"id": f.vuln_id, "package": f.package, "severity": f.severity, "epss": f.epss,
-            "sources": sorted(f.sources), "pkg_type": f.pkg_type}
+            "sources": sorted(f.sources), "pkg_type": f.pkg_type, "exploit_level": f.exploit_level,
+            "exploit_refs": f.exploit_refs[:3]}
 
 
 def compute(findings: list[Finding], release_date: datetime | None, as_of: datetime,
@@ -140,4 +141,10 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
                                                         key=lambda f: -f.epss)[:3]],
         "max_epss_with_fix": max((f.epss for f in with_fix if f.epss is not None), default=None),
         "epss_scored": sum(1 for f in findings if f.epss is not None),
+        "exploits_checked": any(f.exploit_level for f in findings),
+        "exploit_with_fix_by_level": {lvl: sum(1 for f in with_fix if f.exploit_level == lvl)
+                                      for lvl in ("kev", "weaponised", "public", "poc", "none", "")},
+        "weaponised_with_fix": sum(1 for f in with_fix if f.exploit_level in ("kev", "weaponised")),
+        "public_exploit_with_fix": sum(1 for f in with_fix if f.exploit_level in ("kev", "weaponised", "public")),
+        "weaponised_findings": [_brief(f) for f in with_fix if f.exploit_level == "weaponised"][:5],
     }

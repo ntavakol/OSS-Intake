@@ -12,13 +12,14 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, coverage, integrity, lag, likelihood, merge, report
+from . import __version__, conditions, coverage, integrity, lag, likelihood, merge, report
 from .enrich import (
     advisories,
     alpine,
     debian_releases,
     debian_tracker,
     epss,
+    exploits,
     fixdates,
     github_releases,
     golang_stdlib,
@@ -168,6 +169,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-fix-dates", action="store_true", help="skip deps.dev fix date lookups")
     s.add_argument("--no-kev", action="store_true", help="skip the CISA KEV catalogue")
     s.add_argument("--no-epss", action="store_true", help="skip FIRST EPSS exploit probability scores")
+    s.add_argument("--no-exploits", action="store_true",
+                   help="skip public exploit availability (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept)")
     s.add_argument("--no-workflows", action="store_true",
                    help="skip the audit of the project's GitHub Actions workflows")
     s.add_argument("--no-scorecard", action="store_true", help="skip OpenSSF Scorecard")
@@ -329,6 +332,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                                 "Trivy and Grype cover OS packages")
 
     findings = merge.merge(*groups)
+    for f in findings:
+        f.conditions = conditions.extract(f.description)
     findings = [f for f in findings if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     n_label = lag.flag_label_matches(findings)
     if not args.include_kernel_headers:
@@ -398,6 +403,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     fd_stats: dict = {}
     kev_info: dict = {"status": "skipped"}
     epss_info: dict = {"status": "skipped"}
+    exploit_info: dict = {"status": "skipped"}
     if net and findings:
         if not args.no_fix_dates:
             fd_stats = fixdates.enrich(net, findings)
@@ -464,6 +470,14 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             except HttpError as exc:
                 kev_info = {"status": "error", "note": str(exc)}
                 warnings.append(f"CISA KEV catalogue unavailable: {exc}")
+        if not args.no_exploits:
+            exploit_info = exploits.enrich(net, findings)
+            if exploit_info["failed"]:
+                warnings.append("Exploit sources could not be loaded: " + ", ".join(exploit_info["failed"])
+                                + "; exploit levels are partial")
+            if exploit_info["poc_skipped"]:
+                warnings.append(f"Proof-of-concept lookups capped or failed for {exploit_info['poc_skipped']} "
+                                "finding(s); their exploit level is 'not checked'")
         if not args.no_epss:
             epss_info = {"status": "ok", **epss.enrich(net, findings)}
             if epss_info["errors"]:
@@ -488,6 +502,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "fix_dates": fd_stats,
         "kev": kev_info,
         "epss": epss_info,
+        "exploits": exploit_info,
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),
         "health": health,

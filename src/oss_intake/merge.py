@@ -68,6 +68,8 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             cur.purl = cur.purl or f.purl
             _add_target(cur, f.target)
             cur.title = cur.title or f.title
+            if len(f.description) > len(cur.description):
+                cur.description = f.description
             cur.url = cur.url or f.url
     out = list(merged.values())
     out.sort(key=lambda x: (-SEVERITY_ORDER[x.severity], -(x.cvss or 0), x.package, x.vuln_id))

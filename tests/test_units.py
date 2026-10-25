@@ -956,3 +956,46 @@ def test_merge_prefers_nested_jar_path():
     (m2,) = merge.merge([t], [g])  # nested first: outer is not added
     assert m2.target == "opt/app/app.jar/BOOT-INF/lib/lib-1.0.jar"
     assert not merge._inside("/opt/app/app.jar", "opt/app/app.jar2")
+
+
+def test_exploit_levels():
+    from oss_intake.enrich import exploits
+
+    from .conftest import FakeHttp
+
+    def f(cve, **kw):
+        return _f(vuln_id=cve, purl=f"pkg:maven/x/{cve.lower()}@1", **kw)
+
+    kev = f("CVE-2099-0003", kev=True)
+    msf = f("CVE-2099-0002")
+    nuc = _f(vuln_id="GHSA-aaaa", aliases={"CVE-2099-0005"}, purl="pkg:maven/x/n@1")  # matched through alias
+    edb = f("CVE-2099-0006")
+    poc = f("CVE-2099-0004")  # only a payload references it in Metasploit, so it falls through to PoCs
+    none = f("CVE-2099-0007")
+    ghsa_only = _f(vuln_id="GHSA-bbbb", purl="pkg:maven/x/g@1")
+    info = exploits.enrich(FakeHttp(), [kev, msf, nuc, edb, poc, none, ghsa_only])
+    assert [x.exploit_level for x in (kev, msf, nuc, edb, poc, none, ghsa_only)] == \
+        ["kev", "weaponised", "weaponised", "public", "poc", "none", ""]
+    assert msf.exploit_refs == ["metasploit:exploit/multi/http/synthetic_rce"]
+    assert edb.exploit_refs == ["exploit-db:90001 (verified)"]
+    assert poc.exploit_refs == ["github:2 proof-of-concept repositories"]  # the fork is not counted
+    assert info["failed"] == [] and info["sources"] == {"metasploit": 1, "nuclei": 1, "exploit-db": 1}
+
+    failing = FakeHttp(fail_hosts=("gitlab.com",))
+    other = f("CVE-2099-0007")
+    info = exploits.enrich(failing, [other])
+    assert info["failed"] == ["exploit-db"] and other.exploit_level == ""  # not "none" when a source failed
+
+
+def test_conditions_extract():
+    from oss_intake.conditions import extract
+
+    spring = ("Use of XsltView in a Spring MVC application can result in SSRF and RCE attack if:\n\n"
+              "* the application uses XsltView\n* has a \"/**\" mapping that results in view rendering\n"
+              "* does not explicitly specify the view name\n\nAffected Spring Products and Versions: 7.0.0 - 7.0.8.")
+    assert extract(spring) == ("Use of XsltView in a Spring MVC application can result in SSRF and RCE attack if: "
+                               "- the application uses XsltView - has a \"/**\" mapping that results in view "
+                               "rendering - does not explicitly specify the view name")
+    assert extract("A heap overflow in parse_foo allows remote attackers to cause a denial of service.") == ""
+    saml = "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login. Upgrade to 6.5.11."
+    assert extract(saml) == "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login."

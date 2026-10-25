@@ -144,8 +144,13 @@ def _tiles(a: dict) -> str:
                       Raw(f'{_e(str(sc.get("score")))}<span class="of">/10</span>'),
                       _plural(len(sc.get("low_checks") or []), "check") + " scoring 0 to 3"))
     kev = lag["kev_with_fix"]
-    sub = f"max EPSS {lag['max_epss_with_fix']:.3f}" if lag.get("max_epss_with_fix") is not None else "with a fix"
-    tiles.append(("r" if kev else "g", "CISA KEV", str(kev), sub))
+    parts = []
+    if lag.get("exploits_checked"):
+        parts.append(f"weaponised {lag['exploit_with_fix_by_level']['weaponised']}")
+    if lag.get("max_epss_with_fix") is not None:
+        parts.append(f"max EPSS {lag['max_epss_with_fix']:.3f}")
+    weap = lag.get("exploit_with_fix_by_level", {}).get("weaponised", 0) if lag.get("exploits_checked") else 0
+    tiles.append(("r" if kev else "a" if weap else "g", "CISA KEV", str(kev), ", ".join(parts) or "with a fix"))
     out = ['<div class="tiles">']
     for tone, k, v, s in tiles:
         out.append(f'<div class="tile {tone}"><div class="k">{_e(k)}</div><div class="v">{_cell(v)}</div>'
@@ -206,7 +211,9 @@ def _likelihood(a: dict, heuristic_note: str) -> str:
     if lk.get("confidence_reasons"):
         body.append(_note("Treat a low level as 'not enough evidence', not 'low risk': "
                           + "; ".join(lk["confidence_reasons"]) + "."))
-    for key, label in (("kev_findings", "Known exploited (CISA KEV)"), ("top_epss_findings", "Highest EPSS")):
+    for key, label in (("kev_findings", "Known exploited (CISA KEV)"),
+                       ("weaponised_findings", "Ready-to-use exploit: Metasploit or Nuclei"),
+                       ("top_epss_findings", "Highest EPSS")):
         if lag.get(key):
             body.append(f'<div class="sub"><b>Driven by ({_e(label)}):</b></div><ul>'
                         + "".join(_driver_item(e) for e in lag[key]) + "</ul>")
@@ -255,6 +262,13 @@ def _lag(a: dict, lag_note: str) -> str:
                             "", html_value=True))
     rows.append(_metric("Known exploited (CISA KEV) with fix", lag["kev_with_fix"],
                         "r" if lag["kev_with_fix"] else "g"))
+    if lag.get("exploits_checked"):
+        by = lag["exploit_with_fix_by_level"]
+        rows.append(_metric("With fix and a ready-to-use exploit (Metasploit or Nuclei)", by["weaponised"],
+                            "r" if by["weaponised"] else "g"))
+        rows.append(_metric("With fix and a published exploit (Exploit-DB)", by["public"],
+                            "a" if by["public"] else "g"))
+        rows.append(_metric("With fix and only GitHub proofs of concept", by["poc"]))
     if lag.get("epss_scored"):
         m = lag.get("max_epss_with_fix")
         rows.append(_metric("Highest EPSS among findings with a fix (30-day exploitation probability)",
@@ -405,7 +419,9 @@ def _top(findings: list[Finding], top: int) -> str:
             v4 = '<small class="v4"> v4</small>' if f.cvss_version.startswith("4") else ""
             cvss = (Raw(f'<span title="{_e(tip)}">{f.cvss:.1f}</span>{v4}'), tone_cvss(f.cvss))
         days = f.days_fix_available
-        rows.append([(f.vuln_id, "mono nw"), _pill(f.severity), cvss, (f.package, "mono"), (f.installed, "mono"),
+        vid = Raw(_e(f.vuln_id) + (f' <span class="cond" title="{_e(f.conditions)}">if</span>' if f.conditions else ""))
+        rows.append([(vid, "mono nw"), _pill(f.severity), cvss, _exploit_pill(f), (f.package, "mono"),
+                     (f.installed, "mono"),
                      (f.fix_version_used or ";".join(f.fixed_versions) or "none", "mono"), before,
                      ("n/a" if days is None else days, tone_days(days))])
         rcls.append({"CRITICAL": "row-crit", "HIGH": "row-high", "MEDIUM": "row-med"}.get(f.severity, ""))
@@ -413,10 +429,29 @@ def _top(findings: list[Finding], top: int) -> str:
               '<span><span class="dot a"></span>30 to 89 days</span><span><span class="dot g"></span>under 30 days'
               '</span><span>Before release: "yes" means the fix existed but was not shipped</span>'
               '<span>CVSS: highest v3.x score across sources; hover for version and source; '
-              '"v4" marks a v4 score used because no v3 score exists</span></div>')
+              '"v4" marks a v4 score used because no v3 score exists</span>'
+              '<span><span class="cond">if</span> the advisory says it applies only under conditions; hover to read '
+              'them</span></div>')
     return _section(f"Top {len(rows)} findings", legend + _table(
-        ["ID", "Severity", "CVSS", "Package", "Installed", "Fix", "Before release", "Days available"],
-        rows, {2, 7}, rcls) + _note("Full list, with every CVSS score and EPSS value: findings.csv"))
+        ["ID", "Severity", "CVSS", "Exploit", "Package", "Installed", "Fix", "Before release", "Days available"],
+        rows, {2, 8}, rcls) + _note("Exploit: the strongest public evidence found. Weaponised = a Metasploit module "
+                                    "or Nuclei template; public = Exploit-DB; proof of concept = GitHub repositories "
+                                    "only (noisy, some fake or malicious). 'None indexed' means none was found in "
+                                    "these sources, not that none exists.")
+        + _note("Full list, with every CVSS score, EPSS value, exploit reference and advisory condition: "
+                "findings.csv"), "top")
+
+
+_EXPLOIT_PILL = {"kev": ("p-crit", "KEV"), "weaponised": ("p-high", "weaponised"), "public": ("p-med", "public"),
+                 "poc": ("p-unk", "PoC only")}
+
+
+def _exploit_pill(f: Finding) -> object:
+    if f.exploit_level in _EXPLOIT_PILL:
+        cls, text = _EXPLOIT_PILL[f.exploit_level]
+        tip = "; ".join(f.exploit_refs[:4])
+        return Raw(f'<span class="pill {cls}" title="{_e(tip)}">{_e(text)}</span>')
+    return ("none indexed" if f.exploit_level == "none" else "not checked", "muted")
 
 
 def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str,
@@ -489,7 +524,10 @@ letter-spacing:.03em;white-space:nowrap}
 .p-unk{background:var(--grey-bg);color:var(--grey);border:1px solid var(--grey)}
 td.c,span.c{color:var(--crit);font-weight:700}td.r,span.r{color:var(--red);font-weight:600}
 td.a,span.a{color:var(--amber);font-weight:600}td.g,span.g{color:var(--green);font-weight:600}
-td.muted{color:var(--muted)}small.v4{font-size:.7em;font-weight:600;color:var(--muted)}
+td.muted{color:var(--muted);font-size:.85em}
+section.top th{white-space:normal;vertical-align:bottom}section.top th,section.top td{padding:7px 8px}
+.cond{display:inline-block;margin-left:4px;padding:0 5px;border:1px solid var(--line);border-radius:4px;
+font-size:.72em;color:var(--muted);font-family:system-ui,sans-serif;cursor:help}small.v4{font-size:.7em;font-weight:600;color:var(--muted)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
 .dot.c{background:var(--crit)}.dot.r{background:var(--red)}.dot.a{background:var(--amber)}
 .dot.g{background:var(--green)}.dot.n{background:var(--grey)}

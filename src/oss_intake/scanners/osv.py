@@ -125,6 +125,7 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 pkg_type=purl[4:].split("/", 1)[0],
                 aliases=set(v.get("aliases") or []),
                 title=(v.get("summary") or "")[:200],
+                description=v.get("details") or "",
                 url=f"https://osv.dev/vulnerability/{vid}",
                 sources={NAME},
             )

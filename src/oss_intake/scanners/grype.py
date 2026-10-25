@@ -106,6 +106,7 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
             vendor_ids=[a["id"] for a in vuln.get("advisories") or [] if isinstance(a, dict) and a.get("id")],
             url=vuln.get("dataSource", "") or "",
             title=(vuln.get("description") or "")[:200],
+            description=vuln.get("description") or "",
             sources={NAME},
         )
         if f.pkg_type in ("apk", "deb", "rpm"):

@@ -21,26 +21,15 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
-- Vendor rating beside the aggregator score: show the vendor's own severity or CVSS (the CNA score in NVD
-  records, vendor entries in GHSA and OSV) next to the highest score. On ShinyProxy 3.2.4 four Spring
-  "criticals" (GHSA 9.8) were rated Medium or Low by Spring; showing both would have flagged them.
+- Vendor rating beside the aggregator score: only where a structured vendor rating exists. Checked on
+  CVE-2026-47884: NVD carries only a CISA-ADP 9.8, not Spring's own Medium, which exists only on spring.io. OS
+  packages already use the distro's rating through Trivy. Low value until a general source appears.
 - Go reachability: run `govulncheck -mode=binary` (an external executable, like the scanners) on Go binaries
   found in the image, and record whether each Go finding's vulnerable symbol is reachable. Real evidence for
   "not reachable", for Go only (for example gosu in official Docker images).
-- Advisory preconditions: show the advisory's own "affected only if" text verbatim beside the finding, with a
-  link, without interpreting it (Spring advisories state these explicitly).
-- Triage grouping in the report, once the above exist: act now (KEV or weaponised exploit), check the
+- Triage grouping in the report, building on exploit levels, advisory conditions and govulncheck: act now (KEV or weaponised exploit), check the
   precondition (vendor rates lower, or a feature must be in use), probably noise (evidence of no reachability),
   each with its reasons. The tool never concludes "no risk" without evidence such as govulncheck.
-- Exploit availability per finding, beside CVSS and EPSS: report the strongest evidence found, as a level with an
-  "as of" date: in CISA KEV > Metasploit module or Nuclei template (weaponised) > Exploit-DB entry > GitHub
-  proof of concept only > none indexed. Sources that need no key and can be fetched in bulk: Metasploit's
-  modules metadata file (CVE references per module), the nuclei-templates repository, Exploit-DB's CSV (CVE
-  column), and the nomi-sec PoC-in-GitHub index. Optional with a token: VulnCheck KEV and XDB (validated
-  proofs of concept). GitHub proofs of concept are noisy (fake, sometimes malicious), so they rank lowest.
-  Wording must say that "none indexed" is not evidence that no exploit exists. Decide whether weaponised
-  levels feed the likelihood rules (for example Metasploit or Nuclei on a fixable finding gives level 4).
-  Probe each source's current file format before building.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;

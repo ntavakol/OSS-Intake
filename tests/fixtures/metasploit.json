@@ -1,0 +1,6 @@
+{
+  "exploit_multi_http_synthetic_rce": {"name": "Synthetic RCE", "fullname": "exploit/multi/http/synthetic_rce",
+    "type": "exploit", "references": ["CVE-2099-0002", "URL-https://example.invalid"]},
+  "payload_linux_x64_shell": {"name": "Shell", "fullname": "payload/linux/x64/shell", "type": "payload",
+    "references": ["CVE-2099-0004"]}
+}

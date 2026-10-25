@@ -23,6 +23,7 @@ CSV_FIELDS = [
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
+    "exploit_level", "exploit_refs", "conditions",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
 ]
 
@@ -52,6 +53,9 @@ def finding_row(f: Finding) -> dict:
         "sources": ";".join(sorted(f.sources)),
         "source_severity": ";".join(f"{k}:{v}" for k, v in sorted(f.source_severity.items())),
         "target": f.target,
+        "exploit_level": f.exploit_level,
+        "exploit_refs": ";".join(f.exploit_refs),
+        "conditions": f.conditions,
         "title": f.title,
         "url": f.url,
         "note": f.note,
@@ -113,6 +117,18 @@ def cvss_text(f: Finding) -> str:
 CVSS_NOTE = ("CVSS: the highest v3.x base score any source reported, with its version and source database; a v4 "
              "score is shown only when no source has a v3 score. Sources can disagree, and a distro's severity "
              "rating can differ from an upstream CVSS score.")
+
+
+EXPLOIT_LABEL = {"kev": "known exploited", "weaponised": "weaponised", "public": "public exploit",
+                 "poc": "proof of concept", "none": "none indexed", "": "not checked"}
+EXPLOIT_NOTE = ("Exploit: the strongest public evidence found. Known exploited = CISA KEV; weaponised = a Metasploit "
+                "module or Nuclei template; public exploit = Exploit-DB; proof of concept = GitHub repositories only "
+                "(noisy, some fake or malicious). 'None indexed' means none was found in these sources, not that "
+                "none exists.")
+
+
+def exploit_text(f: Finding) -> str:
+    return EXPLOIT_LABEL.get(f.exploit_level, f.exploit_level)
 
 
 def lag_note(lag: dict) -> str:
@@ -180,6 +196,11 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
+    if lag.get("exploits_checked"):
+        by = lag["exploit_with_fix_by_level"]
+        lag_rows.append(["Findings with a fix and a ready-to-use exploit (Metasploit or Nuclei)", by["weaponised"]])
+        lag_rows.append(["Findings with a fix and a published exploit (Exploit-DB)", by["public"]])
+        lag_rows.append(["Findings with a fix and only GitHub proofs of concept", by["poc"]])
     if lag.get("epss_scored"):
         lag_rows.append(["Highest EPSS among findings with a fix (30-day exploitation probability)",
                          f"{lag['max_epss_with_fix']:.3f}" if lag.get("max_epss_with_fix") is not None else "n/a"])
@@ -266,12 +287,14 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     for f in ranked[:top]:
         before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
-        rows.append([f.vuln_id, f.severity, cvss_text(f), f.package, f.installed,
+        rows.append([f.vuln_id, f.severity, cvss_text(f), exploit_text(f), f.package, f.installed,
                      f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])
     if rows:
-        secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "CVSS", "Package", "Installed", "Fix",
-                                                               "Fix before release", "Days fix available"],
-                                                     rows), ("p", CVSS_NOTE), ("p", "Full list: findings.csv")]))
+        secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "CVSS", "Exploit", "Package",
+                                                               "Installed", "Fix", "Fix before release",
+                                                               "Days fix available"],
+                                                     rows), ("p", CVSS_NOTE), ("p", EXPLOIT_NOTE),
+                                                    ("p", "Full list, with each advisory's conditions: findings.csv")]))
     if a.get("warnings"):
         secs.append(("Warnings", [("list", a["warnings"])]))
     return secs

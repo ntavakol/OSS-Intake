@@ -63,6 +63,11 @@ class FakeHttp(Http):
             return 200, {**data, "data": [r for r in data["data"] if r["cve"] in wanted]}
         if "known_exploited_vulnerabilities" in url:
             return 200, load("kev.json")
+        if url.endswith("/db/modules_metadata_base.json"):
+            return 200, load("metasploit.json")
+        if url.startswith("https://raw.githubusercontent.com/nomi-sec/PoC-in-GitHub/"):
+            p = FIX / "poc" / url.rsplit("/", 1)[1]
+            return (200, json.loads(p.read_text(encoding="utf-8"))) if p.exists() else (404, None)
         raise AssertionError(f"unexpected GET {url}")
 
     def get_text(self, url):
@@ -71,6 +76,10 @@ class FakeHttp(Http):
             return 200, (FIX / "debian_DSA_list.txt").read_text(encoding="utf-8")
         if url.endswith("/DLA/list"):
             return 200, (FIX / "debian_DLA_list.txt").read_text(encoding="utf-8")
+        if url.endswith("/nuclei-templates/main/cves.json"):
+            return 200, (FIX / "nuclei_cves.json").read_text(encoding="utf-8")
+        if url.endswith("/files_exploits.csv"):
+            return 200, (FIX / "exploitdb.csv").read_text(encoding="utf-8")
         if url == "https://go.dev/doc/devel/release":
             return 200, (FIX / "go_release.html").read_text(encoding="utf-8")
         if url.startswith("https://deb.debian.org/debian/dists/") and url.endswith("/ChangeLog"):

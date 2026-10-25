@@ -103,6 +103,10 @@ class Finding:
     source_severity: dict[str, str] = field(default_factory=dict)
     title: str = ""
     url: str = ""
+    description: str = ""  # full advisory text, for the conditions excerpt
+    conditions: str = ""  # the advisory's own "affected only if" sentences, verbatim
+    exploit_level: str = ""  # kev | weaponised | public | poc | none | "" (not checked)
+    exploit_refs: list[str] = field(default_factory=list)
     # Enrichment
     fix_version_used: str | None = None
     fix_published: datetime | None = None
