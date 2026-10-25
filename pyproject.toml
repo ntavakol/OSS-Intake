@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oss-intake"
-version = "0.1.9"
+version = "0.2.0"
 description = "Assess third-party open source software before adoption: known vulnerabilities, release lag and project health."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [{ name = "oss-intake contributors" }]
 keywords = ["security", "sbom", "vulnerability", "trivy", "grype", "osv", "supply-chain"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: Apache Software License",

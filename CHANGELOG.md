@@ -5,6 +5,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
+From a vulnerability list to a triaged assessment. Findings are grouped into a suggested reading order (Act
+now, Review, Check conditions, Routine, Set aside) with reasons; JARs, binaries and lockfiles can be assessed
+without an image; known malicious packages are flagged; and Go binaries can be checked for reachability with
+govulncheck. Validated on log4j-core 2.14.1 (Log4Shell in Act now), flatmap-stream 0.1.1 (malicious) and
+redis 7.4.1 (121 of 124 Go standard library findings not reachable).
+
 ### Added
 - `--path`: assess a JAR, WAR, EAR or binary (Trivy `rootfs`, Grype `dir:`), a folder of built artifacts, a
   dependency lockfile the scanners understand (Trivy `fs`), or an R `renv.lock`, read by oss-intake and checked
