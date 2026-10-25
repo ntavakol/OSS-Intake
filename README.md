@@ -49,8 +49,12 @@ CISA KEV membership).
 Python 3.10 or later on Windows, macOS or Linux. No administrator rights are needed.
 
 ```bash
-pipx install git+https://github.com/ntavakol/OSS-Intake
+pipx install oss-intake
 ```
+
+Releases are published to PyPI from GitHub Actions through trusted publishing, so PyPI shows each file's
+provenance (which workflow in this repository built it). Each GitHub release also carries a Sigstore signature
+bundle (`.sigstore.json`) for every file, verifiable with [sigstore-python](https://github.com/sigstore/sigstore-python).
 
 Windows PowerShell without pipx:
 
@@ -58,7 +62,7 @@ Windows PowerShell without pipx:
 py -m pip install --user pipx
 py -m pipx ensurepath
 # open a new terminal, then
-pipx install git+https://github.com/ntavakol/OSS-Intake
+pipx install oss-intake
 ```
 
 If `oss-intake` is "not recognized" after `pip install --user`, the per-user Scripts folder is not on PATH.

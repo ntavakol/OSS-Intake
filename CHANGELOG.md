@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - The repository runs OpenSSF Scorecard on itself (published results and a README badge) and CodeQL static
   analysis, both with every action pinned by commit SHA and least-privilege permissions.
+- Release workflow: a published GitHub release builds the package with hash-pinned tools, publishes it to PyPI
+  through trusted publishing (no stored token, with provenance attestations), and attaches Sigstore signatures
+  to the release. `pipx install oss-intake` from the first release that runs it.
+
+### Changed
+- Package metadata: SPDX licence expression, project links, author. Builds no longer show setuptools
+  deprecation warnings.
 
 ## [0.2.0] - 2026-10-25
 
