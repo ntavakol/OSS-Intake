@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-25
+
+First release published to PyPI (`pipx install oss-intake`), built and signed in GitHub Actions. The repository
+now runs OpenSSF Scorecard and CodeQL on itself. No change to assessments.
+
 ### Added
 - The repository runs OpenSSF Scorecard on itself (published results and a README badge) and CodeQL static
   analysis, both with every action pinned by commit SHA and least-privilege permissions.
