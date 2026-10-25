@@ -1064,7 +1064,8 @@ def test_path_inputs(tmp_path, fixtures):
         import shutil
         shutil.rmtree(tmp)
 
-    purls, skipped = inputs.renv_purls(fixtures / "inputs" / "renv.lock")
+    # Not named renv.lock, so repository scanners (OpenSSF Scorecard) do not report its old shiny as ours.
+    purls, skipped = inputs.renv_purls(fixtures / "inputs" / "renv_fixture.json")
     assert purls == ["pkg:cran/jsonlite@1.8.7", "pkg:cran/shiny@1.8.0"]
     assert skipped == ["Biobase (Bioconductor)", "mypkg (GitHub)"]
 

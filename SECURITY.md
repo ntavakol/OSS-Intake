@@ -2,8 +2,9 @@
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately through GitHub: **Security > Report a vulnerability** on this
-repository (private vulnerability reporting). Do not open a public issue.
+Please report vulnerabilities privately through GitHub's private vulnerability reporting:
+<https://github.com/ntavakol/OSS-Intake/security/advisories/new> (**Security > Report a vulnerability** on this
+repository). Do not open a public issue or disclose the vulnerability publicly before a fix is released.
 
 Include the affected version, steps to reproduce and the impact you expect. You should get an
 acknowledgement within 7 days. Confirmed issues are fixed in a new release and credited in the advisory
