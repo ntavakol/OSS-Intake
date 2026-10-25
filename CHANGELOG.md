@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- `target` listed both the outer archive (Grype: `/opt/shinyproxy/shinyproxy.jar`) and the JAR inside it
+  (Trivy: `opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/...`); only the more specific path is kept now.
+
 ### Added
 - CVSS provenance: findings.csv has `cvss_version` and `cvss_source` (nvd, ghsa, redhat, debian...), the Markdown
   top findings show them next to the score, and the HTML report shows them on hover.

@@ -8,14 +8,28 @@ from .models import SEVERITY_ORDER, Finding, canonical_id
 SOURCE_PRIORITY = ["trivy", "grype", "osv"]
 
 
+def _norm(path: str) -> str:
+    return path.lstrip("/")
+
+
+def _inside(outer: str, inner: str) -> bool:
+    """True when inner is a path within outer, e.g. the JAR nested in shinyproxy.jar that Trivy reports
+    (opt/app.jar/BOOT-INF/lib/x.jar) versus the outer archive Grype reports (/opt/app.jar)."""
+    o, i = _norm(outer), _norm(inner)
+    return i.startswith(o) and len(i) > len(o) and i[len(o)] in "/:!"
+
+
 def _add_target(cur: Finding, target: str) -> None:
     """Keep every location a finding was seen in (one CVE in several binaries), ';'-separated.
-    Trivy writes paths without the leading slash, Grype with it; compare without."""
+    Paths are compared without a leading slash (Trivy omits it, Grype keeps it), and an outer archive is
+    dropped in favour of the more specific path inside it."""
     if not target:
         return
     have = [t for t in cur.target.split(";") if t] if cur.target else []
-    if target.lstrip("/") not in {t.lstrip("/") for t in have}:
-        cur.target = ";".join(have + [target])
+    if any(_norm(t) == _norm(target) or _inside(target, t) for t in have):
+        return  # already listed, or a more specific path inside it is
+    have = [t for t in have if not _inside(t, target)]
+    cur.target = ";".join(have + [target])
 
 
 def merge(*groups: list[Finding]) -> list[Finding]:

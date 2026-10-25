@@ -21,6 +21,17 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
+- Vendor rating beside the aggregator score: show the vendor's own severity or CVSS (the CNA score in NVD
+  records, vendor entries in GHSA and OSV) next to the highest score. On ShinyProxy 3.2.4 four Spring
+  "criticals" (GHSA 9.8) were rated Medium or Low by Spring; showing both would have flagged them.
+- Go reachability: run `govulncheck -mode=binary` (an external executable, like the scanners) on Go binaries
+  found in the image, and record whether each Go finding's vulnerable symbol is reachable. Real evidence for
+  "not reachable", for Go only (for example gosu in official Docker images).
+- Advisory preconditions: show the advisory's own "affected only if" text verbatim beside the finding, with a
+  link, without interpreting it (Spring advisories state these explicitly).
+- Triage grouping in the report, once the above exist: act now (KEV or weaponised exploit), check the
+  precondition (vendor rates lower, or a feature must be in use), probably noise (evidence of no reachability),
+  each with its reasons. The tool never concludes "no risk" without evidence such as govulncheck.
 - Exploit availability per finding, beside CVSS and EPSS: report the strongest evidence found, as a level with an
   "as of" date: in CISA KEV > Metasploit module or Nuclei template (weaponised) > Exploit-DB entry > GitHub
   proof of concept only > none indexed. Sources that need no key and can be fetched in bulk: Metasploit's

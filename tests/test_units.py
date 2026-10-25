@@ -942,3 +942,17 @@ def test_cvss_provenance_and_v4_fallback():
     b.vuln_id = gb.vuln_id = "CVE-2099-8002"
     (m,) = merge.merge([b], [gb])
     assert (m.cvss, m.cvss_version, m.cvss_source) == (5.3, "3.1", "nvd")
+
+
+def test_merge_prefers_nested_jar_path():
+    from oss_intake import merge
+
+    t = _f(vuln_id="CVE-2099-9001", package="org.x:lib", purl="pkg:maven/org.x/lib@1.0", installed="1.0",
+           target="opt/app/app.jar/BOOT-INF/lib/lib-1.0.jar", sources={"trivy"})
+    g = _f(vuln_id="CVE-2099-9001", package="org.x:lib", purl="pkg:maven/org.x/lib@1.0", installed="1.0",
+           target="/opt/app/app.jar", sources={"grype"})
+    (m,) = merge.merge([g], [t])  # outer first, nested second: nested replaces it
+    assert m.target == "opt/app/app.jar/BOOT-INF/lib/lib-1.0.jar"
+    (m2,) = merge.merge([t], [g])  # nested first: outer is not added
+    assert m2.target == "opt/app/app.jar/BOOT-INF/lib/lib-1.0.jar"
+    assert not merge._inside("/opt/app/app.jar", "opt/app/app.jar2")
