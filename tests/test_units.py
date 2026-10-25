@@ -1000,3 +1000,25 @@ def test_conditions_extract():
     assert extract("A heap overflow in parse_foo allows remote attackers to cause a denial of service.") == ""
     saml = "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login. Upgrade to 6.5.11."
     assert extract(saml) == "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login."
+
+
+def test_triage_groups():
+    from oss_intake import triage
+
+    cases = [
+        (_f(excluded="kernel-headers", kev=True), "aside"),  # evidence wins over everything
+        (_f(likely_fixed=True), "aside"),
+        (_f(kev=True, conditions="only if X"), "act"),
+        (_f(exploit_level="weaponised", exploit_refs=["metasploit:exploit/x"]), "act"),
+        (_f(exploit_level="public"), "review"),
+        (_f(epss=0.2, severity="LOW"), "review"),
+        (_f(conditions="vulnerable when using X", severity="CRITICAL"), "conditions"),
+        (_f(severity="CRITICAL", exploit_level="none"), "review"),
+        (_f(severity="HIGH", exploit_level="poc", epss=0.01), "routine"),
+    ]
+    for f, want in cases:
+        assert triage.classify(f)[0] == want, (want, f)
+    info = triage.apply([c[0] for c in cases])
+    assert info["groups"]["act"]["total"] == 2 and info["groups"]["aside"]["total"] == 2
+    ranked = sorted([c[0] for c in cases], key=triage.rank_key)
+    assert [f.triage_group for f in ranked][:2] == ["act", "act"] and ranked[-1].triage_group == "aside"

@@ -12,7 +12,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, conditions, coverage, integrity, lag, likelihood, merge, report
+from . import __version__, conditions, coverage, integrity, lag, likelihood, merge, report, triage
 from .enrich import (
     advisories,
     alpine,
@@ -486,6 +486,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.grace_days < 0 or args.unshipped_days < 0:
         raise UsageError("--grace-days and --unshipped-days must be zero or more")
     is_latest = health.get("scanned_is_latest") if not release_override else None
+    triage_info = triage.apply(findings)
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc)) if lk_cfg else None
 
@@ -503,6 +504,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "kev": kev_info,
         "epss": epss_info,
         "exploits": exploit_info,
+        "triage": triage_info,
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),
         "health": health,

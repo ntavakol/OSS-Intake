@@ -27,9 +27,6 @@ Items agreed for later versions, roughly in priority order.
 - Go reachability: run `govulncheck -mode=binary` (an external executable, like the scanners) on Go binaries
   found in the image, and record whether each Go finding's vulnerable symbol is reachable. Real evidence for
   "not reachable", for Go only (for example gosu in official Docker images).
-- Triage grouping in the report, building on exploit levels, advisory conditions and govulncheck: act now (KEV or weaponised exploit), check the
-  precondition (vendor rates lower, or a feature must be in use), probably noise (evidence of no reachability),
-  each with its reasons. The tool never concludes "no risk" without evidence such as govulncheck.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;

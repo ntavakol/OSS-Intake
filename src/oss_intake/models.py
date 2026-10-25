@@ -107,6 +107,8 @@ class Finding:
     conditions: str = ""  # the advisory's own "affected only if" sentences, verbatim
     exploit_level: str = ""  # kev | weaponised | public | poc | none | "" (not checked)
     exploit_refs: list[str] = field(default_factory=list)
+    triage_group: str = ""  # suggested reading order: act | review | conditions | routine | aside
+    triage_reason: str = ""
     # Enrichment
     fix_version_used: str | None = None
     fix_published: datetime | None = None

@@ -6,7 +6,8 @@ import csv
 import json
 from pathlib import Path
 
-from .models import SEVERITIES, SEVERITY_ORDER, Finding
+from .models import SEVERITIES, Finding
+from .triage import rank_key
 
 CAVEAT = (
     "Scanner results are version matching, not proof of exploitability. A finding means a component "
@@ -23,7 +24,7 @@ CSV_FIELDS = [
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
-    "exploit_level", "exploit_refs", "conditions",
+    "suggested_group", "suggested_reason", "exploit_level", "exploit_refs", "conditions",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
 ]
 
@@ -53,6 +54,8 @@ def finding_row(f: Finding) -> dict:
         "sources": ";".join(sorted(f.sources)),
         "source_severity": ";".join(f"{k}:{v}" for k, v in sorted(f.source_severity.items())),
         "target": f.target,
+        "suggested_group": triage_label(f.triage_group),
+        "suggested_reason": f.triage_reason,
         "exploit_level": f.exploit_level,
         "exploit_refs": ";".join(f.exploit_refs),
         "conditions": f.conditions,
@@ -128,6 +131,32 @@ EXPLOIT_NOTE = ("Exploit: the strongest public evidence found. Known exploited =
                 "findings.csv). 'None indexed' means none was found in these sources, not that none exists.")
 
 
+def triage_label(group: str) -> str:
+    from .triage import LABEL
+
+    return LABEL.get(group, group)
+
+
+TRIAGE_NOTE = ("A suggested reading order, not a risk rating. No group, 'Set aside' included, says a finding "
+               "carries no risk; 'Set aside' is used only where the tool has evidence. The assessor's decisions go "
+               "in the triage columns of "
+               "findings.csv.")
+
+
+def triage_section(a: dict) -> tuple[str, list] | None:
+    from .triage import LABEL, MEANING, ORDER
+
+    t = a.get("triage") or {}
+    if not t.get("groups"):
+        return None
+    rows = [[LABEL[g], t["groups"][g]["total"], t["groups"][g]["with_fix"], MEANING[g]] for g in ORDER]
+    blocks: list = [("table", ["Group", "Findings", "With fix", "Meaning"], rows), ("p", TRIAGE_NOTE)]
+    if not t.get("exploits_checked"):
+        blocks.append(("p", "Exploit sources were not checked (--no-exploits or --offline), so 'Act now' can only "
+                            "come from CISA KEV."))
+    return ("Suggested triage", blocks)
+
+
 def exploit_text(f: Finding) -> str:
     return EXPLOIT_LABEL.get(f.exploit_level, f.exploit_level)
 
@@ -172,6 +201,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     sev_rows.append(["Total", lag["total"], lag["with_fix"], lag["fix_available_at_release"]])
     secs.append(("Findings", [("table", ["Severity", "Findings", "Fix exists upstream",
                                          "Fix existed before release"], sev_rows)]))
+    tri = triage_section(a)
+    if tri:
+        secs.append(tri)
 
     lag_rows = [
         ["Findings with an upstream fix", lag["with_fix"]],
@@ -282,16 +314,15 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                  "Single-source findings deserve a closer look rather than automatic dismissal.")]))
 
     rows = []
-    ranked = sorted(findings, key=lambda f: (f.likely_fixed or bool(f.excluded), -SEVERITY_ORDER[f.severity],
-                                             not f.fix_available_at_release, not f.has_fix,
-                                             -(f.days_fix_available or 0), f.vuln_id))
+    ranked = sorted(findings, key=rank_key)
     for f in ranked[:top]:
         before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
-        rows.append([f.vuln_id, f.severity, cvss_text(f), exploit_text(f), f.package, f.installed,
+        rows.append([triage_label(f.triage_group), f.vuln_id, f.severity, cvss_text(f), exploit_text(f), f.package,
+                     f.installed,
                      f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])
     if rows:
-        secs.append((f"Top {len(rows)} findings", [("table", ["ID", "Severity", "CVSS", "Exploit", "Package",
+        secs.append((f"Top {len(rows)} findings", [("table", ["Group", "ID", "Severity", "CVSS", "Exploit", "Package",
                                                                "Installed", "Fix", "Fix before release",
                                                                "Days fix available"],
                                                      rows), ("p", CVSS_NOTE), ("p", EXPLOIT_NOTE),

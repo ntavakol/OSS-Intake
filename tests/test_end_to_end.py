@@ -62,6 +62,9 @@ def test_full_assessment(tmp_path, fixtures, fake_http, capsys):
     assert a["lag"]["exploits_checked"] is True
     html = (out / "report.html").read_text(encoding="utf-8")
     assert "weaponised" in html
+    assert by_id["CVE-2099-0003"]["suggested_group"] == "Act now"
+    assert a["triage"]["groups"]["act"]["total"] == 3
+    assert "## Suggested triage" in (out / "summary.md").read_text(encoding="utf-8")
 
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "version matching, not proof of exploitability" in md

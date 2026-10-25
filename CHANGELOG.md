@@ -5,6 +5,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Suggested triage: every finding gets a group and a one-line reason (`suggested_group`, `suggested_reason` in
+  findings.csv), and the reports open with a triage table. Act now: CISA KEV or a ready-to-use exploit. Review:
+  an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose advisory states no conditions. Check conditions:
+  the advisory says when it applies. Routine: none of these. Set aside: only with evidence (kernel header
+  package, or already fixed apart from a build label). Top findings are ordered by group. A reading order, not a
+  risk rating.
+
+### Changed
+- The HTML findings table shows severity and CVSS in one column, to fit the new Group column.
+
 ## [0.1.9] - 2026-10-25
 
 Public exploit availability and the advisory's own conditions for each finding. Checked against live
