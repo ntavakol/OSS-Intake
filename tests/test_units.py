@@ -975,10 +975,11 @@ def test_exploit_levels():
     ghsa_only = _f(vuln_id="GHSA-bbbb", purl="pkg:maven/x/g@1")
     info = exploits.enrich(FakeHttp(), [kev, msf, nuc, edb, poc, none, ghsa_only])
     assert [x.exploit_level for x in (kev, msf, nuc, edb, poc, none, ghsa_only)] == \
-        ["kev", "weaponised", "weaponised", "public", "poc", "none", ""]
+        ["kev", "weaponised", "weaponised", "public", "poc", "none", "nocve"]
     assert msf.exploit_refs == ["metasploit:exploit/multi/http/synthetic_rce"]
     assert edb.exploit_refs == ["exploit-db:90001 (verified)"]
-    assert poc.exploit_refs == ["github:2 proof-of-concept repositories"]  # the fork is not counted
+    assert poc.exploit_refs == ["github:someone/CVE-2099-0004 (5 stars)",
+                                "github:other/CVE-2099-0004 (0 stars)"]  # the fork is not listed
     assert info["failed"] == [] and info["sources"] == {"metasploit": 1, "nuclei": 1, "exploit-db": 1}
 
     failing = FakeHttp(fail_hosts=("gitlab.com",))

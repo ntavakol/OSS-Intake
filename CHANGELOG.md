@@ -11,7 +11,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   concept (GitHub repositories indexed by nomi-sec/PoC-in-GitHub, forks not counted), or none indexed. When a
   source cannot be loaded the level is "not checked", never "none". `exploit_level` and `exploit_refs` columns
   in findings.csv, an Exploit column in the reports, and `--no-exploits` to skip it. About 25 MB is downloaded
-  per scan; proof-of-concept files only for findings with no stronger evidence, capped at 300.
+  per scan; proof-of-concept files only for findings with no stronger evidence, capped at 300. Proof-of-concept
+  hits list the repositories (name and stars), because some are not exploits at all: on ShinyProxy the only
+  hit for CVE-2026-47884 was a rating-checker tool. Findings without a CVE ID are marked "no CVE ID".
 - Two default likelihood rules: a ready-to-use exploit (Metasploit or Nuclei) on a finding with a fix gives
   level 4; an Exploit-DB entry gives level 3. Proofs of concept alone do not change the likelihood.
 - Advisory conditions: the advisory's own "affected only if" sentences, quoted verbatim in a `conditions`

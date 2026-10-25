@@ -120,11 +120,12 @@ CVSS_NOTE = ("CVSS: the highest v3.x base score any source reported, with its ve
 
 
 EXPLOIT_LABEL = {"kev": "known exploited", "weaponised": "weaponised", "public": "public exploit",
-                 "poc": "proof of concept", "none": "none indexed", "": "not checked"}
+                 "poc": "proof of concept", "none": "none indexed", "nocve": "no CVE ID",
+                 "": "not checked"}
 EXPLOIT_NOTE = ("Exploit: the strongest public evidence found. Known exploited = CISA KEV; weaponised = a Metasploit "
                 "module or Nuclei template; public exploit = Exploit-DB; proof of concept = GitHub repositories only "
-                "(noisy, some fake or malicious). 'None indexed' means none was found in these sources, not that "
-                "none exists.")
+                "(noisy, some fake or malicious, and some are not exploits at all: check the repositories listed in "
+                "findings.csv). 'None indexed' means none was found in these sources, not that none exists.")
 
 
 def exploit_text(f: Finding) -> str:

@@ -143,7 +143,7 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
         "epss_scored": sum(1 for f in findings if f.epss is not None),
         "exploits_checked": any(f.exploit_level for f in findings),
         "exploit_with_fix_by_level": {lvl: sum(1 for f in with_fix if f.exploit_level == lvl)
-                                      for lvl in ("kev", "weaponised", "public", "poc", "none", "")},
+                                      for lvl in ("kev", "weaponised", "public", "poc", "none", "nocve", "")},
         "weaponised_with_fix": sum(1 for f in with_fix if f.exploit_level in ("kev", "weaponised")),
         "public_exploit_with_fix": sum(1 for f in with_fix if f.exploit_level in ("kev", "weaponised", "public")),
         "weaponised_findings": [_brief(f) for f in with_fix if f.exploit_level == "weaponised"][:5],

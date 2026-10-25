@@ -436,8 +436,9 @@ def _top(findings: list[Finding], top: int) -> str:
         ["ID", "Severity", "CVSS", "Exploit", "Package", "Installed", "Fix", "Before release", "Days available"],
         rows, {2, 8}, rcls) + _note("Exploit: the strongest public evidence found. Weaponised = a Metasploit module "
                                     "or Nuclei template; public = Exploit-DB; proof of concept = GitHub repositories "
-                                    "only (noisy, some fake or malicious). 'None indexed' means none was found in "
-                                    "these sources, not that none exists.")
+                                    "only (noisy: some are fake, malicious or not exploits at all, so open the "
+                                    "repositories listed on hover or in findings.csv). 'None indexed' means "
+                                    "none was found in these sources, not that none exists.")
         + _note("Full list, with every CVSS score, EPSS value, exploit reference and advisory condition: "
                 "findings.csv"), "top")
 
@@ -451,7 +452,8 @@ def _exploit_pill(f: Finding) -> object:
         cls, text = _EXPLOIT_PILL[f.exploit_level]
         tip = "; ".join(f.exploit_refs[:4])
         return Raw(f'<span class="pill {cls}" title="{_e(tip)}">{_e(text)}</span>')
-    return ("none indexed" if f.exploit_level == "none" else "not checked", "muted")
+    text = {"none": "none indexed", "nocve": "no CVE ID"}.get(f.exploit_level, "not checked")
+    return (text, "muted")
 
 
 def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str,
