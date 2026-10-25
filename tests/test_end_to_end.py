@@ -1,5 +1,6 @@
 import csv
 import json
+import sys
 
 import pytest
 
@@ -289,10 +290,11 @@ def test_malicious_package_marks_every_finding_on_it(tmp_path):
     assert a["likelihood"]["level"] == 5 and a["warnings"][0].startswith("MALICIOUS PACKAGE")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the stand-in govulncheck is a #! script, which Windows "
+                                                   "cannot run by path; the parsing is covered by unit tests")
 def test_reachability_on_path_dir(tmp_path, fixtures):
     import json as _json
     import stat
-    import sys
 
     app = tmp_path / "app"
     (app / "bin").mkdir(parents=True)
