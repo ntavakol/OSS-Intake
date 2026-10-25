@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-10-25
+
+Public exploit availability and the advisory's own conditions for each finding. Checked against live
+Metasploit, Nuclei and GitHub proof-of-concept data (Log4Shell, Spring4Shell, PAN-OS and ActiveMQ come back
+weaponised) and on ShinyProxy 3.2.4.
+
 ### Added
 - Public exploit availability per finding, as the strongest evidence found: known exploited (CISA KEV),
   weaponised (a Metasploit exploit or auxiliary module, or a Nuclei template), public (Exploit-DB), proof of
