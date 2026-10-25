@@ -26,6 +26,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   the user installs. Findings whose vulnerable functions are not in any binary they were seen in are marked "not
   reachable" and set aside in triage, with the govulncheck ID; those whose function is present are marked
   "reachable" and reviewed. Image binaries are copied out with Docker or crane. Lag and likelihood do not change.
+  On redis 7.4.1, 121 of 124 Go standard library findings (all in gosu) were shown not reachable.
+- Proof-of-concept lookups, which are capped per scan, are no longer spent on findings already set aside on
+  evidence; the bulk exploit sources still cover them.
 
 ### Changed
 - The HTML findings table shows severity and CVSS in one column, to fit the new Group column.

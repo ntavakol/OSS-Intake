@@ -160,6 +160,8 @@ def triage_section(a: dict) -> tuple[str, list] | None:
 
 
 def exploit_text(f: Finding) -> str:
+    if not f.exploit_level and f.triage_group == "aside":
+        return "set aside"
     return EXPLOIT_LABEL.get(f.exploit_level, f.exploit_level)
 
 

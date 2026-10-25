@@ -1112,3 +1112,16 @@ def test_govulncheck_parsing_and_reachability():
     assert stats == {"binaries": 1, "reachable": 1, "not_reachable": 1}
     assert triage.classify(absent)[0] == "aside" and triage.classify(called)[0] == "review"
     assert gv.safe_relpath("usr/local/bin/gosu") and not gv.safe_relpath("../../etc/passwd")
+
+
+def test_poc_lookup_skipped_for_set_aside():
+    from oss_intake.enrich import exploits
+
+    from .conftest import FakeHttp
+
+    aside = _f(vuln_id="CVE-2099-0004", purl="pkg:golang/stdlib@v1", reachability="not reachable")
+    live = _f(vuln_id="CVE-2099-0004", purl="pkg:maven/x/y@1")
+    http = FakeHttp()
+    info = exploits.enrich(http, [aside, live])
+    assert aside.exploit_level == "" and live.exploit_level == "poc"
+    assert info["poc_not_needed"] == 1 and info["poc_skipped"] == 0

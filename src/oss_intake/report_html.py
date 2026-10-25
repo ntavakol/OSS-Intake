@@ -495,7 +495,8 @@ def _exploit_pill(f: Finding) -> object:
         cls, text = _EXPLOIT_PILL[f.exploit_level]
         tip = "; ".join(f.exploit_refs[:4])
         return Raw(f'<span class="pill {cls}" title="{_e(tip)}">{_e(text)}</span>')
-    text = {"none": "none indexed", "nocve": "no CVE ID"}.get(f.exploit_level, "not checked")
+    text = {"none": "none indexed", "nocve": "no CVE ID"}.get(
+        f.exploit_level, "set aside" if f.triage_group == "aside" else "not checked")
     return (text, "muted")
 
 
