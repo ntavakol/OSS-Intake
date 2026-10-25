@@ -22,6 +22,11 @@ Items agreed for later versions, roughly in priority order.
 - VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
+- Artifact integrity for `--path`: compare a JAR's SHA-256 with the checksum the official registry publishes
+  for that exact version (Maven Central, PyPI, npm); a mismatch means the file is not what the project released.
+- Optional VirusTotal lookup for `--path` artifacts: hash only, never an upload (uploads are shared with
+  VirusTotal subscribers), opt-in with the user's own API key. Low value for new supply-chain compromises, which
+  are usually unknown to VirusTotal at first; check the API terms for organisational use.
 - Vendor rating beside the aggregator score: only where a structured vendor rating exists. Checked on
   CVE-2026-47884: NVD carries only a CISA-ADP 9.8, not Spring's own Medium, which exists only on spring.io. OS
   packages already use the distro's rating through Trivy. Low value until a general source appears.

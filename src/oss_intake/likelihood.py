@@ -21,6 +21,8 @@ OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le,
 DEFAULT_CONFIG = {
     "scale": {"1": "Rare", "2": "Unlikely", "3": "Possible", "4": "Likely", "5": "Almost certain"},
     "rules": [
+        {"level": 5, "reason": "A package listed as malicious (OpenSSF malicious packages database) is present",
+         "all": [{"metric": "malicious", "op": ">=", "value": 1}]},
         {"level": 5, "reason": "A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped",
          "all": [{"metric": "kev_with_fix", "op": ">=", "value": 1}]},
         {"level": 4, "reason": "A finding with an upstream fix has a ready-to-use public exploit "
@@ -95,6 +97,7 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "critical_with_fix": sev_fix.get("CRITICAL", 0),
         "high_with_fix": sev_fix.get("HIGH", 0),
         "kev_with_fix": lag.get("kev_with_fix", 0),
+        "malicious": lag.get("malicious", 0),
         "weaponised_with_fix": lag.get("weaponised_with_fix") if lag.get("exploits_checked") else None,
         "public_exploit_with_fix": lag.get("public_exploit_with_fix") if lag.get("exploits_checked") else None,
         "max_epss_with_fix": lag.get("max_epss_with_fix"),

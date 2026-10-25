@@ -389,7 +389,14 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     findings = merge.merge(*groups)
     for f in findings:
         f.conditions = conditions.extract(f.description)
-    findings = [f for f in findings if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
+    # Malicious-package entries often carry no severity; they are kept whatever --min-severity says.
+    findings = [f for f in findings
+                if f.malicious or SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
+    bad = sorted({f"{f.package}@{f.installed}" for f in findings if f.malicious})
+    if bad:
+        warnings.insert(0, f"MALICIOUS PACKAGE: {len(bad)} package(s) are listed in the OpenSSF malicious packages "
+                           f"database: {', '.join(bad[:5])}{' ...' if len(bad) > 5 else ''}. Treat the artifact as "
+                           "compromised, not as a patching task")
     n_label = lag.flag_label_matches(findings)
     if not args.include_kernel_headers:
         n_kh = lag.flag_kernel_headers(findings)

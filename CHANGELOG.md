@@ -10,6 +10,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   dependency lockfile the scanners understand (Trivy `fs`), or an R `renv.lock`, read by oss-intake and checked
   against OSV's CRAN advisories. A version in an artifact's file name is tried as the release tag. Single files
   are copied into an empty temporary folder so the scanners see only that file.
+- Known malicious packages: findings listed in the OpenSSF malicious packages database (OSV `MAL-` IDs) are
+  marked MALICIOUS, placed in Act now, raise a warning naming the packages, trigger likelihood level 5, and are
+  kept whatever `--min-severity` says (these entries often carry no severity).
 - Suggested triage: every finding gets a group and a one-line reason (`suggested_group`, `suggested_reason` in
   findings.csv), and the reports open with a triage table. Act now: CISA KEV or a ready-to-use exploit. Review:
   an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose advisory states no conditions. Check conditions:

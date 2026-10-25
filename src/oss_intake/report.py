@@ -122,7 +122,8 @@ CVSS_NOTE = ("CVSS: the highest v3.x base score any source reported, with its ve
              "rating can differ from an upstream CVSS score.")
 
 
-EXPLOIT_LABEL = {"kev": "known exploited", "weaponised": "weaponised", "public": "public exploit",
+EXPLOIT_LABEL = {"malicious": "MALICIOUS PACKAGE", "kev": "known exploited", "weaponised": "weaponised",
+                 "public": "public exploit",
                  "poc": "proof of concept", "none": "none indexed", "nocve": "no CVE ID",
                  "": "not checked"}
 EXPLOIT_NOTE = ("Exploit: the strongest public evidence found. Known exploited = CISA KEV; weaponised = a Metasploit "
@@ -237,6 +238,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if o:
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
+    lag_rows.append(["Known malicious packages (OpenSSF, via OSV)", lag.get("malicious", 0)])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]

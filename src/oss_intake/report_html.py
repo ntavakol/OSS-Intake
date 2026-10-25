@@ -270,6 +270,8 @@ def _lag(a: dict, lag_note: str) -> str:
                                                         f"{_e(str(o['fix_version']))} published "
                                                         f"{_e(str(o['fix_published']))} ({o['days']} days)"),
                             "", html_value=True))
+    rows.append(_metric("Known malicious packages (OpenSSF, via OSV)", lag.get("malicious", 0),
+                        "c" if lag.get("malicious") else "g"))
     rows.append(_metric("Known exploited (CISA KEV) with fix", lag["kev_with_fix"],
                         "r" if lag["kev_with_fix"] else "g"))
     if lag.get("exploits_checked"):
@@ -483,7 +485,8 @@ def _triage(a: dict) -> str:
     return _section("Suggested triage", body)
 
 
-_EXPLOIT_PILL = {"kev": ("p-crit", "KEV"), "weaponised": ("p-high", "weaponised"), "public": ("p-med", "public"),
+_EXPLOIT_PILL = {"malicious": ("p-crit", "MALICIOUS"),
+                 "kev": ("p-crit", "KEV"), "weaponised": ("p-high", "weaponised"), "public": ("p-med", "public"),
                  "poc": ("p-unk", "PoC only")}
 
 

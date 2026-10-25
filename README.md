@@ -35,7 +35,8 @@ CISA KEV membership).
   finding means a version is listed as affected, not that the vulnerable code is reachable or exposed in your
   deployment. The CSV has empty `triage_*` columns for recording reachability decisions.
 - It does not install, download, bundle or redistribute scanners. You install them; it verifies them.
-- It does not assess licences, malicious packages, secrets or misconfiguration.
+- It does not assess licences, secrets or misconfiguration, and it does not detect new malware. Packages already
+  listed in the OpenSSF malicious packages database (OSV `MAL-` entries) are flagged as malicious.
 - It does not give a risk rating. The likelihood suggestion is a starting point for an assessor.
 - It does not fix anything or open issues upstream.
 
@@ -211,8 +212,8 @@ uses XsltView"), word for word, so the assessor can check it against the deploym
 
 ## Suggested triage
 
-Each finding is placed in one group, with its reason, as a reading order for the engineer: **Act now** (CISA KEV,
-or a Metasploit or Nuclei exploit), **Review** (an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose
+Each finding is placed in one group, with its reason, as a reading order for the engineer: **Act now** (a known
+malicious package, CISA KEV, or a Metasploit or Nuclei exploit), **Review** (an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose
 advisory states no conditions), **Check conditions** (the advisory says when it applies; confirm against the
 deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package, or the
 installed version already matches a fix). No group says a finding carries no risk.

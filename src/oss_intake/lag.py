@@ -135,6 +135,7 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
             "days": days_between(oldest_pub.published, as_of),
         },
         "kev_with_fix": sum(1 for f in with_fix if f.kev),
+        "malicious": sum(1 for f in findings if f.malicious),
         # Evidence behind the strongest signals, so a reader can see which component drives the likelihood.
         "kev_findings": [_brief(f) for f in with_fix if f.kev][:5],
         "top_epss_findings": [_brief(f) for f in sorted((f for f in with_fix if f.epss is not None),

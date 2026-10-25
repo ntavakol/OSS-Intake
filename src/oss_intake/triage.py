@@ -21,7 +21,7 @@ ORDER = ["act", "review", "conditions", "routine", "aside"]
 LABEL = {"act": "Act now", "review": "Review", "conditions": "Check conditions", "routine": "Routine",
          "aside": "Set aside"}
 MEANING = {
-    "act": "Exploited in the wild, or a ready-to-use exploit exists",
+    "act": "Malicious package, exploited in the wild, or a ready-to-use exploit exists",
     "review": "Published exploit, notable exploitation probability, or a critical that applies without conditions",
     "conditions": "The advisory says it applies only under stated conditions; confirm whether they hold",
     "routine": "No exploit indexed, low exploitation probability, no stated conditions; normal patch cycle",
@@ -35,6 +35,8 @@ def classify(f: Finding) -> tuple[str, str]:
         return "aside", "kernel CVE on a kernel header package; containers use the host kernel"
     if f.likely_fixed:
         return "aside", "installed version matches a listed fix apart from a build label"
+    if f.malicious:
+        return "act", "malicious package (OpenSSF malicious packages database); the package itself is malware"
     if f.kev:
         return "act", "listed in CISA KEV (exploited in the wild)"
     if f.exploit_level == "weaponised":

@@ -1062,3 +1062,22 @@ def test_path_inputs(tmp_path, fixtures):
         trivy.run, grype.run = orig_t, orig_g
     assert seen[0][:2] == ["trivy", "rootfs"] and seen[0][-1] == "scan-target" and "--list-all-pkgs" in seen[0]
     assert seen[1][:2] == ["grype", "dir:scan-target"]
+
+
+def test_malicious_package_flag():
+    from oss_intake import likelihood, triage
+    from oss_intake.enrich import exploits
+
+    from .conftest import FakeHttp
+
+    mal = _f(vuln_id="MAL-2026-1234", package="evil-pkg", severity="UNKNOWN", fixed_versions=[],
+             purl="pkg:npm/evil-pkg@1.0.0")
+    aliased = _f(vuln_id="GHSA-zzzz", aliases={"MAL-2026-9"}, purl="pkg:pypi/x@1")
+    plain = _f(vuln_id="CVE-2099-0007")
+    assert mal.malicious and aliased.malicious and not plain.malicious
+    exploits.enrich(FakeHttp(), [mal, aliased, plain])
+    assert mal.exploit_level == "malicious" and mal.exploit_refs == ["MAL-2026-1234"]
+    assert triage.classify(mal)[0] == "act" and "malware" in triage.classify(mal)[1]
+    lvl = likelihood.evaluate(likelihood.DEFAULT_CONFIG,
+                              likelihood.metrics({"malicious": 1}, {}, {"status": "skipped"}))
+    assert lvl["level"] == 5 and "malicious" in lvl["reason"]

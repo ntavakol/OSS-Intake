@@ -129,6 +129,12 @@ class Finding:
     published_before_release: bool | None = None
 
     @property
+    def malicious(self) -> bool:
+        """Listed in the OpenSSF malicious packages database (OSV IDs starting MAL-): the package itself is
+        malware, not a version with a bug."""
+        return any(str(i).upper().startswith("MAL-") for i in {self.vuln_id, *self.aliases})
+
+    @property
     def has_fix(self) -> bool:
         return bool(self.fixed_versions)
 
