@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- The repository runs OpenSSF Scorecard on itself (published results and a README badge) and CodeQL static
+  analysis, both with every action pinned by commit SHA and least-privilege permissions.
+
 ## [0.2.0] - 2026-10-25
 
 From a vulnerability list to a triaged assessment. Findings are grouped into a suggested reading order (Act

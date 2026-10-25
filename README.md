@@ -1,5 +1,9 @@
 # oss-intake
 
+[![ci](https://github.com/ntavakol/OSS-Intake/actions/workflows/ci.yml/badge.svg)](https://github.com/ntavakol/OSS-Intake/actions/workflows/ci.yml)
+[![codeql](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml/badge.svg)](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ntavakol/OSS-Intake/badge)](https://scorecard.dev/viewer/?uri=github.com/ntavakol/OSS-Intake)
+
 Assess third-party open source software before you adopt it. `oss-intake` answers two questions for a
 security or architecture review:
 
