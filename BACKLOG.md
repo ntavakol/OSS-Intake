@@ -1,6 +1,12 @@
 # Backlog
 
-Items agreed for later versions, roughly in priority order.
+Items agreed for later versions. "Next" is the planned order; the other sections are not ranked.
+
+## Next
+- VEX import, so triage decisions recorded in `findings.csv` carry over to the next run of the same target
+  instead of being redone.
+- README screenshots and a hosted sample report (GitHub Pages) built from synthetic data (see Outputs).
+- Artifact integrity for `--path` (see Signals).
 
 ## Inputs
 - Source checkouts: scan a folder in both Trivy modes (`fs` for lockfiles, `rootfs` for built artifacts) and
@@ -19,7 +25,6 @@ Items agreed for later versions, roughly in priority order.
   CVE-2099-* IDs) is not enough on its own: they use real library names (spring-web, jackson-databind), so
   package names must be masked there too, or the fixtures given made-up names. Generate them with a script
   (Playwright, already used for checks) so they can be refreshed when the layout changes.
-- VEX import, so triage decisions in `findings.csv` can be carried between runs.
 
 ## Signals
 - Artifact integrity for `--path`: compare a JAR's SHA-256 with the checksum the official registry publishes
@@ -37,7 +42,7 @@ Items agreed for later versions, roughly in priority order.
 
 ## Scanner management
 - An optional, opt-in scanner downloader: exact version only, SHA-256 against the release checksums file and
-  cosign verification both mandatory, never "latest". Deliberately left out of v0.1 because a downloader is the
-  riskiest feature a supply-chain tool can have.
+  cosign verification both mandatory, never "latest". Deliberately left out so far, because a downloader is
+  the riskiest feature a supply-chain tool can have.
 - Fetch the known-bad list from a signed location instead of shipping it with each release.
 

@@ -142,7 +142,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--unshipped-days` | Days a fix must be public, with no newer release, to count as unshipped (default 90) |
 | `--as-of` | Fix the assessment date for reproducible reports |
 | `--min-severity` | Drop findings below a severity |
-| `--formats` | Any of `csv,md,json,html` (default all) |
+| `--formats` | Any of `csv,md,json,html` (default all; `findings.csv` is always written) |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
