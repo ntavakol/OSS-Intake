@@ -5,9 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-- `target` listed both the outer archive (Grype: `/opt/shinyproxy/shinyproxy.jar`) and the JAR inside it
-  (Trivy: `opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/...`); only the more specific path is kept now.
+## [0.1.8] - 2026-10-25
+
+CVSS version and source on every score, with v4 used only when no v3 score exists. Used for the
+ShinyProxy 3.2.4 assessment, where it showed the 9.8 scores on three Spring CVEs came from GHSA, while
+Spring itself rates them Medium or Low.
 
 ### Added
 - CVSS provenance: findings.csv has `cvss_version` and `cvss_source` (nvd, ghsa, redhat, debian...), the Markdown
@@ -20,6 +22,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Trivy's CVSS is now the highest v3 score across the sources it lists, not the score from the source of its
   severity rating, so the report's "highest across sources" holds for every finding. Where a distro rates a CVE
   lower than NVD, the severity column keeps the distro rating and the CVSS source shows where the score came from.
+
+### Fixed
+- `target` listed both the outer archive (Grype: `/opt/shinyproxy/shinyproxy.jar`) and the JAR inside it
+  (Trivy: `opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/...`); only the more specific path is kept now.
 
 ## [0.1.7] - 2026-10-25
 
