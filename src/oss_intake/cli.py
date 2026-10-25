@@ -389,7 +389,13 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     findings = merge.merge(*groups)
     for f in findings:
         f.conditions = conditions.extract(f.description)
-    # Malicious-package entries often carry no severity; they are kept whatever --min-severity says.
+    # A MAL- entry on a package version marks every finding on it: GitHub and other advisories for the same
+    # malware often do not list the MAL- ID as an alias. Malicious-package entries often carry no severity;
+    # they are kept whatever --min-severity says.
+    mal_keys = {(f.package, f.installed) for f in findings if f.malicious}
+    for f in findings:
+        if (f.package, f.installed) in mal_keys:
+            f.malicious_package = True
     findings = [f for f in findings
                 if f.malicious or SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     bad = sorted({f"{f.package}@{f.installed}" for f in findings if f.malicious})

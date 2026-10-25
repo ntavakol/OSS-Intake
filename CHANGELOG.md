@@ -13,6 +13,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Known malicious packages: findings listed in the OpenSSF malicious packages database (OSV `MAL-` IDs) are
   marked MALICIOUS, placed in Act now, raise a warning naming the packages, trigger likelihood level 5, and are
   kept whatever `--min-severity` says (these entries often carry no severity).
+  Every other finding on the same package version is marked too, since GitHub and other advisories for the same
+  malware often do not list the `MAL-` ID (seen on flatmap-stream 0.1.1, the 2018 event-stream incident).
 - Suggested triage: every finding gets a group and a one-line reason (`suggested_group`, `suggested_reason` in
   findings.csv), and the reports open with a triage table. Act now: CISA KEV or a ready-to-use exploit. Review:
   an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose advisory states no conditions. Check conditions:

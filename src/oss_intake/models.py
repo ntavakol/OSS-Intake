@@ -107,6 +107,7 @@ class Finding:
     conditions: str = ""  # the advisory's own "affected only if" sentences, verbatim
     exploit_level: str = ""  # kev | weaponised | public | poc | none | "" (not checked)
     exploit_refs: list[str] = field(default_factory=list)
+    malicious_package: bool = False  # another finding on this package version is a MAL- entry
     triage_group: str = ""  # suggested reading order: act | review | conditions | routine | aside
     triage_reason: str = ""
     # Enrichment
@@ -132,7 +133,8 @@ class Finding:
     def malicious(self) -> bool:
         """Listed in the OpenSSF malicious packages database (OSV IDs starting MAL-): the package itself is
         malware, not a version with a bug."""
-        return any(str(i).upper().startswith("MAL-") for i in {self.vuln_id, *self.aliases})
+        return self.malicious_package or any(
+            str(i).upper().startswith("MAL-") for i in {self.vuln_id, *self.aliases})
 
     @property
     def has_fix(self) -> bool:

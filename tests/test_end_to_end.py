@@ -264,3 +264,26 @@ def test_path_input_validation(tmp_path):
 
 def _raises_usage():
     return pytest.raises(cli.UsageError)
+
+
+def test_malicious_package_marks_every_finding_on_it(tmp_path):
+    import json as _json
+
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x", "Results": [{"Target": "package-lock.json", "Class": "lang-pkgs",
+             "Type": "npm", "Vulnerabilities": [
+                 {"VulnerabilityID": "MAL-2099-1", "PkgName": "evil", "InstalledVersion": "0.1.1",
+                  "PkgIdentifier": {"PURL": "pkg:npm/evil@0.1.1"}},
+                 {"VulnerabilityID": "GHSA-aaaa-bbbb-cccc", "PkgName": "evil", "InstalledVersion": "0.1.1",
+                  "Severity": "LOW", "PkgIdentifier": {"PURL": "pkg:npm/evil@0.1.1"}}]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(_json.dumps(trivy), encoding="utf-8")
+    lock = tmp_path / "package-lock.json"
+    lock.write_text("{}", encoding="utf-8")
+    out = tmp_path / "o"
+    code = cli.main(["--path", str(lock), "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
+                     "--offline", "--min-severity", "HIGH", "--likelihood"])
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    groups = {f["id"]: f["suggested_group"] for f in a["findings"]}
+    assert groups == {"MAL-2099-1": "Act now", "GHSA-aaaa-bbbb-cccc": "Act now"}  # LOW kept despite the filter
+    assert a["likelihood"]["level"] == 5 and a["warnings"][0].startswith("MALICIOUS PACKAGE")
