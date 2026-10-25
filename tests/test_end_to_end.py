@@ -232,3 +232,35 @@ def test_release_tag_core_ambiguous_is_not_guessed():
 
     h = releases.fetch(Ambiguous(), "example/webapp", parse_datetime(AS_OF), image_tag="1.2.0")
     assert h["scanned_release"] is None
+
+
+def test_path_input_labels_report(tmp_path, fixtures):
+    jar = tmp_path / "webapp-2.0.0.jar"
+    jar.write_bytes(b"PK")
+    out = tmp_path / "reports"
+    code = cli.main(["--path", str(jar), "--out", str(out), "--from-trivy-json", str(fixtures / "trivy.json"),
+                     "--from-grype-json", str(fixtures / "grype.json"), "--scanners", "trivy,grype", "--offline",
+                     "--as-of", AS_OF, "--release-date", "2026-04-30"])
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["path_kind"] == "artifact" and a["lag"]["total"] > 0
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert md.startswith("# OSS intake assessment: webapp-2.0.0.jar") and "| Artifact |" in md
+
+
+def test_path_input_validation(tmp_path):
+    with _raises_usage():
+        cli.cmd_scan(cli.build_parser().parse_args(["scan", "--path", str(tmp_path / "missing.jar"),
+                                                    "--out", str(tmp_path / "o")]))
+    lock = tmp_path / "renv.lock"
+    lock.write_text('{"Packages": {}}', encoding="utf-8")
+    with _raises_usage():
+        cli.cmd_scan(cli.build_parser().parse_args(["scan", "--path", str(lock), "--offline",
+                                                    "--out", str(tmp_path / "o")]))
+    with _raises_usage():
+        cli.cmd_scan(cli.build_parser().parse_args(["scan", "--path", str(lock), "--image", "a/b:1",
+                                                    "--out", str(tmp_path / "o")]))
+
+
+def _raises_usage():
+    return pytest.raises(cli.UsageError)

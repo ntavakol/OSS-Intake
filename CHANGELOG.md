@@ -6,6 +6,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `--path`: assess a JAR, WAR, EAR or binary (Trivy `rootfs`, Grype `dir:`), a folder of built artifacts, a
+  dependency lockfile the scanners understand (Trivy `fs`), or an R `renv.lock`, read by oss-intake and checked
+  against OSV's CRAN advisories. A version in an artifact's file name is tried as the release tag. Single files
+  are copied into an empty temporary folder so the scanners see only that file.
 - Suggested triage: every finding gets a group and a one-line reason (`suggested_group`, `suggested_reason` in
   findings.csv), and the reports open with a triage table. Act now: CISA KEV or a ready-to-use exploit. Review:
   an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose advisory states no conditions. Check conditions:

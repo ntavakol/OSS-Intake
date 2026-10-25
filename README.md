@@ -97,11 +97,27 @@ oss-intake --image owner/app:1.2.3 --repo owner/app --out .\reports `
   --image-src remote --trivy-version 0.76.1 --trivy-sha256 <sha256> --likelihood
 ```
 
+Without a container image, assess a file or folder directly with `--path`:
+
+```bash
+oss-intake --path ./vendor-app-2.4.1.jar --repo owner/app --out ./reports   # JAR, WAR, EAR or binary
+oss-intake --path ./requirements.txt --repo owner/app --release-tag v1.4.0 --out ./reports
+oss-intake --path ./renv.lock --repo owner/app --release-tag v1.4.0 --out ./reports
+```
+
+A JAR, WAR, EAR or binary is scanned as built artifacts (Trivy `rootfs`, Grype `dir:`), and a version in its
+file name is tried as the release tag. Lockfiles the scanners understand (Python, npm, Maven, Go, Rust, PHP,
+Ruby, .NET) are scanned with Trivy `fs`. An R `renv.lock` is read by oss-intake and checked against OSV's CRAN
+advisories, since neither scanner reads it; packages from Bioconductor, GitHub or local sources are listed as
+not checked. A folder is scanned as built artifacts; for a source checkout, pass its lockfile. Release lag needs
+the project's release: `--repo` with `--release-tag`, or `--release-date`.
+
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 
 | Option | Purpose |
 |---|---|
 | `--image` | Image with explicit tag or digest |
+| `--path` | A JAR, WAR, binary, folder, lockfile or `renv.lock` instead of an image |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |
 | `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |

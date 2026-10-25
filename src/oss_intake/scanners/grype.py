@@ -22,6 +22,11 @@ def source_for(image: str, image_src: str | None) -> str:
     return _SOURCE_PREFIX.get(image_src or "", "") + image
 
 
+def scan_path(binary: str, target: str, extra: list[str], timeout: int) -> bytes:
+    """Scan a directory with Grype's dir: source."""
+    return run([binary, f"dir:{target}", "-o", "json", *extra], timeout)
+
+
 def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
          platform: str | None = None) -> bytes:
     # No -q: it also suppresses error messages. stderr is captured, so progress output is harmless.

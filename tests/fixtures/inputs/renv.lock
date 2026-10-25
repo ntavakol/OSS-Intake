@@ -1,0 +1,9 @@
+{
+  "R": {"Version": "4.5.1", "Repositories": [{"Name": "CRAN", "URL": "https://cloud.r-project.org"}]},
+  "Packages": {
+    "shiny": {"Package": "shiny", "Version": "1.8.0", "Source": "Repository", "Repository": "CRAN"},
+    "jsonlite": {"Package": "jsonlite", "Version": "1.8.7", "Source": "Repository", "Repository": "CRAN"},
+    "Biobase": {"Package": "Biobase", "Version": "2.62.0", "Source": "Bioconductor"},
+    "mypkg": {"Package": "mypkg", "Version": "0.1.0", "Source": "GitHub", "RemoteUsername": "someone"}
+  }
+}

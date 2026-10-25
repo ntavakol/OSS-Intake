@@ -12,7 +12,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, conditions, coverage, integrity, lag, likelihood, merge, report, triage
+from . import __version__, conditions, coverage, inputs, integrity, lag, likelihood, merge, report, triage
 from .enrich import (
     advisories,
     alpine,
@@ -129,6 +129,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("scan", help="assess an image and/or repository (default command)")
     s.add_argument("--image", help="container image with an explicit tag or digest, e.g. owner/name:1.2.3")
+    s.add_argument("--path", help="assess a file or directory instead of an image: a JAR, WAR or binary, a "
+                                  "folder of built artifacts, a lockfile (requirements.txt, package-lock.json, "
+                                  "pom.xml, ...) or an R renv.lock")
     s.add_argument("--repo", help="GitHub repository owner/name for release cadence and Scorecard")
     s.add_argument("--out", required=True, help="output directory")
     s.add_argument("--scanners", default="auto",
@@ -265,11 +268,19 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"))
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict()}
-    log(f"running {tool} {info['version']} on {args.image}", args.quiet)
-    raw = mod.scan(path, args.image, args.image_src, getattr(args, f"{tool}_arg"), args.timeout,
-                   args.platform or None)
+    target = args.path if args.path else args.image
+    log(f"running {tool} {info['version']} on {target}", args.quiet)
+    if args.path:
+        extra = getattr(args, f"{tool}_arg")
+        if tool == "trivy":
+            raw = mod.scan_path(path, inputs.trivy_mode(args.path_kind), str(args.scan_target), extra, args.timeout)
+        else:
+            raw = mod.scan_path(path, str(args.scan_target), extra, args.timeout)
+    else:
+        raw = mod.scan(path, args.image, args.image_src, getattr(args, f"{tool}_arg"), args.timeout,
+                       args.platform or None)
     (out / "raw" / f"{tool}.json").write_bytes(raw)
-    if tool == "trivy" and args.sbom:
+    if tool == "trivy" and args.sbom and not args.path:
         (out / "raw" / "sbom.cdx.json").write_bytes(
             mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout, args.platform or None))
     return load_json_bytes(raw, tool)
@@ -277,10 +288,19 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
-    if not args.image and not args.repo:
-        raise UsageError("give --image, --repo, or both")
+    if not args.image and not args.repo and not args.path:
+        raise UsageError("give --image, --path or --repo")
+    if args.image and args.path:
+        raise UsageError("give --image or --path, not both")
     if args.image:
         args.image = validate_image(args.image)
+    args.path_kind, args.scan_target, tmp_dir = None, None, None
+    if args.path:
+        p = Path(args.path).expanduser()
+        if not p.exists():
+            raise UsageError(f"--path {args.path} not found")
+        args.path = str(p)
+        args.path_kind = inputs.classify(p)
     if args.repo:
         args.repo = validate_repo(args.repo)
     formats = csv_set(args.formats, _FORMATS, "--formats")
@@ -293,21 +313,51 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         val = getattr(args, flag)
         if val and not Path(val).is_file():
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")
-    chosen, warnings = _resolve_scanners(args) if args.image else ([], [])
-    if args.image is None and (args.from_trivy_json or args.from_grype_json):
-        raise UsageError("--from-*-json needs --image to label the report")
+    if args.path_kind == "renv":
+        chosen, warnings = ([] if args.offline else ["osv"]), []
+        if args.offline:
+            raise UsageError("an renv.lock is checked against OSV, which needs the network; drop --offline")
+    else:
+        chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
+    if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
+        raise UsageError("--from-*-json needs --image or --path to label the report")
     out = prepare_out(args.out)
-    log(f"plan: image={args.image or '-'} repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
+    if args.path and args.path_kind != "renv" and not (args.from_trivy_json and args.from_grype_json):
+        args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
+    log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
+        f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
         f"image-src={args.image_src or 'scanner default'} "
         f"platform={args.platform or 'scanner default'} out={out} formats={','.join(formats)}", args.quiet)
 
     net = None if args.offline else (http or RequestsHttp())
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
-    groups = []
-    trivy_report = None
-    scan_info: dict = {}
 
     # 2. Scanners. Integrity failures abort; scanner failures abort (a partial scan is misleading).
+    try:
+        trivy_report, groups, scan_info = _scan(args, chosen, out, net, scanners_meta, warnings)
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+    return _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats,
+                   as_of, release_override, lk_cfg)
+
+
+def _scan(args, chosen, out, net, scanners_meta, warnings):
+    groups: list = []
+    trivy_report = None
+    scan_info: dict = {}
+    if args.path_kind == "renv":
+        purls, skipped = inputs.renv_purls(Path(args.path))
+        if skipped:
+            warnings.append(f"{len(skipped)} renv package(s) not from CRAN were not checked (OSV's R advisories "
+                            f"cover CRAN): {', '.join(skipped[:8])}{' ...' if len(skipped) > 8 else ''}")
+        if net and purls:
+            try:
+                groups.append(osv_mod.scan(net, purls))
+                scanners_meta["osv"] = {"enabled": True, "detail": f"{len(purls)} CRAN packages queried"}
+            except HttpError as exc:
+                warnings.append(f"OSV lookup failed: {exc}")
+        return None, groups, scan_info
     if "trivy" in chosen:
         trivy_report = _run_or_load("trivy", trivy_mod, args, out, scanners_meta)
         f, scan_info = trivy_mod.parse(trivy_report)
@@ -330,6 +380,11 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             else:
                 warnings.append("No language packages in the image (OS packages only), so OSV was not queried; "
                                 "Trivy and Grype cover OS packages")
+    return trivy_report, groups, scan_info
+
+
+def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats, as_of,
+            release_override, lk_cfg):
 
     findings = merge.merge(*groups)
     for f in findings:
@@ -356,7 +411,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     sc: dict = {"status": "skipped"}
     if args.repo and net:
         try:
-            health = releases.fetch(net, args.repo, as_of, image_tag(args.image) if args.image else None,
+            name_tag = (inputs.version_from_name(Path(args.path)) if args.path_kind == "artifact" else None)
+            health = releases.fetch(net, args.repo, as_of, image_tag(args.image) if args.image else name_tag,
                                     args.release_tag)
             warnings += health.get("warnings", [])
         except HttpError as exc:
@@ -494,7 +550,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
-        "inputs": {"image": args.image, "repo": args.repo, "image_src": args.image_src, "platform": args.platform,
+        "inputs": {"image": args.image, "path": args.path, "path_kind": args.path_kind, "repo": args.repo,
+                   "image_src": args.image_src, "platform": args.platform,
                    "release_tag": args.release_tag, "release_date": args.release_date,
                    "min_severity": args.min_severity},
         "scanners": scanners_meta,

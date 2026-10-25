@@ -1022,3 +1022,43 @@ def test_triage_groups():
     assert info["groups"]["act"]["total"] == 2 and info["groups"]["aside"]["total"] == 2
     ranked = sorted([c[0] for c in cases], key=triage.rank_key)
     assert [f.triage_group for f in ranked][:2] == ["act", "act"] and ranked[-1].triage_group == "aside"
+
+
+def test_path_inputs(tmp_path, fixtures):
+    from pathlib import Path
+
+    from oss_intake import inputs
+    from oss_intake.scanners import grype, trivy
+
+    jar = tmp_path / "shinyproxy-3.2.4-exec.jar"
+    jar.write_bytes(b"PK")
+    assert inputs.classify(tmp_path) == "dir"
+    assert inputs.classify(jar) == "artifact" and inputs.trivy_mode("artifact") == "rootfs"
+    for name in ("requirements.txt", "requirements-dev.txt", "pom.xml", "package-lock.json", "go.sum",
+                 "MyApp.deps.json"):
+        assert inputs.classify(Path(name)) == "lockfile", name
+    assert inputs.trivy_mode("lockfile") == "fs"
+    assert inputs.version_from_name(jar) == "3.2.4"
+    assert inputs.version_from_name(Path("app.jar")) is None
+
+    target, tmp = inputs.stage(jar, "artifact")
+    try:
+        assert [p.name for p in target.iterdir()] == [jar.name] and tmp == target
+    finally:
+        import shutil
+        shutil.rmtree(tmp)
+
+    purls, skipped = inputs.renv_purls(fixtures / "inputs" / "renv.lock")
+    assert purls == ["pkg:cran/jsonlite@1.8.7", "pkg:cran/shiny@1.8.0"]
+    assert skipped == ["Biobase (Bioconductor)", "mypkg (GitHub)"]
+
+    seen = []
+    orig_t, orig_g = trivy.run, grype.run
+    trivy.run = grype.run = lambda cmd, timeout: seen.append(cmd) or b"{}"
+    try:
+        trivy.scan_path("trivy", "rootfs", "scan-target", [], 60)
+        grype.scan_path("grype", "scan-target", [], 60)
+    finally:
+        trivy.run, grype.run = orig_t, orig_g
+    assert seen[0][:2] == ["trivy", "rootfs"] and seen[0][-1] == "scan-target" and "--list-all-pkgs" in seen[0]
+    assert seen[1][:2] == ["grype", "dir:scan-target"]

@@ -48,6 +48,12 @@ def _pill(sev: str) -> Raw:
     return Raw(f'<span class="pill {cls}">{_e(sev)}</span>')
 
 
+def _title(a: dict) -> str:
+    from .report import report_title
+
+    return report_title(a)
+
+
 def _attr(cls: str) -> str:
     return f' class="{cls}"' if cls else ""
 
@@ -384,7 +390,9 @@ def _scope(a: dict) -> str:
     from .report import release_used
 
     rel = release_used(lag, health)
-    rows = [["Image", _code(inp["image"]) if inp.get("image") else "n/a"],
+    target = (["Artifact", Raw(f"{_code(inp['path'])} ({_e(str(inp.get('path_kind')))})")] if inp.get("path")
+              else ["Image", _code(inp["image"]) if inp.get("image") else "n/a"])
+    rows = [target,
             ["Repository", _code(inp["repo"]) if inp.get("repo") else "n/a"],
             ["Release used for lag", rel], ["Assessment date", a["as_of"][:10]]]
     for name, s in a["scanners"].items():
@@ -490,7 +498,7 @@ def _exploit_pill(f: Finding) -> object:
 
 def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str,
           lag_note: str) -> None:
-    title = a["inputs"].get("image") or a["inputs"].get("repo") or "assessment"
+    title = _title(a) or "assessment"
     lk = a.get("likelihood")
     accent = tone_level(lk["level"]) if lk else "n"
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',

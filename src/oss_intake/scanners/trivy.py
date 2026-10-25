@@ -35,6 +35,13 @@ def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeo
     return run(cmd, timeout)
 
 
+def scan_path(binary: str, mode: str, target: str, extra: list[str], timeout: int) -> bytes:
+    """Scan a directory: mode 'fs' for lockfiles, 'rootfs' for JARs, binaries and unpacked applications."""
+    cmd = [binary, mode, "--quiet", "--timeout", "20m", *extra, "--format", "json", "--scanners", "vuln",
+           "--list-all-pkgs", target]
+    return run(cmd, timeout)
+
+
 def sbom(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
          platform: str | None = None) -> bytes:
     cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "cyclonedx", image]
