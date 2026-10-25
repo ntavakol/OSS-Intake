@@ -178,7 +178,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
                    help="drop findings below this severity")
-    s.add_argument("--formats", default="csv,md,json,html", help="comma list of csv,md,json,html")
+    s.add_argument("--formats", default="csv,md,json,html",
+                   help="comma list of csv,md,json,html (findings.csv is always written)")
     s.add_argument("--sbom", action="store_true", help="also write a CycloneDX SBOM from Trivy to raw/")
     s.add_argument("--offline", action="store_true",
                    help="no network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV); scanners may still pull")
@@ -320,7 +321,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.path_kind = inputs.classify(p)
     if args.repo:
         args.repo = validate_repo(args.repo)
-    formats = csv_set(args.formats, _FORMATS, "--formats")
+    # findings.csv is always written: the reports point to it and the assessor records decisions in it.
+    formats = list(dict.fromkeys(["csv", *csv_set(args.formats, _FORMATS, "--formats")]))
     as_of = validate_date(args.as_of, "--as-of") or datetime.now(timezone.utc)
     release_override = validate_date(args.release_date, "--release-date")
     if args.likelihood_config or args.fail_on_likelihood:
@@ -343,8 +345,9 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
     log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
         f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
-        f"image-src={args.image_src or 'scanner default'} "
-        f"platform={args.platform or 'scanner default'} out={out} formats={','.join(formats)}", args.quiet)
+        + (f"image-src={args.image_src or 'scanner default'} platform={args.platform or 'scanner default'} "
+           if args.image else "")
+        + f"out={out} formats={','.join(formats)}", args.quiet)
 
     net = None if args.offline else (http or RequestsHttp())
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}

@@ -5,6 +5,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-26
+
+Report fixes found by scanning a plain requirements.txt with the PyPI release.
+
+### Fixed
+- findings.csv is now always written. The reports point to it for the full list and the triage columns, but
+  `--formats html,md` used to leave it out.
+- Without a release date, the "Fix existed before release" tile showed a green 0, which read as good news. It now
+  shows n/a and says to pass --repo or --release-date.
+- Without --repo, Project health was a table of n/a values. It is now one line saying what --repo adds.
+- Advisory conditions: sentences that describe how a flaw works ("... is used to recompute ...") are no longer
+  quoted as conditions, so those findings stay in Routine. A leading affected-version clause ("In Django 3.2
+  before 3.2.19, ...") is dropped and Markdown links keep only their text.
+- The plan line no longer prints image-only settings (image source, platform) for --path scans.
+
 ## [0.2.1] - 2026-10-25
 
 First release published to PyPI (`pipx install oss-intake`), built and signed in GitHub Actions. The repository

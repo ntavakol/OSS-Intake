@@ -41,5 +41,3 @@ Items agreed for later versions, roughly in priority order.
   riskiest feature a supply-chain tool can have.
 - Fetch the known-bad list from a signed location instead of shipping it with each release.
 
-## Publishing
-- PyPI release through trusted publishing (OIDC), with build provenance attestations.

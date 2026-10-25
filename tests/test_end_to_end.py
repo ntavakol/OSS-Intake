@@ -88,7 +88,7 @@ def test_offline_and_min_severity(tmp_path, fixtures):
     assert code == 0
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert a["lag"]["total"] == 4 and a["lag"]["fix_date_known"] == 0
-    assert not (out / "findings.csv").exists()
+    assert (out / "findings.csv").exists()  # always written: the reports point to it
 
 
 def test_fail_on_likelihood(tmp_path, fixtures, fake_http):
@@ -235,7 +235,7 @@ def test_release_tag_core_ambiguous_is_not_guessed():
     assert h["scanned_release"] is None
 
 
-def test_path_input_labels_report(tmp_path, fixtures):
+def test_path_input_labels_report(tmp_path, fixtures, capsys):
     jar = tmp_path / "webapp-2.0.0.jar"
     jar.write_bytes(b"PK")
     out = tmp_path / "reports"
@@ -247,6 +247,8 @@ def test_path_input_labels_report(tmp_path, fixtures):
     assert a["inputs"]["path_kind"] == "artifact" and a["lag"]["total"] > 0
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert md.startswith("# OSS intake assessment: webapp-2.0.0.jar") and "| Artifact |" in md
+    plan = [line for line in capsys.readouterr().err.splitlines() if "plan:" in line]
+    assert plan and "platform=" not in plan[0] and "image-src=" not in plan[0]  # image-only settings
 
 
 def test_path_input_validation(tmp_path):
@@ -320,3 +322,19 @@ def test_reachability_on_path_dir(tmp_path, fixtures):
     assert by["CVE-2099-7778"]["reachability"] == "not reachable"
     assert by["CVE-2099-7778"]["suggested_group"] == "Set aside"
     assert a["scanners"]["govulncheck"]["version"] == "1.1.4"
+
+
+def test_no_repo_no_release_date(tmp_path, fixtures, capsys):
+    """Without --repo or a release date the report says so instead of showing empty or reassuring numbers."""
+    out = tmp_path / "r"
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy",
+                     "--formats", "html,md", "--as-of", AS_OF])
+    assert code == 0
+    assert (out / "findings.csv").exists()
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "no release date: pass --repo or --release-date" in html
+    assert "not shipped in the scanned release" not in html
+    assert "No repository given" in html and "Days since last push" not in html
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "No repository given" in md and "Days since last push" not in md

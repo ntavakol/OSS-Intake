@@ -262,6 +262,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                   "the likelihood suggestion understate what the scanners found for that ecosystem.")]))
     secs.append(("Release lag", [("table", ["Metric", "Value"], lag_rows), ("p", lag_note(lag))]))
 
+    if not inp.get("repo"):
+        secs.append(("Project health", [("p", "No repository given. Pass --repo owner/name for release cadence, "
+                                              "archive status, OpenSSF Scorecard and release lag.")]))
     h_rows = [["Latest release", _v((health.get("latest_release") or {}).get("tag"))
                + (f" ({health['latest_release']['date'][:10]})" if health.get("latest_release") else "")],
               ["Days since latest release", _v(health.get("days_since_latest_release"))],
@@ -276,7 +279,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
             h_rows.append(["Scorecard checks scoring 0 to 3", ", ".join(sc["low_checks"])])
     else:
         h_rows.append(["OpenSSF Scorecard", sc.get("note") or sc.get("status", "n/a")])
-    secs.append(("Project health", [("table", ["Signal", "Value"], h_rows)]))
+    if inp.get("repo"):
+        secs.append(("Project health", [("table", ["Signal", "Value"], h_rows)]))
 
     wf = health.get("workflows") or {}
     if wf.get("status") == "ok":

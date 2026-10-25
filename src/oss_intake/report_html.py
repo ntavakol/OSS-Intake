@@ -146,6 +146,8 @@ def _tiles(a: dict) -> str:
         us = lag["unshipped_by_severity"]
         tiles.append(("r" if u else "g", f"Unshipped fixes {lag['unshipped_days']}+ days", str(u),
                       f"critical {us['CRITICAL']}, high {us['HIGH']}"))
+    elif not lag.get("release_date"):
+        tiles.append(("n", "Fix existed before release", "n/a", "no release date: pass --repo or --release-date"))
     else:
         tiles.append(("a" if lag["fix_available_at_release"] else "g", "Fix existed before release",
                       str(lag["fix_available_at_release"]), "not shipped in the scanned release"))
@@ -294,6 +296,10 @@ def _yes_no(v: object) -> str:
 
 def _health(a: dict) -> str:
     health, sc = a["health"], a["scorecard"]
+    if not a["inputs"].get("repo"):
+        return _section("Project health", _note(
+            "No repository given. Pass --repo owner/name for release cadence, archive status, "
+            "OpenSSF Scorecard and release lag."))
     lr = health.get("latest_release") or {}
     days, med = health.get("days_since_latest_release"), health.get("median_days_between_releases")
     if days is None:

@@ -1002,6 +1002,21 @@ def test_conditions_extract():
     saml = "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login. Upgrade to 6.5.11."
     assert extract(saml) == "Applications are vulnerable when using the REDIRECT binding for SAML 2.0 Login."
 
+    # Mechanics, not conditions (seen in the requests and Django advisories).
+    assert extract("The chars() and words() methods are used to implement the truncatechars_html and "
+                   "truncatewords_html template filters, which are thus also vulnerable.") == ""
+    assert extract("This is a product of how `rebuild_proxies` is used to recompute and [reattach the "
+                   "header](https://example.org/x#L1) to requests when redirected.") == ""
+    # A real condition keeps working when it uses "is used" after "if" or "when".
+    assert extract("Only exploitable when the legacy parser is enabled.") == (
+        "Only exploitable when the legacy parser is enabled.")
+    # The leading affected-version clause is dropped, and Markdown links keep only their text.
+    assert extract("In Django 3.2 before 3.2.19, 4.x before 4.1.9, and 4.2 before 4.2.1, it was possible to "
+                   "bypass validation when using one form field to upload multiple files.") == (
+        "It was possible to bypass validation when using one form field to upload multiple files.")
+    assert extract("Affected only if the [proxy option](https://example.org/p) is set.") == (
+        "Affected only if the proxy option is set.")
+
 
 def test_triage_groups():
     from oss_intake import triage
