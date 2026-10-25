@@ -22,6 +22,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   package, or already fixed apart from a build label). Top findings are ordered by group. A reading order, not a
   risk rating.
 
+- `--reachability` (opt-in): Go binaries are checked with govulncheck in binary mode, an external executable
+  the user installs. Findings whose vulnerable functions are not in any binary they were seen in are marked "not
+  reachable" and set aside in triage, with the govulncheck ID; those whose function is present are marked
+  "reachable" and reviewed. Image binaries are copied out with Docker or crane. Lag and likelihood do not change.
+
 ### Changed
 - The HTML findings table shows severity and CVSS in one column, to fit the new Group column.
 

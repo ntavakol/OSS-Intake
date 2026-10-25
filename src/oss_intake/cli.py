@@ -12,7 +12,19 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__, conditions, coverage, inputs, integrity, lag, likelihood, merge, report, triage
+from . import (
+    __version__,
+    conditions,
+    coverage,
+    inputs,
+    integrity,
+    lag,
+    likelihood,
+    merge,
+    reachability,
+    report,
+    triage,
+)
 from .enrich import (
     advisories,
     alpine,
@@ -33,6 +45,7 @@ from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
 from .scanners import ScannerError, find_executable, load_json_bytes
+from .scanners import govulncheck as govuln_mod
 from .scanners import grype as grype_mod
 from .scanners import osv as osv_mod
 from .scanners import trivy as trivy_mod
@@ -172,6 +185,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-fix-dates", action="store_true", help="skip deps.dev fix date lookups")
     s.add_argument("--no-kev", action="store_true", help="skip the CISA KEV catalogue")
     s.add_argument("--no-epss", action="store_true", help="skip FIRST EPSS exploit probability scores")
+    s.add_argument("--reachability", action="store_true",
+                   help="check Go binaries with govulncheck (must be installed): is the vulnerable function in the "
+                        "binary? Images need Docker or crane to copy the binaries out")
+    s.add_argument("--govulncheck-path", help="path to the govulncheck executable")
     s.add_argument("--no-exploits", action="store_true",
                    help="skip public exploit availability (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept)")
     s.add_argument("--no-workflows", action="store_true",
@@ -365,6 +382,9 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
     if "grype" in chosen:
         g, _ = grype_mod.parse(_run_or_load("grype", grype_mod, args, out, scanners_meta))
         groups.append(g)
+    args.reach_results = {}
+    if args.reachability and trivy_report is not None:
+        args.reach_results = _govulncheck(args, trivy_report, scanners_meta, warnings)
     if "osv" in chosen and trivy_report is not None and net:
         purls = osv_mod.purls_from_trivy(trivy_report)
         try:
@@ -383,10 +403,53 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
     return trivy_report, groups, scan_info
 
 
+def _govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: list[str]) -> dict:
+    targets = sorted({r.get("Target", "") for r in trivy_report.get("Results") or []
+                      if r.get("Type") == "gobinary" and r.get("Target")})
+    targets = [t for t in targets if govuln_mod.safe_relpath(t)]
+    if not targets:
+        warnings.append("--reachability: no Go binaries in the scan, so govulncheck had nothing to check")
+        return {}
+    try:
+        gv = govuln_mod.find(args.govulncheck_path)
+        info = govuln_mod.version_info(gv)
+    except ScannerError as exc:
+        warnings.append(f"--reachability skipped: {exc}")
+        return {}
+    scanners_meta["govulncheck"] = {"enabled": True, **info, "sha256": integrity.sha256_file(gv),
+                                    "detail": f"{len(targets)} Go binaries"}
+    results: dict = {}
+    with tempfile.TemporaryDirectory(prefix="oss-intake-go-") as td:
+        if args.path:
+            base = Path(args.scan_target) if args.scan_target else None
+            located = {t: base / t for t in targets} if base else {}
+        else:
+            try:
+                copied = govuln_mod.extract_from_image(args.image, targets, args.platform or None, Path(td),
+                                                       args.timeout)
+            except ScannerError as exc:
+                warnings.append(f"--reachability skipped: {exc}")
+                return {}
+            located = {t: Path(td) / t.lstrip("/") for t in copied}
+        for t, local in located.items():
+            if not local.is_file():
+                continue
+            try:
+                results[t] = govuln_mod.scan_binary(gv, local, args.timeout)
+            except ScannerError as exc:
+                warnings.append(f"govulncheck could not analyse {t}: {exc}")
+    missing = len(targets) - len(results)
+    if missing:
+        warnings.append(f"govulncheck checked {len(results)} of {len(targets)} Go binaries; the rest could not be "
+                        "copied or analysed, and their findings have no reachability evidence")
+    return results
+
+
 def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats, as_of,
             release_override, lk_cfg):
 
     findings = merge.merge(*groups)
+    reach_stats = reachability.apply(findings, getattr(args, "reach_results", {}) or {})
     for f in findings:
         f.conditions = conditions.extract(f.description)
     # A MAL- entry on a package version marks every finding on it: GitHub and other advisories for the same
@@ -575,6 +638,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "epss": epss_info,
         "exploits": exploit_info,
         "triage": triage_info,
+        "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),
         "health": health,

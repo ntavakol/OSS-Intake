@@ -119,6 +119,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 |---|---|
 | `--image` | Image with explicit tag or digest |
 | `--path` | A JAR, WAR, binary, folder, lockfile or `renv.lock` instead of an image |
+| `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |
 | `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |
@@ -210,13 +211,24 @@ that none exists; when a source cannot be reached the finding is "not checked" i
 column quotes the advisory's own statement of when the finding applies (for example "only if the application
 uses XsltView"), word for word, so the assessor can check it against the deployment.
 
+## Go reachability (optional)
+
+With `--reachability`, Go binaries in the scan are checked with Go's official
+[govulncheck](https://go.dev/doc/security/vuln/) in binary mode, which reports whether a vulnerable function is
+actually linked into the binary. Install it yourself (`go install golang.org/x/vuln/cmd/govulncheck@v1.1.4`);
+oss-intake never downloads it. For an image, the binaries are copied out with Docker (`docker create` and
+`docker cp`) or `crane export`. A finding whose vulnerable functions are absent from every binary it was seen
+in is marked "not reachable" and set aside in triage, with the govulncheck ID as the reason; one whose function
+is present is marked "reachable". Counts and likelihood do not change: the vulnerable version is still shipped.
+This covers Go only; for other languages the advisory conditions are the assessor's guide.
+
 ## Suggested triage
 
 Each finding is placed in one group, with its reason, as a reading order for the engineer: **Act now** (a known
 malicious package, CISA KEV, or a Metasploit or Nuclei exploit), **Review** (an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose
 advisory states no conditions), **Check conditions** (the advisory says when it applies; confirm against the
-deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package, or the
-installed version already matches a fix). No group says a finding carries no risk.
+deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package, the
+installed version already matches a fix, or govulncheck shows the vulnerable function is not in the binary). No group says a finding carries no risk.
 
 ## Likelihood heuristic
 

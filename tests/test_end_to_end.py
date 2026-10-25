@@ -287,3 +287,34 @@ def test_malicious_package_marks_every_finding_on_it(tmp_path):
     groups = {f["id"]: f["suggested_group"] for f in a["findings"]}
     assert groups == {"MAL-2099-1": "Act now", "GHSA-aaaa-bbbb-cccc": "Act now"}  # LOW kept despite the filter
     assert a["likelihood"]["level"] == 5 and a["warnings"][0].startswith("MALICIOUS PACKAGE")
+
+
+def test_reachability_on_path_dir(tmp_path, fixtures):
+    import json as _json
+    import stat
+    import sys
+
+    app = tmp_path / "app"
+    (app / "bin").mkdir(parents=True)
+    (app / "bin" / "server").write_bytes(b"\x7fELF")
+    vuln = {"PkgName": "stdlib", "InstalledVersion": "v1.21.0", "FixedVersion": "1.21.5", "Severity": "HIGH",
+            "PkgIdentifier": {"PURL": "pkg:golang/stdlib@v1.21.0"}}
+    trivy = {"SchemaVersion": 2, "Results": [{"Target": "bin/server", "Class": "lang-pkgs", "Type": "gobinary",
+             "Vulnerabilities": [{**vuln, "VulnerabilityID": "CVE-2099-7777"},
+                                 {**vuln, "VulnerabilityID": "CVE-2099-7778"}]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(_json.dumps(trivy), encoding="utf-8")
+    fake = tmp_path / "govulncheck"
+    fake.write_text(f"#!{sys.executable}\n" + (fixtures / "fake_govulncheck.py").read_text(encoding="utf-8"),
+                    encoding="utf-8")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    out = tmp_path / "o"
+    code = cli.main(["--path", str(app), "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
+                     "--offline", "--reachability", "--govulncheck-path", str(fake)])
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    by = {f["id"]: f for f in a["findings"]}
+    assert by["CVE-2099-7777"]["reachability"] == "reachable"
+    assert by["CVE-2099-7778"]["reachability"] == "not reachable"
+    assert by["CVE-2099-7778"]["suggested_group"] == "Set aside"
+    assert a["scanners"]["govulncheck"]["version"] == "1.1.4"

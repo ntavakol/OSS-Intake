@@ -24,7 +24,7 @@ CSV_FIELDS = [
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
-    "suggested_group", "suggested_reason", "exploit_level", "exploit_refs", "conditions",
+    "suggested_group", "suggested_reason", "reachability", "exploit_level", "exploit_refs", "conditions",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
 ]
 
@@ -56,6 +56,7 @@ def finding_row(f: Finding) -> dict:
         "target": f.target,
         "suggested_group": triage_label(f.triage_group),
         "suggested_reason": f.triage_reason,
+        "reachability": f.reachability,
         "exploit_level": f.exploit_level,
         "exploit_refs": ";".join(f.exploit_refs),
         "conditions": f.conditions,

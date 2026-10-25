@@ -30,9 +30,6 @@ Items agreed for later versions, roughly in priority order.
 - Vendor rating beside the aggregator score: only where a structured vendor rating exists. Checked on
   CVE-2026-47884: NVD carries only a CISA-ADP 9.8, not Spring's own Medium, which exists only on spring.io. OS
   packages already use the distro's rating through Trivy. Low value until a general source appears.
-- Go reachability: run `govulncheck -mode=binary` (an external executable, like the scanners) on Go binaries
-  found in the image, and record whether each Go finding's vulnerable symbol is reachable. Real evidence for
-  "not reachable", for Go only (for example gosu in official Docker images).
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;

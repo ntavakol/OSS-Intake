@@ -25,7 +25,8 @@ MEANING = {
     "review": "Published exploit, notable exploitation probability, or a critical that applies without conditions",
     "conditions": "The advisory says it applies only under stated conditions; confirm whether they hold",
     "routine": "No exploit indexed, low exploitation probability, no stated conditions; normal patch cycle",
-    "aside": "The tool has evidence it does not apply (kernel header package, or already fixed)",
+    "aside": "The tool has evidence it does not apply (kernel header package, already fixed, or govulncheck "
+             "shows the vulnerable function is not in the binary)",
 }
 EPSS_REVIEW = 0.1
 
@@ -37,6 +38,8 @@ def classify(f: Finding) -> tuple[str, str]:
         return "aside", "installed version matches a listed fix apart from a build label"
     if f.malicious:
         return "act", "malicious package (OpenSSF malicious packages database); the package itself is malware"
+    if f.reachability == "not reachable":
+        return "aside", f.reachability_note + (" (note: listed in CISA KEV)" if f.kev else "")
     if f.kev:
         return "act", "listed in CISA KEV (exploited in the wild)"
     if f.exploit_level == "weaponised":
@@ -50,6 +53,8 @@ def classify(f: Finding) -> tuple[str, str]:
         return "conditions", "advisory states when it applies; see the conditions column"
     if f.severity == "CRITICAL":
         return "review", "critical, and the advisory states no conditions"
+    if f.reachability == "reachable":
+        return "review", f.reachability_note
     return "routine", "no exploit indexed, EPSS below 0.1, no stated conditions"
 
 

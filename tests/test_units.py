@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -1081,3 +1082,33 @@ def test_malicious_package_flag():
     lvl = likelihood.evaluate(likelihood.DEFAULT_CONFIG,
                               likelihood.metrics({"malicious": 1}, {}, {"status": "skipped"}))
     assert lvl["level"] == 5 and "malicious" in lvl["reason"]
+
+
+def test_govulncheck_parsing_and_reachability():
+    import subprocess
+    import sys
+
+    from oss_intake import reachability, triage
+    from oss_intake.scanners import govulncheck as gv
+
+    out = subprocess.run([sys.executable, str(Path(__file__).parent / "fixtures" / "fake_govulncheck.py"),
+                          "-mode=binary"], capture_output=True, text=True).stdout
+    res = gv.analyse(gv.parse_stream(out))
+    assert res["CVE-2099-7777"] == {"level": 3, "go_id": "GO-2099-0001"}
+    assert res["CVE-2099-7778"]["level"] == 1
+
+    def go(cve, target):
+        return _f(vuln_id=cve, package="stdlib", purl="pkg:golang/stdlib@v1.21.0", installed="v1.21.0",
+                  fixed_versions=["1.21.5"], target=target)
+
+    called = go("CVE-2099-7777", "usr/bin/app")
+    absent = go("CVE-2099-7778", "/usr/bin/app")
+    mixed = go("CVE-2099-7778", "usr/bin/app;usr/bin/other")  # other binary not analysed: no conclusion
+    unknown = go("CVE-2099-7779", "usr/bin/app")
+    stats = reachability.apply([called, absent, mixed, unknown], {"usr/bin/app": res})
+    assert called.reachability == "reachable" and "GO-2099-0001" in called.reachability_note
+    assert absent.reachability == "not reachable"
+    assert mixed.reachability == "" and unknown.reachability == ""
+    assert stats == {"binaries": 1, "reachable": 1, "not_reachable": 1}
+    assert triage.classify(absent)[0] == "aside" and triage.classify(called)[0] == "review"
+    assert gv.safe_relpath("usr/local/bin/gosu") and not gv.safe_relpath("../../etc/passwd")
