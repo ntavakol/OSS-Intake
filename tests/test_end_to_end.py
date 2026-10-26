@@ -744,3 +744,35 @@ def test_right_scanner_hash_lets_it_run(tmp_path):
     cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
               "--trivy-path", str(fake), "--trivy-sha256", integrity.sha256_file(fake)])
     assert marker.exists()  # it ran; the fake then fails the scan itself, which is fine here
+
+
+@pytest.mark.parametrize("value", ["2026-02-30", "2026-13-01", "2026-10-22T25:00:00Z"])
+def test_impossible_date_is_a_usage_error(tmp_path, fixtures, capsys, value):
+    # B9: used to crash with "ValueError: day is out of range".
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--as-of", value])
+    assert code == cli.EXIT_USAGE
+    assert "--as-of must be a real date" in capsys.readouterr().err
+
+
+def test_impossible_dates_in_data_are_ignored():
+    assert parse_datetime("2026-02-30T00:00:00Z") is None
+    assert parse_datetime("2026-10-22T10:00:00+11:00").hour == 23
+
+
+def test_verify_checks_options_before_printing_ok(tmp_path, capsys):
+    # B12: verify printed "OK sha256" and only then failed on the missing --cosign-identity.
+    from oss_intake import integrity
+
+    f = tmp_path / "trivy.tar.gz"
+    f.write_bytes(b"x")
+    bundle = tmp_path / "b.sigstore.json"
+    bundle.write_text("{}", encoding="utf-8")
+    code = cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f),
+                     "--cosign-bundle", str(bundle)])
+    captured = capsys.readouterr()
+    assert code == cli.EXIT_USAGE and "OK" not in captured.out
+    assert "--cosign-identity is required" in captured.err
+    assert cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f),
+                     "--cosign-identity", "x"]) == cli.EXIT_USAGE
+    assert cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f)]) == cli.EXIT_OK

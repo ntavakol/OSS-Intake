@@ -29,15 +29,16 @@ def parse_datetime(value: str | None) -> datetime | None:
         return None
     y, mo, d, hh, mm, ss, frac, tz = m.groups()
     micro = int((frac or "0")[:6].ljust(6, "0"))
-    dt = datetime(int(y), int(mo), int(d), int(hh or 0), int(mm or 0), int(ss or 0), micro)
-    if tz and tz != "Z":
-        sign = 1 if tz[0] == "+" else -1
-        digits = tz[1:].replace(":", "")
-        offset = timedelta(hours=int(digits[:2]), minutes=int(digits[2:4]))
-        dt = (dt - sign * offset).replace(tzinfo=timezone.utc)
-    else:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+    try:  # an impossible date (2026-02-30, hour 25) is unparseable, not a crash
+        dt = datetime(int(y), int(mo), int(d), int(hh or 0), int(mm or 0), int(ss or 0), micro)
+        if tz and tz != "Z":
+            sign = 1 if tz[0] == "+" else -1
+            digits = tz[1:].replace(":", "")
+            offset = timedelta(hours=int(digits[:2]), minutes=int(digits[2:4]))
+            return (dt - sign * offset).replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=timezone.utc)
+    except (ValueError, OverflowError):
+        return None
 
 
 def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None:

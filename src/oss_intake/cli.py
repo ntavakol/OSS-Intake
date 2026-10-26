@@ -111,7 +111,7 @@ def validate_date(value: str | None, flag: str) -> datetime | None:
         return None
     dt = parse_datetime(value)
     if not dt or not re.match(r"^\d{4}-\d{2}-\d{2}", value):
-        raise UsageError(f"{flag} must be a date as YYYY-MM-DD")
+        raise UsageError(f"{flag} must be a real date as YYYY-MM-DD (got {value!r})")
     return dt
 
 
@@ -259,16 +259,24 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
+    # Every option is checked before anything is hashed, so OK is never printed for a run that then fails.
     if not Path(args.file).is_file():
         raise UsageError(f"--file {args.file} not found")
+    for flag in ("checksums", "cosign_bundle"):
+        val = getattr(args, flag)
+        if val and not Path(val).is_file():
+            raise UsageError(f"--{flag.replace('_', '-')} {val} not found")
+    if args.cosign_bundle and not args.cosign_identity:
+        raise UsageError("--cosign-identity is required with --cosign-bundle in verify mode (verify does not know "
+                         "which project signed the file)")
+    if args.cosign_identity and not args.cosign_bundle:
+        raise UsageError("--cosign-identity needs --cosign-bundle")
     if args.checksums:
         digest = integrity.verify_against_checksums(args.file, args.checksums, args.name)
     else:
         digest = integrity.verify_sha256(args.file, args.sha256)
     print(f"OK sha256 {digest}  {Path(args.file).name}")
     if args.cosign_bundle:
-        if not args.cosign_identity:
-            raise UsageError("--cosign-identity is required with --cosign-bundle in verify mode")
         integrity.cosign_verify_blob(args.file, args.cosign_bundle, args.cosign_identity)
         print("OK cosign signature")
     return EXIT_OK
