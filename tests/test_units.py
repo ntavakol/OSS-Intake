@@ -1195,3 +1195,13 @@ def test_poc_lookup_skipped_for_set_aside():
     info = exploits.enrich(http, [aside, live])
     assert aside.exploit_level == "" and live.exploit_level == "poc"
     assert info["poc_not_needed"] == 1 and info["poc_skipped"] == 0
+
+
+def test_readme_links_are_absolute():
+    """PyPI renders the README without the repository, so relative links and images break there."""
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    relative = re.findall(r'\]\((?!https?://|#|mailto:)([^)\s]+)\)|(?:src|srcset)="(?!https?://)([^"]+)"', text)
+    assert relative == []

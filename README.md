@@ -12,8 +12,8 @@ adds what a scanner alone does not: how long fixes have existed without being sh
 evidence, the advisory's own conditions, reachability for Go binaries, and project health.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/report-dark.png">
-  <img alt="oss-intake report on a lockfile with six compromised npm releases: six malicious packages flagged first" src="docs/images/report-light.png" width="900">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/report-dark.png">
+  <img alt="oss-intake report on a lockfile with six compromised npm releases: six malicious packages flagged first" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/report-light.png" width="900">
 </picture>
 
 **[See the live sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html):**
@@ -122,7 +122,7 @@ oss-intake doctor
 ```
 
 Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2026). `oss-intake` refuses to
-run any version on its [known-bad list](src/oss_intake/data/known_bad.json).
+run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
 
 ## Usage
 
@@ -240,7 +240,7 @@ findings=7 critical=2 high=4 with_fix=6 fix_before_release=3 fix_date_unknown=1 
 | CVE-2099-1000 | MEDIUM | libc6 | 2.39-0ubuntu8.4 | 2.39-0ubuntu8.5 | unknown | n/a |
 
 The summary also covers scope (scanner versions, database dates, hash verification), project health,
-agreement between sources and any warnings. See [docs/validation.md](docs/validation.md) for checking the
+agreement between sources and any warnings. See [docs/validation.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/validation.md) for checking the
 tool against a real public image.
 
 ## Exploit availability and advisory conditions
@@ -290,7 +290,7 @@ Off by default. With `--likelihood`, the first matching rule wins:
 | 1 Rare | None of the above |
 
 Unknown signals (no Scorecard score, say) never trigger a rule. To use your own rules, copy
-`DEFAULT_CONFIG` from [likelihood.py](src/oss_intake/likelihood.py) into a JSON file and pass
+`DEFAULT_CONFIG` from [likelihood.py](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/likelihood.py) into a JSON file and pass
 `--likelihood-config`. The available metrics are `critical_fix_at_release`, `high_fix_at_release`,
 `critical_with_fix`, `high_with_fix`, `critical_fix_unshipped`, `high_fix_unshipped`, `kev_with_fix`, `max_epss_with_fix`, `max_days_fix_available`, `days_since_latest_release`,
 `archived`, `scorecard_score` and `fix_date_unknown`.
@@ -325,8 +325,8 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 - Runtimes detected from binaries (`binary` in the coverage table) have no package registry to date fixes
   from, so they always show as "fix date unknown".
 
-Planned work is in [BACKLOG.md](BACKLOG.md).
+Planned work is in [BACKLOG.md](https://github.com/ntavakol/OSS-Intake/blob/main/BACKLOG.md).
 
 ## Licence
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](https://github.com/ntavakol/OSS-Intake/blob/main/LICENSE).
