@@ -359,9 +359,10 @@ Scanning on a schedule only works if a finding assessed once does not have to be
 
 | Column | Values |
 |---|---|
-| `triage_status` | `not_affected`, `affected`, `fixed` or `under_investigation` (OpenVEX statuses; "false positive", "risk accepted", "patched" and "investigating" are accepted too) |
-| `triage_notes` | Why. Required for `not_affected` |
+| `triage_status` | `not_affected`, `affected`, `fixed` or `under_investigation` (OpenVEX statuses; "false positive", "risk accepted", "patched" and "investigating" are accepted too), or `mitigated` for a compensating control: not affected, with the justification `inline_mitigations_already_exist`, never reported as fixed |
+| `triage_notes` | Why. Required for `not_affected` and `mitigated`. Line breaks and a leading `-`, `=`, `+` or `@` are kept exactly |
 | `triage_reachable` | `no` records that the vulnerable code is not in the execution path |
+| `triage_justification` | Optional OpenVEX justification for `not_affected`, e.g. `component_not_present` or `vulnerable_code_not_present`; filled in from an OpenVEX file |
 
 Fill them in for the findings you have assessed, then pass the file to the next run:
 
@@ -369,7 +370,9 @@ Fill them in for the findings you have assessed, then pass the file to the next 
 oss-intake --image owner/app:1.5.0 --repo owner/app --out ./reports-2 --decisions ./reports-1/findings.csv
 ```
 
-Each decision applies to the same vulnerability (by ID or alias) in the same package. `not_affected` and
+Each decision applies to the same vulnerability (by ID or alias) in the same package; when there are decisions for
+several versions, the one for the installed version wins. For OS packages an OpenVEX product such as
+`pkg:deb/ubuntu/libc6@...` matches package `libc6`. `not_affected` and
 `fixed` set the finding aside, with the note as the reason; `affected` and `under_investigation` keep its group
 and add the note. A decision made for another installed version still applies but is marked for review, a
 decision whose vulnerability is no longer found is listed as resolved, and a decision never sets aside a

@@ -1465,3 +1465,41 @@ def test_registry_check_pypi_and_npm(tmp_path):
     assert (r["status"], r["algorithm"], r["identity"]) == ("match", "sha512", "@acme/scoped@1.0.0")
     npm_bad = {"https://registry.npmjs.org/@acme%2Fscoped/1.0.0": {"dist": {"integrity": "sha512-" + "A" * 88}}}
     assert rc.check(Http(npm_bad), tgz)["status"] == "mismatch"
+
+
+def test_decisions_prefer_the_installed_version():
+    # B3: two decisions for one CVE in one package, at two versions, used to overwrite each other.
+    from oss_intake import decisions
+
+    old = _f(vuln_id="CVE-2021-44228", package="org.apache.logging.log4j:log4j-core", installed="2.12.0")
+    new = _f(vuln_id="CVE-2021-44228", package="org.apache.logging.log4j:log4j-core", installed="2.15.0")
+
+    def d(version, status, notes):
+        return {"ids": {"CVE-2021-44228"}, "package": "org.apache.logging.log4j:log4j-core", "version": version,
+                "status": status, "notes": notes, "reachable": "", "justification": "", "source": "x"}
+
+    info = decisions.apply([old, new], [d("2.15.0", "affected", "upgrade planned"),
+                                        d("2.12.0", "not_affected", "JndiLookup class removed")])
+    assert (old.decision_status, new.decision_status) == ("not_affected", "affected")
+    assert info["stale"] == 0 and info["resolved"] == []
+
+
+def test_openvex_purl_names_for_os_packages():
+    from oss_intake import decisions
+
+    assert decisions._purl_name_version("pkg:deb/ubuntu/libc6@2.39-0ubuntu8.4?arch=amd64") == (
+        "libc6", "2.39-0ubuntu8.4")
+    assert decisions._purl_name_version("pkg:rpm/redhat/openssl@3.0.7-27.el9?epoch=1&arch=x86_64") == (
+        "openssl", "1:3.0.7-27.el9")
+    assert decisions._purl_name_version("pkg:npm/%40ctrl/tinycolor@4.1.1") == ("@ctrl/tinycolor", "4.1.1")
+    assert decisions._purl_name_version("pkg:maven/org.x/y@1") == ("org.x:y", "1")
+
+
+def test_mitigated_needs_a_note(tmp_path):
+    from oss_intake import decisions
+    from oss_intake.inputs import InputError
+
+    p = tmp_path / "f.csv"
+    p.write_text("id,package,installed,triage_status,triage_notes\nCVE-1,p,1,mitigated,\n", encoding="utf-8")
+    with pytest.raises(InputError, match="mitigated needs triage_notes"):
+        decisions.load(p)

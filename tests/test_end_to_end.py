@@ -868,3 +868,56 @@ def test_cosign_runs_once_per_scanner(tmp_path, monkeypatch):
     cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
               "--trivy-path", str(fake), "--trivy-cosign-bundle", str(bundle)])
     assert len(calls) == 1 and marker.exists()
+
+
+def _decisions_of(path):
+    from oss_intake import decisions
+
+    return sorted((sorted(d["ids"]), d["package"], d["status"], d["notes"], d["justification"])
+                  for d in decisions.load(path))
+
+
+def test_decisions_round_trip_through_csv_openvex_and_back(tmp_path, fixtures):
+    """B4, B14, B18, B21: findings.csv -> openvex.json -> findings.csv keeps every decision exactly."""
+    from .conftest import FakeHttp
+
+    code, out1 = run(tmp_path / "one", fixtures, FakeHttp())
+    assert code == 0
+    rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
+    by_id = {r["id"]: r for r in rows}
+    by_id["CVE-2099-0001"].update(triage_status="not_affected", triage_notes="-1 day SLA\nsecond line, kept")
+    by_id["CVE-2099-0002"].update(triage_status="Mitigated", triage_notes="=WAF rule 7 blocks the payload")
+    by_id["CVE-2099-1000"].update(triage_status="not_affected", triage_notes="libc6 path not used",
+                                  triage_justification="vulnerable_code_not_present")
+    decided = tmp_path / "decided.csv"
+    with decided.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+
+    code, out2 = run(tmp_path / "two", fixtures, FakeHttp(), "--decisions", str(decided))
+    assert code == 0
+    a = json.loads((out2 / "assessment.json").read_text(encoding="utf-8"))
+    assert a["decisions"]["applied"] == 3 and not a["decisions"]["resolved"]
+    f = {x["id"]: x for x in a["findings"]}
+    assert f["CVE-2099-0002"]["suggested_group"] == "Set aside"  # a mitigation sets it aside...
+    vex = {s["vulnerability"]["name"]: s for s in
+           json.loads((out2 / "openvex.json").read_text(encoding="utf-8"))["statements"]}
+    assert vex["CVE-2099-0002"]["status"] == "not_affected"  # ...but is not reported as fixed (B14)
+    assert vex["CVE-2099-0002"]["justification"] == "inline_mitigations_already_exist"
+    assert vex["CVE-2099-0001"]["impact_statement"] == "-1 day SLA\nsecond line, kept"  # B18, B21
+    cdx = {v["id"]: v for v in json.loads((out2 / "vex.cdx.json").read_text(encoding="utf-8"))["vulnerabilities"]}
+    assert cdx["CVE-2099-0002"]["analysis"]["state"] == "not_affected"
+    assert cdx["CVE-2099-0002"]["analysis"]["justification"] == "protected_by_mitigating_control"
+    again = {r["id"]: r for r in csv.DictReader((out2 / "findings.csv").open(encoding="utf-8", newline=""))}
+    assert again["CVE-2099-0002"]["triage_status"] == "mitigated"
+
+    first = _decisions_of(decided)
+    assert _decisions_of(out2 / "findings.csv") == first
+    assert _decisions_of(out2 / "openvex.json") == first  # libc6 read back without its ubuntu/ namespace (B4)
+
+    code, out3 = run(tmp_path / "three", fixtures, FakeHttp(), "--decisions", str(out2 / "openvex.json"))
+    assert code == 0
+    a3 = json.loads((out3 / "assessment.json").read_text(encoding="utf-8"))
+    assert a3["decisions"]["applied"] == 3 and not a3["decisions"]["resolved"]
+    assert _decisions_of(out3 / "findings.csv") == first

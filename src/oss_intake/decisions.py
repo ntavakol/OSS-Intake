@@ -7,7 +7,11 @@ new findings.csv comes out pre-filled, so the cycle repeats. An OpenVEX document
 with decisions writes openvex.json so other tools (Grype and Trivy read it with --vex) can use them.
 
 Statuses follow OpenVEX: not_affected, affected, fixed, under_investigation. not_affected needs a note that
-says why. A decision never sets aside a malicious package.
+says why. "mitigated" means a compensating control, not a fix: it is not_affected with the justification
+inline_mitigations_already_exist. A decision never sets aside a malicious package.
+
+A decision applies to the same vulnerability in the same package, preferring the one made for the installed
+version; one made for another version still applies, marked for review.
 """
 
 from __future__ import annotations
@@ -26,13 +30,28 @@ ALIASES = {
     "not affected": "not_affected", "not_affected": "not_affected", "false positive": "not_affected",
     "false_positive": "not_affected", "not applicable": "not_affected", "n/a": "not_affected",
     "affected": "affected", "accepted": "affected", "risk accepted": "affected", "exploitable": "affected",
-    "fixed": "fixed", "mitigated": "fixed", "patched": "fixed",
+    "fixed": "fixed", "patched": "fixed", "mitigated": "not_affected", "compensating control": "not_affected",
     "under investigation": "under_investigation", "under_investigation": "under_investigation",
     "investigating": "under_investigation", "open": "under_investigation",
 }
 JUSTIFICATIONS = ("component_not_present", "vulnerable_code_not_present", "vulnerable_code_not_in_execute_path",
                   "vulnerable_code_cannot_be_controlled_by_adversary", "inline_mitigations_already_exist")
 SETS_ASIDE = ("not_affected", "fixed")
+MITIGATED = "inline_mitigations_already_exist"
+# The words that mean a mitigation rather than a reason the code is unaffected.
+_MITIGATION_WORDS = ("mitigated", "compensating control")
+_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def unguard(value: str) -> str:
+    """Undo report.csv_safe: a leading quote added before =, +, -, @, tab or CR to stop spreadsheet formulas."""
+    return value[1:] if value[:1] == "'" and value[1:2] in _FORMULA else value
+
+
+def _read_csv(path: Path) -> list[dict]:
+    # newline="" keeps line breaks inside quoted cells (multi-line notes) instead of splitting the row.
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        return list(csv.DictReader(fh))
 
 
 def _status(value: str) -> str | None:
@@ -50,7 +69,7 @@ def _ids(*values: str) -> set[str]:
 
 
 def _from_csv(path: Path) -> tuple[list[dict], list[str]]:
-    rows = list(csv.DictReader(path.read_text(encoding="utf-8-sig").splitlines()))
+    rows = _read_csv(path)
     if rows and not {"id", "package", "triage_status"} <= set(rows[0]):
         raise InputError(f"{path.name} is not a findings.csv from oss-intake (needs id, package and "
                          "triage_status columns)")
@@ -60,32 +79,48 @@ def _from_csv(path: Path) -> tuple[list[dict], list[str]]:
         if not raw:
             continue  # not assessed yet
         status = _status(raw)
-        notes = (r.get("triage_notes") or "").strip()
+        notes = unguard((r.get("triage_notes") or "").strip())
         if not status:
             errors.append(f"row {n}: triage_status '{raw}' is not one of {', '.join(STATUSES)}")
             continue
         if status == "not_affected" and not notes:
-            errors.append(f"row {n}: not_affected needs triage_notes saying why ({r.get('id')})")
+            errors.append(f"row {n}: {raw} needs triage_notes saying why ({r.get('id')})")
             continue
-        package = (r.get("package") or "").lstrip("'")  # undo the CSV formula guard on '@scope/name
+        package = unguard((r.get("package") or "").strip())  # '@scope/name was guarded as a formula
         reachable = (r.get("triage_reachable") or "").strip().lower()
+        justification = (r.get("triage_justification") or "").strip()
+        if justification and justification not in JUSTIFICATIONS:
+            errors.append(f"row {n}: triage_justification '{justification}' is not one of {', '.join(JUSTIFICATIONS)}")
+            continue
+        if " ".join(raw.lower().replace("-", " ").split()) in _MITIGATION_WORDS:
+            justification = MITIGATED
+        elif not justification and status == "not_affected" and reachable in ("no", "n", "false", "not reachable"):
+            justification = "vulnerable_code_not_in_execute_path"
         out.append({"ids": _ids(r.get("id"), r.get("aliases")), "package": package,
-                    "version": (r.get("triage_decided_version") or r.get("installed") or "").strip(),
-                    "status": status, "notes": notes,
-                    "reachable": reachable,
-                    "justification": "vulnerable_code_not_in_execute_path"
-                    if status == "not_affected" and reachable in ("no", "n", "false", "not reachable") else "",
+                    "version": unguard((r.get("triage_decided_version") or r.get("installed") or "").strip()),
+                    "status": status, "notes": notes, "reachable": reachable,
+                    "justification": justification if status == "not_affected" else "",
                     "source": f"{path.name} row {n}"})
     return out, errors
 
 
 def _purl_name_version(purl: str) -> tuple[str, str]:
+    """Package name and version as findings carry them. OS packages (deb, rpm, apk) drop the distro namespace
+    (pkg:deb/ubuntu/libc6 is package libc6) and take the epoch qualifier into the version (1:2.3-4)."""
+    from urllib.parse import parse_qs
+
     from .inventory_report import split_purl
 
+    base, _, query = purl.split("#", 1)[0].partition("?")
     try:
-        _, name, version = split_purl(purl.split("?", 1)[0].split("#", 1)[0])
+        ptype, name, version = split_purl(base)
     except ValueError:
         return "", ""
+    if ptype in ("deb", "rpm", "apk"):
+        name = name.rsplit("/", 1)[-1]
+        epoch = (parse_qs(query).get("epoch") or [""])[0]
+        if epoch and epoch != "0" and ":" not in version:
+            version = f"{epoch}:{version}"
     return name, version
 
 
@@ -127,9 +162,9 @@ def previous_findings(path: Path) -> set[tuple[str, str]] | None:
     if path.suffix.lower() != ".csv" or not path.is_file():
         return None
     keys: set[tuple[str, str]] = set()
-    for r in csv.DictReader(path.read_text(encoding="utf-8-sig").splitlines()):
+    for r in _read_csv(path):
         ids = _ids(r.get("id"))
-        pkg = (r.get("package") or "").lstrip("'").lower()
+        pkg = unguard(r.get("package") or "").lower()
         keys |= {(i, pkg) for i in ids}
     return keys
 
@@ -149,19 +184,24 @@ def load(path: Path) -> list[dict]:
 
 def apply(findings: list[Finding], decisions: list[dict]) -> dict:
     """Attach each decision to the findings it covers (same vulnerability, by ID or alias, in the same package).
-    Returns counts for the report, including decisions whose vulnerability is no longer found."""
-    index: dict[tuple[str, str], dict] = {}
+    When several decisions cover one finding, the one made for its installed version wins; otherwise the last one
+    in the file applies, marked for review. Returns counts for the report, including decisions no finding used."""
+    index: dict[tuple[str, str], list[dict]] = {}
     for d in decisions:
         for i in d["ids"]:
-            index[(i, d["package"].lower())] = d
+            bucket = index.setdefault((i, d["package"].lower()), [])
+            if d not in bucket:
+                bucket.append(d)
     used: set[int] = set()
     info: dict = {"decisions": len(decisions), "applied": 0, "stale": 0, "ignored_malicious": 0,
                   "by_status": {s: 0 for s in STATUSES}, "resolved": []}
     for f in findings:
         pkg = f.package.lower()
-        d = next((index[(i, pkg)] for i in sorted(_ids(f.vuln_id, *f.aliases)) if (i, pkg) in index), None)
-        if d is None:
+        candidates = [d for i in sorted(_ids(f.vuln_id, *f.aliases)) for d in index.get((i, pkg), [])]
+        if not candidates:
             continue
+        d = next((c for c in candidates if c["version"] and c["version"] == f.installed),
+                 next((c for c in candidates if not c["version"]), candidates[-1]))
         used.add(id(d))
         if f.malicious and d["status"] in SETS_ASIDE:
             info["ignored_malicious"] += 1

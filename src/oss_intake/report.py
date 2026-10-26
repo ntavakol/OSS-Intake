@@ -27,6 +27,7 @@ CSV_FIELDS = [
     "source_severity", "target",
     "suggested_group", "suggested_reason", "reachability", "exploit_level", "exploit_refs", "conditions",
     "title", "url", "note", "triage_reachable", "triage_status", "triage_notes", "triage_decided_version",
+    "triage_justification",
 ]
 
 
@@ -67,9 +68,11 @@ def finding_row(f: Finding) -> dict:
         "url": f.url,
         "note": f.note,
         "triage_reachable": f.decision_reachable,
-        "triage_status": f.decision_status,
+        "triage_status": ("mitigated" if f.decision_status == "not_affected"
+                          and f.decision_justification == "inline_mitigations_already_exist" else f.decision_status),
         "triage_notes": f.decision_notes,
         "triage_decided_version": f.decision_version,
+        "triage_justification": f.decision_justification if f.decision_status == "not_affected" else "",
     }
 
 
