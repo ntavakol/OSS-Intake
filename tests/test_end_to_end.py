@@ -374,6 +374,14 @@ def _osv_vuln(vid, purl, fixed=None, severity="HIGH", aliases=()):
             "affected": [{"package": {"purl": purl}, "ranges": [{"type": "SEMVER", "events": events}]}]}
 
 
+def test_as_of_before_fix_never_gives_negative_days(tmp_path, fixtures, fake_http):
+    code, out = run(tmp_path, fixtures, fake_http, "--as-of", "2026-05-01")
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    days = [f["days_fix_available"] for f in a["findings"] if f["days_fix_available"] not in ("", None)]
+    assert days and min(int(d) for d in days) >= 0
+
+
 def test_inventory_csv(tmp_path):
     """A package inventory is validated, checked against OSV only, and reported per package with its labels."""
     from .conftest import FakeHttp

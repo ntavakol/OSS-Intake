@@ -1320,3 +1320,30 @@ def test_osv_go_fixes_carry_v():
     vuln = {"affected": [{"package": {"purl": "pkg:golang/golang.org/x/net"},
                           "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "0.60.0"}]}]}]}
     assert _fixed_for(vuln, "pkg:golang/golang.org/x/net@v0.17.0") == ["v0.60.0"]
+
+
+def test_readme_generated_sections_are_current():
+    """The README's example output and likelihood tables come from the code; regenerate with
+    python scripts/readme_sync.py when this fails."""
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "scripts" / "readme_sync.py"
+    spec = importlib.util.spec_from_file_location("readme_sync", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    text = mod.README.read_text(encoding="utf-8")
+    assert mod.render(text) == text, "README.md is out of date: run python scripts/readme_sync.py"
+
+
+def test_readme_documents_every_option():
+    from pathlib import Path
+
+    from oss_intake import cli
+
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    sub = next(a for a in cli.build_parser()._actions if a.__class__.__name__ == "_SubParsersAction")
+    missing = sorted({f"{name} {opt}" for name in ("scan", "verify") for a in sub.choices[name]._actions
+                      for opt in a.option_strings if opt.startswith("--") and opt != "--help"
+                      and f"`{opt}" not in readme})
+    assert missing == [], f"options missing from README.md: {missing}"

@@ -196,6 +196,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 
 | Option | Purpose |
 |---|---|
+| `--out` | Output directory (required) |
 | `--image` | Image with explicit tag or digest |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory `.csv` instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
@@ -217,12 +218,26 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
+| `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
+| `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |
+| `--trivy-cosign-identity`, `--grype-cosign-identity` | Certificate identity (regexp) the cosign bundle must match |
+| `--timeout` | Seconds before a scanner run is abandoned (default 1800) |
+| `--top` | Number of findings listed in the summary (default 25; all are in findings.csv) |
+| `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
 
-Other commands: `oss-intake doctor` (scanner paths, versions, hashes, known-bad status) and
-`oss-intake verify` (check a download against a checksums file, a hash or a cosign bundle).
+Other commands: `oss-intake doctor` (scanner paths, versions, hashes and known-bad status; `--trivy-path` and
+`--grype-path` as for `scan`) and `oss-intake verify`, which checks a downloaded file:
+
+| `verify` option | Purpose |
+|---|---|
+| `--file` | The downloaded file to check (required) |
+| `--checksums` | A `sha256sum`-style checksums file from the release, e.g. `trivy_0.76.1_checksums.txt` |
+| `--sha256` | An expected SHA-256 instead of a checksums file |
+| `--name` | The entry to look up in the checksums file (default: the file's name) |
+| `--cosign-bundle`, `--cosign-identity` | Also verify a Sigstore bundle with cosign, against a certificate identity regexp |
 
 Exit codes: `0` success, `1` error (including any integrity failure), `2` invalid input, `3` likelihood
 threshold reached.
@@ -264,19 +279,25 @@ Packages with no dated source yet, currently Amazon Linux and runtimes detected 
 ## Example output
 
 Taken from the synthetic test fixtures (`tests/fixtures`, fictional project `example/webapp`) so it shows
-the format, not a judgement of any real project:
+the format, not a judgement of any real project. This section is regenerated from the code by
+`scripts/readme_sync.py`, and the test suite fails if it falls out of date. A real report on six compromised npm
+releases is in the [live sample](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html).
 
+<!-- generated:example-output -->
 ```text
-findings=7 critical=2 high=4 with_fix=6 fix_before_release=3 fix_date_unknown=1 likelihood=5(Almost certain)
+findings=7 critical=2 high=4 with_fix=6 fix_before_release=4 fix_date_unknown=0 likelihood=5(Almost certain,confidence=normal)
 ```
 
-| ID | Severity | Package | Installed | Fix | Fix before release | Days fix available |
-|---|---|---|---|---|---|---|
-| CVE-2099-0001 | CRITICAL | org.springframework:spring-web | 6.1.10 | 6.1.12 | yes | 290 |
-| CVE-2099-0006 | CRITICAL | com.fasterxml.jackson.core:jackson-databind | 2.17.0 | 2.17.3 | no | 113 |
-| CVE-2099-0003 | HIGH | io.netty:netty-codec-http | 4.1.100.Final | 4.1.108.Final | yes | 244 |
-| CVE-2099-0004 | HIGH | org.springframework:spring-web | 6.1.10 | none | no fix | n/a |
-| CVE-2099-1000 | MEDIUM | libc6 | 2.39-0ubuntu8.4 | 2.39-0ubuntu8.5 | unknown | n/a |
+| Group | ID | Severity | CVSS | Exploit | Package | Installed | Fix | Fix before release | Days fix available |
+|---|---|---|---|---|---|---|---|---|---|
+| Act now | CVE-2099-0003 | HIGH | 7.5 (3.1, ghsa) | known exploited | io.netty:netty-codec-http | 4.1.100.Final | 4.1.108.Final | yes | 244 |
+| Act now | CVE-2099-0005 | HIGH | 7.5 (3.1, ghsa) | weaponised | com.fasterxml.jackson.core:jackson-databind | 2.17.0 | 2.17.1 | yes | 221 |
+| Act now | CVE-2099-0002 | HIGH | 7.5 (3.1, ghsa) | weaponised | com.fasterxml.jackson.core:jackson-databind | 2.17.0 | 2.17.2 | no | 129 |
+| Review | CVE-2099-0001 | CRITICAL | 9.8 (3.1, ghsa) | none indexed | org.springframework:spring-web | 6.1.10 | 6.1.12 | yes | 290 |
+| Review | CVE-2099-0006 | CRITICAL | 9.8 (3.1, ghsa) | public exploit | com.fasterxml.jackson.core:jackson-databind | 2.17.0 | 2.17.3 | no | 113 |
+| Routine | CVE-2099-0004 | HIGH | 7.1 (3.1, ghsa) | proof of concept | org.springframework:spring-web | 6.1.10 | none | no fix | n/a |
+| Routine | CVE-2099-1000 | MEDIUM | 7.5 (3.1, ghsa) | none indexed | libc6 | 2.39-0ubuntu8.4 | 2.39-0ubuntu8.5 | yes | 254 |
+<!-- /generated:example-output -->
 
 The summary also covers scope (scanner versions, database dates, hash verification), project health,
 agreement between sources and any warnings. See [docs/validation.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/validation.md) for checking the
@@ -314,25 +335,29 @@ installed version already matches a fix, or govulncheck shows the vulnerable fun
 
 Off by default. With `--likelihood`, the first matching rule wins:
 
+<!-- generated:likelihood-rules -->
 | Level | Default rule |
 |---|---|
-| 5 Almost certain | A CISA KEV vulnerability has a fix the project has not shipped |
-| 4 Likely | A finding with an upstream fix has a ready-to-use exploit (Metasploit module or Nuclei template) |
-| 4 Likely | A finding with an upstream fix has an EPSS score of 0.5 or more |
-| 4 Likely | A critical fix existed before release, and the project has not released for 180 days, is archived or scores under 4 on Scorecard |
-| 4 Likely | A critical fix is unshipped and the project has not released for 180 days |
-| 3 Possible | A finding with an upstream fix has an EPSS score of 0.1 or more |
+| 5 Almost certain | A package listed as malicious (OpenSSF malicious packages, or a CWE-506 advisory) is present |
+| 5 Almost certain | A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped |
+| 4 Likely | A finding with an upstream fix has a ready-to-use public exploit (Metasploit module or Nuclei template) |
+| 4 Likely | A finding with an upstream fix has a high predicted exploitation probability (EPSS 0.5 or more) |
+| 4 Likely | Critical fixes were available before release and the project shows weak upkeep |
+| 4 Likely | Critical fixes have been available for a long time and the project has not released since |
+| 3 Possible | A finding with an upstream fix has a notable predicted exploitation probability (EPSS 0.1 or more) |
 | 3 Possible | A finding with an upstream fix has a published exploit (Exploit-DB) |
-| 3 Possible | A critical fix, or 5 or more high fixes, existed before release |
-| 3 Possible | A critical fix, or 10 or more high fixes, are unshipped |
-| 2 Unlikely | Any high or critical finding has an upstream fix |
-| 1 Rare | None of the above |
+| 3 Possible | Critical, or several high, fixes were available before release and not shipped |
+| 3 Possible | Critical, or many high, fixes have been available upstream for a long time with no newer release |
+| 2 Unlikely | High or critical findings exist with upstream fixes |
+| 1 Rare | No high or critical findings with available fixes |
+<!-- /generated:likelihood-rules -->
 
 Unknown signals (no Scorecard score, say) never trigger a rule. To use your own rules, copy
 `DEFAULT_CONFIG` from [likelihood.py](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/likelihood.py) into a JSON file and pass
-`--likelihood-config`. The available metrics are `critical_fix_at_release`, `high_fix_at_release`,
-`critical_with_fix`, `high_with_fix`, `critical_fix_unshipped`, `high_fix_unshipped`, `kev_with_fix`, `max_epss_with_fix`, `max_days_fix_available`, `days_since_latest_release`,
-`archived`, `scorecard_score` and `fix_date_unknown`.
+`--likelihood-config`.
+<!-- generated:likelihood-metrics -->
+The available metrics are `archived`, `critical_fix_at_release`, `critical_fix_unshipped`, `critical_with_fix`, `days_since_latest_release`, `fix_date_unknown`, `high_fix_at_release`, `high_fix_unshipped`, `high_with_fix`, `kev_with_fix`, `malicious`, `max_days_fix_available`, `max_epss_with_fix`, `public_exploit_with_fix`, `release_date_known`, `scanned_is_latest`, `scorecard_score`, `weaponised_with_fix` and `with_fix`.
+<!-- /generated:likelihood-metrics -->
 
 ## Limitations
 

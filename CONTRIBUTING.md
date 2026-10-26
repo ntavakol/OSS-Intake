@@ -34,6 +34,9 @@ python -m pytest
   with an explicit encoding.
 - Style: write plainly and avoid em dashes in documentation and output.
 - Add a `CHANGELOG.md` entry under "Unreleased" for user-visible changes.
+- Parts of the README are generated from the code (example output, likelihood rules and metrics). After changing
+  the report format or the likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do.
+  Every `scan` and `verify` option must also appear in the README.
 
 ## Validating against real images
 

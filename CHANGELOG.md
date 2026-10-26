@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- README: the example output, likelihood rules (the malicious-package rule was missing) and metric list are now
+  generated from the code by `scripts/readme_sync.py`, and tests fail if they drift. Eight `scan` options and the
+  `verify` options were undocumented.
+- With `--as-of` before a fix was published, "days a fix has been available" was negative; it is now 0.
+
 ## [0.4.0] - 2026-10-26
 
 Is upgrading worth it? Package inventories now compare the installed version with the minimum fix and the latest

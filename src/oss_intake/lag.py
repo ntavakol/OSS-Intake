@@ -80,7 +80,8 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
     cutoff = release_date - timedelta(days=grace_days) if release_date else None
     for f in findings:
         if f.fix_published and not f.likely_fixed and not f.excluded:
-            f.days_fix_available = days_between(f.fix_published, as_of)
+            # A fix published after the assessment date (--as-of in the past) was not available yet.
+            f.days_fix_available = max(days_between(f.fix_published, as_of), 0)
             if cutoff:
                 f.fix_available_at_release = f.fix_published < cutoff
         if f.published and release_date:
