@@ -178,9 +178,17 @@ column (owner, system, team...) is carried through to the reports as a label. Ev
 any row is invalid, the run stops and lists each problem with its row number, before anything is looked up.
 
 No scanner is needed: each package version is checked against OSV, so malicious releases are flagged as well as
-vulnerable ones. Besides the usual reports, `packages.csv` lists every package, worst first, with its findings,
-the lowest version that fixes every listed vulnerability with a fix, and its label columns; the HTML report
-shows the packages that need attention. Run it on a schedule: a package that was clean when approved can turn
+vulnerable ones. Besides the usual reports, `packages.csv` lists every package, worst first, with its findings
+and label columns, and an upgrade comparison:
+
+- **Upgrade to at least:** the lowest version that fixes every listed vulnerability with a fix, and what is
+  still known to affect that version (`1.2.0 · 1 known` means the minimum fix is not enough on its own).
+- **Latest release:** the package's current release on deps.dev and what is known to affect it. Skip this lookup
+  (one request per package) with `--no-latest` to see the current state and the minimum fix only.
+- **major:** the upgrade crosses a major version, or a minor version below 1.0, so expect breaking changes.
+
+Fewer known vulnerabilities is not proof that a version is safe: it may be less studied, or newer than the
+advisories. The HTML report shows the packages that need attention. Run it on a schedule: a package that was clean when approved can turn
 out vulnerable or compromised later. A sample is in
 [examples/inventory](https://github.com/ntavakol/OSS-Intake/blob/main/examples/inventory/packages.sample.csv).
 
@@ -208,6 +216,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--formats` | Any of `csv,md,json,html` (default all; `findings.csv` is always written) |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
+| `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |

@@ -80,7 +80,10 @@ def _fixed_for(vuln: dict, purl: str) -> list[str]:
         for rng in aff.get("ranges") or []:
             for ev in rng.get("events") or []:
                 if ev.get("fixed"):
-                    fixed.append(ev["fixed"])
+                    fix = ev["fixed"]
+                    if ptype == "golang" and fix[:1].isdigit():
+                        fix = f"v{fix}"  # Go versions carry a v (v0.60.0); OSV's Go ranges omit it
+                    fixed.append(fix)
     return split_fixed(fixed)
 
 

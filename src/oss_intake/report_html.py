@@ -490,32 +490,55 @@ def _packages(a: dict) -> str:
     if not inv:
         return ""
     from .inventory_report import label_text
+    from .upgrade import describe
+
+    def target(version: str, left: dict | None, major: bool) -> object:
+        if not version:
+            return ""
+        head = f'<span class="mono">{_e(version)}</span>'
+        if left is not None:
+            tone = "c" if left["malicious"] or left["critical"] else "a" if left["total"] else "g"
+            head += f' · <span class="{tone}">{_e(describe(left))}</span>'
+        out = f'<span class="nw">{head}</span>'
+        if major:
+            out += (' <span class="pill p-med" title="crosses a major version (or a 0.x minor version): expect '
+                    'breaking changes">major</span>')
+        return Raw(out)
 
     flagged = [r for r in inv["rows"] if r["findings"]]
     clean = inv["packages"] - len(flagged)
     head = (f'<p>{_e(str(inv["packages"]))} packages checked: {_e(str(len(flagged)))} with known '
             f'vulnerabilities or malware, {_e(str(clean))} with none known. '
-            + (f'<span class="c">{_e(str(inv["malicious"]))} malicious.</span>' if inv["malicious"] else "")
+            + (f'<span class="c">{_e(str(inv["malicious"]))} malicious.</span> ' if inv["malicious"] else "")
+            + (f'Upgrading to the minimum fix version clears every known vulnerability for '
+               f'{_e(str(inv.get("fix_clears_all", 0)))} of them.' if inv.get("upgrade", {}).get("status") == "ok"
+               else "")
             + "</p>")
     rows, cls = [], []
     for r in flagged[:PACKAGES_SHOWN]:
         exploit = Raw('<span class="pill p-crit">MALICIOUS</span>') if r["malicious"] else (
             f'{r["kev"]} KEV' if r["kev"] else "")
-        rows.append([_group_pill(r["group_key"]), Raw(f'<span class="mono">{_e(r["package"])}</span>'),
-                     Raw(f'<span class="mono">{_e(r["version"])}</span>'), r["ecosystem"], r["findings"],
+        rows.append([_group_pill(r["group_key"]),
+                     Raw(f'<span class="mono">{_e(r["package"])}</span><br><small class="v4">{_e(r["ecosystem"])}'
+                         "</small>"),
+                     Raw(f'<span class="mono">{_e(r["version"])}</span>'), r["findings"],
                      r["critical"], r["high"], exploit,
                      "remove: malicious release" if r["malicious"]
-                     else Raw(f'<span class="mono">{_e(r["upgrade_to"])}</span>') if r["upgrade_to"]
-                     else ("no fix listed" if r["no_fix"] else ""),
+                     else target(r["upgrade_to"], r.get("upgrade_left"), r.get("upgrade_major", False))
+                     if r["upgrade_to"] else ("no fix listed" if r["no_fix"] else ""),
+                     "" if r["malicious"] or r.get("latest") == r["version"]
+                     else target(r.get("latest", ""), r.get("latest_left"), r.get("latest_major", False)),
                      label_text(r["labels"])])
         cls.append("row-crit" if r["malicious"] or r["critical"] else "row-high" if r["high"] else "")
-    body = head + _table(["Group", "Package", "Version", "Ecosystem", "Findings", "Critical", "High", "Evidence",
-                          "Upgrade to at least", "Labels"], rows, num={4, 5, 6}, row_cls=cls)
+    body = head + _table(["Group", "Package", "Version", "Findings", "Critical", "High", "Evidence",
+                          "Upgrade to at least", "Latest release", "Labels"], rows, num={3, 4, 5}, row_cls=cls)
     more = len(flagged) - PACKAGES_SHOWN
     body += _note(("" if more <= 0 else f"{more} more packages with findings are not shown. ")
                   + "Every package, including those with none known, is in packages.csv with its label columns. "
-                  "'Upgrade to at least' is the lowest version that fixes every listed vulnerability with a fix; "
-                  "a newer version has fewer known vulnerabilities, which is not proof that it is safe.")
+                  "'Upgrade to at least' is the lowest version that fixes every listed vulnerability with a fix, "
+                  "followed by what is still known to affect that version; 'Latest release' is the package's "
+                  "current release on deps.dev (skipped with --no-latest). Fewer known vulnerabilities is not "
+                  "proof that a version is safe: it may be less studied, or newer than the advisories.")
     return _section("Packages", body)
 
 

@@ -1239,3 +1239,61 @@ def test_inventory_parsing(tmp_path):
         p.write_text(body, encoding="utf-8")
         with pytest.raises(inputs.InputError, match=expect):
             inputs.inventory(p)
+
+
+def test_upgrade_breaking():
+    from oss_intake.upgrade import breaking
+
+    assert breaking("1.4.2", "2.0.0") and breaking("v0.17.0", "v0.60.0") and breaking("0.7.29", "0.8.0")
+    assert not breaking("1.4.2", "1.9.0") and not breaking("0.7.29", "0.7.30") and not breaking("3.2.0", "3.2.0")
+    assert not breaking("", "1.0.0") and not breaking("2.0.0", "1.0.0")
+
+
+def test_upgrade_enrich():
+    from oss_intake import upgrade
+
+    from .conftest import FakeHttp
+
+    class Http(FakeHttp):
+        def get_json(self, url, params=None):
+            self._check(url)
+            if url == "https://api.deps.dev/v3/systems/npm/packages/acme-widget":
+                return 200, {"versions": [{"versionKey": {"version": "1.3.0"}, "isDefault": False},
+                                          {"versionKey": {"version": "2.1.0"}, "isDefault": True}]}
+            if url.startswith("https://api.deps.dev/"):
+                return 404, None
+            if url.startswith("https://api.osv.dev/v1/vulns/"):
+                return 200, {"id": "GHSA-test-left-0001", "database_specific": {"severity": "CRITICAL"}}
+            raise AssertionError(url)
+
+        def post_json(self, url, body):
+            self._check(url)
+            purls = [q["package"]["purl"] for q in body["queries"]]
+            return 200, {"results": [{"vulns": [{"id": "GHSA-test-left-0001"}]} if p.endswith("@1.2.0") else {}
+                                     for p in purls]}
+
+    rows = [{"purl": "pkg:npm/acme-widget@1.0.0", "version": "1.0.0", "upgrade_to": "1.2.0", "malicious": False,
+             "findings": 2, "critical": 1},
+            {"purl": "pkg:npm/%40acme/bad@2.0.0", "version": "2.0.0", "upgrade_to": "remove: malicious release",
+             "malicious": True, "findings": 1, "critical": 0}]
+    http = Http()
+    info = upgrade.enrich(http, rows)
+    w, bad = rows
+    assert w["upgrade_left"] == {"total": 1, "critical": 1, "malicious": False} and not w["upgrade_major"]
+    assert w["latest"] == "2.1.0" and w["latest_major"] and w["latest_left"]["total"] == 0
+    assert bad["upgrade_left"] is None and info["latest_checked"] == 1
+    assert upgrade.describe(w["upgrade_left"]) == "1 known (1 critical)"
+
+    rows2 = [dict(rows[0])]
+    http2 = Http()
+    upgrade.enrich(http2, rows2, latest=False)
+    assert rows2[0]["latest"] == "" and not any("deps.dev" in c for c in http2.calls)
+    assert rows2[0]["upgrade_left"]["total"] == 1
+
+
+def test_osv_go_fixes_carry_v():
+    from oss_intake.scanners.osv import _fixed_for
+
+    vuln = {"affected": [{"package": {"purl": "pkg:golang/golang.org/x/net"},
+                          "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "0.60.0"}]}]}]}
+    assert _fixed_for(vuln, "pkg:golang/golang.org/x/net@v0.17.0") == ["v0.60.0"]

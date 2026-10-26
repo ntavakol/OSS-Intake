@@ -11,10 +11,12 @@ from urllib.parse import unquote
 
 from . import triage, versions
 from .models import Finding
+from .upgrade import describe
 
 GROUP_ORDER = ["act", "review", "conditions", "routine", "aside"]
 BASE_FIELDS = ["group", "ecosystem", "package", "version", "findings", "critical", "high", "malicious", "kev",
-               "no_fix", "upgrade_to", "purl"]
+               "no_fix", "upgrade_to", "upgrade_left", "upgrade_major", "latest", "latest_left", "latest_major",
+               "purl"]
 
 
 def split_purl(purl: str) -> tuple[str, str, str]:
@@ -76,6 +78,8 @@ def summary(rows: list[dict]) -> dict:
         "act_now": sum(1 for r in rows if r["group_key"] == "act"),
         "with_critical": sum(1 for r in rows if r["critical"]),
         "without_fix": sum(1 for r in rows if r["no_fix"] and not r["malicious"]),
+        "fix_clears_all": sum(1 for r in rows if (r.get("upgrade_left") or {}).get("total") == 0),
+        "behind_latest": sum(1 for r in rows if r.get("latest") and r["latest"] != r["version"]),
         "label_columns": sorted({k for r in rows for k in r["labels"]}),
     }
 
@@ -91,7 +95,11 @@ def write_csv(path: Path, rows: list[dict], safe) -> None:
         w = csv.DictWriter(fh, fieldnames=BASE_FIELDS + label_cols)
         w.writeheader()
         for r in rows:
-            out = {k: r[k] for k in BASE_FIELDS}
+            out = {k: r.get(k, "") for k in BASE_FIELDS}
             out["malicious"] = "yes" if r["malicious"] else ""
+            for k in ("upgrade_left", "latest_left"):
+                out[k] = describe(r.get(k))
+            for k in ("upgrade_major", "latest_major"):
+                out[k] = "yes" if r.get(k) else ""
             out.update({k: r["labels"].get(k, "") for k in label_cols})
             w.writerow({k: safe(v) for k, v in out.items()})

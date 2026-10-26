@@ -3,7 +3,6 @@
 Items agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 
 ## Next
-- Upgrade comparison per package (see Organisation view).
 - VEX import, so triage decisions recorded in `findings.csv` carry over to the next run of the same target
   instead of being redone.
 - Artifact integrity for `--path` (see Signals).
@@ -19,7 +18,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
   unparseable rows before any network call. No scanner is needed: query OSV (malicious and vulnerable versions)
   and deps.dev (latest version, release dates) per package, in batches. Then CycloneDX and SPDX SBOMs as input,
   which most repositories and Dependency-Track can export.
-- Upgrade comparison per package: known vulnerabilities in the installed version against the nearest version
+- Upgrade comparison per package: done for inventories in 0.4.0; still to do for image and lockfile reports.
+  Original scope: known vulnerabilities in the installed version against the nearest version
   that fixes them and against the latest release ("2.14.1 to 2.17.1 removes 4 critical, adds none"). Flag a
   major-version jump as a likely breaking change. A newer version only has fewer known vulnerabilities; say so.
 - Executive summary report across the inventory: packages and versions in use, how many are malicious, have

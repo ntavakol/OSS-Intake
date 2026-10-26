@@ -213,15 +213,25 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         from .inventory_report import label_text
 
         flagged = [r for r in inv["rows"] if r["findings"]]
+        from .upgrade import describe
+
+        def target(v, left, major):
+            return " · ".join(x for x in (v, describe(left), "major" if major else "") if x)
+
         rows = [[r["group"], r["package"], r["version"], r["ecosystem"], r["findings"], r["critical"],
                  "MALICIOUS" if r["malicious"] else (f"{r['kev']} KEV" if r["kev"] else ""),
-                 r["upgrade_to"] or ("no fix listed" if r["no_fix"] else ""), label_text(r["labels"])]
+                 "remove: malicious release" if r["malicious"]
+                 else target(r["upgrade_to"], r.get("upgrade_left"), r.get("upgrade_major"))
+                 if r["upgrade_to"] else ("no fix listed" if r["no_fix"] else ""),
+                 "" if r["malicious"] or r.get("latest") == r["version"]
+                 else target(r.get("latest", ""), r.get("latest_left"), r.get("latest_major")),
+                 label_text(r["labels"])]
                 for r in flagged[:top]]
         secs.append(("Packages", [
             ("p", f"{inv['packages']} packages checked: {len(flagged)} with known vulnerabilities or malware, "
                   f"{inv['packages'] - len(flagged)} with none known, {inv['malicious']} malicious."),
             ("table", ["Group", "Package", "Version", "Ecosystem", "Findings", "Critical", "Evidence",
-                       "Upgrade to at least", "Labels"], rows),
+                       "Upgrade to at least", "Latest release", "Labels"], rows),
             ("p", "Every package, including those with none known, is in packages.csv. 'Upgrade to at least' is "
                   "the lowest version that fixes every listed vulnerability with a fix; fewer known "
                   "vulnerabilities is not proof that a version is safe.")]))

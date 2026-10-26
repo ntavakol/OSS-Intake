@@ -408,7 +408,9 @@ def test_inventory_csv(tmp_path):
                    "npm,acme-widget,1.0.0,Team D,Web\n", encoding="utf-8")
     out = tmp_path / "o"
     http = InventoryHttp()
-    assert cli.main(["--path", str(inv), "--out", str(out), "--no-scorecard", "--no-workflows"], http=http) == 0
+    assert cli.main(["--path", str(inv), "--out", str(out), "--no-scorecard", "--no-workflows", "--no-latest"],
+                    http=http) == 0
+    assert not any(c.endswith("/packages/acme-widget") for c in http.calls)  # --no-latest: no latest lookup
     assert not any("trivy" in c or "grype" in c for c in http.calls)
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     inv_a = a["inventory"]
@@ -416,6 +418,9 @@ def test_inventory_csv(tmp_path):
     rows = {r["package"]: r for r in inv_a["rows"]}
     assert rows["@acme/scoped"]["group"] == "Act now" and rows["@acme/scoped"]["upgrade_to"].startswith("remove")
     assert rows["acme-widget"]["upgrade_to"] == "1.2.0" and rows["acme-widget"]["findings"] == 2
+    assert rows["acme-widget"]["upgrade_left"] == {"total": 0, "critical": 0, "malicious": False}
+    assert rows["acme-widget"]["latest"] == "" and inv_a["upgrade"]["latest"] is False
+    assert inv_a["fix_clears_all"] == 1
     assert rows["acme-widget"]["labels"] == {"owner": "Team A; Team D", "system": "Web"}
     assert rows["acme-lib"]["no_fix"] == 1 and rows["clean-pkg"]["findings"] == 0
     assert inv_a["rows"][0]["package"] == "@acme/scoped"  # worst first

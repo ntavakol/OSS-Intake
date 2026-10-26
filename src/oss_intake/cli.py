@@ -25,6 +25,7 @@ from . import (
     reachability,
     report,
     triage,
+    upgrade,
 )
 from .enrich import (
     advisories,
@@ -192,6 +193,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="check Go binaries with govulncheck (must be installed): is the vulnerable function in the "
                         "binary? Images need Docker or crane to copy the binaries out")
     s.add_argument("--govulncheck-path", help="path to the govulncheck executable")
+    s.add_argument("--no-latest", action="store_true",
+                   help="package inventories: skip looking up each package's latest release on deps.dev (one "
+                        "request per package); the minimum fix version is still checked")
     s.add_argument("--no-exploits", action="store_true",
                    help="skip public exploit availability (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept)")
     s.add_argument("--no-workflows", action="store_true",
@@ -672,7 +676,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     pkg_rows = None
     if args.path_kind == "inventory":
         pkg_rows = inventory_report.package_rows(args.inventory, findings)
-        assessment["inventory"] = {**inventory_report.summary(pkg_rows), "rows": pkg_rows}
+        up = upgrade.enrich(net, pkg_rows, latest=not args.no_latest) if net else {"status": "skipped"}
+        if up.get("status") == "failed":
+            warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
+        assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows}
 
     # 5. Reports.
     written = []

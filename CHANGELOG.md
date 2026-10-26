@@ -5,6 +5,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-26
+
+Is upgrading worth it? Package inventories now compare the installed version with the minimum fix and the latest
+release.
+
+### Added
+- Upgrade comparison for package inventories: for each package, what is still known to affect the minimum fix
+  version (one batched OSV query) and the latest release on deps.dev, and whether either upgrade crosses a major
+  version (or a minor version below 1.0). Shown in the Packages section and in packages.csv (`upgrade_left`,
+  `upgrade_major`, `latest`, `latest_left`, `latest_major`), with a summary of how many packages the minimum fix
+  clears completely.
+- `--no-latest` skips the latest-release lookup (one request per package) for faster runs or a current-state
+  view; the minimum fix is still checked.
+
+### Fixed
+- Go fix versions from OSV now carry the `v` prefix (`v0.60.0`), matching Go and the installed version.
+
 ## [0.3.0] - 2026-10-26
 
 Check the open source an organisation already uses: pass a package inventory instead of an image.
