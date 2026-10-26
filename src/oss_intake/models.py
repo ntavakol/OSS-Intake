@@ -113,6 +113,11 @@ class Finding:
     reachability: str = ""  # govulncheck evidence for Go binaries: reachable | not reachable | ""
     reachability_note: str = ""
     malicious_package: bool = False  # another finding on this package version is malicious
+    decision_status: str = ""  # assessor decision carried in with --decisions (OpenVEX status)
+    decision_notes: str = ""
+    decision_reachable: str = ""
+    decision_justification: str = ""
+    decision_version: str = ""  # the installed version the decision was made for
     triage_group: str = ""  # suggested reading order: act | review | conditions | routine | aside
     triage_reason: str = ""
     # Enrichment

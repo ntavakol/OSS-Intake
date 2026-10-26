@@ -1347,3 +1347,24 @@ def test_readme_documents_every_option():
                       for opt in a.option_strings if opt.startswith("--") and opt != "--help"
                       and f"`{opt}" not in readme})
     assert missing == [], f"options missing from README.md: {missing}"
+
+
+def test_decision_never_sets_aside_malicious():
+    from oss_intake import decisions, triage
+
+    f = _f(vuln_id="MAL-2099-0002", package="evil", installed="1.0.0", purl="pkg:npm/evil@1.0.0")
+    info = decisions.apply([f], [{"ids": {"MAL-2099-0002"}, "package": "evil", "version": "1.0.0",
+                                  "status": "not_affected", "notes": "we trust it", "reachable": "",
+                                  "justification": "", "source": "x"}])
+    assert info["ignored_malicious"] == 1 and f.decision_status == ""
+    assert triage.classify(f)[0] == "act"
+
+
+def test_decision_for_other_version_is_flagged():
+    from oss_intake import decisions, triage
+
+    f = _f(vuln_id="CVE-2099-0001", package="p", installed="1.1")
+    info = decisions.apply([f], [{"ids": {"CVE-2099-0001"}, "package": "p", "version": "1.0", "status": "fixed",
+                                  "notes": "backported", "reachable": "", "justification": "", "source": "x"}])
+    group, reason = triage.classify(f)
+    assert info["stale"] == 1 and group == "aside" and "decided for 1.0; installed 1.1: review" in reason

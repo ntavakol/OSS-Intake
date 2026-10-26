@@ -1,0 +1,195 @@
+"""Assessor decisions carried between runs (--decisions), and exported as OpenVEX.
+
+The cycle: a run writes findings.csv with empty triage_status, triage_notes and triage_reachable columns; the
+assessor fills them in for the findings they have looked at; the next run reads that file with --decisions and
+applies each decision to the same vulnerability in the same package, so only new findings need a look. The
+new findings.csv comes out pre-filled, so the cycle repeats. An OpenVEX document is accepted too, and every run
+with decisions writes openvex.json so other tools (Grype and Trivy read it with --vex) can use them.
+
+Statuses follow OpenVEX: not_affected, affected, fixed, under_investigation. not_affected needs a note that
+says why. A decision never sets aside a malicious package.
+"""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from .inputs import InputError
+from .models import Finding
+
+STATUSES = ("not_affected", "affected", "fixed", "under_investigation")
+ALIASES = {
+    "not affected": "not_affected", "not_affected": "not_affected", "false positive": "not_affected",
+    "false_positive": "not_affected", "not applicable": "not_affected", "n/a": "not_affected",
+    "affected": "affected", "accepted": "affected", "risk accepted": "affected", "exploitable": "affected",
+    "fixed": "fixed", "mitigated": "fixed", "patched": "fixed",
+    "under investigation": "under_investigation", "under_investigation": "under_investigation",
+    "investigating": "under_investigation", "open": "under_investigation",
+}
+JUSTIFICATIONS = ("component_not_present", "vulnerable_code_not_present", "vulnerable_code_not_in_execute_path",
+                  "vulnerable_code_cannot_be_controlled_by_adversary", "inline_mitigations_already_exist")
+SETS_ASIDE = ("not_affected", "fixed")
+
+
+def _status(value: str) -> str | None:
+    return ALIASES.get(" ".join(value.strip().lower().replace("-", " ").split()))
+
+
+def _ids(*values: str) -> set[str]:
+    out: set[str] = set()
+    for v in values:
+        for part in str(v or "").replace(",", ";").split(";"):
+            part = part.strip()
+            if part:
+                out.add(part.upper() if part.upper().startswith(("CVE-", "GHSA-", "MAL-")) else part)
+    return out
+
+
+def _from_csv(path: Path) -> tuple[list[dict], list[str]]:
+    rows = list(csv.DictReader(path.read_text(encoding="utf-8-sig").splitlines()))
+    if rows and not {"id", "package", "triage_status"} <= set(rows[0]):
+        raise InputError(f"{path.name} is not a findings.csv from oss-intake (needs id, package and "
+                         "triage_status columns)")
+    out, errors = [], []
+    for n, r in enumerate(rows, start=2):
+        raw = (r.get("triage_status") or "").strip()
+        if not raw:
+            continue  # not assessed yet
+        status = _status(raw)
+        notes = (r.get("triage_notes") or "").strip()
+        if not status:
+            errors.append(f"row {n}: triage_status '{raw}' is not one of {', '.join(STATUSES)}")
+            continue
+        if status == "not_affected" and not notes:
+            errors.append(f"row {n}: not_affected needs triage_notes saying why ({r.get('id')})")
+            continue
+        package = (r.get("package") or "").lstrip("'")  # undo the CSV formula guard on '@scope/name
+        reachable = (r.get("triage_reachable") or "").strip().lower()
+        out.append({"ids": _ids(r.get("id"), r.get("aliases")), "package": package,
+                    "version": (r.get("triage_decided_version") or r.get("installed") or "").strip(),
+                    "status": status, "notes": notes,
+                    "reachable": reachable,
+                    "justification": "vulnerable_code_not_in_execute_path"
+                    if status == "not_affected" and reachable in ("no", "n", "false", "not reachable") else "",
+                    "source": f"{path.name} row {n}"})
+    return out, errors
+
+
+def _purl_name_version(purl: str) -> tuple[str, str]:
+    from .inventory_report import split_purl
+
+    try:
+        _, name, version = split_purl(purl.split("?", 1)[0].split("#", 1)[0])
+    except ValueError:
+        return "", ""
+    return name, version
+
+
+def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise InputError(f"{path.name} is not valid JSON: {exc}") from None
+    if not isinstance(doc, dict) or "statements" not in doc:
+        raise InputError(f"{path.name} is not an OpenVEX document (no 'statements')")
+    out, errors = [], []
+    for n, st in enumerate(doc.get("statements") or [], start=1):
+        vuln = st.get("vulnerability") or {}
+        vuln = {"name": vuln} if isinstance(vuln, str) else vuln
+        status = _status(str(st.get("status") or ""))
+        if not status:
+            errors.append(f"statement {n}: status '{st.get('status')}' is not one of {', '.join(STATUSES)}")
+            continue
+        notes = str(st.get("impact_statement") or st.get("action_statement") or st.get("status_notes") or "")
+        justification = str(st.get("justification") or "")
+        if status == "not_affected" and not (notes or justification):
+            errors.append(f"statement {n}: not_affected needs a justification or impact_statement")
+            continue
+        for prod in st.get("products") or []:
+            pid = prod.get("@id") if isinstance(prod, dict) else str(prod)
+            name, version = _purl_name_version(pid or "") if str(pid).startswith("pkg:") else ("", "")
+            if not name:
+                errors.append(f"statement {n}: product '{pid}' is not a package URL (pkg:...)")
+                continue
+            out.append({"ids": _ids(vuln.get("name"), *(vuln.get("aliases") or [])), "package": name,
+                        "version": version, "status": status, "notes": notes or justification.replace("_", " "),
+                        "reachable": "", "justification": justification, "source": f"{path.name} statement {n}"})
+    return out, errors
+
+
+def load(path: Path) -> list[dict]:
+    """Read and validate a decisions file before anything is scanned. Invalid entries stop the run."""
+    if not path.is_file():
+        raise InputError(f"--decisions {path} not found")
+    loader = _from_openvex if path.suffix.lower() == ".json" else _from_csv
+    decisions, errors = loader(path)
+    if errors:
+        shown = "\n  ".join(errors[:20])
+        more = f"\n  ... and {len(errors) - 20} more" if len(errors) > 20 else ""
+        raise InputError(f"{len(errors)} invalid decision(s) in {path.name}:\n  {shown}{more}")
+    return decisions
+
+
+def apply(findings: list[Finding], decisions: list[dict]) -> dict:
+    """Attach each decision to the findings it covers (same vulnerability, by ID or alias, in the same package).
+    Returns counts for the report, including decisions whose vulnerability is no longer found."""
+    index: dict[tuple[str, str], dict] = {}
+    for d in decisions:
+        for i in d["ids"]:
+            index[(i, d["package"].lower())] = d
+    used: set[int] = set()
+    info: dict = {"decisions": len(decisions), "applied": 0, "stale": 0, "ignored_malicious": 0,
+                  "by_status": {s: 0 for s in STATUSES}, "resolved": []}
+    for f in findings:
+        pkg = f.package.lower()
+        d = next((index[(i, pkg)] for i in sorted(_ids(f.vuln_id, *f.aliases)) if (i, pkg) in index), None)
+        if d is None:
+            continue
+        used.add(id(d))
+        if f.malicious and d["status"] in SETS_ASIDE:
+            info["ignored_malicious"] += 1
+            f.decision_status, f.decision_notes = "", ""
+            f.note = (f.note + "; " if f.note else "") + f"decision '{d['status']}' ignored: malicious package"
+            continue
+        f.decision_status, f.decision_notes = d["status"], d["notes"]
+        f.decision_reachable, f.decision_justification = d["reachable"], d["justification"]
+        f.decision_version = d["version"]
+        info["applied"] += 1
+        info["by_status"][d["status"]] += 1
+        if d["version"] and f.installed and d["version"] != f.installed:
+            info["stale"] += 1
+    seen_ids = {id(d) for d in decisions if id(d) in used}
+    for d in decisions:
+        if id(d) not in seen_ids:
+            info["resolved"].append({"ids": sorted(d["ids"]), "package": d["package"], "status": d["status"]})
+    return info
+
+
+def openvex(findings: list[Finding], tool_version: str, as_of: str) -> dict | None:
+    """An OpenVEX v0.2.0 document of the decisions applied in this run, or None if there are none."""
+    statements = []
+    for f in findings:
+        if not f.decision_status or not f.purl:
+            continue
+        st: dict = {"vulnerability": {"name": f.vuln_id, **({"aliases": sorted(f.aliases)} if f.aliases else {})},
+                    "products": [{"@id": f.purl}], "status": f.decision_status}
+        if f.decision_status == "not_affected":
+            if f.decision_justification in JUSTIFICATIONS:
+                st["justification"] = f.decision_justification
+            st["impact_statement"] = f.decision_notes or "assessed as not affected"
+        elif f.decision_status == "affected":
+            st["action_statement"] = f.decision_notes or "assessed as affected"
+        elif f.decision_notes:
+            st["status_notes"] = f.decision_notes
+        statements.append(st)
+    if not statements:
+        return None
+    digest = hashlib.sha256(json.dumps(statements, sort_keys=True).encode()).hexdigest()[:16]
+    return {"@context": "https://openvex.dev/ns/v0.2.0", "@id": f"https://openvex.dev/docs/oss-intake/{digest}",
+            "author": "oss-intake assessor", "role": "assessor",
+            "timestamp": as_of or datetime.now(timezone.utc).isoformat(), "version": 1,
+            "tooling": f"oss-intake {tool_version}", "statements": statements}

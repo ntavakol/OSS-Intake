@@ -3,8 +3,6 @@
 Items agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 
 ## Next
-- VEX import, so triage decisions recorded in `findings.csv` carry over to the next run of the same target
-  instead of being redone.
 - Artifact integrity for `--path` (see Signals).
 
 ## Organisation view
@@ -25,8 +23,9 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Executive summary report across the inventory: packages and versions in use, how many are malicious, have
   known-exploited or critical vulnerabilities, or are unmaintained (archived, no release in a year); the top
   packages by risk with their owners; and the improvement if each is upgraded (the comparison above, totalled).
-  One page, readable without the per-finding detail. Trends between runs need the previous run's results,
-  which ties in with VEX import.
+  One page, readable without the per-finding detail. Trends between runs can build on --decisions (0.5.0),
+  which already reads the previous run's findings.csv.
+- CycloneDX VEX export beside openvex.json, for Dependency-Track (which imports CycloneDX VEX, not OpenVEX).
 
 ## Inputs
 - Source checkouts: scan a folder in both Trivy modes (`fs` for lockfiles, `rootfs` for built artifacts) and

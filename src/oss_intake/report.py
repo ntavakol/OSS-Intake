@@ -25,7 +25,7 @@ CSV_FIELDS = [
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
     "suggested_group", "suggested_reason", "reachability", "exploit_level", "exploit_refs", "conditions",
-    "title", "url", "note", "triage_reachable", "triage_status", "triage_notes",
+    "title", "url", "note", "triage_reachable", "triage_status", "triage_notes", "triage_decided_version",
 ]
 
 
@@ -65,9 +65,10 @@ def finding_row(f: Finding) -> dict:
         "title": f.title,
         "url": f.url,
         "note": f.note,
-        "triage_reachable": "",
-        "triage_status": "",
-        "triage_notes": "",
+        "triage_reachable": f.decision_reachable,
+        "triage_status": f.decision_status,
+        "triage_notes": f.decision_notes,
+        "triage_decided_version": f.decision_version,
     }
 
 
@@ -161,6 +162,29 @@ def triage_section(a: dict) -> tuple[str, list] | None:
     return ("Suggested triage", blocks)
 
 
+def decisions_section(a: dict) -> tuple[str, list] | None:
+    """Assessor decisions carried in with --decisions: what was applied, what needs another look."""
+    d = a.get("decisions")
+    if not d:
+        return None
+    by = d["by_status"]
+    rows = [["Decisions read", d["decisions"]], ["Applied to findings in this run", d["applied"]],
+            ["Not affected (set aside)", by["not_affected"]], ["Fixed (set aside)", by["fixed"]],
+            ["Affected (kept in its group)", by["affected"]], ["Under investigation", by["under_investigation"]],
+            ["Made for a different installed version (review)", d["stale"]],
+            ["Ignored: would set aside a malicious package", d["ignored_malicious"]],
+            ["Resolved: vulnerability no longer found", len(d["resolved"])]]
+    blocks: list = [("table", ["Decisions", "Count"], rows)]
+    if d["resolved"]:
+        names = [f"{', '.join(r['ids'][:2])} in {r['package']}" for r in d["resolved"][:10]]
+        blocks.append(("p", "No longer found, so these decisions are no longer needed: " + "; ".join(names)
+                            + (" ..." if len(d["resolved"]) > 10 else "") + "."))
+    blocks.append(("p", "Decisions come from --decisions (an earlier findings.csv with the triage columns filled in, "
+                        "or OpenVEX). This run's findings.csv carries them forward, and openvex.json exports them. "
+                        "New findings have empty triage columns."))
+    return ("Assessor decisions", blocks)
+
+
 def exploit_text(f: Finding) -> str:
     if not f.exploit_level and f.triage_group == "aside":
         return "set aside"
@@ -246,6 +270,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     tri = triage_section(a)
     if tri:
         secs.append(tri)
+    dec = decisions_section(a)
+    if dec:
+        secs.append(dec)
 
     lag_rows = [
         ["Findings with an upstream fix", lag["with_fix"]],

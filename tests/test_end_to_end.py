@@ -454,3 +454,69 @@ def test_inventory_invalid_rows_stop_before_lookup(tmp_path, capsys):
     err = capsys.readouterr().err
     assert "3 invalid row(s)" in err and "row 2:" in err and "row 3:" in err and "row 4:" in err
     assert http.calls == []
+
+
+def test_decisions_carry_between_runs(tmp_path, fixtures):
+    """Run, record decisions in findings.csv, run again with --decisions: they carry over and are exported."""
+    from .conftest import FakeHttp
+
+    code, out1 = run(tmp_path / "one", fixtures, FakeHttp())
+    assert code == 0
+    rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
+    fields = list(rows[0])
+    by_id = {r["id"]: r for r in rows}
+    by_id["CVE-2099-0001"].update(triage_status="Not affected", triage_reachable="no",
+                                  triage_notes="XsltView is not used")
+    by_id["CVE-2099-0003"].update(triage_status="risk accepted", triage_notes="internal network only")
+    gone = dict(by_id["CVE-2099-0004"], id="CVE-2099-9999", aliases="", triage_status="fixed",
+                triage_notes="patched last year")
+    decided = tmp_path / "decided.csv"
+    with decided.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields)
+        w.writeheader()
+        w.writerows([*rows, gone])
+
+    code, out2 = run(tmp_path / "two", fixtures, FakeHttp(), "--decisions", str(decided))
+    assert code == 0
+    a = json.loads((out2 / "assessment.json").read_text(encoding="utf-8"))
+    d = a["decisions"]
+    assert (d["decisions"], d["applied"], d["by_status"]["not_affected"], d["by_status"]["affected"]) == (3, 2, 1, 1)
+    assert d["resolved"][0]["ids"] == ["CVE-2099-9999"]
+    f = {x["id"]: x for x in a["findings"]}
+    assert f["CVE-2099-0001"]["suggested_group"] == "Set aside"
+    assert "assessor: not affected: XsltView is not used" in f["CVE-2099-0001"]["suggested_reason"]
+    assert f["CVE-2099-0003"]["suggested_group"] == "Act now"  # affected keeps its group
+    assert "assessor: affected" in f["CVE-2099-0003"]["suggested_reason"]
+    again = {r["id"]: r for r in csv.DictReader((out2 / "findings.csv").open(encoding="utf-8", newline=""))}
+    assert again["CVE-2099-0001"]["triage_status"] == "not_affected"
+    assert again["CVE-2099-0001"]["triage_decided_version"] == "6.1.10"
+    assert again["CVE-2099-0006"]["triage_status"] == ""  # not assessed stays blank
+    vex = json.loads((out2 / "openvex.json").read_text(encoding="utf-8"))
+    st = {s["vulnerability"]["name"]: s for s in vex["statements"]}
+    assert st["CVE-2099-0001"]["status"] == "not_affected"
+    assert st["CVE-2099-0001"]["justification"] == "vulnerable_code_not_in_execute_path"
+    assert st["CVE-2099-0001"]["products"][0]["@id"].startswith("pkg:maven/org.springframework/spring-web@")
+    html = (out2 / "report.html").read_text(encoding="utf-8")
+    assert "Assessor decisions" in html and "assessor: not affected" in html
+
+    # The exported OpenVEX is accepted back as decisions, with the same effect.
+    code, out3 = run(tmp_path / "three", fixtures, FakeHttp(), "--decisions", str(out2 / "openvex.json"))
+    assert code == 0
+    a3 = json.loads((out3 / "assessment.json").read_text(encoding="utf-8"))
+    assert a3["decisions"]["applied"] == 2
+    assert {x["id"]: x for x in a3["findings"]}["CVE-2099-0001"]["suggested_group"] == "Set aside"
+
+
+def test_invalid_decisions_stop_before_scanning(tmp_path, fixtures, capsys):
+    from .conftest import FakeHttp
+
+    bad = tmp_path / "decided.csv"
+    bad.write_text("id,package,installed,triage_status,triage_notes\n"
+                   "CVE-2099-0001,spring-web,6.1.10,maybe,\n"
+                   "CVE-2099-0002,jackson-databind,2.17.0,not affected,\n", encoding="utf-8")
+    http = FakeHttp()
+    code, _ = run(tmp_path, fixtures, http, "--decisions", str(bad))
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "2 invalid decision(s)" in err and "'maybe'" in err and "needs triage_notes" in err
+    assert http.calls == []

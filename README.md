@@ -69,7 +69,7 @@ CISA KEV membership).
 
 - **It does not prove exploitability.** Scanners match component versions against advisory databases. A
   finding means a version is listed as affected, not that the vulnerable code is reachable or exposed in your
-  deployment. The CSV has empty `triage_*` columns for recording reachability decisions.
+  deployment. The CSV has `triage_*` columns for the assessor's decisions, which carry over to the next run.
 - It does not install, download, bundle or redistribute scanners. You install them; it verifies them.
 - It does not assess licences, secrets or misconfiguration, and it does not detect new malware. Package versions
   already known as malware are flagged as malicious: listed in the OpenSSF malicious packages database (OSV `MAL-`
@@ -218,6 +218,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
+| `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |
 | `--trivy-cosign-identity`, `--grype-cosign-identity` | Certificate identity (regexp) the cosign bundle must match |
@@ -329,7 +330,36 @@ Each finding is placed in one group, with its reason, as a reading order for the
 malicious package, CISA KEV, or a Metasploit or Nuclei exploit), **Review** (an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose
 advisory states no conditions), **Check conditions** (the advisory says when it applies; confirm against the
 deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package, the
-installed version already matches a fix, or govulncheck shows the vulnerable function is not in the binary). No group says a finding carries no risk.
+installed version already matches a fix, govulncheck shows the vulnerable function is not in the binary, or the
+assessor recorded the finding as not affected or fixed). No group says a finding carries no risk.
+
+## Carrying decisions between runs
+
+Scanning on a schedule only works if a finding assessed once does not have to be assessed again. Each run's
+`findings.csv` has three columns for the assessor:
+
+| Column | Values |
+|---|---|
+| `triage_status` | `not_affected`, `affected`, `fixed` or `under_investigation` (OpenVEX statuses; "false positive", "risk accepted", "patched" and "investigating" are accepted too) |
+| `triage_notes` | Why. Required for `not_affected` |
+| `triage_reachable` | `no` records that the vulnerable code is not in the execution path |
+
+Fill them in for the findings you have assessed, then pass the file to the next run:
+
+```bash
+oss-intake --image owner/app:1.5.0 --repo owner/app --out ./reports-2 --decisions ./reports-1/findings.csv
+```
+
+Each decision applies to the same vulnerability (by ID or alias) in the same package. `not_affected` and
+`fixed` set the finding aside, with the note as the reason; `affected` and `under_investigation` keep its group
+and add the note. A decision made for another installed version still applies but is marked for review, a
+decision whose vulnerability is no longer found is listed as resolved, and a decision never sets aside a
+malicious package. Decisions are validated before anything is scanned.
+
+The new `findings.csv` comes out with the decisions filled in (and `triage_decided_version`), so the next run
+takes it as is and only new findings are blank. Every run with decisions also writes `openvex.json`
+([OpenVEX](https://openvex.dev) v0.2.0), which Grype and Trivy can read (`--vex`); an OpenVEX file is
+accepted as `--decisions` too.
 
 ## Likelihood heuristic
 

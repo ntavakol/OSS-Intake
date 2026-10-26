@@ -25,13 +25,23 @@ MEANING = {
     "review": "Published exploit, notable exploitation probability, or a critical that applies without conditions",
     "conditions": "The advisory says it applies only under stated conditions; confirm whether they hold",
     "routine": "No exploit indexed, low exploitation probability, no stated conditions; normal patch cycle",
-    "aside": "The tool has evidence it does not apply (kernel header package, already fixed, or govulncheck "
-             "shows the vulnerable function is not in the binary)",
+    "aside": "Evidence it does not apply: kernel header package, already fixed, govulncheck shows the "
+             "vulnerable function is not in the binary, or the assessor recorded not affected or fixed",
 }
 EPSS_REVIEW = 0.1
 
 
 def classify(f: Finding) -> tuple[str, str]:
+    group, reason = _classify(f)
+    if f.decision_status and group != "aside":
+        stale = (f" (decided for {f.decision_version}; installed {f.installed}: review)"
+                 if f.decision_version and f.installed and f.decision_version != f.installed else "")
+        reason += f"; assessor: {f.decision_status.replace('_', ' ')}" + (f": {f.decision_notes}" if
+                                                                           f.decision_notes else "") + stale
+    return group, reason
+
+
+def _classify(f: Finding) -> tuple[str, str]:
     if f.excluded == "kernel-headers":
         return "aside", "kernel CVE on a kernel header package; containers use the host kernel"
     if f.likely_fixed:
@@ -39,6 +49,12 @@ def classify(f: Finding) -> tuple[str, str]:
     if f.malicious:
         return "act", ("malicious package (OpenSSF malicious packages, or advisory classed CWE-506); "
                        "the package itself is malware")
+    if f.decision_status in ("not_affected", "fixed"):
+        stale = (f" (decided for {f.decision_version}; installed {f.installed}: review)"
+                 if f.decision_version and f.installed and f.decision_version != f.installed else "")
+        return "aside", (f"assessor: {f.decision_status.replace('_', ' ')}"
+                         + (f": {f.decision_notes}" if f.decision_notes else "") + stale
+                         + (" (note: listed in CISA KEV)" if f.kev else ""))
     if f.reachability == "not reachable":
         return "aside", f.reachability_note + (" (note: listed in CISA KEV)" if f.kev else "")
     if f.kev:

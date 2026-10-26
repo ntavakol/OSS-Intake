@@ -5,6 +5,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-26
+
+Assess once, not every run: assessor decisions carry over between runs and export as OpenVEX.
+
+### Added
+- `--decisions FILE` reads the assessor's decisions from an earlier findings.csv (`triage_status`,
+  `triage_notes`, `triage_reachable`) or an OpenVEX document, and applies each to the same vulnerability in the
+  same package. `not_affected` and `fixed` set the finding aside with the note as the reason; `affected` and
+  `under_investigation` keep the group and add the note. Decisions made for another installed version are marked
+  for review, decisions whose vulnerability is gone are listed as resolved, and a malicious package is never set
+  aside. Decisions are validated before anything is scanned.
+- findings.csv comes out with the decisions filled in, plus `triage_decided_version`, so it feeds the next run.
+- `openvex.json` (OpenVEX v0.2.0) is written whenever decisions apply, for Grype or Trivy (`--vex`).
+- "Assessor decisions" section in the HTML and Markdown reports, and an "assessor:" marker on decided findings.
+
 ### Fixed
 - README: the example output, likelihood rules (the malicious-package rule was missing) and metric list are now
   generated from the code by `scripts/readme_sync.py`, and tests fail if they drift. Eight `scan` options and the

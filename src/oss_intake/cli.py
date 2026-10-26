@@ -16,6 +16,7 @@ from . import (
     __version__,
     conditions,
     coverage,
+    decisions,
     inputs,
     integrity,
     inventory_report,
@@ -193,6 +194,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="check Go binaries with govulncheck (must be installed): is the vulnerable function in the "
                         "binary? Images need Docker or crane to copy the binaries out")
     s.add_argument("--govulncheck-path", help="path to the govulncheck executable")
+    s.add_argument("--decisions", metavar="FILE",
+                   help="carry assessor decisions into this run: a findings.csv from an earlier run with the "
+                        "triage_status, triage_notes and triage_reachable columns filled in, or an OpenVEX .json")
     s.add_argument("--no-latest", action="store_true",
                    help="package inventories: skip looking up each package's latest release on deps.dev (one "
                         "request per package); the minimum fix version is still checked")
@@ -334,6 +338,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True
     lk_cfg = likelihood.load_config(args.likelihood_config) if args.likelihood else None
+    # Decisions are validated before anything is scanned, like every other input.
+    args.decision_list = decisions.load(Path(args.decisions)) if args.decisions else None
     for flag in ("from_trivy_json", "from_grype_json", "trivy_cosign_bundle", "grype_cosign_bundle"):
         val = getattr(args, flag)
         if val and not Path(val).is_file():
@@ -645,6 +651,15 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if args.grace_days < 0 or args.unshipped_days < 0:
         raise UsageError("--grace-days and --unshipped-days must be zero or more")
     is_latest = health.get("scanned_is_latest") if not release_override else None
+    decision_info = None
+    if args.decision_list is not None:
+        decision_info = decisions.apply(findings, args.decision_list)
+        if decision_info["ignored_malicious"]:
+            warnings.append(f"{decision_info['ignored_malicious']} decision(s) to set aside a malicious package were "
+                            "ignored: a malicious package is removed, not accepted")
+        if decision_info["stale"]:
+            warnings.append(f"{decision_info['stale']} decision(s) were made for a different installed version; they "
+                            "still apply but are marked for review")
     triage_info = triage.apply(findings)
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc)) if lk_cfg else None
@@ -665,6 +680,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "epss": epss_info,
         "exploits": exploit_info,
         "triage": triage_info,
+        "decisions": decision_info,
         "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),
@@ -689,6 +705,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if pkg_rows is not None:
         inventory_report.write_csv(out / "packages.csv", pkg_rows, report.csv_safe)
         written.append("packages.csv")
+    vex = decisions.openvex(findings, __version__, as_of.isoformat()) if decision_info else None
+    if vex:
+        (out / "openvex.json").write_text(json.dumps(vex, indent=2), encoding="utf-8")
+        written.append("openvex.json")
     if "md" in formats:
         report.write_markdown(out / "summary.md", assessment, findings, args.top)
         written.append("summary.md")

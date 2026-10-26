@@ -446,7 +446,11 @@ def _top(findings: list[Finding], top: int) -> str:
         days = f.days_fix_available
         vid = Raw(_e(f.vuln_id) + (f' <span class="cond" title="{_e(f.conditions)}">if</span>' if f.conditions else ""))
         sev_cvss = Raw(f'<span class="nw">{_pill(f.severity)} {_cell(cvss[0])}</span>')
-        rows.append([_group_pill(f.triage_group, f.triage_reason), (vid, "mono nw"), (sev_cvss, cvss[1]),
+        group = _group_pill(f.triage_group, f.triage_reason)
+        if f.decision_status:
+            group = Raw(f'{group}<br><small class="v4" title="{_e(f.decision_notes)}">assessor: '
+                        f'{_e(f.decision_status.replace("_", " "))}</small>')
+        rows.append([group, (vid, "mono nw"), (sev_cvss, cvss[1]),
                      _exploit_pill(f), (f.package, "mono"),
                      (f.installed, "mono"),
                      (f.fix_version_used or ";".join(f.fixed_versions) or "none", "mono"), before,
@@ -542,6 +546,22 @@ def _packages(a: dict) -> str:
     return _section("Packages", body)
 
 
+def _decisions(a: dict) -> str:
+    from .report import decisions_section
+
+    sec = decisions_section(a)
+    if not sec:
+        return ""
+    title, blocks = sec
+    body = ""
+    for b in blocks:
+        if b[0] == "table":
+            body += _table(b[1], b[2], num={1})
+        else:
+            body += _note(b[1])
+    return _section(title, body)
+
+
 def _triage(a: dict) -> str:
     t = a.get("triage") or {}
     if not t.get("groups"):
@@ -590,7 +610,8 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_packages(a), _severity(a, caveat), _triage(a), _likelihood(a, heuristic_note), _lag(a, lag_note),
+    parts += [_packages(a), _severity(a, caveat), _triage(a), _decisions(a), _likelihood(a, heuristic_note),
+              _lag(a, lag_note),
               f'<div class="grid2">{_health(a)}{_ci(a)}</div>',
               f'<div class="grid2">{_coverage(a)}{_agreement(a)}</div>',
               _scope(a), _top(findings, top)]
