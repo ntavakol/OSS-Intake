@@ -6,6 +6,8 @@ so OSV acts as an independent vulnerability DATABASE check, not an independent D
 
 from __future__ import annotations
 
+from urllib.parse import unquote
+
 from ..cvss import base_score, severity_from_score, version_of
 from ..http import Http, HttpError
 from ..models import Finding, normalise_purl, normalise_severity, parse_datetime, purl_without_version
@@ -105,6 +107,7 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
     for purl, ids in hits.items():
         name_ver = purl[4:].split("/", 1)[1]
         name, _, version = name_ver.rpartition("@")
+        name = unquote(name)  # pkg:npm/%40ctrl/tinycolor -> @ctrl/tinycolor, as Trivy and Grype name it
         for vid in ids:
             if vid not in cache:
                 status, data = http.get_json(f"{API}/vulns/{vid}")
@@ -124,6 +127,7 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 purl=purl,
                 pkg_type=purl[4:].split("/", 1)[0],
                 aliases=set(v.get("aliases") or []),
+                cwes={str(c).upper() for c in (v.get("database_specific") or {}).get("cwe_ids") or []},
                 title=(v.get("summary") or "")[:200],
                 description=v.get("details") or "",
                 url=f"https://osv.dev/vulnerability/{vid}",

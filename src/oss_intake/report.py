@@ -19,7 +19,7 @@ HEURISTIC_NOTE = (
     "starting point for an assessor, not a risk rating."
 )
 CSV_FIELDS = [
-    "id", "aliases", "severity", "cvss", "cvss_version", "cvss_source", "package", "pkg_type", "installed",
+    "id", "aliases", "cwes", "severity", "cvss", "cvss_version", "cvss_source", "package", "pkg_type", "installed",
     "fixed_versions",
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
@@ -33,6 +33,7 @@ def finding_row(f: Finding) -> dict:
     return {
         "id": f.vuln_id,
         "aliases": ";".join(sorted(f.aliases)),
+        "cwes": ";".join(sorted(f.cwes)),
         "severity": f.severity,
         "cvss": "" if f.cvss is None else f"{f.cvss:.1f}",
         "cvss_version": f.cvss_version,
@@ -241,7 +242,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if o:
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
-    lag_rows.append(["Known malicious packages (OpenSSF, via OSV)", lag.get("malicious", 0)])
+    lag_rows.append(["Known malicious packages (OpenSSF, or CWE-506 advisories)", lag.get("malicious", 0)])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]

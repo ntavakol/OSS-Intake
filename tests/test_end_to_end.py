@@ -292,6 +292,29 @@ def test_malicious_package_marks_every_finding_on_it(tmp_path):
     assert a["likelihood"]["level"] == 5 and a["warnings"][0].startswith("MALICIOUS PACKAGE")
 
 
+def test_cwe_506_advisory_is_malicious(tmp_path):
+    """A compromised release with a CWE-506 advisory but no MAL- entry goes to Act now, not Routine."""
+    import json as _json
+
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x", "Results": [{"Target": "package-lock.json", "Class": "lang-pkgs",
+             "Type": "npm", "Vulnerabilities": [
+                 {"VulnerabilityID": "CVE-2021-4229", "PkgName": "ua-parser-js", "InstalledVersion": "0.7.29",
+                  "Severity": "HIGH", "CweIDs": ["CWE-506", "CWE-912"], "FixedVersion": "0.7.30",
+                  "Title": "Embedded malware in ua-parser-js",
+                  "PkgIdentifier": {"PURL": "pkg:npm/ua-parser-js@0.7.29"}}]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(_json.dumps(trivy), encoding="utf-8")
+    lock = tmp_path / "package-lock.json"
+    lock.write_text("{}", encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(lock), "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
+                     "--offline"]) == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    (f,) = a["findings"]
+    assert f["suggested_group"] == "Act now" and f["cwes"] == "CWE-506;CWE-912"
+    assert "ua-parser-js@0.7.29" in a["warnings"][0]
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="the stand-in govulncheck is a #! script, which Windows "
                                                    "cannot run by path; the parsing is covered by unit tests")
 def test_reachability_on_path_dir(tmp_path, fixtures):

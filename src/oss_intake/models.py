@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import unquote
 
 SEVERITY_ORDER = {"UNKNOWN": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
 SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]
@@ -99,6 +100,7 @@ class Finding:
     pkg_type: str = ""
     target: str = ""
     aliases: set[str] = field(default_factory=set)
+    cwes: set[str] = field(default_factory=set)  # CWE IDs from the advisory, e.g. CWE-506 for malware
     sources: set[str] = field(default_factory=set)
     source_severity: dict[str, str] = field(default_factory=dict)
     title: str = ""
@@ -109,7 +111,7 @@ class Finding:
     exploit_refs: list[str] = field(default_factory=list)
     reachability: str = ""  # govulncheck evidence for Go binaries: reachable | not reachable | ""
     reachability_note: str = ""
-    malicious_package: bool = False  # another finding on this package version is a MAL- entry
+    malicious_package: bool = False  # another finding on this package version is malicious
     triage_group: str = ""  # suggested reading order: act | review | conditions | routine | aside
     triage_reason: str = ""
     # Enrichment
@@ -133,25 +135,32 @@ class Finding:
 
     @property
     def malicious(self) -> bool:
-        """Listed in the OpenSSF malicious packages database (OSV IDs starting MAL-): the package itself is
-        malware, not a version with a bug."""
-        return self.malicious_package or any(
-            str(i).upper().startswith("MAL-") for i in {self.vuln_id, *self.aliases})
+        """The package version itself is malware, not a version with a bug: listed in the OpenSSF malicious
+        packages database (OSV IDs starting MAL-), or the advisory is classed as embedded malicious code
+        (CWE-506). Many malware advisories (ua-parser-js 0.7.29, event-stream 3.3.6) have no MAL- entry but are
+        tagged CWE-506."""
+        return (self.malicious_package or MALWARE_CWE in self.cwes
+                or any(str(i).upper().startswith("MAL-") for i in {self.vuln_id, *self.aliases}))
 
     @property
     def has_fix(self) -> bool:
         return bool(self.fixed_versions)
 
     def merge_key(self) -> tuple[str, str, str]:
-        pkg = purl_without_version(self.purl) or f"{self.pkg_type}:{self.package}".lower()
+        # Decode %40 and friends: OSV and Trivy may encode an npm scope (@ctrl) differently.
+        pkg = unquote(purl_without_version(self.purl) or "") or f"{self.pkg_type}:{self.package}".lower()
         return (canonical_id(self.vuln_id, self.aliases), pkg, self.installed)
 
 
+MALWARE_CWE = "CWE-506"  # Embedded Malicious Code
+
+
 def canonical_id(vuln_id: str, aliases: set[str] | None = None) -> str:
-    """Prefer a CVE identifier so Trivy (CVE) and Grype (often GHSA) findings merge."""
-    if vuln_id.upper().startswith("CVE-"):
-        return vuln_id.upper()
-    for a in sorted(aliases or ()):
-        if a.upper().startswith("CVE-"):
-            return a.upper()
+    """Prefer a CVE identifier so Trivy (CVE) and Grype (often GHSA) findings merge; without one, a GHSA
+    identifier, so an OSV malicious-package entry (MAL-) merges with the GitHub advisory it aliases."""
+    ids = [vuln_id, *sorted(aliases or ())]
+    for prefix in ("CVE-", "GHSA-"):
+        for a in ids:
+            if a.upper().startswith(prefix):
+                return a.upper() if prefix == "CVE-" else a
     return vuln_id

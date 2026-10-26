@@ -455,9 +455,9 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     reach_stats = reachability.apply(findings, getattr(args, "reach_results", {}) or {})
     for f in findings:
         f.conditions = conditions.extract(f.description)
-    # A MAL- entry on a package version marks every finding on it: GitHub and other advisories for the same
-    # malware often do not list the MAL- ID as an alias. Malicious-package entries often carry no severity;
-    # they are kept whatever --min-severity says.
+    # A malicious finding (MAL- entry or CWE-506) on a package version marks every finding on it: GitHub and
+    # other advisories for the same malware often do not list the MAL- ID as an alias. Malicious-package
+    # entries often carry no severity; they are kept whatever --min-severity says.
     mal_keys = {(f.package, f.installed) for f in findings if f.malicious}
     for f in findings:
         if (f.package, f.installed) in mal_keys:
@@ -466,9 +466,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 if f.malicious or SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     bad = sorted({f"{f.package}@{f.installed}" for f in findings if f.malicious})
     if bad:
-        warnings.insert(0, f"MALICIOUS PACKAGE: {len(bad)} package(s) are listed in the OpenSSF malicious packages "
-                           f"database: {', '.join(bad[:5])}{' ...' if len(bad) > 5 else ''}. Treat the artifact as "
-                           "compromised, not as a patching task")
+        listed = ", ".join(bad[:5]) + (" ..." if len(bad) > 5 else "")
+        warnings.insert(0, f"MALICIOUS PACKAGE: {len(bad)} package(s) are listed as malware (OpenSSF malicious "
+                           f"packages, or an advisory classed as embedded malicious code, CWE-506): {listed}. "
+                           "Treat the artifact as compromised, not as a patching task")
     n_label = lag.flag_label_matches(findings)
     if not args.include_kernel_headers:
         n_kh = lag.flag_kernel_headers(findings)

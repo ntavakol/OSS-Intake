@@ -272,7 +272,7 @@ def _lag(a: dict, lag_note: str) -> str:
                                                         f"{_e(str(o['fix_version']))} published "
                                                         f"{_e(str(o['fix_published']))} ({o['days']} days)"),
                             "", html_value=True))
-    rows.append(_metric("Known malicious packages (OpenSSF, via OSV)", lag.get("malicious", 0),
+    rows.append(_metric("Known malicious packages (OpenSSF, or CWE-506 advisories)", lag.get("malicious", 0),
                         "c" if lag.get("malicious") else "g"))
     rows.append(_metric("Known exploited (CISA KEV) with fix", lag["kev_with_fix"],
                         "r" if lag["kev_with_fix"] else "g"))

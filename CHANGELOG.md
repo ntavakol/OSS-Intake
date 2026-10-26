@@ -5,6 +5,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-26
+
+Compromised releases of trusted packages are now flagged reliably. Found by scanning a lockfile with the
+well-known compromised versions of chalk, debug, @ctrl/tinycolor, ua-parser-js and event-stream.
+
+### Fixed
+- Malware advisories without an OpenSSF `MAL-` entry were treated as ordinary vulnerabilities: ua-parser-js 0.7.29
+  (hijacked in 2021) landed in Routine and event-stream 3.3.6 in Review. Advisories classed as embedded malicious
+  code (CWE-506) now mark the package version as malicious (Act now, likelihood 5, warning).
+- npm scoped packages: OSV results named `%40ctrl/tinycolor` did not match `@ctrl/tinycolor` from Trivy and
+  Grype, so the malicious flag did not reach every finding on the package. Names are now decoded.
+- An OSV `MAL-` entry and the GitHub advisory it aliases (GHSA) appeared as two findings for the same release.
+  Findings now merge on a shared GHSA ID when there is no CVE.
+
+### Added
+- `cwes` column in findings.csv (CWE IDs from Trivy and OSV).
+
 ## [0.2.2] - 2026-10-26
 
 Report fixes found by scanning a plain requirements.txt with the PyPI release.

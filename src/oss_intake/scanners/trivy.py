@@ -103,6 +103,7 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
                 pkg_type=rtype,
                 target=v.get("PkgPath") or target,
                 title=v.get("Title", "") or "",
+                cwes={str(c).upper() for c in v.get("CweIDs") or []},
                 description=v.get("Description", "") or "",
                 vendor_ids=list(v.get("VendorIDs") or []),
                 src_name=pkg.get("SrcName", "") if is_os else "",

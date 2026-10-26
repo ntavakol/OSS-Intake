@@ -39,8 +39,10 @@ CISA KEV membership).
   finding means a version is listed as affected, not that the vulnerable code is reachable or exposed in your
   deployment. The CSV has empty `triage_*` columns for recording reachability decisions.
 - It does not install, download, bundle or redistribute scanners. You install them; it verifies them.
-- It does not assess licences, secrets or misconfiguration, and it does not detect new malware. Packages already
-  listed in the OpenSSF malicious packages database (OSV `MAL-` entries) are flagged as malicious.
+- It does not assess licences, secrets or misconfiguration, and it does not detect new malware. Package versions
+  already known as malware are flagged as malicious: listed in the OpenSSF malicious packages database (OSV `MAL-`
+  entries), or covered by an advisory classed as embedded malicious code (CWE-506), as the compromised
+  ua-parser-js 0.7.29 and event-stream 3.3.6 releases are.
 - It does not give a risk rating. The likelihood suggestion is a starting point for an assessor.
 - It does not fix anything or open issues upstream.
 

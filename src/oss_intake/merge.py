@@ -48,6 +48,7 @@ def merge(*groups: list[Finding]) -> list[Finding]:
                 continue
             cur.sources |= f.sources
             cur.source_severity.update(f.source_severity)
+            cur.cwes |= f.cwes
             cur.aliases |= f.aliases | ({f.vuln_id} if f.vuln_id != cur.vuln_id else set())
             for v in f.fixed_versions:
                 if v not in cur.fixed_versions:

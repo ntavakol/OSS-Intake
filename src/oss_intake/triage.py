@@ -37,7 +37,8 @@ def classify(f: Finding) -> tuple[str, str]:
     if f.likely_fixed:
         return "aside", "installed version matches a listed fix apart from a build label"
     if f.malicious:
-        return "act", "malicious package (OpenSSF malicious packages database); the package itself is malware"
+        return "act", ("malicious package (OpenSSF malicious packages, or advisory classed CWE-506); "
+                       "the package itself is malware")
     if f.reachability == "not reachable":
         return "aside", f.reachability_note + (" (note: listed in CISA KEV)" if f.kev else "")
     if f.kev:

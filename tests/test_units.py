@@ -1100,6 +1100,60 @@ def test_malicious_package_flag():
     assert lvl["level"] == 5 and "malicious" in lvl["reason"]
 
 
+def test_malware_advisory_without_mal_id():
+    """ua-parser-js 0.7.29 and event-stream 3.3.6 have GitHub advisories tagged CWE-506 but no MAL- entry."""
+    from oss_intake import triage
+    from oss_intake.enrich import exploits
+
+    from .conftest import FakeHttp
+
+    ua = _f(vuln_id="CVE-2021-4229", aliases={"GHSA-pjwm-rvh2-c87w"}, package="ua-parser-js", severity="HIGH",
+            cwes={"CWE-506", "CWE-912"}, purl="pkg:npm/ua-parser-js@0.7.29")
+    bug = _f(vuln_id="CVE-2099-0008", cwes={"CWE-79"})
+    assert ua.malicious and not bug.malicious
+    exploits.enrich(FakeHttp(), [ua, bug])
+    assert ua.exploit_level == "malicious" and ua.exploit_refs == ["CWE-506 embedded malicious code"]
+    assert triage.classify(ua)[0] == "act"
+
+
+def test_canonical_id_links_mal_to_ghsa():
+    from oss_intake.models import canonical_id
+
+    assert canonical_id("MAL-2025-46969", {"GHSA-2v46-p5h4-248w"}) == "GHSA-2v46-p5h4-248w"
+    assert canonical_id("GHSA-4x49-vf9v-38px", {"CVE-2025-59144", "MAL-2025-1"}) == "CVE-2025-59144"
+    assert canonical_id("MAL-2025-20690", set()) == "MAL-2025-20690"
+
+
+def test_osv_decodes_scoped_npm_names():
+    from oss_intake.scanners import osv
+
+    class Http:
+        def post_json(self, url, body):
+            return 200, {"results": [{"vulns": [{"id": "MAL-2025-47141"}]}]}
+
+        def get_json(self, url):
+            return 200, {"id": "MAL-2025-47141", "aliases": ["GHSA-qjqf-7j6f-82c4"],
+                         "database_specific": {"cwe_ids": ["CWE-506"]}}
+
+    (f,) = osv.scan(Http(), ["pkg:npm/%40ctrl/tinycolor@4.1.1"])
+    assert f.package == "@ctrl/tinycolor" and f.installed == "4.1.1" and f.cwes == {"CWE-506"}
+
+
+def test_merge_mal_with_ghsa_and_scoped_npm_names():
+    """Trivy's GHSA row and OSV's MAL- row for the same release merge, even when OSV encodes the npm scope."""
+    from oss_intake import merge
+
+    trivy = _f(vuln_id="GHSA-qjqf-7j6f-82c4", package="@ctrl/tinycolor", installed="4.1.1",
+               purl="pkg:npm/@ctrl/tinycolor@4.1.1", sources={"trivy"}, cwes={"CWE-506"})
+    osv = _f(vuln_id="MAL-2025-47141", aliases={"GHSA-qjqf-7j6f-82c4"}, package="@ctrl/tinycolor",
+             installed="4.1.1", purl="pkg:npm/%40ctrl/tinycolor@4.1.1", sources={"osv"}, severity="UNKNOWN")
+    out = merge.merge([trivy], [osv])
+    assert len(out) == 1
+    f = out[0]
+    assert f.vuln_id == "GHSA-qjqf-7j6f-82c4" and "MAL-2025-47141" in f.aliases and f.sources == {"trivy", "osv"}
+    assert f.malicious and f.cwes == {"CWE-506"}
+
+
 def test_govulncheck_parsing_and_reachability():
     import subprocess
     import sys

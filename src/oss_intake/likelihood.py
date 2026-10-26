@@ -21,7 +21,8 @@ OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le,
 DEFAULT_CONFIG = {
     "scale": {"1": "Rare", "2": "Unlikely", "3": "Possible", "4": "Likely", "5": "Almost certain"},
     "rules": [
-        {"level": 5, "reason": "A package listed as malicious (OpenSSF malicious packages database) is present",
+        {"level": 5,
+         "reason": "A package listed as malicious (OpenSSF malicious packages, or a CWE-506 advisory) is present",
          "all": [{"metric": "malicious", "op": ">=", "value": 1}]},
         {"level": 5, "reason": "A known-exploited (CISA KEV) vulnerability has a fix the project has not shipped",
          "all": [{"metric": "kev_with_fix", "op": ">=", "value": 1}]},
