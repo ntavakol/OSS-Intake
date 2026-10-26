@@ -27,6 +27,8 @@ def _version(purl: str) -> str:
 
 
 def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int = MAX_LOOKUPS) -> dict:
+    """as_of is the end of the assessment period: a version published after it did not exist yet. Ages are
+    counted in calendar days (published yesterday = 1 day old)."""
     info: dict = {"status": "ok", "days": days, "checked": 0, "unknown": 0, "unsupported": 0, "errors": 0,
                   "skipped_limit": 0, "recent": [], "published": {}}
     for purl in dict.fromkeys(purls):
@@ -46,16 +48,21 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
         except HttpError:
             info["errors"] += 1
             continue
+        if status not in (200, 404):  # rate limited or a server error: not checked, never "not new"
+            info["errors"] += 1
+            continue
         published = parse_datetime(data.get("publishedAt")) if status == 200 and isinstance(data, dict) else None
         if not published:
             info["unknown"] += 1
             continue
         info["checked"] += 1
         info["published"][purl] = published.isoformat()[:10]
-        age = (as_of - published).days
-        if 0 <= age < days:  # a version published after --as-of did not exist yet, so it is not counted
+        if published > as_of:
+            continue  # did not exist yet on the assessment date
+        age = (as_of.date() - published.date()).days
+        if age < days:
             info["recent"].append({"purl": purl, "package": sn[1], "version": version,
-                                   "published": published.isoformat(), "age_days": max(age, 0)})
+                                   "published": published.isoformat(), "age_days": age})
     info["recent"].sort(key=lambda r: r["published"], reverse=True)
     if info["errors"] or info["skipped_limit"]:
         info["status"] = "partial"

@@ -107,7 +107,7 @@ def _from_csv(path: Path) -> tuple[list[dict], list[str]]:
 def _purl_name_version(purl: str) -> tuple[str, str]:
     """Package name and version as findings carry them. OS packages (deb, rpm, apk) drop the distro namespace
     (pkg:deb/ubuntu/libc6 is package libc6) and take the epoch qualifier into the version (1:2.3-4)."""
-    from urllib.parse import parse_qs
+    from urllib.parse import parse_qs, unquote
 
     from .inventory_report import split_purl
 
@@ -116,6 +116,7 @@ def _purl_name_version(purl: str) -> tuple[str, str]:
         ptype, name, version = split_purl(base)
     except ValueError:
         return "", ""
+    version = unquote(version)  # Debian security versions are encoded in purls: 7.88.1-10%2Bdeb12u14
     if ptype in ("deb", "rpm", "apk"):
         name = name.rsplit("/", 1)[-1]
         epoch = (parse_qs(query).get("epoch") or [""])[0]
@@ -193,6 +194,7 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
             if d not in bucket:
                 bucket.append(d)
     used: set[int] = set()
+    matched: set[int] = set()  # decisions whose vulnerability and package were found, chosen or not
     info: dict = {"decisions": len(decisions), "applied": 0, "stale": 0, "ignored_malicious": 0,
                   "by_status": {s: 0 for s in STATUSES}, "resolved": []}
     for f in findings:
@@ -200,6 +202,7 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
         candidates = [d for i in sorted(_ids(f.vuln_id, *f.aliases)) for d in index.get((i, pkg), [])]
         if not candidates:
             continue
+        matched.update(id(c) for c in candidates)
         d = next((c for c in candidates if c["version"] and c["version"] == f.installed),
                  next((c for c in candidates if not c["version"]), candidates[-1]))
         used.add(id(d))
@@ -215,9 +218,10 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
         info["by_status"][d["status"]] += 1
         if d["version"] and f.installed and d["version"] != f.installed:
             info["stale"] += 1
-    seen_ids = {id(d) for d in decisions if id(d) in used}
+    # Resolved means the vulnerability is no longer found in that package. A decision for another version of a
+    # finding that is still present was superseded by a closer one, not resolved.
     for d in decisions:
-        if id(d) not in seen_ids:
+        if id(d) not in used and id(d) not in matched:
             info["resolved"].append({"ids": sorted(d["ids"]), "package": d["package"], "status": d["status"]})
     return info
 

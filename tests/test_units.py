@@ -1581,3 +1581,43 @@ def test_go_fixes_with_and_without_v_merge():
     t.purl = o.purl = "pkg:golang/golang.org/x/net@v0.16.0"
     (m,) = merge.merge([t], [o])
     assert m.fixed_versions == ["v0.17.0"]
+
+
+def test_minimum_upgrade_never_lands_on_an_unfixed_line():
+    # Review of 0.7.0: 3.0.1 is affected by CVE-A although above 2.4.1, so 3.0.5 (no 3.0 fix for CVE-A) is not
+    # an answer; 3.1.2 is.
+    from oss_intake import versions
+
+    assert versions.minimum_upgrade("3.0.1", [["2.4.1", "3.1.2"], ["3.0.5"]]) == "3.1.2"
+    assert versions.minimum_upgrade("1.2.5", [["1.2.9", "1.3.2"], ["1.3.0"]]) == "1.3.2"
+
+
+@pytest.mark.parametrize("a,b,expected", [
+    ("0.9.8zh", "0.9.8z", 1), ("0.9.8za", "0.9.8z", 1), ("0.9.8zh", "0.9.8zg", 1),
+    ("1.0.2k-25.el7_9", "1.0.2zh-1", -1),
+    ("1.0a", "1.0", -1), ("6.0b", "6.0", -1), ("1.2.3a", "1.2.3", -1), ("1.2.3rc", "1.2.3", -1),
+])
+def test_openssl_multi_letters_and_pep440_implicit_prereleases(a, b, expected):
+    from oss_intake import versions
+
+    assert versions.compare(a, b) == expected
+
+
+def test_openvex_version_is_decoded():
+    from oss_intake import decisions
+
+    assert decisions._purl_name_version("pkg:deb/debian/curl@7.88.1-10%2Bdeb12u14?arch=amd64") == (
+        "curl", "7.88.1-10+deb12u14")
+
+
+def test_superseded_decision_is_not_resolved():
+    from oss_intake import decisions
+
+    f = _f(vuln_id="CVE-2024-1", package="p", installed="2.0")
+
+    def d(v):
+        return {"ids": {"CVE-2024-1"}, "package": "p", "version": v, "status": "affected", "notes": "n",
+                "reachable": "", "justification": "", "source": "x"}
+
+    info = decisions.apply([f], [d("1.0"), d("2.0")])
+    assert f.decision_version == "2.0" and info["resolved"] == []

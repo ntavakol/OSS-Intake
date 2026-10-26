@@ -948,19 +948,20 @@ def test_new_release_is_flagged_and_can_fail_ci(tmp_path, capsys):
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     ra = a["release_age"]
     assert (ra["checked"], ra["unknown"]) == (2, 1)
-    assert [(r["package"], r["age_days"]) for r in ra["recent"]] == [("fresh-pkg", 1)]
+    assert [(r["package"], r["age_days"]) for r in ra["recent"]] == [("fresh-pkg", 2)]
     assert any(w.startswith("1 package version(s) published in the last 7 days: fresh-pkg 5.6.1")
                for w in a["warnings"])
     pk = {r["package"]: r for r in csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))}
-    assert pk["fresh-pkg"]["new_release"] == "yes, 1 day old" and pk["fresh-pkg"]["published"] == "2026-10-20"
+    assert pk["fresh-pkg"]["new_release"] == "yes, 2 days old" and pk["fresh-pkg"]["published"] == "2026-10-20"
     assert pk["old-pkg"]["new_release"] == "" and pk["old-pkg"]["published"] == "2024-01-01"
     assert "New releases" in (out / "report.html").read_text(encoding="utf-8")
-    assert "fresh-pkg 5.6.1 (1 day old)" in (out / "executive-summary.html").read_text(encoding="utf-8")
+    assert "fresh-pkg 5.6.1 (2 days old)" in (out / "executive-summary.html").read_text(encoding="utf-8")
     assert "## New releases (published in the last 7 days)" in (out / "summary.md").read_text(encoding="utf-8")
 
-    # Off with 0, and the gate passes.
+    # Older than the window: the gate passes.
     code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o2"), "--no-latest", "--as-of", "2026-10-22",
-                     "--release-age-days", "0", "--fail-on", "recent"], http=_inventory_http({}))
+                     "--release-age-days", "1", "--fail-on", "recent"],
+                    http=_inventory_http({"npm/fresh-pkg/5.6.1": "2026-10-20T13:16:00Z"}))
     assert code == cli.EXIT_OK
 
 
@@ -1041,3 +1042,46 @@ def test_sdist_ships_what_the_tests_need():
 
     manifest = (Path(__file__).resolve().parent.parent / "MANIFEST.in").read_text(encoding="utf-8")
     assert "graft tests" in manifest and "scripts/readme_sync.py" in manifest
+
+
+def test_release_age_server_errors_are_not_clean(tmp_path, capsys):
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\nnpm,a,1.0.0\nnpm,b,1.0.0\n", encoding="utf-8")
+
+    class Down(type(_inventory_http({}))):
+        def get_json(self, url, params=None):
+            if url.startswith("https://api.deps.dev/"):
+                return 503, None
+            return super().get_json(url, params)
+
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-latest", "--fail-on", "recent"],
+                    http=Down())
+    assert code == cli.EXIT_ERROR
+    err = capsys.readouterr().err
+    assert "--fail-on recent: could not be evaluated" in err and "were not checked for being new" in err
+    a = json.loads((tmp_path / "o" / "assessment.json").read_text(encoding="utf-8"))
+    assert a["release_age"]["errors"] == 2 and a["release_age"]["status"] == "partial"
+
+
+def test_fail_on_a_check_that_will_not_run_is_refused(tmp_path, capsys):
+    base = ["--image", "a/b:1", "--out", str(tmp_path / "o")]
+    assert cli.main([*base, "--offline", "--fail-on", "recent"]) == cli.EXIT_USAGE
+    assert cli.main([*base, "--release-age-days", "0", "--fail-on", "recent"]) == cli.EXIT_USAGE
+    assert cli.main([*base, "--no-registry-check", "--fail-on", "mismatch"]) == cli.EXIT_USAGE
+    assert "turns off" in capsys.readouterr().err
+
+
+def test_fail_on_recent_without_a_package_list_fails(tmp_path, fixtures, capsys):
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--scanners", "grype",
+                     "--from-grype-json", str(fixtures / "grype.json"), "--fail-on", "recent"], http=FakeHttp())
+    assert code == cli.EXIT_ERROR
+    assert "no package list to check" in capsys.readouterr().err
+
+
+def test_date_only_as_of_covers_the_whole_day(tmp_path):
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\nnpm,same-day,1.0.0\n", encoding="utf-8")
+    http = _inventory_http({"npm/same-day/1.0.0": "2026-10-22T10:00:00Z"})
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-latest", "--as-of", "2026-10-22",
+                     "--fail-on", "recent"], http=http)
+    assert code == cli.EXIT_THRESHOLD

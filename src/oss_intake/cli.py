@@ -10,7 +10,7 @@ import re
 import shutil
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import (
@@ -432,6 +432,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 raise UsageError(f"--{tool}-sha256: {exc}") from None
     if args.release_age_days < 0:
         raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
+    # A gate on a check that will not run would always pass, so it is refused up front.
+    if "recent" in args.fail_on_set and (args.offline or not args.release_age_days):
+        raise UsageError("--fail-on recent needs the release date check, which "
+                         + ("--offline" if args.offline else "--release-age-days 0") + " turns off")
+    if "mismatch" in args.fail_on_set and (args.offline or args.no_registry_check):
+        raise UsageError("--fail-on mismatch needs the registry checksum check, which "
+                         + ("--offline" if args.offline else "--no-registry-check") + " turns off")
     lk_cfg = likelihood.load_config(args.likelihood_config) if args.likelihood else None
     # Decisions are validated before anything is scanned, like every other input.
     args.decision_list = decisions.load(Path(args.decisions)) if args.decisions else None
@@ -777,8 +784,14 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         raise UsageError("--grace-days and --unshipped-days must be zero or more")
     age_info: dict = {"status": "skipped", "days": args.release_age_days,
                       "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
-    if net and args.release_age_days:
-        age_info = release_age.check(net, _language_purls(args, trivy_report), as_of, args.release_age_days)
+    purls = _language_purls(args, trivy_report) if net and args.release_age_days else []
+    if net and args.release_age_days and not purls:
+        age_info = {"status": "not checked", "days": args.release_age_days, "recent": [],
+                    "reason": "no package list to check (needs a Trivy scan or an inventory)"}
+    elif net and args.release_age_days:
+        # A date-only --as-of means the whole of that day.
+        as_of_end = as_of + timedelta(days=1, seconds=-1) if args.as_of and "T" not in args.as_of else as_of
+        age_info = release_age.check(net, purls, as_of_end, args.release_age_days)
         age_warning = release_age.warning(age_info)
         if age_warning:
             warnings.append(age_warning)
@@ -786,7 +799,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             warnings.append(f"Release dates were looked up for the first {release_age.MAX_LOOKUPS} package versions "
                             f"only; {age_info['skipped_limit']} were not checked for being new")
         if age_info["errors"]:
-            warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s)")
+            warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s), "
+                            "so they were not checked for being new")
     is_latest = health.get("scanned_is_latest") if not release_override else None
     decision_info = None
     if args.decision_list is not None:
@@ -897,6 +911,11 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None))
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}", args.quiet, force=True)
+    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args)
+    for t, why in unknown:
+        log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
+    if unknown and not tripped:
+        return EXIT_ERROR
     if lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood:
         return EXIT_THRESHOLD
     return EXIT_THRESHOLD if tripped else EXIT_OK
@@ -910,6 +929,17 @@ def _language_purls(args, trivy_report: dict | None) -> list[str]:
     if trivy_report is not None:
         return osv_mod.purls_from_trivy(trivy_report)
     return []
+
+
+def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args) -> list[tuple[str, str]]:
+    """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
+    out = []
+    if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
+        out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
+                                                         f"{age_info.get('skipped_limit', 0)} over the limit"))
+    if "mismatch" in wanted and args.path_kind == "artifact" and (registry or {}).get("status") == "error":
+        out.append(("mismatch", "the registry lookup failed"))
+    return out
 
 
 def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None) -> list[str]:

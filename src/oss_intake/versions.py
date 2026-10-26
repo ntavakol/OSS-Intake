@@ -14,9 +14,21 @@ _PRE = {"dev": -5, "snapshot": -5, "alpha": -4, "a": -4, "beta": -3, "b": -3, "m
         "rc": -1, "cr": -1, "pre": -1}
 _RELEASE = {"final": 0, "ga": 0, "release": 0, "r": 0}
 _TOKEN = re.compile(r"\d+|[A-Za-z]+")
-# A single letter straight after a number and not followed by one is a patch letter, newer than the plain
-# number: OpenSSL 1.1.1m > 1.1.1l > 1.1.1, Alpine 1.1.1m-r0. "1.0a1" or "1.0b2" stay pre-releases.
-_PATCH_LETTER = re.compile(r"(?<=\d)([A-Za-z])(?![A-Za-z0-9])")
+# OpenSSL-style patch letters after a three-part version: 1.1.1m > 1.1.1l > 1.1.1, and past z: 0.9.8z < 0.9.8za
+# < 0.9.8zh. Read as a base-27 number. Only one or two letters after x.y.z, and never a, b, c or rc, which PEP 440
+# uses for pre-releases (1.2.3a is 1.2.3a0, before 1.2.3); 1.0a1, 1.0rc1 and 2.0.0-M2 stay pre-releases.
+_PATCH_LETTER = re.compile(r"^(\d+\.\d+\.\d+)([A-Za-z]{1,2})(?=$|[-+~_.])")
+_NOT_PATCH = {"a", "b", "c", "rc"}
+
+
+def _patch_letter(m: re.Match) -> str:
+    letters = m.group(2).lower()
+    if letters in _NOT_PATCH:
+        return m.group(0)
+    n = 0
+    for ch in letters:
+        n = n * 27 + (ord(ch) - 96)
+    return f"{m.group(1)}.{n}"
 # Build labels that identify a variant of the same release, not a different version
 # (e.g. mssql-jdbc 12.10.2.jre11, guava 33.0.0-jre / -android). Ignored when comparing.
 _LABEL = re.compile(r"[.\-_+](?:jre|jdk|java)\d*$|[.\-_+]android$", re.IGNORECASE)
@@ -32,7 +44,7 @@ def _key(v: str) -> list[tuple[int, int, str]]:
     if ":" in v and v.split(":", 1)[0].isdigit():
         v = v.split(":", 1)[1]
     v = strip_label(v)
-    v = _PATCH_LETTER.sub(lambda m: f".{ord(m.group(1).lower()) - 96}", v)
+    v = _PATCH_LETTER.sub(_patch_letter, v)
     out: list[tuple[int, int, str]] = []
     for tok in _TOKEN.findall(v):
         if tok.isdigit():
@@ -127,17 +139,22 @@ def _branch(v: str) -> tuple[int, ...]:
     return tuple(nums[:2])
 
 
-def covers(candidate: str, fixed: list[str]) -> bool:
-    """Is candidate at or above a fix for this vulnerability on its own release line?
+def covers(candidate: str, fixed: list[str], installed: str = "") -> bool:
+    """Is candidate fixed for this vulnerability, given its listed fixes?
 
     With fixes [1.2.9, 1.3.2], 1.2.9 and 1.3.2 are fixed, but 1.3.0 is not: the 1.3 line was fixed in 1.3.2.
-    A candidate on a line with no listed fix is covered when it is above the highest fix below it.
+    On a line with its own listed fix, the candidate must be at or above it. On a line with no listed fix, the
+    candidate must be at or above the nearest fix for the installed version: the installed version itself shows
+    that being above a lower line's fix is not enough (3.0.1 is affected although above 2.4.1).
     """
-    below = [f for f in fixed if compare(f, candidate) <= 0]
-    if not below:
-        return False
     line = _branch(candidate)
-    return not any(compare(f, candidate) > 0 and _branch(f) == line for f in fixed)
+    on_line = [f for f in fixed if _branch(f) == line]
+    if on_line:
+        return not any(compare(f, candidate) > 0 for f in on_line)
+    floor = nearest_fix(installed, fixed) if installed else None
+    if floor is None:
+        floor = max(fixed, key=_sort_key) if fixed else None
+    return floor is not None and compare(candidate, floor) >= 0
 
 
 def minimum_upgrade(installed: str, fixed_sets: list[list[str]]) -> str | None:
@@ -146,7 +163,7 @@ def minimum_upgrade(installed: str, fixed_sets: list[list[str]]) -> str | None:
     sets = [s for s in fixed_sets if s]
     candidates = {f for s in sets for f in s if compare(f, installed) > 0}
     for c in sorted(candidates, key=_sort_key):
-        if all(covers(c, s) for s in sets):
+        if all(covers(c, s, installed) for s in sets):
             return c
     return None
 

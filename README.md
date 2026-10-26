@@ -229,7 +229,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--min-severity` | Drop findings below a severity |
 | `--formats` | Any of `csv,md,json,html` (default all; `findings.csv` is always written) |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
-| `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
+| `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
 | `--no-registry-check` | Skip comparing a JAR, wheel, sdist or npm `.tgz` with its registry's published checksum |
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
@@ -241,7 +241,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
-| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages |
+| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
 | `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to 400 |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
 
