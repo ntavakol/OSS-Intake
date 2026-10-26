@@ -17,6 +17,7 @@ from . import (
     conditions,
     coverage,
     decisions,
+    exec_summary,
     inputs,
     integrity,
     inventory_report,
@@ -344,6 +345,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     lk_cfg = likelihood.load_config(args.likelihood_config) if args.likelihood else None
     # Decisions are validated before anything is scanned, like every other input.
     args.decision_list = decisions.load(Path(args.decisions)) if args.decisions else None
+    args.previous = decisions.previous_findings(Path(args.decisions)) if args.decisions else None
     for flag in ("from_trivy_json", "from_grype_json", "trivy_cosign_bundle", "grype_cosign_bundle"):
         val = getattr(args, flag)
         if val and not Path(val).is_file():
@@ -710,7 +712,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         up = upgrade.enrich(net, pkg_rows, latest=not args.no_latest) if net else {"status": "skipped"}
         if up.get("status") == "failed":
             warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
-        assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows}
+        assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows,
+                                   "executive": exec_summary.compute(pkg_rows, findings, as_of, args.previous)}
 
     # 5. Reports.
     written = []
@@ -720,6 +723,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if pkg_rows is not None:
         inventory_report.write_csv(out / "packages.csv", pkg_rows, report.csv_safe)
         written.append("packages.csv")
+        if "html" in formats:
+            exec_summary.write(out / "executive-summary.html", assessment, pkg_rows,
+                               assessment["inventory"]["executive"])
+            written.append("executive-summary.html")
     vex = decisions.openvex(findings, __version__, as_of.isoformat()) if decision_info else None
     if vex:
         (out / "openvex.json").write_text(json.dumps(vex, indent=2), encoding="utf-8")

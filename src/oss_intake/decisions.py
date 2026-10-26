@@ -121,6 +121,19 @@ def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
     return out, errors
 
 
+def previous_findings(path: Path) -> set[tuple[str, str]] | None:
+    """Every (vulnerability, package) in an earlier findings.csv, for "what changed since the last run".
+    None when the decisions file is not a findings.csv (OpenVEX lists decisions, not findings)."""
+    if path.suffix.lower() != ".csv" or not path.is_file():
+        return None
+    keys: set[tuple[str, str]] = set()
+    for r in csv.DictReader(path.read_text(encoding="utf-8-sig").splitlines()):
+        ids = _ids(r.get("id"))
+        pkg = (r.get("package") or "").lstrip("'").lower()
+        keys |= {(i, pkg) for i in ids}
+    return keys
+
+
 def load(path: Path) -> list[dict]:
     """Read and validate a decisions file before anything is scanned. Invalid entries stop the run."""
     if not path.is_file():

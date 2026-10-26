@@ -555,3 +555,63 @@ def test_artifact_registry_mismatch_leads_the_report(tmp_path, fixtures):
                      "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--as-of", AS_OF])
     assert code == 0  # offline: no registry lookup at all
     assert json.loads((tmp_path / "o2" / "assessment.json").read_text(encoding="utf-8"))["registry_check"] is None
+
+
+def test_executive_summary_with_previous_run(tmp_path):
+    """Inventory runs write executive-summary.html; with --decisions from the previous run it shows what changed."""
+    from .conftest import FakeHttp
+
+    vulns = {
+        "pkg:npm/acme-widget@1.0.0": [_osv_vuln("GHSA-test-ex01-aaaa", "pkg:npm/acme-widget", "1.2.0", "CRITICAL"),
+                                      _osv_vuln("GHSA-test-ex02-bbbb", "pkg:npm/acme-widget", "1.1.0")],
+        "pkg:npm/%40acme/bad@2.0.0": [_osv_vuln("MAL-2099-0003", "pkg:npm/%40acme/bad", severity="")],
+        "pkg:maven/org.example/old-lib@1.0": [_osv_vuln("GHSA-test-ex03-cccc", "pkg:maven/org.example/old-lib",
+                                                        "1.1", "HIGH")],
+    }
+    latest = {"npm/acme-widget": ("2.0.0", "2026-09-01T00:00:00Z"),
+              "maven/org.example:old-lib": ("1.1", "2023-01-05T00:00:00Z")}
+
+    class Http(FakeHttp):
+        def __init__(self, hide=""):
+            super().__init__()
+            self.hide = hide
+
+        def post_json(self, url, body):
+            self._check(url)
+            return 200, {"results": [{"vulns": [{"id": v["id"]} for v in vulns.get(q["package"]["purl"], [])
+                                                if v["id"] != self.hide]} for q in body["queries"]]}
+
+        def get_json(self, url, params=None):
+            from urllib.parse import unquote
+
+            if url.startswith("https://api.osv.dev/v1/vulns/"):
+                self._check(url)
+                vid = url.rsplit("/", 1)[1]
+                return 200, next(v for vs in vulns.values() for v in vs if v["id"] == vid)
+            if url.startswith("https://api.deps.dev/v3/systems/") and "/versions/" not in url:
+                self._check(url)
+                key = unquote(url.split("/systems/")[1].replace("/packages/", "/"))
+                if key in latest:
+                    v, p = latest[key]
+                    return 200, {"versions": [{"versionKey": {"version": v}, "isDefault": True, "publishedAt": p}]}
+                return 404, None
+            return super().get_json(url, params)
+
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version,owner\nnpm,acme-widget,1.0.0,Web team\nnpm,@acme/bad,2.0.0,Web team\n"
+                   "maven,org.example:old-lib,1.0,Platform team\nnpm,clean-pkg,1.0.0,Data team\n", encoding="utf-8")
+    base = ["--path", str(inv), "--no-scorecard", "--no-workflows", "--as-of", "2026-10-26"]
+    assert cli.main([*base, "--out", str(tmp_path / "one")], http=Http(hide="GHSA-test-ex01-aaaa")) == 0
+    assert cli.main([*base, "--out", str(tmp_path / "two"), "--decisions",
+                     str(tmp_path / "one" / "findings.csv")], http=Http()) == 0
+    a = json.loads((tmp_path / "two" / "assessment.json").read_text(encoding="utf-8"))
+    ex = a["inventory"]["executive"]
+    assert (ex["packages"], ex["act_now"], ex["malicious"], ex["with_critical"], ex["stale"]) == (4, 1, 1, 1, 1)
+    assert ex["now"] == [4, 1] and ex["at_fix"] == [0, 0]  # the malicious release counts as removed
+    assert ex["previous"]["new"] == 1 and ex["previous"]["new_list"][0].startswith("GHSA-test-ex01-aaaa")
+    assert ex["owners"]["Web team"] == {"packages": 2, "act_now": 1, "with_findings": 2}
+    html = (tmp_path / "two" / "executive-summary.html").read_text(encoding="utf-8")
+    assert "4 open source packages checked. 1 needs action now (1 malicious)" in html
+    assert "What changed" in html and "By owner" in html and "org.example:old-lib (latest 1.1, 2023-01-05)" in html
+    one = json.loads((tmp_path / "one" / "assessment.json").read_text(encoding="utf-8"))
+    assert one["inventory"]["executive"]["previous"] is None

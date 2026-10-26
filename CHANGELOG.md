@@ -6,6 +6,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Executive summary for inventories (`executive-summary.html`): packages checked; how many need action now, have
+  critical vulnerabilities, or have had no release for over a year (from the latest release's date on
+  deps.dev); the top ten packages to act on, with the action; totals by owner; known vulnerabilities now, at the
+  minimum fixes and at the latest releases; and, with `--decisions` from the previous run's findings.csv, new
+  findings and findings no longer present.
 - Artifact integrity for `--path`: a JAR, WAR or EAR, a Python wheel or sdist, or an npm `.tgz` is compared with
   the checksum its registry publishes for that version (Maven Central via the archive's pom.properties, PyPI,
   npm). A mismatch leads the report with a warning, a "Registry checksum" tile and a red header; the result is

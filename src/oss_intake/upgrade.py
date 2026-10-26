@@ -51,39 +51,49 @@ def _with_version(purl: str, version: str) -> str:
     return f"{purl.rsplit('@', 1)[0]}@{version}"
 
 
-def latest_version(http: Http, purl: str) -> str | None:
-    """The latest stable version of the package on deps.dev, or None if unknown. deps.dev's default version is
-    used when it is stable; otherwise (Maven's default can be a beta) the highest stable version is taken."""
+def latest_release(http: Http, purl: str) -> tuple[str, str] | None:
+    """(version, publishedAt) of the latest stable version of the package on deps.dev, or None if unknown.
+    deps.dev's default version is used when it is stable; otherwise (Maven's default can be a beta) the highest
+    stable version is taken."""
     sn = _system_and_name(purl)
     if not sn:
         return None
     status, data = http.get_json(f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}")
     if status != 200 or not isinstance(data, dict):
         return None
-    listed = [((v.get("versionKey") or {}).get("version") or "", bool(v.get("isDefault")))
-              for v in data.get("versions") or []]
-    default = next((v for v, d in listed if d and v and not is_prerelease(v)), None)
+    listed = [((v.get("versionKey") or {}).get("version") or "", bool(v.get("isDefault")),
+               str(v.get("publishedAt") or "")) for v in data.get("versions") or []]
+    stable = [(v, d, p) for v, d, p in listed if v and not is_prerelease(v)]
+    default = next(((v, p) for v, d, p in stable if d), None)
     if default:
         return default
-    stable = [v for v, _ in listed if v and not is_prerelease(v)]
-    return max(stable, key=cmp_to_key(versions_mod.compare)) if stable else None
+    if not stable:
+        return None
+    best = max(stable, key=cmp_to_key(lambda x, y: versions_mod.compare(x[0], y[0])))
+    return best[0], best[2]
+
+
+def latest_version(http: Http, purl: str) -> str | None:
+    found = latest_release(http, purl)
+    return found[0] if found else None
 
 
 def enrich(http: Http, rows: list[dict], latest: bool = True) -> dict:
     info: dict = {"status": "ok", "latest_checked": 0, "latest_unknown": 0, "errors": 0, "latest": latest}
     for r in rows:
-        r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_left": None,
-                  "latest_major": False})
+        r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",
+                  "latest_left": None, "latest_major": False})
         if r["upgrade_to"] and not r["malicious"]:
             r["upgrade_major"] = breaking(r["version"], r["upgrade_to"])
     if latest:
         for r in rows:
             try:
-                v = latest_version(http, r["purl"])
+                found = latest_release(http, r["purl"])
             except HttpError:
                 info["errors"] += 1
                 continue
-            if v:
+            if found:
+                v, r["latest_published"] = found
                 info["latest_checked"] += 1
                 r["latest"] = v
                 r["latest_major"] = breaking(r["version"], v)

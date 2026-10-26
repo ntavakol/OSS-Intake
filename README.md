@@ -193,7 +193,15 @@ and label columns, and an upgrade comparison:
 - **major:** the upgrade crosses a major version, or a minor version below 1.0, so expect breaking changes.
 
 Fewer known vulnerabilities is not proof that a version is safe: it may be less studied, or newer than the
-advisories. The HTML report shows the packages that need attention. Run it on a schedule: a package that was clean when approved can turn
+advisories. The HTML report shows the packages that need attention.
+
+Inventory runs also write `executive-summary.html`: one page for someone who will not read the findings. It
+gives the packages checked, how many need action now (malicious or known exploited), have critical
+vulnerabilities, or have had no release for over a year; the top packages to act on with the action for each;
+totals by owner (from an `owner`, `team`, `system` or `application` column); and the known vulnerabilities now,
+after upgrading to the minimum fixes, and after upgrading to the latest releases. When `--decisions` points at
+the previous run's `findings.csv`, it also shows what changed since then: new findings and findings no longer
+present. Run it on a schedule: a package that was clean when approved can turn
 out vulnerable or compromised later. A sample is in
 [examples/inventory](https://github.com/ntavakol/OSS-Intake/blob/main/examples/inventory/packages.sample.csv).
 

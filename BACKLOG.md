@@ -4,7 +4,6 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next
-- Executive summary across an inventory (see Organisation view).
 - CycloneDX VEX export (see Organisation view).
 
 ## Organisation view
@@ -14,11 +13,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   and CycloneDX and SPDX SBOMs as input, which most package repositories and Dependency-Track can export.
 - Upgrade comparison for image and lockfile reports (done for inventories in 0.4.0): per package, what is still
   known at the minimum fix and at the latest stable release, with major-version warnings.
-- Executive summary report across the inventory: packages and versions in use, how many are malicious, have
-  known-exploited or critical vulnerabilities, or are unmaintained (archived, no release in a year); the top
-  packages by risk with their owners; and the improvement if each is upgraded (the comparison above, totalled).
-  One page, readable without the per-finding detail. Trends between runs can build on --decisions (0.5.0),
-  which already reads the previous run's findings.csv.
 - CycloneDX VEX export beside openvex.json, for Dependency-Track (which imports CycloneDX VEX, not OpenVEX).
 
 ## Inputs
