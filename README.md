@@ -149,7 +149,12 @@ oss-intake --path ./renv.lock --repo owner/app --release-tag v1.4.0 --out ./repo
 ```
 
 A JAR, WAR, EAR or binary is scanned as built artifacts (Trivy `rootfs`, Grype `dir:`), and a version in its
-file name is tried as the release tag. Lockfiles the scanners understand (Python, npm, Maven, Go, Rust, PHP,
+file name is tried as the release tag. A JAR, WAR or EAR, a Python wheel or sdist, or an npm `.tgz` is also
+compared with the checksum its registry publishes for that exact version: Maven Central (coordinates from the
+archive's `pom.properties`; the strongest of SHA-512, SHA-256 and SHA-1 it publishes), PyPI (SHA-256) or npm
+(SHA-512). A mismatch means the file is not the one the project released (rebuilt, repackaged or tampered with)
+and leads the report; a match proves only that the file is the published one, not that it is safe. A fat JAR
+that bundles several projects cannot be checked this way. `--no-registry-check` or `--offline` skips it. Lockfiles the scanners understand (Python, npm, Maven, Go, Rust, PHP,
 Ruby, .NET) are scanned with Trivy `fs`. An R `renv.lock` is read by oss-intake and checked against OSV's CRAN
 advisories, since neither scanner reads it; packages from Bioconductor, GitHub or local sources are listed as
 not checked. A folder is scanned as built artifacts; for a source checkout, pass its lockfile. Release lag needs
@@ -218,6 +223,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
+| `--no-registry-check` | Skip comparing a JAR, wheel, sdist or npm `.tgz` with its registry's published checksum |
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |

@@ -1368,3 +1368,100 @@ def test_decision_for_other_version_is_flagged():
                                   "notes": "backported", "reachable": "", "justification": "", "source": "x"}])
     group, reason = triage.classify(f)
     assert info["stale"] == 1 and group == "aside" and "decided for 1.0; installed 1.1: review" in reason
+
+
+def _jar(path, *projects, payload=b"class bytes"):
+    import zipfile
+
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("com/example/A.class", payload)
+        for g, a, v in projects:
+            z.writestr(f"META-INF/maven/{g}/{a}/pom.properties",
+                       f"#generated\ngroupId={g}\nartifactId={a}\nversion={v}\n")
+    return path
+
+
+class _MavenHttp:
+    def __init__(self, sums):
+        self.sums, self.calls = sums, []
+
+    def get_text(self, url):
+        self.calls.append(url)
+        return (200, self.sums[url] + "  file\n") if url in self.sums else (404, "")
+
+
+def test_registry_check_maven(tmp_path):
+    import hashlib
+
+    from oss_intake import registry_check as rc
+
+    jar = _jar(tmp_path / "widget-1.2.3.jar", ("org.example", "widget", "1.2.3"))
+    sha1 = hashlib.sha1(jar.read_bytes(), usedforsecurity=False).hexdigest()
+    base = "https://repo1.maven.org/maven2/org/example/widget/1.2.3/widget-1.2.3.jar"
+    r = rc.check(_MavenHttp({f"{base}.sha1": sha1}), jar)
+    assert (r["status"], r["algorithm"], r["identity"]) == ("match", "sha1", "org.example:widget:1.2.3")
+    sha256 = hashlib.sha256(jar.read_bytes()).hexdigest()
+    http = _MavenHttp({f"{base}.sha256": sha256, f"{base}.sha1": "0" * 40})
+    assert rc.check(http, jar)["algorithm"] == "sha256"  # the strongest published checksum wins
+    assert rc.check(_MavenHttp({f"{base}.sha1": "0" * 40}), jar)["status"] == "mismatch"
+    assert rc.check(_MavenHttp({}), jar)["status"] == "not_published"
+
+    exe = _jar(tmp_path / "widget-1.2.3-exec.jar", ("org.example", "widget", "1.2.3"))
+    cls = "https://repo1.maven.org/maven2/org/example/widget/1.2.3/widget-1.2.3-exec.jar.sha1"
+    exe_sha1 = hashlib.sha1(exe.read_bytes(), usedforsecurity=False).hexdigest()
+    assert rc.check(_MavenHttp({cls: exe_sha1}), exe)["status"] == "match"
+
+    fat = _jar(tmp_path / "app-all.jar", ("org.a", "one", "1"), ("org.b", "two", "2"))
+    r = rc.check(_MavenHttp({}), fat)
+    assert r["status"] == "unknown" and "bundles 2 Maven projects" in r["detail"]
+    shaded = _jar(tmp_path / "two-2.jar", ("org.a", "one", "1"), ("org.b", "two", "2"))
+    assert rc.check(_MavenHttp({}), shaded)["identity"] == "org.b:two:2"
+
+    bare = _jar(tmp_path / "plain.jar")
+    assert rc.check(_MavenHttp({}), bare)["status"] == "unknown"
+    assert rc.check(_MavenHttp({}), tmp_path / "plain.jar").get("registry") is None
+    other = tmp_path / "tool.exe"
+    other.write_bytes(b"MZ")
+    assert rc.check(_MavenHttp({}), other)["status"] == "unsupported"
+
+
+def test_registry_check_pypi_and_npm(tmp_path):
+    import base64
+    import hashlib
+    import io
+    import json as _json
+    import tarfile
+
+    from oss_intake import registry_check as rc
+
+    whl = tmp_path / "acme_lib-2.0.0-py3-none-any.whl"
+    whl.write_bytes(b"wheel bytes")
+
+    class Http:
+        def __init__(self, data):
+            self.data = data
+
+        def get_json(self, url, params=None):
+            return (200, self.data[url]) if url in self.data else (404, None)
+
+    pypi = {"https://pypi.org/pypi/acme_lib/2.0.0/json": {"urls": [
+        {"filename": whl.name, "digests": {"sha256": hashlib.sha256(b"wheel bytes").hexdigest()}}]}}
+    assert rc.check(Http(pypi), whl)["status"] == "match"
+    whl.write_bytes(b"other bytes")
+    assert rc.check(Http(pypi), whl)["status"] == "mismatch"
+    assert rc.check(Http({}), whl)["status"] == "not_published"
+
+    tgz = tmp_path / "scoped-1.0.0.tgz"
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as t:
+        body = _json.dumps({"name": "@acme/scoped", "version": "1.0.0"}).encode()
+        info = tarfile.TarInfo("package/package.json")
+        info.size = len(body)
+        t.addfile(info, io.BytesIO(body))
+    tgz.write_bytes(buf.getvalue())
+    integrity = "sha512-" + base64.b64encode(hashlib.sha512(tgz.read_bytes()).digest()).decode()
+    npm = {"https://registry.npmjs.org/@acme%2Fscoped/1.0.0": {"dist": {"integrity": integrity}}}
+    r = rc.check(Http(npm), tgz)
+    assert (r["status"], r["algorithm"], r["identity"]) == ("match", "sha512", "@acme/scoped@1.0.0")
+    npm_bad = {"https://registry.npmjs.org/@acme%2Fscoped/1.0.0": {"dist": {"integrity": "sha512-" + "A" * 88}}}
+    assert rc.check(Http(npm_bad), tgz)["status"] == "mismatch"

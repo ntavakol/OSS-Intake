@@ -134,6 +134,13 @@ def _tiles(a: dict) -> str:
     tiles = []
     if lk:
         tiles.append((tone_level(lk["level"]), "Likelihood (heuristic)", str(lk["level"]), lk["label"]))
+    reg = a.get("registry_check") or {}
+    if reg.get("status") in ("match", "mismatch", "not_published"):
+        tiles.append({"match": ("g", "Registry checksum", "match", f"same file as {reg.get('registry')}"),
+                      "mismatch": ("c", "Registry checksum", "MISMATCH", f"not the file {reg.get('registry')} "
+                                   "serves"),
+                      "not_published": ("a", "Registry checksum", "n/a", f"not published on {reg.get('registry')}")
+                      }[reg["status"]])
     mal = lag.get("malicious_packages") or []
     if mal:
         tiles.append(("c", "Malicious packages", str(len(mal)), "malware, not bugs: remove, do not patch"))
@@ -410,6 +417,13 @@ def _scope(a: dict) -> str:
     rows = [target,
             ["Repository", _code(inp["repo"]) if inp.get("repo") else "n/a"],
             ["Release used for lag", rel], ["Assessment date", a["as_of"][:10]]]
+    reg = a.get("registry_check")
+    if reg:
+        from .registry_check import summary as reg_summary
+
+        tone = {"match": "g", "mismatch": "c", "not_published": "a", "error": "a"}.get(reg["status"], "")
+        rows.insert(1, ["Registry checksum", Raw(f'<span class="{tone}">{_e(reg_summary(reg))}</span>')
+                        if tone else reg_summary(reg)])
     for name, s in a["scanners"].items():
         if not s.get("enabled"):
             continue
@@ -598,7 +612,8 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
           lag_note: str) -> None:
     title = _title(a) or "assessment"
     lk = a.get("likelihood")
-    accent = "c" if a["lag"].get("malicious") else tone_level(lk["level"]) if lk else "n"
+    mismatch = (a.get("registry_check") or {}).get("status") == "mismatch"
+    accent = "c" if a["lag"].get("malicious") or mismatch else tone_level(lk["level"]) if lk else "n"
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
              '<meta name="viewport" content="width=device-width, initial-scale=1">',
              f"<title>OSS intake: {_e(title)}</title><style>{CSS}</style></head><body><div class=\"page\">",

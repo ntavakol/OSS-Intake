@@ -520,3 +520,38 @@ def test_invalid_decisions_stop_before_scanning(tmp_path, fixtures, capsys):
     err = capsys.readouterr().err
     assert "2 invalid decision(s)" in err and "'maybe'" in err and "needs triage_notes" in err
     assert http.calls == []
+
+
+def test_artifact_registry_mismatch_leads_the_report(tmp_path, fixtures):
+    import zipfile
+
+    from .conftest import FakeHttp
+
+    jar = tmp_path / "webapp-2.0.0.jar"
+    with zipfile.ZipFile(jar, "w") as z:
+        z.writestr("META-INF/maven/org.example/webapp/pom.properties",
+                   "groupId=org.example\nartifactId=webapp\nversion=2.0.0\n")
+
+    class Http(FakeHttp):
+        def get_text(self, url):
+            if url.startswith("https://repo1.maven.org/"):
+                self._check(url)
+                return (200, "0" * 40) if url.endswith(".jar.sha1") else (404, "")
+            return super().get_text(url)
+
+    out = tmp_path / "o"
+    code = cli.main(["--path", str(jar), "--out", str(out), "--from-trivy-json", str(fixtures / "trivy.json"),
+                     "--from-grype-json", str(fixtures / "grype.json"), "--scanners", "trivy,grype",
+                     "--as-of", AS_OF, "--release-date", "2026-04-30", "--no-scorecard", "--no-workflows",
+                     "--no-exploits", "--no-epss", "--no-kev", "--no-fix-dates"], http=Http())
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["registry_check"]["status"] == "mismatch"
+    assert a["warnings"][0].startswith("ARTIFACT DOES NOT MATCH THE REGISTRY")
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert '<header class="c">' in html and "MISMATCH" in html and "Registry checksum" in html
+
+    code = cli.main(["--path", str(jar), "--out", str(tmp_path / "o2"), "--offline",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--as-of", AS_OF])
+    assert code == 0  # offline: no registry lookup at all
+    assert json.loads((tmp_path / "o2" / "assessment.json").read_text(encoding="utf-8"))["registry_check"] is None

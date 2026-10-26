@@ -24,6 +24,7 @@ from . import (
     likelihood,
     merge,
     reachability,
+    registry_check,
     report,
     triage,
     upgrade,
@@ -197,6 +198,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--decisions", metavar="FILE",
                    help="carry assessor decisions into this run: a findings.csv from an earlier run with the "
                         "triage_status, triage_notes and triage_reachable columns filled in, or an OpenVEX .json")
+    s.add_argument("--no-registry-check", action="store_true",
+                   help="--path on a JAR, wheel, sdist or npm .tgz: skip comparing its hash with the checksum the "
+                        "registry (Maven Central, PyPI, npm) publishes for that version")
     s.add_argument("--no-latest", action="store_true",
                    help="package inventories: skip looking up each package's latest release on deps.dev (one "
                         "request per package); the minimum fix version is still checked")
@@ -368,6 +372,16 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     net = None if args.offline else (http or RequestsHttp())
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 
+    # Is the artifact the file the project released? Checked against the registry before scanning.
+    args.registry_result = None
+    if args.path and args.path_kind == "artifact" and net and not args.no_registry_check:
+        args.registry_result = registry_check.check(net, Path(args.path))
+        if args.registry_result["status"] == "mismatch":
+            warnings.insert(0, "ARTIFACT DOES NOT MATCH THE REGISTRY: "
+                               + registry_check.summary(args.registry_result)
+                               + ". Treat the file as untrusted until you know where it came from")
+        elif args.registry_result["status"] == "error":
+            warnings.append("Registry checksum lookup failed: " + registry_check.summary(args.registry_result))
     # 2. Scanners. Integrity failures abort; scanner failures abort (a partial scan is misleading).
     try:
         trivy_report, groups, scan_info = _scan(args, chosen, out, net, scanners_meta, warnings)
@@ -681,6 +695,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "exploits": exploit_info,
         "triage": triage_info,
         "decisions": decision_info,
+        "registry_check": getattr(args, "registry_result", None),
         "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings),

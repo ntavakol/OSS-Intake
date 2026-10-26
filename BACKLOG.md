@@ -4,7 +4,6 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next
-- Artifact integrity for `--path` (see Signals).
 - Executive summary across an inventory (see Organisation view).
 - CycloneDX VEX export (see Organisation view).
 
@@ -36,8 +35,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - SARIF output for code-scanning dashboards.
 
 ## Signals
-- Artifact integrity for `--path`: compare a JAR's SHA-256 with the checksum the official registry publishes
-  for that exact version (Maven Central, PyPI, npm); a mismatch means the file is not what the project released.
 - Optional VirusTotal lookup for `--path` artifacts: hash only, never an upload (uploads are shared with
   VirusTotal subscribers), opt-in with the user's own API key. Low value for new supply-chain compromises, which
   are usually unknown to VirusTotal at first; check the API terms for organisational use.

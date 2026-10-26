@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Artifact integrity for `--path`: a JAR, WAR or EAR, a Python wheel or sdist, or an npm `.tgz` is compared with
+  the checksum its registry publishes for that version (Maven Central via the archive's pom.properties, PyPI,
+  npm). A mismatch leads the report with a warning, a "Registry checksum" tile and a red header; the result is
+  also in the scope table and assessment.json. `--no-registry-check` skips it.
+
 ## [0.5.0] - 2026-10-26
 
 Assess once, not every run: assessor decisions carry over between runs and export as OpenVEX.

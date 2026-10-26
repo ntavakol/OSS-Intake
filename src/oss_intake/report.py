@@ -223,6 +223,10 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     scope_rows = [target_row, ["Repository", _v(inp.get("repo"))],
                   ["Release used for lag", release_used(lag, health)],
                   ["Assessment date", a["as_of"][:10]]]
+    if a.get("registry_check"):
+        from .registry_check import summary as reg_summary
+
+        scope_rows.insert(1, ["Registry checksum", reg_summary(a["registry_check"])])
     for name, s in a["scanners"].items():
         if s.get("enabled"):
             detail = s.get("version") or s.get("detail") or ""
