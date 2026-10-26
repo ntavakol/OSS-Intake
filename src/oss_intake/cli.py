@@ -51,7 +51,7 @@ from .enrich import (
 from .health import releases, scorecard, workflows
 from .http import Http, HttpError, RequestsHttp
 from .models import SEVERITY_ORDER, parse_datetime
-from .scanners import ScannerError, find_executable, load_json_bytes
+from .scanners import ReportShapeError, ScannerError, check_report, find_executable, load_json_bytes
 from .scanners import govulncheck as govuln_mod
 from .scanners import grype as grype_mod
 from .scanners import osv as osv_mod
@@ -291,10 +291,32 @@ def _resolve_scanners(args: argparse.Namespace) -> tuple[list[str], list[str]]:
     return chosen, warnings
 
 
-def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict) -> dict:
+def _same_image(a: str, b: str) -> bool:
+    def norm(ref: str) -> str:
+        ref = ref.split("@", 1)[0].lower()
+        for prefix in ("docker.io/library/", "docker.io/", "index.docker.io/library/", "index.docker.io/"):
+            if ref.startswith(prefix):
+                ref = ref[len(prefix):]
+                break
+        if ref.startswith("library/"):
+            ref = ref[len("library/"):]
+        return ref if ":" in ref.rsplit("/", 1)[-1] else ref + ":latest"
+    return norm(a) == norm(b)
+
+
+def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict,
+                 warnings: list[str] | None = None) -> dict:
     loaded = getattr(args, f"from_{tool}_json")
     if loaded:
-        data = load_json_bytes(Path(loaded).read_bytes(), loaded)
+        try:
+            data = load_json_bytes(Path(loaded).read_bytes(), f"--from-{tool}-json {Path(loaded).name}")
+            check_report(data, tool, f"--from-{tool}-json {Path(loaded).name}")
+        except (ReportShapeError, ScannerError) as exc:
+            raise UsageError(str(exc)) from None
+        named = data.get("ArtifactName") if tool == "trivy" else None
+        if named and args.image and not _same_image(str(named), args.image) and warnings is not None:
+            warnings.append(f"The imported Trivy report is for {named}, but the report is labelled {args.image} "
+                            "(--image); check that the right file was imported")
         scanners_meta[tool] = {"enabled": True, "detail": f"imported from {Path(loaded).name}", "imported": True}
         return data
     path = find_executable(tool, getattr(args, f"{tool}_path"))
@@ -318,7 +340,12 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
     if tool == "trivy" and args.sbom and not args.path:
         (out / "raw" / "sbom.cdx.json").write_bytes(
             mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout, args.platform or None))
-    return load_json_bytes(raw, tool)
+    data = load_json_bytes(raw, tool)
+    try:
+        check_report(data, tool, f"{tool} output")
+    except ReportShapeError as exc:
+        raise ScannerError(str(exc)) from None
+    return data
 
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
@@ -437,11 +464,11 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
             args.malicious_check = checks.state(checks.CHECKED, "no CRAN packages to look up")
         return None, groups, scan_info
     if "trivy" in chosen:
-        trivy_report = _run_or_load("trivy", trivy_mod, args, out, scanners_meta)
+        trivy_report = _run_or_load("trivy", trivy_mod, args, out, scanners_meta, warnings)
         f, scan_info = trivy_mod.parse(trivy_report)
         groups.append(f)
     if "grype" in chosen:
-        g, _ = grype_mod.parse(_run_or_load("grype", grype_mod, args, out, scanners_meta))
+        g, _ = grype_mod.parse(_run_or_load("grype", grype_mod, args, out, scanners_meta, warnings))
         groups.append(g)
     args.reach_results = {}
     if args.reachability and trivy_report is not None:

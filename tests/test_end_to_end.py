@@ -672,3 +672,46 @@ def test_all_sources_checked_has_no_gap_warning(tmp_path, fixtures, fake_http, c
     assert all(v["state"] == "checked" for v in a["checks"].values())
     assert not any(w.startswith("Not every source") for w in a["warnings"])
     assert "not_checked=" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("flag,content,msg", [
+    ("--from-trivy-json", "grype.json", "it looks like a Grype report"),
+    ("--from-grype-json", "trivy.json", "it looks like a Trivy report"),
+    ("--from-trivy-json", "{}", "it has neither shape"),
+    ("--from-grype-json", "[]", "it has neither shape"),
+    ("--from-trivy-json", "not json", "not valid JSON"),
+])
+def test_wrong_or_empty_import_is_refused(tmp_path, fixtures, capsys, flag, content, msg):
+    # B2: a wrong or empty file used to give findings=0 and exit 0.
+    src = fixtures / content if content.endswith(".json") else tmp_path / "in.json"
+    if not content.endswith(".json"):
+        src.write_text(content, encoding="utf-8")
+    scanners = "trivy" if flag == "--from-trivy-json" else "trivy,grype"
+    argv = ["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", flag, str(src),
+            "--scanners", scanners]
+    if flag == "--from-grype-json":
+        argv += ["--from-trivy-json", str(fixtures / "trivy.json")]
+    assert cli.main(argv) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert msg in err and flag in err
+
+
+def test_imported_report_for_another_image_warns(tmp_path, fixtures):
+    # B15: the report is labelled with --image; say so when the imported file names another image.
+    out = tmp_path / "o"
+    assert cli.main(["--image", "acme/other:9.9.9", "--out", str(out), "--offline", "--formats", "json",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy"]) == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert any("is for example/webapp:2.0.0, but the report is labelled acme/other:9.9.9" in w
+               for w in a["warnings"])
+
+
+@pytest.mark.parametrize("a,b,same", [
+    ("nginx:1.29", "docker.io/library/nginx:1.29", True),
+    ("nginx", "nginx:latest", True),
+    ("example/webapp:2.0.0", "example/webapp:2.0.0@sha256:" + "0" * 64, True),
+    ("example/webapp:2.0.0", "example/webapp:2.0.1", False),
+    ("ghcr.io/a/b:1", "a/b:1", False),
+])
+def test_same_image(a, b, same):
+    assert cli._same_image(a, b) is same

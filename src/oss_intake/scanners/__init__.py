@@ -58,3 +58,31 @@ def load_json_bytes(data: bytes, what: str) -> dict:
         return json.loads(data.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ScannerError(f"{what} output is not valid JSON: {exc}") from None
+
+
+def report_kind(data: object) -> str:
+    """'trivy', 'grype' or 'unknown', from the shape of a JSON report."""
+    if not isinstance(data, dict):
+        return "unknown"
+    if "SchemaVersion" in data and isinstance(data.get("Results", []), list) and "matches" not in data:
+        return "trivy"
+    if isinstance(data.get("matches"), list) and "SchemaVersion" not in data:
+        name = (data.get("descriptor") or {}).get("name")
+        return "grype" if name in (None, "grype") else "unknown"
+    return "unknown"
+
+
+def check_report(data: object, tool: str, what: str) -> None:
+    """Refuse a report that is not the tool's JSON, so a wrong or empty file never reads as 'no findings'."""
+    kind = report_kind(data)
+    if kind == tool:
+        return
+    looks = {"trivy": "a Trivy report", "grype": "a Grype report"}.get(kind)
+    expected = {"trivy": "a Trivy JSON report (trivy ... --format json), with SchemaVersion and Results",
+                "grype": "a Grype JSON report (grype ... -o json), with matches"}[tool]
+    raise ReportShapeError(f"{what} is not {expected}" + (f"; it looks like {looks}" if looks else
+                                                         "; it has neither shape"))
+
+
+class ReportShapeError(ValueError):
+    pass
