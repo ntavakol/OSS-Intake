@@ -155,12 +155,41 @@ advisories, since neither scanner reads it; packages from Bioconductor, GitHub o
 not checked. A folder is scanned as built artifacts; for a source checkout, pass its lockfile. Release lag needs
 the project's release: `--repo` with `--release-tag`, or `--release-date`.
 
+### Package inventory
+
+To check the open source an organisation already uses, pass a CSV list of packages, for example exported from
+Artifactory or Nexus, or kept in a spreadsheet (save it from Excel as "CSV UTF-8"):
+
+```bash
+oss-intake --path ./packages.csv --out ./reports
+```
+
+```csv
+ecosystem,name,version,owner,system
+npm,@ctrl/tinycolor,4.1.1,Web team,Customer portal
+pypi,django,3.2.0,Data team,Reporting
+maven,org.apache.logging.log4j:log4j-core,2.14.1,Platform team,Payments
+```
+
+Use either `ecosystem`, `name` and `version` columns, or one `purl` column (`pkg:npm/chalk@5.6.1`). Ecosystems:
+npm, pypi, maven (`group:artifact`), go, nuget, cargo, gem, composer, cran, hex and pub, plus common aliases
+such as python or java. Versions must be exact: ranges such as `^1.2` or `latest` are rejected. Any other
+column (owner, system, team...) is carried through to the reports as a label. Every row is validated first: if
+any row is invalid, the run stops and lists each problem with its row number, before anything is looked up.
+
+No scanner is needed: each package version is checked against OSV, so malicious releases are flagged as well as
+vulnerable ones. Besides the usual reports, `packages.csv` lists every package, worst first, with its findings,
+the lowest version that fixes every listed vulnerability with a fix, and its label columns; the HTML report
+shows the packages that need attention. Run it on a schedule: a package that was clean when approved can turn
+out vulnerable or compromised later. A sample is in
+[examples/inventory](https://github.com/ntavakol/OSS-Intake/blob/main/examples/inventory/packages.sample.csv).
+
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 
 | Option | Purpose |
 |---|---|
 | `--image` | Image with explicit tag or digest |
-| `--path` | A JAR, WAR, binary, folder, lockfile or `renv.lock` instead of an image |
+| `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory `.csv` instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |

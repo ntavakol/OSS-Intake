@@ -149,6 +149,10 @@ def _tiles(a: dict) -> str:
         us = lag["unshipped_by_severity"]
         tiles.append(("r" if u else "g", f"Unshipped fixes {lag['unshipped_days']}+ days", str(u),
                       f"critical {us['CRITICAL']}, high {us['HIGH']}"))
+    elif a.get("inventory"):
+        inv = a["inventory"]
+        tiles.append(("a" if inv["with_findings"] else "g", "Packages checked", str(inv["packages"]),
+                      f"{inv['with_findings']} with known vulnerabilities or malware"))
     elif not lag.get("release_date"):
         tiles.append(("n", "Fix existed before release", "n/a", "no release date: pass --repo or --release-date"))
     else:
@@ -477,6 +481,44 @@ def _group_pill(group: str, reason: str = "") -> object:
     return Raw(f'<span class="pill {_GROUP_PILL[group]}"{tip}>{_e(TRIAGE_LABEL[group])}</span>')
 
 
+PACKAGES_SHOWN = 100
+
+
+def _packages(a: dict) -> str:
+    """Inventory scans: one row per package that needs attention, worst first."""
+    inv = a.get("inventory")
+    if not inv:
+        return ""
+    from .inventory_report import label_text
+
+    flagged = [r for r in inv["rows"] if r["findings"]]
+    clean = inv["packages"] - len(flagged)
+    head = (f'<p>{_e(str(inv["packages"]))} packages checked: {_e(str(len(flagged)))} with known '
+            f'vulnerabilities or malware, {_e(str(clean))} with none known. '
+            + (f'<span class="c">{_e(str(inv["malicious"]))} malicious.</span>' if inv["malicious"] else "")
+            + "</p>")
+    rows, cls = [], []
+    for r in flagged[:PACKAGES_SHOWN]:
+        exploit = Raw('<span class="pill p-crit">MALICIOUS</span>') if r["malicious"] else (
+            f'{r["kev"]} KEV' if r["kev"] else "")
+        rows.append([_group_pill(r["group_key"]), Raw(f'<span class="mono">{_e(r["package"])}</span>'),
+                     Raw(f'<span class="mono">{_e(r["version"])}</span>'), r["ecosystem"], r["findings"],
+                     r["critical"], r["high"], exploit,
+                     "remove: malicious release" if r["malicious"]
+                     else Raw(f'<span class="mono">{_e(r["upgrade_to"])}</span>') if r["upgrade_to"]
+                     else ("no fix listed" if r["no_fix"] else ""),
+                     label_text(r["labels"])])
+        cls.append("row-crit" if r["malicious"] or r["critical"] else "row-high" if r["high"] else "")
+    body = head + _table(["Group", "Package", "Version", "Ecosystem", "Findings", "Critical", "High", "Evidence",
+                          "Upgrade to at least", "Labels"], rows, num={4, 5, 6}, row_cls=cls)
+    more = len(flagged) - PACKAGES_SHOWN
+    body += _note(("" if more <= 0 else f"{more} more packages with findings are not shown. ")
+                  + "Every package, including those with none known, is in packages.csv with its label columns. "
+                  "'Upgrade to at least' is the lowest version that fixes every listed vulnerability with a fix; "
+                  "a newer version has fewer known vulnerabilities, which is not proof that it is safe.")
+    return _section("Packages", body)
+
+
 def _triage(a: dict) -> str:
     t = a.get("triage") or {}
     if not t.get("groups"):
@@ -525,7 +567,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_severity(a, caveat), _triage(a), _likelihood(a, heuristic_note), _lag(a, lag_note),
+    parts += [_packages(a), _severity(a, caveat), _triage(a), _likelihood(a, heuristic_note), _lag(a, lag_note),
               f'<div class="grid2">{_health(a)}{_ci(a)}</div>',
               f'<div class="grid2">{_coverage(a)}{_agreement(a)}</div>',
               _scope(a), _top(findings, top)]

@@ -365,3 +365,79 @@ def test_no_repo_no_release_date(tmp_path, fixtures, capsys):
     assert "No repository given" in html and "Days since last push" not in html
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "No repository given" in md and "Days since last push" not in md
+
+
+def _osv_vuln(vid, purl, fixed=None, severity="HIGH", aliases=()):
+    events = [{"introduced": "0"}] + ([{"fixed": fixed}] if fixed else [])
+    return {"id": vid, "aliases": list(aliases), "summary": f"synthetic advisory {vid}",
+            "database_specific": {"severity": severity},
+            "affected": [{"package": {"purl": purl}, "ranges": [{"type": "SEMVER", "events": events}]}]}
+
+
+def test_inventory_csv(tmp_path):
+    """A package inventory is validated, checked against OSV only, and reported per package with its labels."""
+    from .conftest import FakeHttp
+
+    vulns = {
+        "pkg:npm/acme-widget@1.0.0": [_osv_vuln("GHSA-test-inv1-aaaa", "pkg:npm/acme-widget", "1.2.0", "CRITICAL"),
+                                      _osv_vuln("GHSA-test-inv2-bbbb", "pkg:npm/acme-widget", "1.1.0")],
+        "pkg:npm/%40acme/scoped@2.0.0": [_osv_vuln("MAL-2099-0001", "pkg:npm/%40acme/scoped", severity="")],
+        "pkg:pypi/acme-lib@3.0.0": [_osv_vuln("GHSA-test-inv3-cccc", "pkg:pypi/acme-lib", None, "MODERATE")],
+    }
+    by_id = {v["id"]: v for vs in vulns.values() for v in vs}
+
+    class InventoryHttp(FakeHttp):
+        def post_json(self, url, body):
+            self._check(url)
+            assert url == "https://api.osv.dev/v1/querybatch"
+            return 200, {"results": [{"vulns": [{"id": v["id"]} for v in vulns.get(q["package"]["purl"], [])]}
+                                     for q in body["queries"]]}
+
+        def get_json(self, url, params=None):
+            if url.startswith("https://api.osv.dev/v1/vulns/"):
+                self._check(url)
+                return 200, by_id[url.rsplit("/", 1)[1]]
+            return super().get_json(url, params)
+
+    inv = tmp_path / "packages.csv"
+    inv.write_text("﻿Ecosystem,Name,Version,Owner,System\n"
+                   "npm,acme-widget,1.0.0,Team A,Web\n"
+                   "npm,@acme/scoped,2.0.0,Team B,Web\n"
+                   "Python,Acme_Lib,3.0.0,Team C,Payroll\n"
+                   "npm,clean-pkg,1.0.0,Team A,Web\n"
+                   "npm,acme-widget,1.0.0,Team D,Web\n", encoding="utf-8")
+    out = tmp_path / "o"
+    http = InventoryHttp()
+    assert cli.main(["--path", str(inv), "--out", str(out), "--no-scorecard", "--no-workflows"], http=http) == 0
+    assert not any("trivy" in c or "grype" in c for c in http.calls)
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    inv_a = a["inventory"]
+    assert (inv_a["packages"], inv_a["with_findings"], inv_a["malicious"]) == (4, 3, 1)
+    rows = {r["package"]: r for r in inv_a["rows"]}
+    assert rows["@acme/scoped"]["group"] == "Act now" and rows["@acme/scoped"]["upgrade_to"].startswith("remove")
+    assert rows["acme-widget"]["upgrade_to"] == "1.2.0" and rows["acme-widget"]["findings"] == 2
+    assert rows["acme-widget"]["labels"] == {"owner": "Team A; Team D", "system": "Web"}
+    assert rows["acme-lib"]["no_fix"] == 1 and rows["clean-pkg"]["findings"] == 0
+    assert inv_a["rows"][0]["package"] == "@acme/scoped"  # worst first
+    pk = list(csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline="")))
+    assert [r["package"] for r in pk][-1] == "clean-pkg" and pk[0]["owner"] == "Team B" and pk[0]["malicious"] == "yes"
+    findings = list(csv.DictReader((out / "findings.csv").open(encoding="utf-8", newline="")))
+    assert all("owner=" in f["labels"] for f in findings)
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "<h2>Packages</h2>" in html and "4 packages checked" in html and "Team B" in html
+    assert "Packages checked" in html and "Fix existed before release</div>" not in html
+    assert not any("release date" in w for w in a["warnings"])
+    assert "## Packages" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_inventory_invalid_rows_stop_before_lookup(tmp_path, capsys):
+    from .conftest import FakeHttp
+
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\nnpm,acme-widget,^1.0.0\ncobol,thing,1\nmaven,no-group,2.0\n",
+                   encoding="utf-8")
+    http = FakeHttp()
+    assert cli.main(["--path", str(inv), "--out", str(tmp_path / "o")], http=http) == 2
+    err = capsys.readouterr().err
+    assert "3 invalid row(s)" in err and "row 2:" in err and "row 3:" in err and "row 4:" in err
+    assert http.calls == []

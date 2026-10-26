@@ -18,6 +18,7 @@ from . import (
     coverage,
     inputs,
     integrity,
+    inventory_report,
     lag,
     likelihood,
     merge,
@@ -144,7 +145,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--image", help="container image with an explicit tag or digest, e.g. owner/name:1.2.3")
     s.add_argument("--path", help="assess a file or directory instead of an image: a JAR, WAR or binary, a "
                                   "folder of built artifacts, a lockfile (requirements.txt, package-lock.json, "
-                                  "pom.xml, ...) or an R renv.lock")
+                                  "pom.xml, ...), an R renv.lock, or a package inventory .csv (columns "
+                                  "ecosystem,name,version or purl, plus any label columns such as owner)")
     s.add_argument("--repo", help="GitHub repository owner/name for release cadence and Scorecard")
     s.add_argument("--out", required=True, help="output directory")
     s.add_argument("--scanners", default="auto",
@@ -332,16 +334,20 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         val = getattr(args, flag)
         if val and not Path(val).is_file():
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")
-    if args.path_kind == "renv":
+    if args.path_kind in ("renv", "inventory"):
         chosen, warnings = ([] if args.offline else ["osv"]), []
         if args.offline:
-            raise UsageError("an renv.lock is checked against OSV, which needs the network; drop --offline")
+            raise UsageError(f"{Path(args.path).name} is checked against OSV, which needs the network; "
+                             "drop --offline")
+        if args.path_kind == "inventory":
+            args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
     else:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     out = prepare_out(args.out)
-    if args.path and args.path_kind != "renv" and not (args.from_trivy_json and args.from_grype_json):
+    scanned_offline = args.from_trivy_json and args.from_grype_json
+    if args.path and args.path_kind not in ("renv", "inventory") and not scanned_offline:
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
     log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
         f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
@@ -366,6 +372,18 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
     groups: list = []
     trivy_report = None
     scan_info: dict = {}
+    if args.path_kind == "inventory":
+        labels = {e["purl"]: e["labels"] for e in args.inventory}
+        if net:
+            try:
+                found = osv_mod.scan(net, list(labels))
+            except HttpError as exc:
+                raise UsageError(f"OSV lookup failed, so the inventory could not be checked: {exc}") from None
+            for f in found:
+                f.labels = dict(labels.get(f.purl or "", {}))
+            groups.append(found)
+            scanners_meta["osv"] = {"enabled": True, "detail": f"{len(labels)} packages queried"}
+        return None, groups, scan_info
     if args.path_kind == "renv":
         purls, skipped = inputs.renv_purls(Path(args.path))
         if skipped:
@@ -533,7 +551,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             hint = "the GitHub release lookup did not return a date; pass --release-tag or --release-date."
         else:
             hint = "pass --repo, or --release-date."
-        warnings.append("No release date known, so 'fix existed before release' cannot be computed: " + hint)
+        if args.path_kind != "inventory":  # an inventory has no single release to compare against
+            warnings.append("No release date known, so 'fix existed before release' cannot be computed: " + hint)
 
     # 4. Enrichment.
     fd_stats: dict = {}
@@ -650,12 +669,19 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "likelihood": lk,
         "warnings": warnings,
     }
+    pkg_rows = None
+    if args.path_kind == "inventory":
+        pkg_rows = inventory_report.package_rows(args.inventory, findings)
+        assessment["inventory"] = {**inventory_report.summary(pkg_rows), "rows": pkg_rows}
 
     # 5. Reports.
     written = []
     if "csv" in formats:
         report.write_csv(out / "findings.csv", findings)
         written.append("findings.csv")
+    if pkg_rows is not None:
+        inventory_report.write_csv(out / "packages.csv", pkg_rows, report.csv_safe)
+        written.append("packages.csv")
     if "md" in formats:
         report.write_markdown(out / "summary.md", assessment, findings, args.top)
         written.append("summary.md")
@@ -694,7 +720,7 @@ def main(argv: list[str] | None = None, http: Http | None = None) -> int:
         if args.command == "verify":
             return cmd_verify(args)
         return cmd_scan(args, http)
-    except UsageError as exc:
+    except (UsageError, inputs.InputError) as exc:
         print(f"oss-intake: error: {exc}", file=sys.stderr)
         return EXIT_USAGE
     except (ScannerError, integrity.IntegrityError, likelihood.ConfigError, HttpError, OSError) as exc:

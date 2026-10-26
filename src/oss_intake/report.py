@@ -19,8 +19,8 @@ HEURISTIC_NOTE = (
     "starting point for an assessor, not a risk rating."
 )
 CSV_FIELDS = [
-    "id", "aliases", "cwes", "severity", "cvss", "cvss_version", "cvss_source", "package", "pkg_type", "installed",
-    "fixed_versions",
+    "id", "aliases", "cwes", "labels", "severity", "cvss", "cvss_version", "cvss_source", "package", "pkg_type",
+    "installed", "fixed_versions",
     "fix_version_used", "fix_published", "fix_date_source", "fix_available_at_release", "days_fix_available",
     "cve_published", "cve_published_before_release", "kev", "epss", "epss_percentile", "sources",
     "source_severity", "target",
@@ -34,6 +34,7 @@ def finding_row(f: Finding) -> dict:
         "id": f.vuln_id,
         "aliases": ";".join(sorted(f.aliases)),
         "cwes": ";".join(sorted(f.cwes)),
+        "labels": "; ".join(f"{k}={v}" for k, v in f.labels.items()),
         "severity": f.severity,
         "cvss": "" if f.cvss is None else f"{f.cvss:.1f}",
         "cvss_version": f.cvss_version,
@@ -74,7 +75,7 @@ def _tri(v: bool | None) -> str:
     return "" if v is None else ("yes" if v else "no")
 
 
-def _csv_safe(value: object) -> object:
+def csv_safe(value: object) -> object:
     """Neutralise spreadsheet formula injection from untrusted advisory text."""
     if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
         return "'" + value
@@ -86,7 +87,7 @@ def write_csv(path: Path, findings: list[Finding]) -> None:
         w = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
         w.writeheader()
         for f in findings:
-            w.writerow({k: _csv_safe(v) for k, v in finding_row(f).items()})
+            w.writerow({k: csv_safe(v) for k, v in finding_row(f).items()})
 
 
 def to_json(a: dict, findings: list[Finding]) -> dict:
@@ -207,6 +208,23 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                 detail += ", hash verified" if s["hash_verified"] else ", hash NOT verified"
             scope_rows.append([f"Source: {name}", detail])
     secs.append(("Scope", [("table", ["Item", "Value"], scope_rows), ("p", CAVEAT)]))
+    inv = a.get("inventory")
+    if inv:
+        from .inventory_report import label_text
+
+        flagged = [r for r in inv["rows"] if r["findings"]]
+        rows = [[r["group"], r["package"], r["version"], r["ecosystem"], r["findings"], r["critical"],
+                 "MALICIOUS" if r["malicious"] else (f"{r['kev']} KEV" if r["kev"] else ""),
+                 r["upgrade_to"] or ("no fix listed" if r["no_fix"] else ""), label_text(r["labels"])]
+                for r in flagged[:top]]
+        secs.append(("Packages", [
+            ("p", f"{inv['packages']} packages checked: {len(flagged)} with known vulnerabilities or malware, "
+                  f"{inv['packages'] - len(flagged)} with none known, {inv['malicious']} malicious."),
+            ("table", ["Group", "Package", "Version", "Ecosystem", "Findings", "Critical", "Evidence",
+                       "Upgrade to at least", "Labels"], rows),
+            ("p", "Every package, including those with none known, is in packages.csv. 'Upgrade to at least' is "
+                  "the lowest version that fixes every listed vulnerability with a fix; fewer known "
+                  "vulnerabilities is not proof that a version is safe.")]))
 
     sev_rows = []
     for s in SEVERITIES:

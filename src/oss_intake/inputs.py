@@ -1,6 +1,8 @@
 """Assess an artifact or a lockfile directly, without a container image (--path).
 
 Kinds, decided from the path:
+  inventory a CSV list of packages (ecosystem, name, version or purl), e.g. exported from a package repository:
+            read here and checked against OSV; no scanner is run
   renv      an R renv.lock: read here and checked against OSV's CRAN advisories (neither Trivy nor Grype
             reads renv.lock)
   lockfile  a dependency lockfile the scanners understand (Python, npm, Maven, Go, Rust, PHP, Ruby, .NET):
@@ -44,6 +46,8 @@ def classify(path: Path) -> str:
         return "dir"
     if path.name == "renv.lock":
         return "renv"
+    if path.suffix.lower() == ".csv":
+        return "inventory"
     if LOCKFILES.match(path.name):
         return "lockfile"
     return "artifact"
@@ -85,3 +89,120 @@ def renv_purls(path: Path) -> tuple[list[str], list[str]]:
         else:
             skipped.append(f"{name} ({p.get('Source')})")
     return purls, skipped
+
+
+# --- Package inventory (a CSV list of packages, e.g. exported from Artifactory, Nexus or a spreadsheet) ---
+
+MAX_INVENTORY_ROWS = 50_000
+INVENTORY_KEYS = {"purl", "ecosystem", "name", "version"}
+# Ecosystem names people use, mapped to purl types that OSV understands.
+ECOSYSTEMS = {
+    "npm": "npm", "node": "npm", "javascript": "npm",
+    "pypi": "pypi", "python": "pypi", "pip": "pypi",
+    "maven": "maven", "java": "maven",
+    "go": "golang", "golang": "golang",
+    "nuget": "nuget", ".net": "nuget", "dotnet": "nuget",
+    "cargo": "cargo", "rust": "cargo", "crates.io": "cargo",
+    "gem": "gem", "rubygems": "gem", "ruby": "gem",
+    "composer": "composer", "packagist": "composer", "php": "composer",
+    "cran": "cran", "r": "cran",
+    "hex": "hex", "pub": "pub",
+}
+_NOT_A_VERSION = re.compile(r"[\s^~<>=*,|]|^(latest|any|x)$", re.IGNORECASE)
+
+
+def _purl_for(ptype: str, name: str, version: str) -> str:
+    from urllib.parse import quote
+
+    if ptype == "maven":
+        group, sep, artifact = name.replace("/", ":").partition(":")
+        if not sep or not group or not artifact:
+            raise ValueError("a Maven name must be group:artifact, e.g. org.apache.logging.log4j:log4j-core")
+        path = f"{group}/{artifact}"
+    elif ptype == "npm" and name.startswith("@"):
+        scope, sep, pkg = name.partition("/")
+        if not sep or not pkg:
+            raise ValueError("a scoped npm name must be @scope/name")
+        path = f"{quote(scope)}/{pkg}"
+    elif ptype == "pypi":
+        path = re.sub(r"[-_.]+", "-", name).lower()  # PEP 503 normalised, as purl and OSV expect
+    else:
+        path = name
+    return f"pkg:{ptype}/{path}@{version}"
+
+
+def _row_purl(row: dict[str, str]) -> str:
+    purl = row.get("purl", "")
+    if purl:
+        if not purl.startswith("pkg:") or "/" not in purl[4:]:
+            raise ValueError(f"purl '{purl}' is not a package URL (pkg:type/name@version)")
+        ptype = purl[4:].split("/", 1)[0].lower()
+        rest = purl.split("?", 1)[0].split("#", 1)[0]
+        version = rest.rpartition("@")[2] if "@" in rest[4:].split("/", 1)[1] else ""
+        if ptype not in set(ECOSYSTEMS.values()):
+            raise ValueError(f"purl type '{ptype}' is not supported (supported: "
+                             f"{', '.join(sorted(set(ECOSYSTEMS.values())))})")
+        if not version:
+            raise ValueError(f"purl '{purl}' has no version")
+        if _NOT_A_VERSION.search(version):
+            raise ValueError(f"'{version}' is a version range or placeholder; give the exact installed version")
+        path_part = rest[4:].split("/", 1)[1]
+        if ptype == "npm" and path_part.startswith("@"):
+            path_part = "%40" + path_part[1:]  # pkg:npm/@scope/name -> pkg:npm/%40scope/name, as OSV expects
+        return f"pkg:{ptype}/{path_part}"
+    eco, name, version = row.get("ecosystem", ""), row.get("name", ""), row.get("version", "")
+    missing = [k for k, v in (("ecosystem", eco), ("name", name), ("version", version)) if not v]
+    if missing:
+        raise ValueError(f"missing {', '.join(missing)}")
+    ptype = ECOSYSTEMS.get(eco.lower())
+    if not ptype:
+        raise ValueError(f"unknown ecosystem '{eco}' (use one of: {', '.join(sorted(ECOSYSTEMS))})")
+    if _NOT_A_VERSION.search(version):
+        raise ValueError(f"'{version}' is a version range or placeholder; give the exact installed version")
+    return _purl_for(ptype, name, version)
+
+
+def inventory(path: Path) -> list[dict]:
+    """Read a package inventory CSV. Returns [{"purl", "labels"}], one per distinct package version.
+
+    Columns, case-insensitive: either 'purl', or 'ecosystem', 'name' and 'version'. Any other column (owner,
+    system, team...) is kept as a label and carried through to the reports. Every row is validated before
+    anything is looked up; any invalid row stops the run with a list of the problems.
+    """
+    import csv
+
+    try:
+        text = path.read_text(encoding="utf-8-sig")  # Excel writes a byte order mark
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InputError(f"cannot read {path.name}: {exc}. Save it from Excel as 'CSV UTF-8'.") from None
+    reader = csv.DictReader(text.splitlines())
+    headers = {h: (h or "").strip().lower() for h in reader.fieldnames or []}
+    cols = set(headers.values())
+    if "purl" not in cols and not {"ecosystem", "name", "version"} <= cols:
+        raise InputError(f"{path.name} needs a 'purl' column, or 'ecosystem', 'name' and 'version' columns "
+                         f"(found: {', '.join(sorted(c for c in cols if c)) or 'no header row'})")
+    found: dict[str, dict[str, set[str]]] = {}
+    errors: list[str] = []
+    for n, raw in enumerate(reader, start=2):  # row 1 is the header
+        if n - 1 > MAX_INVENTORY_ROWS:
+            raise InputError(f"{path.name} has more than {MAX_INVENTORY_ROWS} rows; split it into smaller files")
+        row = {headers[k]: (v or "").strip() for k, v in raw.items() if k is not None and headers.get(k)}
+        if not any(row.values()):
+            continue
+        try:
+            purl = _row_purl(row)
+        except ValueError as exc:
+            errors.append(f"row {n}: {exc}")
+            continue
+        labels = found.setdefault(purl, {})
+        for k, v in row.items():
+            if k not in INVENTORY_KEYS and v:
+                labels.setdefault(k, set()).add(v)
+    if errors:
+        shown = "\n  ".join(errors[:20])
+        more = f"\n  ... and {len(errors) - 20} more" if len(errors) > 20 else ""
+        raise InputError(f"{len(errors)} invalid row(s) in {path.name}; nothing was looked up:\n  {shown}{more}")
+    if not found:
+        raise InputError(f"{path.name} lists no packages")
+    return [{"purl": p, "labels": {k: "; ".join(sorted(v)) for k, v in sorted(lb.items())}}
+            for p, lb in sorted(found.items())]

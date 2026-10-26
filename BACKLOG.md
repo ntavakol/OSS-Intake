@@ -3,7 +3,6 @@
 Items agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 
 ## Next
-- Package inventory input, MVP (see Organisation view).
 - Upgrade comparison per package (see Organisation view).
 - VEX import, so triage decisions recorded in `findings.csv` carry over to the next run of the same target
   instead of being redone.
@@ -12,8 +11,9 @@ Items agreed for later versions. "Next" is the planned order; the other sections
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:
 a package that was clean when approved can later turn out vulnerable or compromised.
-- Package inventory input (MVP): a list of packages exported from a package repository (Artifactory, Nexus) or
-  kept in a spreadsheet. Columns: ecosystem, name, version, or a single purl column; optional owner/system
+- Package inventory input: CSV done in 0.3.0. Still to do: `.xlsx` directly as an optional extra (openpyxl),
+  CycloneDX and SPDX SBOMs, and deps.dev's latest version per package. Original scope: a list of packages
+  exported from a package repository (Artifactory, Nexus) or kept in a spreadsheet. Columns: ecosystem, name, version, or a single purl column; optional owner/system
   columns are carried through to the report. MVP reads CSV (Excel saves as CSV) so no spreadsheet dependency is
   needed; `.xlsx` directly can follow as an optional extra (openpyxl). Validate every row first and report
   unparseable rows before any network call. No scanner is needed: query OSV (malicious and vulnerable versions)

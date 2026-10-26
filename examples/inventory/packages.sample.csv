@@ -1,0 +1,9 @@
+ecosystem,name,version,owner,system
+npm,@ctrl/tinycolor,4.1.1,Web team,Customer portal
+npm,ua-parser-js,0.7.29,Web team,Customer portal
+npm,express,4.21.2,Web team,Customer portal
+pypi,django,3.2.0,Data team,Reporting
+pypi,requests,2.25.0,Data team,Reporting
+maven,org.apache.logging.log4j:log4j-core,2.14.1,Platform team,Payments
+maven,com.fasterxml.jackson.core:jackson-databind,2.17.2,Platform team,Payments
+go,golang.org/x/net,v0.17.0,Platform team,Gateway

@@ -5,9 +5,27 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-26
+
+Check the open source an organisation already uses: pass a package inventory instead of an image.
+
 ### Added
-- Project site on GitHub Pages (`site/`, published by `.github/workflows/pages.yml`) with the compromised-npm
-  sample report, README screenshots (`scripts/screenshots.py`) and a quickstart.
+- Package inventory input: `--path packages.csv` with `ecosystem,name,version` or `purl` columns, exported from a
+  package repository (Artifactory, Nexus) or a spreadsheet. Any other column (owner, system, team) is carried
+  through as a label. Every row is validated first; invalid rows stop the run with row numbers before anything
+  is looked up. Packages are checked against OSV only, so no scanner is needed, and malicious releases are
+  flagged as well as vulnerable ones.
+- `packages.csv` output for inventories: every package, worst first, with findings, malicious and KEV flags, the
+  lowest version that fixes every listed vulnerability with a fix, and its label columns. The HTML and Markdown
+  reports gain a Packages section, and the HTML report a "Packages checked" tile.
+- `labels` column in findings.csv.
+- `examples/inventory/packages.sample.csv`.
+- Project site on GitHub Pages with the compromised-npm sample report, README screenshots
+  (`scripts/screenshots.py`) and a quickstart.
+
+### Fixed
+- An unreadable `renv.lock` or inventory now ends with a clear error instead of a traceback.
+- README links are absolute, so they work on PyPI.
 
 ## [0.2.4] - 2026-10-26
 

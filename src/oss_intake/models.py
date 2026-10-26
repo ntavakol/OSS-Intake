@@ -101,6 +101,7 @@ class Finding:
     target: str = ""
     aliases: set[str] = field(default_factory=set)
     cwes: set[str] = field(default_factory=set)  # CWE IDs from the advisory, e.g. CWE-506 for malware
+    labels: dict[str, str] = field(default_factory=dict)  # inventory label columns, e.g. owner or system
     sources: set[str] = field(default_factory=set)
     source_severity: dict[str, str] = field(default_factory=dict)
     title: str = ""

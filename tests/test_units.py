@@ -1205,3 +1205,37 @@ def test_readme_links_are_absolute():
     text = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
     relative = re.findall(r'\]\((?!https?://|#|mailto:)([^)\s]+)\)|(?:src|srcset)="(?!https?://)([^"]+)"', text)
     assert relative == []
+
+
+def test_inventory_parsing(tmp_path):
+    from oss_intake import inputs
+
+    p = tmp_path / "pk.csv"
+    p.write_text("﻿Ecosystem,Name,Version,Owner\n"
+                 "npm,@acme/scoped,1.0.0,A\n"
+                 "Python,Acme_Lib.Core,2.0.0,B\n"
+                 "maven,org.example:widget,3.1.4,C\n"
+                 "go,example.com/mod,v1.2.3,\n"
+                 ",,,\n", encoding="utf-8")
+    got = {e["purl"]: e["labels"] for e in inputs.inventory(p)}
+    assert got == {"pkg:npm/%40acme/scoped@1.0.0": {"owner": "A"}, "pkg:pypi/acme-lib-core@2.0.0": {"owner": "B"},
+                   "pkg:maven/org.example/widget@3.1.4": {"owner": "C"}, "pkg:golang/example.com/mod@v1.2.3": {}}
+    assert inputs.classify(p) == "inventory"
+
+    p.write_text("purl,team\npkg:npm/@acme/scoped@1.0.0,X\npkg:pypi/acme-lib@2.0.0?arch=any,Y\n", encoding="utf-8")
+    assert [e["purl"] for e in inputs.inventory(p)] == ["pkg:npm/%40acme/scoped@1.0.0", "pkg:pypi/acme-lib@2.0.0"]
+
+    for body, expect in [
+        ("ecosystem,name,version\nnpm,x,>=1.0\n", "version range"),
+        ("ecosystem,name,version\nnpm,x,latest\n", "version range"),
+        ("ecosystem,name,version\ncobol,x,1\n", "unknown ecosystem"),
+        ("ecosystem,name,version\nmaven,x,1\n", "group:artifact"),
+        ("ecosystem,name,version\nnpm,@scope,1\n", "@scope/name"),
+        ("purl\npkg:deb/debian/bash@5\n", "not supported"),
+        ("purl\npkg:npm/x\n", "no version"),
+        ("name,version\nx,1\n", "needs a 'purl' column"),
+        ("ecosystem,name,version\n", "lists no packages"),
+    ]:
+        p.write_text(body, encoding="utf-8")
+        with pytest.raises(inputs.InputError, match=expect):
+            inputs.inventory(p)
