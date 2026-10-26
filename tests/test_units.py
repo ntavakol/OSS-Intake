@@ -1249,6 +1249,29 @@ def test_upgrade_breaking():
     assert not breaking("", "1.0.0") and not breaking("2.0.0", "1.0.0")
 
 
+def test_upgrade_latest_skips_prereleases():
+    from oss_intake import upgrade
+
+    for v in ("3.0.0-beta3", "2.0b1", "1.0.0-rc.1", "1.0.0-RC2", "5.0.0-M2", "1.2-SNAPSHOT", "1.0.dev3",
+              "4.0.0-alpha.1", "2.1.0rc1", "6.0.0-preview.3"):
+        assert upgrade.is_prerelease(v), v
+    for v in ("2.25.4", "v0.61.0", "6.1.2", "2.18.11", "1.0.0-1", "2.3.0.Final", "4.2.1"):
+        assert not upgrade.is_prerelease(v), v
+
+    class Http:
+        def __init__(self, versions):
+            self.versions = versions
+
+        def get_json(self, url):
+            return 200, {"versions": [{"versionKey": {"version": v}, "isDefault": d} for v, d in self.versions]}
+
+    purl = "pkg:maven/org.example/widget@2.14.1"
+    beta_default = [("2.24.3", False), ("2.25.4", False), ("3.0.0-beta3", True), ("2.9.0", False)]
+    assert upgrade.latest_version(Http(beta_default), purl) == "2.25.4"
+    assert upgrade.latest_version(Http([("1.0.0", False), ("1.1.0", True)]), purl) == "1.1.0"
+    assert upgrade.latest_version(Http([("1.0.0-rc1", True)]), purl) is None
+
+
 def test_upgrade_enrich():
     from oss_intake import upgrade
 

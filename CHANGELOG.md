@@ -18,6 +18,9 @@ release.
   clears completely.
 - `--no-latest` skips the latest-release lookup (one request per package) for faster runs or a current-state
   view; the minimum fix is still checked.
+- "Latest release" is the latest stable release: pre-releases (alpha, beta, rc, milestone, snapshot, dev) are
+  never suggested, even where deps.dev marks one as the default (log4j-core 3.0.0-beta3). Malicious packages
+  also show the latest release, as the clean version to move to.
 
 ### Fixed
 - Go fix versions from OSV now carry the `v` prefix (`v0.60.0`), matching Go and the installed version.

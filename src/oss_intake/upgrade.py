@@ -15,13 +15,22 @@ the advisories. The report says so.
 from __future__ import annotations
 
 import re
+from functools import cmp_to_key
 from urllib.parse import quote
 
+from . import versions as versions_mod
 from .enrich.fixdates import API, _system_and_name
 from .http import Http, HttpError
 from .scanners import osv as osv_mod
 
 _NUM = re.compile(r"v?(\d+)(?:\.(\d+))?")
+# Pre-releases are never suggested as "latest": 3.0.0-beta3, 2.0b1, 1.0.0-rc.1, 5.0.0-M2, 1.2-SNAPSHOT, 1.0.dev3.
+_PRERELEASE = re.compile(r"(?i)(alpha|beta|preview|snapshot|milestone|\brc\b|[-.]rc\.?\d|[-.]cr\d|[-.]m\d+$|"
+                         r"\.dev\d*|-dev\b|-pre\b|-ea\b|\d(a|b|rc)\d+$)")
+
+
+def is_prerelease(v: str) -> bool:
+    return bool(_PRERELEASE.search(v or ""))
 
 
 def breaking(current: str, target: str) -> bool:
@@ -43,17 +52,21 @@ def _with_version(purl: str, version: str) -> str:
 
 
 def latest_version(http: Http, purl: str) -> str | None:
-    """The default (latest stable) version deps.dev reports for the package, or None if unknown."""
+    """The latest stable version of the package on deps.dev, or None if unknown. deps.dev's default version is
+    used when it is stable; otherwise (Maven's default can be a beta) the highest stable version is taken."""
     sn = _system_and_name(purl)
     if not sn:
         return None
     status, data = http.get_json(f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}")
     if status != 200 or not isinstance(data, dict):
         return None
-    for v in data.get("versions") or []:
-        if v.get("isDefault"):
-            return (v.get("versionKey") or {}).get("version")
-    return None
+    listed = [((v.get("versionKey") or {}).get("version") or "", bool(v.get("isDefault")))
+              for v in data.get("versions") or []]
+    default = next((v for v, d in listed if d and v and not is_prerelease(v)), None)
+    if default:
+        return default
+    stable = [v for v, _ in listed if v and not is_prerelease(v)]
+    return max(stable, key=cmp_to_key(versions_mod.compare)) if stable else None
 
 
 def enrich(http: Http, rows: list[dict], latest: bool = True) -> dict:

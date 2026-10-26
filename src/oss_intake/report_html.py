@@ -526,7 +526,7 @@ def _packages(a: dict) -> str:
                      "remove: malicious release" if r["malicious"]
                      else target(r["upgrade_to"], r.get("upgrade_left"), r.get("upgrade_major", False))
                      if r["upgrade_to"] else ("no fix listed" if r["no_fix"] else ""),
-                     "" if r["malicious"] or r.get("latest") == r["version"]
+                     "" if r.get("latest") == r["version"]
                      else target(r.get("latest", ""), r.get("latest_left"), r.get("latest_major", False)),
                      label_text(r["labels"])])
         cls.append("row-crit" if r["malicious"] or r["critical"] else "row-high" if r["high"] else "")
