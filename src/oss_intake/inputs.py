@@ -108,7 +108,8 @@ ECOSYSTEMS = {
     "cran": "cran", "r": "cran",
     "hex": "hex", "pub": "pub",
 }
-_NOT_A_VERSION = re.compile(r"[\s^~<>=*,|]|^(latest|any|x)$", re.IGNORECASE)
+# Ranges and placeholders, not an installed version: ^1.2, ~1.2, >=1, 1.*, latest, 4.x, 4.1.X, 31.+ (Gradle).
+_NOT_A_VERSION = re.compile(r"[\s^~<>=*,|]|^(latest|any|x)$|(^|\.)x$|\+$", re.IGNORECASE)
 
 
 def _purl_for(ptype: str, name: str, version: str) -> str:

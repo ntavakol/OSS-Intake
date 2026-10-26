@@ -23,6 +23,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.10", "3.13"]
+        include:  # the versions in between, on one OS
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
     steps:
       # Third-party actions are pinned by full commit SHA. Tags are mutable; in March 2026
       # attackers force-pushed 76 of 77 aquasecurity/trivy-action tags to malicious commits.

@@ -256,7 +256,8 @@ Other commands: `oss-intake doctor` (scanner paths, versions, hashes and known-b
 | `--name` | The entry to look up in the checksums file (default: the file's name) |
 | `--cosign-bundle`, `--cosign-identity` | Also verify a Sigstore bundle with cosign, against a certificate identity regexp |
 
-Exit codes: `0` success, `1` error (including any integrity failure), `2` invalid input, `3` likelihood
+Exit codes: `0` success, `1` error (including any integrity failure, a scanner failure, or an OSV outage when OSV
+is the only source), `2` invalid input (found before any scanning), `3` a `--fail-on` or `--fail-on-likelihood`
 threshold reached.
 
 When a source was not consulted (`--offline`, `--no-kev`, `--no-exploits`, `--no-epss`, a failed download, or no

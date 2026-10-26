@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "oss-intake"
 version = "0.6.1"
-description = "Assess third-party open source software before adoption: known vulnerabilities, release lag and project health."
+description = "Assess third-party open source before adoption and on a schedule: vulnerabilities and malicious packages (Trivy, Grype, OSV), triage, new releases, release lag, project health and VEX."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Ned Tavakol" }]
-keywords = ["security", "sbom", "vulnerability", "trivy", "grype", "osv", "supply-chain"]
+keywords = ["security", "sbom", "vulnerability", "trivy", "grype", "osv", "supply-chain", "vex", "openvex",
+            "cyclonedx", "malicious-packages", "sca"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -19,12 +20,20 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: System Administrators",
+    "Topic :: Software Development :: Quality Assurance",
     "Topic :: Security",
 ]
 dependencies = ["requests>=2.31,<3"]
 
 [project.urls]
 Homepage = "https://github.com/ntavakol/OSS-Intake"
+Documentation = "https://github.com/ntavakol/OSS-Intake#readme"
+"Sample report" = "https://ntavakol.github.io/OSS-Intake/"
 Source = "https://github.com/ntavakol/OSS-Intake"
 Issues = "https://github.com/ntavakol/OSS-Intake/issues"
 Changelog = "https://github.com/ntavakol/OSS-Intake/blob/main/CHANGELOG.md"

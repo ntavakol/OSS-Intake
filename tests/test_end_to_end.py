@@ -1005,3 +1005,39 @@ def test_release_age_lookup_limits_and_go():
     future = release_age.check(http, ["pkg:golang/golang.org/x/net@v0.60.0"],
                                datetime(2026, 10, 1, tzinfo=timezone.utc), 7)
     assert future["recent"] == []  # did not exist yet on the --as-of date
+
+
+@pytest.mark.parametrize("version", ["4.x", "4.1.X", "31.+", "1.*", "x"])
+def test_inventory_rejects_placeholder_versions(tmp_path, capsys, version):
+    # B17
+    inv = tmp_path / "inv.csv"
+    inv.write_text(f"ecosystem,name,version\nnpm,p,{version}\n", encoding="utf-8")
+    assert cli.main(["--path", str(inv), "--out", str(tmp_path / "o")], http=FakeHttp()) == cli.EXIT_USAGE
+    assert "range or placeholder" in capsys.readouterr().err
+
+
+def test_inventory_accepts_build_metadata(tmp_path):
+    from oss_intake import inputs
+
+    inv = tmp_path / "inv.csv"
+    inv.write_text("ecosystem,name,version\nnpm,p,1.0.0+build.5\nmaven,org.x:y,4.1.100.Final\n", encoding="utf-8")
+    assert len(inputs.inventory(inv)) == 2
+
+
+def test_malformed_pinned_hash_is_an_input_error(tmp_path, capsys):
+    # B16: input errors exit 2, before any work.
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--trivy-sha256", "xyz"]) == cli.EXIT_USAGE
+    assert "--trivy-sha256: expected a 64 character" in capsys.readouterr().err
+    assert not (tmp_path / "o").exists()
+    f = tmp_path / "f"
+    f.write_bytes(b"x")
+    assert cli.main(["verify", "--file", str(f), "--sha256", "xyz"]) == cli.EXIT_USAGE
+    assert cli.main(["verify", "--file", str(f), "--sha256", "0" * 64]) == cli.EXIT_ERROR  # mismatch: integrity
+
+
+def test_sdist_ships_what_the_tests_need():
+    # B11: the 0.6.0 sdist had test files but no conftest or fixtures.
+    from pathlib import Path
+
+    manifest = (Path(__file__).resolve().parent.parent / "MANIFEST.in").read_text(encoding="utf-8")
+    assert "graft tests" in manifest and "scripts/readme_sync.py" in manifest

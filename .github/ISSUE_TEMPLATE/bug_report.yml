@@ -1,0 +1,38 @@
+name: Bug report
+description: Something oss-intake did wrong, such as a wrong finding, a crash, or a report that reads wrongly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security vulnerabilities in oss-intake here; see SECURITY.md for private reporting.
+        Remove anything internal (hostnames, registry names, tokens) from commands and output before posting.
+  - type: input
+    id: version
+    attributes:
+      label: oss-intake version
+      description: Output of `oss-intake --version`
+    validations:
+      required: true
+  - type: textarea
+    id: scanners
+    attributes:
+      label: Scanners and platform
+      description: Output of `oss-intake doctor` (it shows no tokens), and your operating system
+    validations:
+      required: false
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command, with internal names replaced
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+      description: Include the error or the part of the report that is wrong. For a wrong finding, the ID, package and version.
+    validations:
+      required: true

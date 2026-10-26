@@ -288,6 +288,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
                          "which project signed the file)")
     if args.cosign_identity and not args.cosign_bundle:
         raise UsageError("--cosign-identity needs --cosign-bundle")
+    if args.sha256:
+        try:
+            integrity.normalise_hash(args.sha256)
+        except integrity.IntegrityError as exc:
+            raise UsageError(f"--sha256: {exc}") from None
     if args.checksums:
         digest = integrity.verify_against_checksums(args.file, args.checksums, args.name)
     else:
@@ -418,6 +423,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True
     args.fail_on_set = csv_set(args.fail_on, set(FAIL_ON), "--fail-on") if args.fail_on else []
+    for tool in ("trivy", "grype"):  # a malformed pinned hash is an input error (exit 2), found before any work
+        value = getattr(args, f"{tool}_sha256")
+        if value:
+            try:
+                integrity.normalise_hash(value)
+            except integrity.IntegrityError as exc:
+                raise UsageError(f"--{tool}-sha256: {exc}") from None
     if args.release_age_days < 0:
         raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
     lk_cfg = likelihood.load_config(args.likelihood_config) if args.likelihood else None
