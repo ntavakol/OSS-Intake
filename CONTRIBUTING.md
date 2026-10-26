@@ -16,6 +16,9 @@ python -m pytest
 
 ## Rules
 
+- **Tests come with the change.** New functionality must add automated tests that cover it, and a bug fix must
+  add a test that fails without the fix. CI (`ruff` and `pytest` on Linux, macOS and Windows) must pass before
+  a change is merged or released.
 - **No live network calls in tests.** Use fixtures in `tests/fixtures` and the `FakeHttp` helper. It fails
   the test if code reaches an unexpected URL.
 - **Fixtures are synthetic.** Use `CVE-2099-*` and `GHSA-test-*` identifiers and fictional projects so
