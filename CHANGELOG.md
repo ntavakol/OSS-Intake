@@ -12,13 +12,17 @@ Scanner signatures that can actually pass, hardening against hostile input, and 
 ### Added
 - `--trivy-archive`/`--grype-archive` and `--trivy-checksums`/`--grype-checksums`: before the scanner runs,
   cosign checks the release's Sigstore bundle on the checksums file (or the archive), the checksums file must list
-  the archive's SHA-256, and the executable must be byte-for-byte the one inside the archive.
+  the archive's SHA-256 (matched by name, or by hash when the archive was saved under another name), and the
+  executable must be byte-for-byte the one inside the archive. An archive with neither a checksums file nor a
+  bundle is compared but noted as unanchored.
 - `--govulncheck-sha256` (checked before govulncheck runs) and `--govulncheck-version`. The Docker or crane
   executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json.
 - `examples/scheduled-rescan`: a GitHub workflow that re-scans an inventory weekly, carries decisions forward,
-  keeps the reports as an artifact and opens an issue on new Act now findings, malicious packages or new
-  releases. It needs only `contents: read` and `issues: write` and never commits.
-- A warning when `--sbom`, `--trivy-arg`/`--grype-arg`, `--image-src` or `--release-tag` would have no effect.
+  keeps the reports as an artifact (also when a run fails) and opens an issue listing the Act now findings no
+  decision has set aside and releases under a week old. A fingerprint in the issue title means the same list is
+  reported once while its issue is open. It needs only `contents: read` and `issues: write` and never commits.
+- A warning when `--sbom`, `--trivy-arg`/`--grype-arg`, `--image-src`, `--release-tag`, a scanner pin for a
+  scanner that does not run, or a govulncheck option without `--reachability` would have no effect.
 
 ### Changed
 - `--trivy-cosign-bundle` and `--grype-cosign-bundle` need the matching `--*-archive` (B10). Trivy signs its
@@ -35,10 +39,11 @@ Scanner signatures that can actually pass, hardening against hostile input, and 
 ### Security
 - pom.properties and package.json larger than 1 MB are never read; a small archive could inflate to gigabytes in
   memory (S2).
-- `packages.csv` header cells and values joined with `;` or `,` are guarded against spreadsheet formulas, not only
-  a leading `=`, and reading findings.csv back undoes the guard exactly (S3, S4).
-- summary.md escapes Markdown and HTML in untrusted text, so a package name or advisory title cannot add links,
-  images or raw HTML (S5).
+- `packages.csv` header cells and values joined with `;`, `,` or a tab are guarded against spreadsheet formulas,
+  not only a leading `=` (signed numbers such as `-1` are left alone), and reading findings.csv back undoes the
+  guard exactly, even for notes that already contain a quote before `=` (S3, S4).
+- summary.md escapes Markdown and HTML in every line built from data (title, headings, paragraphs, lists and
+  tables), so a package name, tag or advisory title cannot add links, images or raw HTML (S5).
 - Registry identities read from inside an artifact must be valid coordinates (no path segments or `..`) and are
   URL-quoted, so a tampered file cannot steer the checksum lookup to another package (S6).
 - Advisory text and workflow files are length-capped before pattern matching, which could take seconds on crafted

@@ -328,6 +328,14 @@ def _ineffective_options(args, chosen: list[str]) -> list[str]:
         out.append("--image-src has no effect: no scanner pulls the image in this run")
     if args.release_tag and not args.repo:
         out.append("--release-tag has no effect without --repo")
+    for t in ("trivy", "grype"):
+        pins = [f"--{t}-{o.replace('_', '-')}" for o in ("sha256", "version", "archive", "checksums", "cosign_bundle")
+                if getattr(args, f"{t}_{o}")]
+        if pins and t not in run_live:
+            out.append(f"{', '.join(pins)} {'has' if len(pins) == 1 else 'have'} no effect: {t} does not run")
+    gv = [f"--govulncheck-{o}" for o in ("path", "sha256", "version") if getattr(args, f"govulncheck_{o}")]
+    if gv and not args.reachability:
+        out.append(f"{', '.join(gv)} {'has' if len(gv) == 1 else 'have'} no effect without --reachability")
     return out
 
 
@@ -404,6 +412,12 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
+    if release.get("binary_matches_archive") and (release.get("signed") or release.get("checksums")):
+        # The executable was verified through the release chain; the generic "no pinned hash" note does not apply.
+        check.notes = [n for n in check.notes if "hash not verified" not in n]
+        check.hash_verified = True
+    if release.get("note"):
+        check.notes.append(release["note"])
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {})}
     target = args.path if args.path else args.image
     log(f"running {tool} {info['version']} on {target}", args.quiet)

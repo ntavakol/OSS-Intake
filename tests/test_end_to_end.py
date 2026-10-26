@@ -1144,8 +1144,16 @@ def test_grype_style_chain_bundle_on_checksums(tmp_path, monkeypatch):
                                        str(sums))
     assert calls[0][0] == str(sums) and done["binary_matches_archive"] and done["signed"] == sums.name
     sums.write_text("0" * 64 + f"  {archive.name}\n", encoding="utf-8")
-    with pytest.raises(integrity.IntegrityError, match="SHA-256 mismatch"):
+    with pytest.raises(integrity.IntegrityError, match="is not listed in grype_0.121.0_checksums.txt"):
         integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums))
+    # Saved under another name (curl -o): matched by hash in the signed table.
+    sums.write_text(f"{integrity.sha256_file(archive)}  {archive.name}\n", encoding="utf-8")
+    renamed = tmp_path / "grype-linux.tgz"
+    renamed.write_bytes(archive.read_bytes())
+    assert integrity.verify_before_run("grype", str(exe), None, None, None, str(renamed), str(sums))[
+        "binary_matches_archive"]
+    only = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), None)
+    assert "nothing vouches for the archive" in only["note"]
 
 
 def test_bundle_without_archive_is_refused(tmp_path, capsys):
@@ -1248,3 +1256,28 @@ def test_option_abbreviations_are_refused(tmp_path):
     with pytest.raises(SystemExit) as e:
         cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--offlin"])
     assert e.value.code == 2
+
+
+def test_markdown_paragraphs_are_escaped_too(tmp_path, fixtures):
+    # Review of 0.8.0: a decision for a package no longer found printed its name raw in a paragraph.
+    rows = [{"id": "GHSA-zzzz-zzzz-zzzz", "package": "![x](https://evil.example/p.png)<img src=x>",
+             "installed": "1", "triage_status": "fixed", "triage_notes": "gone"}]
+    d = tmp_path / "d.csv"
+    with d.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    code, out = run(tmp_path, fixtures, FakeHttp(), "--decisions", str(d))
+    assert code == 0
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "evil.example" in md and "![x](" not in md and "<img" not in md
+
+
+def test_scanner_pins_without_a_scanner_run_are_named(tmp_path, fixtures):
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats", "json",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy",
+                     "--trivy-sha256", "0" * 64, "--govulncheck-sha256", "0" * 64]) == 0
+    w = " ".join(json.loads((out / "assessment.json").read_text(encoding="utf-8"))["warnings"])
+    assert "--trivy-sha256 has no effect: trivy does not run" in w
+    assert "--govulncheck-sha256 has no effect without --reachability" in w

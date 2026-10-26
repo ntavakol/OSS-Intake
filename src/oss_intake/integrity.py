@@ -200,7 +200,15 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
             if cosign_bundle:
                 cosign_verify_blob(checksums, cosign_bundle, identity)
                 done["signed"] = Path(checksums).name
-            done["archive_sha256"] = verify_against_checksums(archive, checksums)
+            with open(checksums, "rb") as fh:
+                table = parse_checksums(fh.read())
+            actual_archive = sha256_file(archive)
+            # Matched by name, or by hash when the archive was saved under another name (curl -o): the signed
+            # table vouches for the bytes either way.
+            if table.get(Path(archive).name) != actual_archive and actual_archive not in table.values():
+                raise IntegrityError(f"{Path(archive).name} (sha256 {actual_archive}) is not listed in "
+                                     f"{Path(checksums).name}")
+            done["archive_sha256"] = actual_archive
             done["checksums"] = Path(checksums).name
         elif cosign_bundle:
             cosign_verify_blob(archive, cosign_bundle, identity)
@@ -212,6 +220,9 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
             raise IntegrityError(f"{Path(path).name} is not the {tool} executable in {Path(archive).name}: "
                                  f"{actual} here, {member_hash} in the archive ({member})")
         done.update(archive=Path(archive).name, binary_matches_archive=True)
+        if not (checksums or cosign_bundle):
+            done["note"] = (f"the {tool} executable matches {Path(archive).name}, but nothing vouches for the "
+                            f"archive itself; add --{tool}-checksums and --{tool}-cosign-bundle")
     elif cosign_bundle:
         # A bundle without an archive can only be checked against the executable itself, which the projects do
         # not sign; kept for executables someone signs directly.

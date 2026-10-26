@@ -41,16 +41,17 @@ SETS_ASIDE = ("not_affected", "fixed")
 MITIGATED = "inline_mitigations_already_exist"
 # The words that mean a mitigation rather than a reason the code is unaffected.
 _MITIGATION_WORDS = ("mitigated", "compensating control")
-_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
-_JOINED_GUARD = re.compile(r"([;,\t])(\s*)'([=@+\-])")
+_UNGUARD_START = re.compile(r"^'('*[=+\-@\t\r])")
+_UNGUARD_JOINED = re.compile(r"([;,\t])(\s*)'('*(?:[=@]|[+\-](?!\s|[\d.]*(?:[;,\t]|$))))")
 
 
 def unguard(value: str) -> str:
-    """Undo report.csv_safe: the quote it puts before a formula character at the start, or after a ; , or tab."""
-    value = _JOINED_GUARD.sub(r"\1\2\3", value)
-    return value[1:] if value[:1] == "'" and value[1:2] in _FORMULA else value
+    """Undo report.csv_safe exactly: it adds one quote where a formula could start (counting quotes already
+    there), so one is removed at the same places."""
+    value = _UNGUARD_START.sub(r"\1", value)
+    return _UNGUARD_JOINED.sub(r"\1\2\3", value)
 
 
 def _read_csv(path: Path) -> list[dict]:

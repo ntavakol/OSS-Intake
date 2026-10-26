@@ -55,30 +55,36 @@ jobs:
           # 0 clean, 3 something to act on; anything else is a failed run and fails the job.
           if [ "$code" != 0 ] && [ "$code" != 3 ]; then exit "$code"; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()  # a failed run still leaves its reports and logs to look at
         with:
           name: oss-intake-reports
           path: reports/
           retention-days: 90
-      - name: Open an issue for new findings
+      - name: Open an issue when something to act on has not been reported yet
         if: steps.scan.outputs.exit == '3'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          new_act=$(jq '.inventory.executive.previous.new_act // .inventory.act_now' reports/assessment.json)
-          recent=$(jq '.release_age.recent | length' reports/assessment.json)
-          malicious=$(jq '.inventory.malicious' reports/assessment.json)
-          if [ "$new_act" = 0 ] && [ "$recent" = 0 ] && [ "$malicious" = 0 ]; then exit 0; fi
-          title="oss-intake: ${new_act} new Act now, ${malicious} malicious, ${recent} new releases ($(date -u +%F))"
+          # What needs action: Act now findings that no decision has set aside (malicious packages always), and
+          # releases under a week old. The same set is reported once: the issue title carries a fingerprint of
+          # it, and an open issue with that fingerprint means it is already known. A change opens a new issue.
+          jq -r '[.findings[] | select(.suggested_group == "Act now") | "\(.id) \(.package) \(.installed)"]
+                 + [.release_age.recent[]? | "new \(.package) \(.version)"] | unique | .[]' \
+            reports/assessment.json > items.txt
+          [ -s items.txt ] || exit 0
+          fingerprint=$(sha256sum items.txt | cut -c1-12)
+          if gh issue list --state open --search "${fingerprint} in:title" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "Already reported in an open issue (${fingerprint})"; exit 0
+          fi
           {
-            echo "The weekly re-scan of inventory.csv found something to act on."
+            echo "The weekly re-scan of inventory.csv found something to act on:"
             echo
-            echo "- New Act now findings since the last decisions file: ${new_act}"
-            echo "- Malicious packages: ${malicious}"
-            echo "- Package versions published in the last 7 days: ${recent}"
+            sed 's/^/- /' items.txt
             echo
             echo "Reports (executive-summary.html, report.html, packages.csv, findings.csv): ${RUN_URL}"
             echo
-            echo "Record decisions in findings.csv from the artifact and commit it as oss-intake/findings.csv."
+            echo "Record decisions in findings.csv from the artifact and commit it as oss-intake/findings.csv;"
+            echo "findings set aside there drop out of the next run (malicious packages never do: remove them)."
           } > body.md
-          gh issue create --title "$title" --body-file body.md
+          gh issue create --title "oss-intake: $(wc -l < items.txt) item(s) to act on [${fingerprint}]" --body-file body.md
