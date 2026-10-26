@@ -10,7 +10,8 @@ trap 'rm -rf "$work"' EXIT
 # The file is stored under another name so repository scanners (OpenSSF Scorecard) do not report these
 # deliberately malicious versions as dependencies of this project.
 cp "$here/package-lock.sample.json" "$work/package-lock.json"
-oss-intake scan --path "$work/package-lock.json" --out "$work/out" --formats csv,html --quiet
+# Run from inside the temporary folder so the report shows "package-lock.json", not a temporary path.
+(cd "$work" && oss-intake scan --path package-lock.json --out out --formats csv,html --quiet)
 mkdir -p "$repo/site/samples/compromised-npm"
 cp "$work/out/report.html" "$work/out/findings.csv" "$repo/site/samples/compromised-npm/"
 echo "Updated site/samples/compromised-npm/ (report.html, findings.csv). Review, then commit."

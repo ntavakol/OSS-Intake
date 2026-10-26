@@ -3,15 +3,46 @@
 [![ci](https://github.com/ntavakol/OSS-Intake/actions/workflows/ci.yml/badge.svg)](https://github.com/ntavakol/OSS-Intake/actions/workflows/ci.yml)
 [![codeql](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml/badge.svg)](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ntavakol/OSS-Intake/badge)](https://scorecard.dev/viewer/?uri=github.com/ntavakol/OSS-Intake)
+[![PyPI](https://img.shields.io/pypi/v/oss-intake)](https://pypi.org/project/oss-intake/)
 
-Assess third-party open source software before you adopt it. `oss-intake` answers two questions for a
-security or architecture review:
+**Evidence for deciding whether to adopt, keep or replace an open source component.** `oss-intake` runs
+Trivy and Grype, checks OSV, and turns the results into a reading order: malicious packages and exploited
+vulnerabilities first, findings that apply only under stated conditions separately, the rest as routine. It
+adds what a scanner alone does not: how long fixes have existed without being shipped, public exploit
+evidence, the advisory's own conditions, reachability for Go binaries, and project health.
 
-1. **Is it vulnerable?** Known vulnerabilities in a container image and the dependencies bundled inside it.
-2. **Does the project patch?** Whether fixes that exist upstream are being shipped, how long they have been
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/report-dark.png">
+  <img alt="oss-intake report on a lockfile with six compromised npm releases: six malicious packages flagged first" src="docs/images/report-light.png" width="900">
+</picture>
+
+**[See the live sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html):**
+six trusted npm packages (chalk, debug, @ctrl/tinycolor, ua-parser-js, event-stream, flatmap-stream), one
+compromised release of each, all flagged as malicious. Read
+[why that is the case for scanning on a schedule](https://ntavakol.github.io/OSS-Intake/), not once at
+approval.
+
+## Quickstart
+
+```bash
+pipx install oss-intake
+# install Trivy and Grype, pinned and verified: see "Install the scanners yourself" below
+oss-intake scan --path package-lock.json --out report
+oss-intake scan --image <image:tag> --repo <owner/name> --out report
+```
+
+Open `report/report.html`. The full list, with triage columns for the assessor, is `report/findings.csv`.
+
+## What it answers
+
+1. **Is any of it malicious?** Package versions known as malware, from the OpenSSF malicious packages
+   database or advisories classed as embedded malicious code.
+2. **Is it vulnerable, and what matters first?** Known vulnerabilities in a container image, an artifact or a
+   lockfile, with exploit evidence and a suggested triage group for each.
+3. **Does the project patch?** Whether fixes that exist upstream are being shipped, how long they have been
    available, and how active the project is.
 
-The second question is what a scanner alone does not answer. `oss-intake` measures **release lag**: findings
+The third question is what a scanner alone does not answer. `oss-intake` measures **release lag**: findings
 where the fixed version of a dependency was already published before the project's release, so the project
 could have shipped it and did not. It then adds project health signals (release cadence, OpenSSF Scorecard,
 CISA KEV membership).

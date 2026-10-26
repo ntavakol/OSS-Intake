@@ -3,8 +3,6 @@
 Items agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 
 ## Next
-- README screenshots and a hosted sample report (GitHub Pages), built from `examples/compromised-npm` (in
-  progress).
 - Package inventory input, MVP (see Organisation view).
 - Upgrade comparison per package (see Organisation view).
 - VEX import, so triage decisions recorded in `findings.csv` carry over to the next run of the same target

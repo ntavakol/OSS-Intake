@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>oss-intake: evidence for open source decisions</title>
+<meta name="description" content="oss-intake assesses third-party open source: known vulnerabilities, malicious releases, exploit evidence, release lag and project health.">
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--fg:#1b1f24;--muted:#57606a;--line:#d8dee4;--head:#eef1f4;--accent:#0b5cad;
+--crit:#7a0b16;--crit-bg:#fbe3e6;--on-crit:#fff;--code:#eef1f4}
+@media (prefers-color-scheme: dark){:root{--bg:#0d1117;--card:#161b22;--fg:#e6edf3;--muted:#9da7b3;--line:#30363d;
+--head:#1c232c;--accent:#58a6ff;--crit:#ff8a95;--crit-bg:#3d0f15;--on-crit:#2a0a0e;--code:#1c232c}}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;margin:0}
+.page{max-width:960px;margin:0 auto;padding:40px 16px 56px}
+a{color:var(--accent)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0}
+h1{font-size:2rem;line-height:1.2;margin:0 0 8px}
+h2{font-size:1.2rem;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.1rem;color:var(--muted);max-width:62ch;margin:0}
+section{background:var(--card);border-radius:10px;padding:22px 24px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.hero{border-left:6px solid var(--crit)}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
+.btn{display:inline-block;padding:9px 16px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--line);color:var(--fg)}
+.btn.primary{background:var(--crit);border-color:var(--crit);color:var(--on-crit)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--head);font-weight:600;white-space:nowrap}
+td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em;white-space:nowrap}
+.note{color:var(--muted);font-size:.92rem;margin:12px 0 0;max-width:72ch}
+.point{border-left:4px solid var(--accent);padding:2px 0 2px 14px;margin:14px 0 0}
+ul{padding-left:20px;margin:8px 0 0}li{margin:4px 0}
+footer{color:var(--muted);font-size:.85rem;margin-top:28px;text-align:center}
+</style>
+</head>
+<body>
+<div class="page">
+
+<section class="hero">
+  <h1>oss-intake</h1>
+  <p class="lede">Evidence for deciding whether to adopt, keep or replace an open source component: known
+  vulnerabilities, malicious releases, public exploits, how long fixes have gone unshipped, and project health.</p>
+  <div class="cta">
+    <a class="btn primary" href="samples/compromised-npm/report.html">Open the sample report</a>
+    <a class="btn" href="https://github.com/ntavakol/OSS-Intake">Source on GitHub</a>
+    <a class="btn" href="https://pypi.org/project/oss-intake/">PyPI</a>
+  </div>
+</section>
+
+<section>
+  <h2>Why scan again after approval</h2>
+  <p>Each package below was trusted and widely used. Each had one release that was malicious. A team that
+  approved the package before that release, and never checked again, would have pulled it in on the next
+  install.</p>
+  <div class="wrap"><table>
+    <thead><tr><th>Package</th><th>Release</th><th>What happened</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">chalk</td><td class="mono">5.6.1</td><td>September 2025: a maintainer's npm account was phished and malicious versions of widely used packages were published.</td></tr>
+      <tr><td class="mono">debug</td><td class="mono">4.4.2</td><td>The same incident as chalk.</td></tr>
+      <tr><td class="mono">@ctrl/tinycolor</td><td class="mono">4.1.1</td><td>September 2025: Shai-Hulud, a self-spreading npm worm.</td></tr>
+      <tr><td class="mono">ua-parser-js</td><td class="mono">0.7.29</td><td>2021: hijacked account; cryptominer and password stealer.</td></tr>
+      <tr><td class="mono">event-stream</td><td class="mono">3.3.6</td><td>2018: handed to a new maintainer, who added a dependency on the malicious flatmap-stream.</td></tr>
+      <tr><td class="mono">flatmap-stream</td><td class="mono">0.1.1</td><td>The payload of the event-stream attack, aimed at a cryptocurrency wallet.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="point">The <a href="samples/compromised-npm/report.html">sample report</a> scans a lockfile that
+  contains all six. Every one is flagged as malicious and put first, under <b>Act now</b>, with the advice to
+  remove it rather than patch it.</p>
+  <p class="note">No tool flags a release like these on the day it is published, because the advisory does not
+  exist yet. Once it does, the next scan flags it. That is the case for scanning on a schedule, not once at
+  approval. Only the lockfile was read to produce the sample: nothing was downloaded from npm or installed.
+  The report lists <a href="samples/compromised-npm/findings.csv">every finding as CSV</a>.</p>
+</section>
+
+<section>
+  <h2>What a report adds to a scanner</h2>
+  <ul>
+    <li><b>A reading order.</b> Malicious packages, known-exploited vulnerabilities and ready-to-use exploits
+    first; findings whose advisory says they apply only under conditions separately, with those conditions
+    quoted; the rest as routine.</li>
+    <li><b>Exploit evidence.</b> CISA KEV, Metasploit and Nuclei, Exploit-DB, and GitHub proofs of concept,
+    each named.</li>
+    <li><b>Release lag.</b> How long each fix has been available, and whether the project released without it.</li>
+    <li><b>Reachability for Go.</b> With govulncheck, whether the vulnerable function is in the binary at all.</li>
+    <li><b>Project health.</b> Release cadence, archive status and OpenSSF Scorecard.</li>
+  </ul>
+  <p class="note">Results are version matching, not proof of exploitability. The report says so, and leaves
+  the decision to the assessor.</p>
+</section>
+
+<section>
+  <h2>Try it</h2>
+  <pre><code>pipx install oss-intake
+# install Trivy and Grype, pinned and verified (see the README)
+oss-intake scan --path package-lock.json --out report
+oss-intake scan --image &lt;image:tag&gt; --repo &lt;owner/name&gt; --out report</code></pre>
+  <p class="note">Python 3.10 or later on Windows, macOS or Linux. Releases are built in GitHub Actions,
+  published to PyPI with provenance, and signed with Sigstore.</p>
+</section>
+
+<footer>oss-intake is open source under the Apache 2.0 licence ·
+<a href="https://github.com/ntavakol/OSS-Intake">github.com/ntavakol/OSS-Intake</a></footer>
+</div>
+</body>
+</html>

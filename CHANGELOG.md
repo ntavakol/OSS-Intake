@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Project site on GitHub Pages (`site/`, published by `.github/workflows/pages.yml`) with the compromised-npm
+  sample report, README screenshots (`scripts/screenshots.py`) and a quickstart.
+
 ## [0.2.4] - 2026-10-26
 
 Malicious packages are now the first thing a report shows.
