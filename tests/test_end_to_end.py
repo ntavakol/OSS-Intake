@@ -1,5 +1,6 @@
 import csv
 import json
+import stat
 import sys
 
 import pytest
@@ -715,3 +716,31 @@ def test_imported_report_for_another_image_warns(tmp_path, fixtures):
 ])
 def test_same_image(a, b, same):
     assert cli._same_image(a, b) is same
+
+
+def _marker_trivy(tmp_path):
+    marker = tmp_path / "ran"
+    fake = tmp_path / "trivy"
+    fake.write_text(f"#!{sys.executable}\nimport pathlib, sys\npathlib.Path({str(marker)!r}).write_text('x')\n"
+                    "print('{\"Version\": \"0.76.1\"}')\n", encoding="utf-8")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    return fake, marker
+
+
+def test_wrong_scanner_hash_stops_before_the_binary_runs(tmp_path, capsys):
+    # S1: the pinned hash used to be checked after `trivy --version` had already executed the file.
+    fake, marker = _marker_trivy(tmp_path)
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--scanners", "trivy", "--trivy-path", str(fake), "--trivy-sha256", "0" * 64])
+    assert code == cli.EXIT_ERROR
+    assert not marker.exists()
+    assert "SHA-256 mismatch for trivy" in capsys.readouterr().err
+
+
+def test_right_scanner_hash_lets_it_run(tmp_path):
+    from oss_intake import integrity
+
+    fake, marker = _marker_trivy(tmp_path)
+    cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
+              "--trivy-path", str(fake), "--trivy-sha256", integrity.sha256_file(fake)])
+    assert marker.exists()  # it ran; the fake then fails the scan itself, which is fine here

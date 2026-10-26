@@ -242,11 +242,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     for tool, mod in (("trivy", trivy_mod), ("grype", grype_mod)):
         try:
             path = find_executable(tool, getattr(args, f"{tool}_path"))
+            digest = integrity.sha256_file(path)  # recorded before the binary is run
             info = mod.version_info(path)
             bad = integrity.known_bad_entry(tool, info["version"])
-            rows.append({"tool": tool, "path": path, "version": info["version"],
-                         "sha256": integrity.sha256_file(path),
-                         "known_bad": bool(bad), "known_bad_reference": (bad or {}).get("reference")})
+            rows.append({"tool": tool, "path": path, "version": info["version"], "sha256": digest,
+                         "known_bad": bool(bad), "known_bad_reference": (bad or {}).get("reference"),
+                         "note": "doctor ran --version on this binary without a pinned hash; compare sha256 with "
+                                 "the release checksums (oss-intake verify) before trusting it"})
         except ScannerError as exc:
             rows.append({"tool": tool, "error": str(exc)})
     report_ = {"oss_intake": __version__, "python": sys.version.split()[0], "scanners": rows,
@@ -320,6 +322,9 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
         scanners_meta[tool] = {"enabled": True, "detail": f"imported from {Path(loaded).name}", "imported": True}
         return data
     path = find_executable(tool, getattr(args, f"{tool}_path"))
+    # A pinned hash or signature is checked before the binary runs at all, so a swapped binary never executes.
+    integrity.verify_before_run(tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
+                                getattr(args, f"{tool}_cosign_identity"))
     info = mod.version_info(path)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),

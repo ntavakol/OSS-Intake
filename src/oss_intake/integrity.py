@@ -140,6 +140,16 @@ class BinaryCheck:
         return dict(self.__dict__)
 
 
+def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_bundle: str | None,
+                      cosign_identity: str | None) -> None:
+    """Checks that need nothing from the binary itself, done before it is executed even once (its --version
+    included): the pinned SHA-256 and the cosign signature. Raises IntegrityError on a mismatch."""
+    if expected_sha256:
+        verify_sha256(path, expected_sha256)
+    if cosign_bundle:
+        cosign_verify_blob(path, cosign_bundle, cosign_identity or DEFAULT_COSIGN_IDENTITY[tool])
+
+
 def check_binary(tool: str, path: str, version: str, expected_version: str | None,
                  expected_sha256: str | None, cosign_bundle: str | None,
                  cosign_identity: str | None) -> BinaryCheck:
