@@ -4,20 +4,11 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next
-From the 0.6.0 review (bug and security IDs as in the review). Planned order:
+To be agreed: pick from the sections below. Every bug and security item from the 0.6.0 review is done (0.6.1 to
+0.8.0).
 
-Rebuild the live sample on each release (B13): `sh examples/compromised-npm/build.sh`.
-
-0.8.0, hardening and regular use:
-- Untrusted input: size and member limits for archives (S2), CSV and Markdown escaping of all untrusted text
-  (S3 to S5), path checks on registry lookups (S6), bounded regex input (S7), temporary copies always removed
-  (S8). Pin govulncheck, docker and crane like Trivy and Grype (S9).
-- A ready-made scheduled workflow that re-scans an inventory weekly, carries decisions forward and opens an
-  issue on new Act now findings.
-- Confirm against an official bundle whether `--trivy-cosign-bundle` verifies the right file, and fix it (B10).
-- Smaller fixes: only treat a `.tar.gz` as a Python sdist when it has PKG-INFO (B20); warn on options that have no
-  effect in the chosen mode (B22); range-check numbers and turn off option abbreviations (B23); create the output
-  folder only after the scanners are found (B24).
+On every release: rebuild the live sample (`sh examples/compromised-npm/build.sh`) and update the pinned version
+in `examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches).
 
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:

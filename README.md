@@ -180,6 +180,9 @@ Artifactory or Nexus, or kept in a spreadsheet (save it from Excel as "CSV UTF-8
 oss-intake --path ./packages.csv --out ./reports
 ```
 
+To re-scan it every week and get an issue when something new needs action, copy the ready-made GitHub workflow in
+[examples/scheduled-rescan](https://github.com/ntavakol/OSS-Intake/tree/main/examples/scheduled-rescan).
+
 ```csv
 ecosystem,name,version,owner,system
 npm,@ctrl/tinycolor,4.1.1,Web team,Customer portal

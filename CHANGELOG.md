@@ -5,6 +5,47 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26
+
+Scanner signatures that can actually pass, hardening against hostile input, and a weekly re-scan workflow.
+
+### Added
+- `--trivy-archive`/`--grype-archive` and `--trivy-checksums`/`--grype-checksums`: before the scanner runs,
+  cosign checks the release's Sigstore bundle on the checksums file (or the archive), the checksums file must list
+  the archive's SHA-256, and the executable must be byte-for-byte the one inside the archive.
+- `--govulncheck-sha256` (checked before govulncheck runs) and `--govulncheck-version`. The Docker or crane
+  executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json.
+- `examples/scheduled-rescan`: a GitHub workflow that re-scans an inventory weekly, carries decisions forward,
+  keeps the reports as an artifact and opens an issue on new Act now findings, malicious packages or new
+  releases. It needs only `contents: read` and `issues: write` and never commits.
+- A warning when `--sbom`, `--trivy-arg`/`--grype-arg`, `--image-src` or `--release-tag` would have no effect.
+
+### Changed
+- `--trivy-cosign-bundle` and `--grype-cosign-bundle` need the matching `--*-archive` (B10). Trivy signs its
+  release archives and checksums file and Grype only its checksums file; neither signs the extracted executable,
+  so a bundle checked against the executable could never pass on a real release (confirmed on Trivy 0.76.1).
+- Option abbreviations are refused (`--offlin` no longer means `--offline`), and `--top`, `--timeout`,
+  `--grace-days` and `--unshipped-days` are range checked before any work.
+
+### Fixed
+- A `.tar.gz` or `.zip` without PKG-INFO (`apache-tomcat-9.0.98.tar.gz`) was looked up on PyPI and reported as
+  not published; it is now unsupported (B20).
+- A missing scanner left an empty output folder behind (B24).
+
+### Security
+- pom.properties and package.json larger than 1 MB are never read; a small archive could inflate to gigabytes in
+  memory (S2).
+- `packages.csv` header cells and values joined with `;` or `,` are guarded against spreadsheet formulas, not only
+  a leading `=`, and reading findings.csv back undoes the guard exactly (S3, S4).
+- summary.md escapes Markdown and HTML in untrusted text, so a package name or advisory title cannot add links,
+  images or raw HTML (S5).
+- Registry identities read from inside an artifact must be valid coordinates (no path segments or `..`) and are
+  URL-quoted, so a tampered file cannot steer the checksum lookup to another package (S6).
+- Advisory text and workflow files are length-capped before pattern matching, which could take seconds on crafted
+  input (S7).
+- Unreadable archives no longer crash the run, and the temporary copy of an artifact is always removed (S8).
+- govulncheck is pinned like Trivy and Grype (S9).
+
 ## [0.7.0] - 2026-10-26
 
 Decisions and versions you can trust, a check for brand-new releases, and a CI gate.

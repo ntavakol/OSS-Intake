@@ -1762,3 +1762,18 @@ def test_regex_inputs_are_bounded():
     conditions.extract(crafted + " only if configured.")
     workflows.analyse("w.yml", "- uses: " * 60000, [])
     assert time.perf_counter() - t < 2
+
+
+def test_scheduled_workflow_is_pinned_and_current():
+    # The example workflow installs the current release and pins every action by commit SHA.
+    import re
+    from pathlib import Path
+
+    from oss_intake import __version__
+
+    text = (Path(__file__).resolve().parent.parent / "examples" / "scheduled-rescan" /
+            "oss-intake-rescan.yml").read_text(encoding="utf-8")
+    uses = re.findall(r"uses:\s*(\S+)", text)
+    assert uses and all(re.search(r"@[0-9a-f]{40}$", u) for u in uses)
+    assert f'"oss-intake=={__version__}"' in text
+    assert "contents: read" in text and "issues: write" in text and "write-all" not in text

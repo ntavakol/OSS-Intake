@@ -1,0 +1,84 @@
+# Re-scan the organisation's open source inventory every week.
+#
+# A package that was clean when it was approved can later turn out vulnerable or compromised, so the inventory is
+# checked again on a schedule. Copy this file to .github/workflows/ in the repository that holds the inventory:
+#
+#   inventory.csv                    ecosystem,name,version (+ any label columns: owner, system...)
+#   oss-intake/findings.csv          the assessor's decisions (optional; the previous run's findings.csv with the
+#                                    triage columns filled in)
+#
+# Each run writes the reports as a build artifact, carries the decisions forward, and opens an issue when there are
+# new Act now findings (malicious, known exploited, or a ready-to-use exploit) or new releases under a week old.
+# The workflow never commits: download findings.csv from the artifact, record decisions, and commit it yourself.
+#
+# Least privilege: read the repository, open issues; nothing else. Actions are pinned by commit SHA (update them
+# with Dependabot once the file is under .github/workflows). oss-intake is pinned by version; to pin it by hash as
+# well, keep a requirements file made with `uv pip compile --generate-hashes` and install with --require-hashes.
+name: oss-intake re-scan
+
+on:
+  schedule:
+    - cron: "17 21 * * 0"   # Sundays 21:17 UTC (Monday morning in Australia)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: oss-intake-rescan
+  cancel-in-progress: false
+
+jobs:
+  rescan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install oss-intake (pinned)
+        run: python -m pip install "oss-intake==0.8.0"
+      - name: Scan the inventory
+        id: scan
+        run: |
+          decisions=()
+          if [ -f oss-intake/findings.csv ]; then decisions=(--decisions oss-intake/findings.csv); fi
+          set +e
+          oss-intake --path inventory.csv --out reports "${decisions[@]}" --fail-on act,malicious,recent --quiet
+          code=$?
+          set -e
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          # 0 clean, 3 something to act on; anything else is a failed run and fails the job.
+          if [ "$code" != 0 ] && [ "$code" != 3 ]; then exit "$code"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oss-intake-reports
+          path: reports/
+          retention-days: 90
+      - name: Open an issue for new findings
+        if: steps.scan.outputs.exit == '3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          new_act=$(jq '.inventory.executive.previous.new_act // .inventory.act_now' reports/assessment.json)
+          recent=$(jq '.release_age.recent | length' reports/assessment.json)
+          malicious=$(jq '.inventory.malicious' reports/assessment.json)
+          if [ "$new_act" = 0 ] && [ "$recent" = 0 ] && [ "$malicious" = 0 ]; then exit 0; fi
+          title="oss-intake: ${new_act} new Act now, ${malicious} malicious, ${recent} new releases ($(date -u +%F))"
+          {
+            echo "The weekly re-scan of inventory.csv found something to act on."
+            echo
+            echo "- New Act now findings since the last decisions file: ${new_act}"
+            echo "- Malicious packages: ${malicious}"
+            echo "- Package versions published in the last 7 days: ${recent}"
+            echo
+            echo "Reports (executive-summary.html, report.html, packages.csv, findings.csv): ${RUN_URL}"
+            echo
+            echo "Record decisions in findings.csv from the artifact and commit it as oss-intake/findings.csv."
+          } > body.md
+          gh issue create --title "$title" --body-file body.md

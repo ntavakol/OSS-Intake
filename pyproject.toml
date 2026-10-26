@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oss-intake"
-version = "0.7.0"
+version = "0.8.0"
 description = "Assess third-party open source before adoption and on a schedule: vulnerabilities and malicious packages (Trivy, Grype, OSV), triage, new releases, release lag, project health and VEX."
 readme = "README.md"
 license = "Apache-2.0"
