@@ -5,7 +5,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-26
+
+Checks that a downloaded artifact is the published one, a one-page summary for an inventory, and VEX for
+Dependency-Track.
+
 ### Added
+- CycloneDX 1.6 VEX export (`vex.cdx.json`) beside openvex.json whenever decisions apply, for Dependency-Track:
+  not_affected, affected, fixed and under_investigation map to not_affected, exploitable, resolved and in_triage,
+  with justifications where CycloneDX has an equivalent. Validated against the CycloneDX 1.6 JSON schema.
 - Executive summary for inventories (`executive-summary.html`): packages checked; how many need action now, have
   critical vulnerabilities, or have had no release for over a year (from the latest release's date on
   deps.dev); the top ten packages to act on, with the action; totals by owner; known vulnerabilities now, at the

@@ -4,7 +4,7 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next
-- CycloneDX VEX export (see Organisation view).
+To be agreed: pick from the sections below.
 
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:
@@ -13,7 +13,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   and CycloneDX and SPDX SBOMs as input, which most package repositories and Dependency-Track can export.
 - Upgrade comparison for image and lockfile reports (done for inventories in 0.4.0): per package, what is still
   known at the minimum fix and at the latest stable release, with major-version warnings.
-- CycloneDX VEX export beside openvex.json, for Dependency-Track (which imports CycloneDX VEX, not OpenVEX).
 
 ## Inputs
 - Source checkouts: scan a folder in both Trivy modes (`fs` for lockfiles, `rootfs` for built artifacts) and

@@ -498,6 +498,14 @@ def test_decisions_carry_between_runs(tmp_path, fixtures):
     assert st["CVE-2099-0001"]["products"][0]["@id"].startswith("pkg:maven/org.springframework/spring-web@")
     html = (out2 / "report.html").read_text(encoding="utf-8")
     assert "Assessor decisions" in html and "assessor: not affected" in html
+    cdx = json.loads((out2 / "vex.cdx.json").read_text(encoding="utf-8"))
+    assert (cdx["bomFormat"], cdx["specVersion"]) == ("CycloneDX", "1.6")
+    cv = {v["id"]: v for v in cdx["vulnerabilities"]}
+    assert cv["CVE-2099-0001"]["analysis"] == {"state": "not_affected", "justification": "code_not_reachable",
+                                               "detail": "XsltView is not used"}
+    assert cv["CVE-2099-0003"]["analysis"]["state"] == "exploitable"
+    refs = {c["bom-ref"] for c in cdx["components"]}
+    assert all(v["affects"][0]["ref"] in refs for v in cdx["vulnerabilities"])
 
     # The exported OpenVEX is accepted back as decisions, with the same effect.
     code, out3 = run(tmp_path / "three", fixtures, FakeHttp(), "--decisions", str(out2 / "openvex.json"))

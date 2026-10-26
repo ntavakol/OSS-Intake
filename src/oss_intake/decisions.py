@@ -206,3 +206,61 @@ def openvex(findings: list[Finding], tool_version: str, as_of: str) -> dict | No
             "author": "oss-intake assessor", "role": "assessor",
             "timestamp": as_of or datetime.now(timezone.utc).isoformat(), "version": 1,
             "tooling": f"oss-intake {tool_version}", "statements": statements}
+
+
+# CycloneDX VEX: for Dependency-Track, which imports CycloneDX VEX rather than OpenVEX.
+CDX_STATE = {"not_affected": "not_affected", "affected": "exploitable", "fixed": "resolved",
+             "under_investigation": "in_triage"}
+CDX_JUSTIFICATION = {"component_not_present": "code_not_present", "vulnerable_code_not_present": "code_not_present",
+                     "vulnerable_code_not_in_execute_path": "code_not_reachable",
+                     "inline_mitigations_already_exist": "protected_by_mitigating_control"}
+
+
+def _cdx_source(vid: str) -> dict:
+    v = vid.upper()
+    if v.startswith("CVE-"):
+        return {"name": "NVD", "url": f"https://nvd.nist.gov/vuln/detail/{vid}"}
+    if v.startswith("GHSA-"):
+        return {"name": "GitHub", "url": f"https://github.com/advisories/{vid}"}
+    return {"name": "OSV", "url": f"https://osv.dev/vulnerability/{vid}"}
+
+
+def cyclonedx_vex(findings: list[Finding], tool_version: str, as_of: str) -> dict | None:
+    """A CycloneDX 1.6 VEX document of the decisions applied in this run, or None if there are none.
+    Components use the package URL as bom-ref, so a VEX import matches them by purl."""
+    import uuid
+
+    from .inventory_report import split_purl
+
+    decided = [f for f in findings if f.decision_status and f.purl]
+    if not decided:
+        return None
+    components: dict[str, dict] = {}
+    vulns = []
+    for f in decided:
+        purl = f.purl.split("?", 1)[0].split("#", 1)[0]
+        if purl not in components:
+            try:
+                _, name, version = split_purl(purl)
+            except ValueError:
+                name, version = f.package, f.installed
+            components[purl] = {"type": "library", "bom-ref": purl, "name": name, "version": version, "purl": purl}
+        analysis: dict = {"state": CDX_STATE[f.decision_status]}
+        if f.decision_status == "not_affected" and f.decision_justification in CDX_JUSTIFICATION:
+            analysis["justification"] = CDX_JUSTIFICATION[f.decision_justification]
+        if f.decision_notes:
+            analysis["detail"] = f.decision_notes
+        v: dict = {"bom-ref": f"{f.vuln_id}@{purl}", "id": f.vuln_id, "source": _cdx_source(f.vuln_id),
+                   "analysis": analysis, "affects": [{"ref": purl}]}
+        refs = [{"id": a, "source": _cdx_source(a)} for a in sorted(f.aliases) if a != f.vuln_id]
+        if refs:
+            v["references"] = refs
+        vulns.append(v)
+    body = {"components": list(components.values()), "vulnerabilities": vulns}
+    serial = uuid.uuid5(uuid.NAMESPACE_URL, json.dumps(body, sort_keys=True))
+    timestamp = as_of if "T" in as_of else f"{as_of}T00:00:00Z"
+    return {"bomFormat": "CycloneDX", "specVersion": "1.6", "serialNumber": f"urn:uuid:{serial}", "version": 1,
+            "metadata": {"timestamp": timestamp,
+                         "tools": {"components": [{"type": "application", "name": "oss-intake",
+                                                   "version": tool_version}]}},
+            **body}

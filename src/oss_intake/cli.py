@@ -731,6 +731,9 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if vex:
         (out / "openvex.json").write_text(json.dumps(vex, indent=2), encoding="utf-8")
         written.append("openvex.json")
+        cdx = decisions.cyclonedx_vex(findings, __version__, as_of.isoformat())
+        (out / "vex.cdx.json").write_text(json.dumps(cdx, indent=2), encoding="utf-8")
+        written.append("vex.cdx.json")
     if "md" in formats:
         report.write_markdown(out / "summary.md", assessment, findings, args.top)
         written.append("summary.md")

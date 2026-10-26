@@ -372,8 +372,11 @@ malicious package. Decisions are validated before anything is scanned.
 
 The new `findings.csv` comes out with the decisions filled in (and `triage_decided_version`), so the next run
 takes it as is and only new findings are blank. Every run with decisions also writes `openvex.json`
-([OpenVEX](https://openvex.dev) v0.2.0), which Grype and Trivy can read (`--vex`); an OpenVEX file is
-accepted as `--decisions` too.
+([OpenVEX](https://openvex.dev) v0.2.0), which Grype and Trivy can read (`--vex`), and `vex.cdx.json`
+(CycloneDX 1.6 VEX) for Dependency-Track. In the CycloneDX file not_affected, affected, fixed and
+under_investigation become `not_affected`, `exploitable`, `resolved` and `in_triage`, and components use the package
+URL as their reference; an import matches only where the receiving project identifies components by the same
+purl. An OpenVEX file is accepted as `--decisions` too.
 
 ## Likelihood heuristic
 
