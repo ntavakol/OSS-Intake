@@ -718,32 +718,43 @@ def test_same_image(a, b, same):
     assert cli._same_image(a, b) is same
 
 
-def _marker_trivy(tmp_path):
-    marker = tmp_path / "ran"
+def _stub_trivy(tmp_path, monkeypatch):
+    """A file standing in for trivy, and a record of every time oss-intake executes it. Execution is intercepted
+    at the scanner adapter, so the test runs the same on Windows, where a #! script is not executable."""
+    from oss_intake.scanners import ScannerError
+
     fake = tmp_path / "trivy"
-    fake.write_text(f"#!{sys.executable}\nimport pathlib, sys\npathlib.Path({str(marker)!r}).write_text('x')\n"
-                    "print('{\"Version\": \"0.76.1\"}')\n", encoding="utf-8")
+    fake.write_bytes(b"stand-in trivy binary")
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-    return fake, marker
+    runs: list[list[str]] = []
+
+    def run(cmd, timeout):
+        runs.append(cmd)
+        if "--version" in cmd:
+            return b'{"Version": "0.76.1"}'
+        raise ScannerError("stand-in trivy does not scan")
+
+    monkeypatch.setattr(cli.trivy_mod, "run", run)
+    return fake, runs
 
 
-def test_wrong_scanner_hash_stops_before_the_binary_runs(tmp_path, capsys):
+def test_wrong_scanner_hash_stops_before_the_binary_runs(tmp_path, capsys, monkeypatch):
     # S1: the pinned hash used to be checked after `trivy --version` had already executed the file.
-    fake, marker = _marker_trivy(tmp_path)
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
     code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
                      "--scanners", "trivy", "--trivy-path", str(fake), "--trivy-sha256", "0" * 64])
     assert code == cli.EXIT_ERROR
-    assert not marker.exists()
+    assert runs == []  # never executed, not even for --version
     assert "SHA-256 mismatch for trivy" in capsys.readouterr().err
 
 
-def test_right_scanner_hash_lets_it_run(tmp_path):
+def test_right_scanner_hash_lets_it_run(tmp_path, monkeypatch):
     from oss_intake import integrity
 
-    fake, marker = _marker_trivy(tmp_path)
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
     cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
               "--trivy-path", str(fake), "--trivy-sha256", integrity.sha256_file(fake)])
-    assert marker.exists()  # it ran; the fake then fails the scan itself, which is fine here
+    assert runs and "--version" in runs[0]  # it ran; the stand-in then fails the scan itself, which is fine here
 
 
 @pytest.mark.parametrize("value", ["2026-02-30", "2026-13-01", "2026-10-22T25:00:00Z"])
@@ -862,12 +873,12 @@ def test_cosign_runs_once_per_scanner(tmp_path, monkeypatch):
 
     calls = []
     monkeypatch.setattr(integrity, "cosign_verify_blob", lambda *a: calls.append(a))
-    fake, marker = _marker_trivy(tmp_path)
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
     bundle = tmp_path / "b.json"
     bundle.write_text("{}", encoding="utf-8")
     cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
               "--trivy-path", str(fake), "--trivy-cosign-bundle", str(bundle)])
-    assert len(calls) == 1 and marker.exists()
+    assert len(calls) == 1 and runs
 
 
 def _decisions_of(path):
