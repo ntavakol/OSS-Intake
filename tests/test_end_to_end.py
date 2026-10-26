@@ -1189,3 +1189,62 @@ def test_govulncheck_hash_is_checked_before_it_runs(tmp_path, fixtures, monkeypa
                      "--govulncheck-sha256", "0" * 64])
     assert code == cli.EXIT_ERROR and ran == []
     assert "SHA-256 mismatch for govulncheck" in capsys.readouterr().err
+
+
+def test_tarball_without_pkg_info_is_not_a_python_sdist(tmp_path):
+    # B20: apache-tomcat-9.0.98.tar.gz was looked up on PyPI and reported "not published on PyPI".
+    import io
+    import tarfile
+
+    from oss_intake import registry_check as rc
+
+    def tarball(name, members):
+        p = tmp_path / name
+        with tarfile.open(p, "w:gz") as t:
+            for m in members:
+                ti = tarfile.TarInfo(m)
+                ti.size = 1
+                t.addfile(ti, io.BytesIO(b"x"))
+        return p
+
+    tomcat = tarball("apache-tomcat-9.0.98.tar.gz", ["apache-tomcat-9.0.98/bin/catalina.sh"])
+    assert rc.check(FakeHttp(), tomcat)["status"] == "unsupported"
+    sdist = tarball("acme-lib-1.0.0.tar.gz", ["acme-lib-1.0.0/PKG-INFO", "acme-lib-1.0.0/setup.py"])
+
+    class Pypi:
+        calls = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(url)
+            return 404, None
+
+    http = Pypi()
+    assert rc.check(http, sdist)["status"] == "not_published" and http.calls
+
+
+def test_ineffective_options_are_named(tmp_path, fixtures):
+    # B22
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats", "json",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--sbom",
+                     "--trivy-arg=--skip-db-update", "--image-src", "remote", "--release-tag", "v2"]) == 0
+    w = " ".join(json.loads((out / "assessment.json").read_text(encoding="utf-8"))["warnings"])
+    for flag in ("--sbom", "--trivy-arg", "--image-src", "--release-tag"):
+        assert f"{flag} has no effect" in w
+
+
+@pytest.mark.parametrize("argv,msg", [
+    (["--top", "-3"], "--top must be 1 or more"),
+    (["--timeout", "0"], "--timeout must be at least 1 second"),
+])
+def test_number_options_are_range_checked(tmp_path, capsys, argv, msg):
+    # B23
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), *argv]) == cli.EXIT_USAGE
+    assert msg in capsys.readouterr().err
+
+
+def test_option_abbreviations_are_refused(tmp_path):
+    # B23: argparse used to read --offlin as --offline.
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--offlin"])
+    assert e.value.code == 2

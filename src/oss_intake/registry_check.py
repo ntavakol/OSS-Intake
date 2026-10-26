@@ -179,13 +179,31 @@ def _check_npm(http: Http, path: Path) -> dict:
             "algorithm": algo, "published": published, "actual": actual, "url": f"{name}-{version}.tgz"}
 
 
+def _is_sdist(path: Path) -> bool:
+    """A Python sdist has PKG-INFO in its top folder; apache-tomcat-9.0.98.tar.gz does not (B20)."""
+    try:
+        if path.name.lower().endswith(".zip"):
+            with zipfile.ZipFile(path) as z:
+                names = z.namelist()[:5000]
+        else:
+            with tarfile.open(path) as t:
+                names = []
+                for m in t:
+                    names.append(m.name)
+                    if len(names) >= 5000:
+                        break
+    except (tarfile.TarError, zipfile.BadZipFile, OSError, EOFError, ValueError, RuntimeError):
+        return False
+    return any(n.count("/") == 1 and n.endswith("/PKG-INFO") for n in names)
+
+
 def check(http: Http, path: Path) -> dict:
     name = path.name.lower()
     try:
         if name.endswith((".jar", ".war", ".ear")):
             return _check_maven(http, path)
         if name.endswith(".whl") or (name.endswith((".tar.gz", ".zip")) and _SDIST.match(path.name)
-                                     and not name.endswith(".tgz")):
+                                     and _is_sdist(path)):
             return _check_pypi(http, path)
         if name.endswith(".tgz"):
             return _check_npm(http, path)

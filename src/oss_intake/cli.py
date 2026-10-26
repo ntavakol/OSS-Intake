@@ -150,14 +150,14 @@ def prepare_out(path: str) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="oss-intake",
+        prog="oss-intake", allow_abbrev=False,  # B23: --offlin must not silently mean --offline
         description="Assess third-party open source software before adoption: known vulnerabilities, "
                     "release lag (fixes available upstream but not shipped) and project health.",
     )
     p.add_argument("--version", action="version", version=f"oss-intake {__version__}")
     sub = p.add_subparsers(dest="command")
 
-    s = sub.add_parser("scan", help="assess an image and/or repository (default command)")
+    s = sub.add_parser("scan", help="assess an image and/or repository (default command)", allow_abbrev=False)
     s.add_argument("--image", help="container image with an explicit tag or digest, e.g. owner/name:1.2.3")
     s.add_argument("--path", help="assess a file or directory instead of an image: a JAR, WAR or binary, a "
                                   "folder of built artifacts, a lockfile (requirements.txt, package-lock.json, "
@@ -247,11 +247,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--top", type=int, default=25, help="findings listed in the summary (default 25)")
     s.add_argument("--quiet", action="store_true", help="only print errors and the final summary")
 
-    d = sub.add_parser("doctor", help="show scanner paths, versions, hashes and known-bad status")
+    d = sub.add_parser("doctor", help="show scanner paths, versions, hashes and known-bad status", allow_abbrev=False)
     d.add_argument("--trivy-path")
     d.add_argument("--grype-path")
 
-    v = sub.add_parser("verify", help="verify a downloaded file against a checksums file, hash or cosign bundle")
+    v = sub.add_parser("verify", help="verify a downloaded file against a checksums file, hash or cosign bundle",
+                       allow_abbrev=False)
     v.add_argument("--file", required=True)
     g = v.add_mutually_exclusive_group(required=True)
     g.add_argument("--checksums", help="sha256sum-style checksums file (e.g. trivy_0.76.1_checksums.txt)")
@@ -312,6 +313,22 @@ def cmd_verify(args: argparse.Namespace) -> int:
         integrity.cosign_verify_blob(args.file, args.cosign_bundle, args.cosign_identity)
         print("OK cosign signature")
     return EXIT_OK
+
+
+def _ineffective_options(args, chosen: list[str]) -> list[str]:
+    """Options that would have no effect in this run (B22): say so instead of ignoring them silently."""
+    out = []
+    run_live = [t for t in ("trivy", "grype") if t in chosen and not getattr(args, f"from_{t}_json")]
+    if args.sbom and (args.path or "trivy" not in run_live):
+        out.append("--sbom has no effect: the SBOM is written only when Trivy scans an image in this run")
+    for t in ("trivy", "grype"):
+        if getattr(args, f"{t}_arg") and t not in run_live:
+            out.append(f"--{t}-arg has no effect: {t} does not run (its report is imported, or it is not selected)")
+    if args.image_src and not run_live:
+        out.append("--image-src has no effect: no scanner pulls the image in this run")
+    if args.release_tag and not args.repo:
+        out.append("--release-tag has no effect without --repo")
+    return out
 
 
 def _resolve_scanners(args: argparse.Namespace) -> tuple[list[str], list[str]]:
@@ -444,6 +461,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 raise UsageError(f"--{tool}-sha256: {exc}") from None
     if args.release_age_days < 0:
         raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
+    # B23: numbers are range-checked before any work.
+    if args.grace_days < 0 or args.unshipped_days < 0:
+        raise UsageError("--grace-days and --unshipped-days must be zero or more")
+    if args.top < 1:
+        raise UsageError("--top must be 1 or more")
+    if args.timeout < 1:
+        raise UsageError("--timeout must be at least 1 second")
     # A gate on a check that will not run would always pass, so it is refused up front.
     if "recent" in args.fail_on_set and (args.offline or not args.release_age_days):
         raise UsageError("--fail-on recent needs the release date check, which "
@@ -478,6 +502,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
+    warnings += _ineffective_options(args, chosen)
     # The scanners that will run must exist before anything is written (B24: no empty output folder left behind).
     for tool in ("trivy", "grype"):
         if tool in chosen and not getattr(args, f"from_{tool}_json"):
@@ -823,8 +848,6 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             if epss_info["errors"]:
                 warnings.append(f"EPSS lookups failed for {epss_info['errors']} batch(es); EPSS signals are partial")
 
-    if args.grace_days < 0 or args.unshipped_days < 0:
-        raise UsageError("--grace-days and --unshipped-days must be zero or more")
     age_info: dict = {"status": "skipped", "days": args.release_age_days,
                       "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
     purls = _language_purls(args, trivy_report) if net and args.release_age_days else []
