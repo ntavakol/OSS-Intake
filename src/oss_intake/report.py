@@ -6,6 +6,7 @@ import csv
 import json
 from pathlib import Path
 
+from . import checks as checks_mod
 from .models import SEVERITIES, Finding
 from .triage import rank_key
 
@@ -156,9 +157,8 @@ def triage_section(a: dict) -> tuple[str, list] | None:
         return None
     rows = [[LABEL[g], t["groups"][g]["total"], t["groups"][g]["with_fix"], MEANING[g]] for g in ORDER]
     blocks: list = [("table", ["Group", "Findings", "With fix", "Meaning"], rows), ("p", TRIAGE_NOTE)]
-    if not t.get("exploits_checked"):
-        blocks.append(("p", "Exploit sources were not checked (--no-exploits or --offline), so 'Act now' can only "
-                            "come from CISA KEV."))
+    if not t.get("exploits_checked") and (a.get("checks") or {}).get("exploits"):
+        blocks.append(("p", checks_mod.exploits_note(a["checks"])))
     return ("Suggested triage", blocks)
 
 
@@ -301,9 +301,15 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if o:
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
+    chk = a.get("checks") or {}
+    n_mal = len(lag.get("malicious_packages") or [])
     lag_rows.append(["Known malicious packages (OpenSSF, or CWE-506 advisories)",
-                     len(lag.get("malicious_packages") or [])])
-    lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
+                     n_mal if n_mal or chk.get("malicious", {}).get("state", checks_mod.CHECKED) == checks_mod.CHECKED
+                     else f"{n_mal}, {checks_mod.describe(chk, 'malicious')}"])
+    lag_rows.append(["Known exploited (CISA KEV) with fix",
+                     lag["kev_with_fix"] if checks_mod.is_checked(chk, "kev") else checks_mod.describe(chk, "kev")])
+    if not lag.get("exploits_checked") and "exploits" in chk:
+        lag_rows.append(["Exploit indexes (Metasploit, Nuclei, Exploit-DB)", checks_mod.describe(chk, "exploits")])
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]
         lag_rows.append(["Findings with a fix and a ready-to-use exploit (Metasploit or Nuclei)", by["weaponised"]])
@@ -312,6 +318,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if lag.get("epss_scored"):
         lag_rows.append(["Highest EPSS among findings with a fix (30-day exploitation probability)",
                          f"{lag['max_epss_with_fix']:.3f}" if lag.get("max_epss_with_fix") is not None else "n/a"])
+    elif not checks_mod.is_checked(chk, "epss"):
+        lag_rows.append(["EPSS (30-day exploitation probability)", checks_mod.describe(chk, "epss")])
     cov = a.get("coverage") or []
     if cov:
         cov_rows = [[c["ecosystem"], c["with_fix"], c["dated"], f"{c['percent']}%",

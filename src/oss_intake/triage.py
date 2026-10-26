@@ -15,6 +15,7 @@ This is a reading order, not a risk rating, and never a statement that a finding
 
 from __future__ import annotations
 
+from . import checks as checks_mod
 from .models import SEVERITY_ORDER, Finding
 
 ORDER = ["act", "review", "conditions", "routine", "aside"]
@@ -31,8 +32,8 @@ MEANING = {
 EPSS_REVIEW = 0.1
 
 
-def classify(f: Finding) -> tuple[str, str]:
-    group, reason = _classify(f)
+def classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
+    group, reason = _classify(f, checks)
     if f.decision_status and group != "aside":
         stale = (f" (decided for {f.decision_version}; installed {f.installed}: review)"
                  if f.decision_version and f.installed and f.decision_version != f.installed else "")
@@ -41,7 +42,22 @@ def classify(f: Finding) -> tuple[str, str]:
     return group, reason
 
 
-def _classify(f: Finding) -> tuple[str, str]:
+def _routine_reason(f: Finding, checks: dict | None) -> str:
+    """Say only what was actually checked: a skipped source is named as not checked, never implied clean."""
+    exploits = (checks or {}).get("exploits", {}).get("state", checks_mod.CHECKED)
+    parts = [{checks_mod.CHECKED: "no exploit indexed", checks_mod.PARTIAL: "no exploit in the indexes that loaded",
+              checks_mod.NOT_CHECKED: "exploit indexes not checked"}[exploits]]
+    if f.epss is not None:
+        parts.append("EPSS below 0.1")
+    else:
+        parts.append("no EPSS score" if checks_mod.is_checked(checks, "epss") else "EPSS not checked")
+    if not checks_mod.is_checked(checks, "kev"):
+        parts.append("CISA KEV not checked")
+    parts.append("no stated conditions")
+    return ", ".join(parts)
+
+
+def _classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
     if f.excluded == "kernel-headers":
         return "aside", "kernel CVE on a kernel header package; containers use the host kernel"
     if f.likely_fixed:
@@ -72,17 +88,19 @@ def _classify(f: Finding) -> tuple[str, str]:
         return "review", "critical, and the advisory states no conditions"
     if f.reachability == "reachable":
         return "review", f.reachability_note
-    return "routine", "no exploit indexed, EPSS below 0.1, no stated conditions"
+    return "routine", _routine_reason(f, checks)
 
 
-def apply(findings: list[Finding]) -> dict:
+def apply(findings: list[Finding], checks: dict | None = None) -> dict:
     counts = {g: {"total": 0, "with_fix": 0} for g in ORDER}
     for f in findings:
-        f.triage_group, f.triage_reason = classify(f)
+        f.triage_group, f.triage_reason = classify(f, checks)
         counts[f.triage_group]["total"] += 1
         if f.fixed_versions:
             counts[f.triage_group]["with_fix"] += 1
-    return {"groups": counts, "exploits_checked": any(f.exploit_level for f in findings)}
+    exploits_checked = (checks_mod.is_checked(checks, "exploits") and bool(findings) if checks
+                        else any(f.exploit_level for f in findings))
+    return {"groups": counts, "exploits_checked": exploits_checked}
 
 
 def rank_key(f: Finding) -> tuple:

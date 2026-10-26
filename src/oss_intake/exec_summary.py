@@ -123,7 +123,10 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
             + ", " + _n(s["with_critical"], "has", "have") + " critical vulnerabilities"
             + (", and " + _n(s["stale"], "has", "have") + " had no release for over a year"
                if s["stale"] is not None else "") + ".")
-    tiles = [("c" if s["act_now"] else "g", "Act now", s["act_now"], "malicious or known exploited"),
+    from .checks import is_checked
+
+    kev_note = "" if is_checked(a.get("checks"), "kev") else "; CISA KEV not checked"
+    tiles = [("c" if s["act_now"] else "g", "Act now", s["act_now"], "malicious or known exploited" + kev_note),
              ("c" if s["malicious"] else "g", "Malicious", s["malicious"], "remove, do not patch"),
              ("r" if s["with_critical"] else "g", "With critical", s["with_critical"],
               "package" if s["with_critical"] == 1 else "packages"),

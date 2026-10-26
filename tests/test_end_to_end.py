@@ -623,3 +623,52 @@ def test_executive_summary_with_previous_run(tmp_path):
     assert "What changed" in html and "By owner" in html and "org.example:old-lib (latest 1.1, 2023-01-05)" in html
     one = json.loads((tmp_path / "one" / "assessment.json").read_text(encoding="utf-8"))
     assert one["inventory"]["executive"]["previous"] is None
+
+
+def _offline_scan(tmp_path, fixtures, *extra):
+    out = tmp_path / "r"
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy",
+                     "--release-date", "2026-04-30", "--as-of", AS_OF, *extra])
+    return code, out
+
+
+def test_skipped_sources_are_not_shown_as_clean(tmp_path, fixtures, capsys):
+    # B1: with --offline nothing was looked up, so no zero may look like an all-clear.
+    code, out = _offline_scan(tmp_path, fixtures)
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert {k: v["state"] for k, v in a["checks"].items()} == {
+        "kev": "not checked", "exploits": "not checked", "epss": "not checked", "malicious": "partial"}
+    assert a["checks"]["kev"]["reason"] == "--offline"
+    assert a["warnings"][0].startswith("Not every source was checked: CISA KEV not checked (--offline)")
+    reasons = [f["suggested_reason"] for f in a["findings"] if f["suggested_group"] == "Routine"]
+    assert reasons and all("exploit indexes not checked" in r and "EPSS not checked" in r
+                           and "CISA KEV not checked" in r for r in reasons)
+    assert not any("no exploit indexed" in f["suggested_reason"] for f in a["findings"])
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert '<div class="tile n"><div class="k">CISA KEV</div><div class="v">not checked</div>' in html
+    assert '<div class="k">CISA KEV</div><div class="v">0</div>' not in html
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "Known exploited (CISA KEV) with fix | not checked (--offline)" in md
+    assert "Exploit indexes not checked (--offline)" in md
+    assert "fix dates were not looked up" in md
+    assert "not_checked=kev,exploits,epss,malicious" in capsys.readouterr().out
+
+
+def test_disabled_source_names_its_flag(tmp_path, fixtures, fake_http):
+    code, out = run(tmp_path, fixtures, fake_http, "--no-kev")
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["checks"]["kev"] == {"state": "not checked", "reason": "--no-kev"}
+    assert a["checks"]["exploits"]["state"] == "checked" and a["checks"]["malicious"]["state"] == "checked"
+    assert "CISA KEV not checked" in a["warnings"][0]
+
+
+def test_all_sources_checked_has_no_gap_warning(tmp_path, fixtures, fake_http, capsys):
+    code, out = run(tmp_path, fixtures, fake_http)
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert all(v["state"] == "checked" for v in a["checks"].values())
+    assert not any(w.startswith("Not every source") for w in a["warnings"])
+    assert "not_checked=" not in capsys.readouterr().out

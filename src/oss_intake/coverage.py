@@ -42,7 +42,10 @@ def ecosystem(f: Finding) -> str:
     return _DISTRO.get(t, t)
 
 
-def compute(findings: list[Finding]) -> list[dict]:
+NOT_LOOKED_UP = "fix dates were not looked up (--offline or --no-fix-dates)"
+
+
+def compute(findings: list[Finding], looked_up: bool = True) -> list[dict]:
     rows: dict[str, dict] = defaultdict(lambda: {"with_fix": 0, "dated": 0, "sources": defaultdict(int)})
     for f in findings:
         if not f.fixed_versions or f.likely_fixed or f.excluded:
@@ -58,6 +61,6 @@ def compute(findings: list[Finding]) -> list[dict]:
         out.append({
             "ecosystem": eco, "with_fix": r["with_fix"], "dated": r["dated"], "percent": pct,
             "sources": dict(r["sources"]),
-            "gap": GAP_REASON.get(eco, "") if pct < 50 else "",
+            "gap": (GAP_REASON.get(eco, "") if looked_up else NOT_LOOKED_UP) if pct < 50 else "",
         })
     return out

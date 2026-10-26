@@ -14,6 +14,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
+from . import checks as checks_mod
 from .models import SEVERITIES, Finding
 from .triage import LABEL as TRIAGE_LABEL
 from .triage import MEANING as TRIAGE_MEANING
@@ -141,9 +142,12 @@ def _tiles(a: dict) -> str:
                                    "serves"),
                       "not_published": ("a", "Registry checksum", "n/a", f"not published on {reg.get('registry')}")
                       }[reg["status"]])
+    chk = a.get("checks") or {}
     mal = lag.get("malicious_packages") or []
     if mal:
         tiles.append(("c", "Malicious packages", str(len(mal)), "malware, not bugs: remove, do not patch"))
+    elif chk.get("malicious", {}).get("state") == checks_mod.NOT_CHECKED:
+        tiles.append(("n", "Malicious packages", "not checked", chk["malicious"]["reason"]))
     crit, high = bys.get("CRITICAL", 0), bys.get("HIGH", 0)
     tiles.append(("c" if crit else "g", "Critical", str(crit),
                   "all fixable upstream" if crit and fixs.get("CRITICAL", 0) == crit
@@ -176,7 +180,10 @@ def _tiles(a: dict) -> str:
     if lag.get("max_epss_with_fix") is not None:
         parts.append(f"max EPSS {lag['max_epss_with_fix']:.3f}")
     weap = lag.get("exploit_with_fix_by_level", {}).get("weaponised", 0) if lag.get("exploits_checked") else 0
-    tiles.append(("r" if kev else "a" if weap else "g", "CISA KEV", str(kev), ", ".join(parts) or "with a fix"))
+    if not checks_mod.is_checked(chk, "kev"):
+        tiles.append(("n", "CISA KEV", "not checked", chk["kev"]["reason"]))
+    else:
+        tiles.append(("r" if kev else "a" if weap else "g", "CISA KEV", str(kev), ", ".join(parts) or "with a fix"))
     out = ['<div class="tiles">']
     for tone, k, v, s in tiles:
         out.append(f'<div class="tile {tone}"><div class="k">{_e(k)}</div><div class="v">{_cell(v)}</div>'
@@ -286,10 +293,20 @@ def _lag(a: dict, lag_note: str) -> str:
                                                         f"{_e(str(o['fix_version']))} published "
                                                         f"{_e(str(o['fix_published']))} ({o['days']} days)"),
                             "", html_value=True))
+    chk = a.get("checks") or {}
     n_mal = len(lag.get("malicious_packages") or [])
-    rows.append(_metric("Known malicious packages (OpenSSF, or CWE-506 advisories)", n_mal, "c" if n_mal else "g"))
-    rows.append(_metric("Known exploited (CISA KEV) with fix", lag["kev_with_fix"],
-                        "r" if lag["kev_with_fix"] else "g"))
+    mal_state = chk.get("malicious", {}).get("state", checks_mod.CHECKED)
+    rows.append(_metric("Known malicious packages (OpenSSF, or CWE-506 advisories)",
+                        n_mal if n_mal or mal_state == checks_mod.CHECKED
+                        else f"{n_mal}, {checks_mod.describe(chk, 'malicious')}",
+                        "c" if n_mal else "g" if mal_state == checks_mod.CHECKED else "a"))
+    if checks_mod.is_checked(chk, "kev"):
+        rows.append(_metric("Known exploited (CISA KEV) with fix", lag["kev_with_fix"],
+                            "r" if lag["kev_with_fix"] else "g"))
+    else:
+        rows.append(_metric("Known exploited (CISA KEV) with fix", checks_mod.describe(chk, "kev")))
+    if not lag.get("exploits_checked") and "exploits" in chk:
+        rows.append(_metric("Exploit indexes (Metasploit, Nuclei, Exploit-DB)", checks_mod.describe(chk, "exploits")))
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]
         rows.append(_metric("With fix and a ready-to-use exploit (Metasploit or Nuclei)", by["weaponised"],
@@ -301,6 +318,8 @@ def _lag(a: dict, lag_note: str) -> str:
         m = lag.get("max_epss_with_fix")
         rows.append(_metric("Highest EPSS among findings with a fix (30-day exploitation probability)",
                             "n/a" if m is None else f"{m:.3f}", tone_epss(m)))
+    elif not checks_mod.is_checked(chk, "epss"):
+        rows.append(_metric("EPSS (30-day exploitation probability)", checks_mod.describe(chk, "epss")))
     return _section("Release lag", _table(["Metric", "Value"], rows, {1}) + _note(lag_note))
 
 
@@ -587,9 +606,8 @@ def _triage(a: dict) -> str:
                   "carries no risk; 'Set aside' is used only where the tool has evidence. Hover a group in the "
                   "findings table for its reason; "
                   "record the assessor's decisions in the triage columns of findings.csv.")
-    if not t.get("exploits_checked"):
-        body += _note("Exploit sources were not checked (--no-exploits or --offline), so 'Act now' can only come "
-                      "from CISA KEV.")
+    if not t.get("exploits_checked") and (a.get("checks") or {}).get("exploits"):
+        body += _note(checks_mod.exploits_note(a["checks"]))
     return _section("Suggested triage", body)
 
 

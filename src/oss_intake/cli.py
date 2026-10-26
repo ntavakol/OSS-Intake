@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import os
 import re
@@ -14,6 +15,7 @@ from pathlib import Path
 
 from . import (
     __version__,
+    checks,
     conditions,
     coverage,
     decisions,
@@ -398,6 +400,13 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
     groups: list = []
     trivy_report = None
     scan_info: dict = {}
+    without_osv = "; only advisories classed CWE-506 by Trivy or Grype are seen"
+    if "osv" in chosen or args.path_kind in ("renv", "inventory"):
+        args.malicious_check = checks.state(checks.NOT_CHECKED, "OSV was not queried")
+    elif args.offline:
+        args.malicious_check = checks.state(checks.PARTIAL, "OSV not queried with --offline" + without_osv)
+    else:
+        args.malicious_check = checks.state(checks.PARTIAL, "OSV not in --scanners" + without_osv)
     if args.path_kind == "inventory":
         labels = {e["purl"]: e["labels"] for e in args.inventory}
         if net:
@@ -409,6 +418,7 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
                 f.labels = dict(labels.get(f.purl or "", {}))
             groups.append(found)
             scanners_meta["osv"] = {"enabled": True, "detail": f"{len(labels)} packages queried"}
+            args.malicious_check = checks.state(checks.CHECKED)
         return None, groups, scan_info
     if args.path_kind == "renv":
         purls, skipped = inputs.renv_purls(Path(args.path))
@@ -419,8 +429,12 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
             try:
                 groups.append(osv_mod.scan(net, purls))
                 scanners_meta["osv"] = {"enabled": True, "detail": f"{len(purls)} CRAN packages queried"}
+                args.malicious_check = checks.state(checks.CHECKED)
             except HttpError as exc:
                 warnings.append(f"OSV lookup failed: {exc}")
+                args.malicious_check = checks.state(checks.NOT_CHECKED, "OSV lookup failed")
+        elif not purls:
+            args.malicious_check = checks.state(checks.CHECKED, "no CRAN packages to look up")
         return None, groups, scan_info
     if "trivy" in chosen:
         trivy_report = _run_or_load("trivy", trivy_mod, args, out, scanners_meta)
@@ -438,8 +452,12 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
             o = osv_mod.scan(net, purls)
             groups.append(o)
             scanners_meta["osv"] = {"enabled": True, "detail": f"{len(purls)} packages queried"}
+            args.malicious_check = checks.state(
+                checks.CHECKED, "" if purls else "no language packages; OSV malicious package data covers "
+                                                 "language packages")
         except HttpError as exc:
             warnings.append(f"OSV lookup failed, continuing without it: {exc}")
+            args.malicious_check = checks.state(checks.PARTIAL, "OSV lookup failed" + without_osv)
         if not purls:
             if any(r.get("Class") == "lang-pkgs" for r in trivy_report.get("Results") or []):
                 warnings.append("Trivy found language packages but listed none in the report, so OSV had "
@@ -676,8 +694,20 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         if decision_info["stale"]:
             warnings.append(f"{decision_info['stale']} decision(s) were made for a different installed version; they "
                             "still apply but are marked for review")
-    triage_info = triage.apply(findings)
+    skipped_by = {}
+    for name, flag in (("kev", "no_kev"), ("exploits", "no_exploits"), ("epss", "no_epss")):
+        skipped_by[name] = "--offline" if args.offline else f"--{flag.replace('_', '-')}" if getattr(args, flag) \
+            else "not run"
+    check_info = checks.compute(len(findings), kev_info, epss_info, exploit_info,
+                                getattr(args, "malicious_check", None) or checks.state(checks.CHECKED), skipped_by)
+    gap_warning = checks.warning(check_info)
+    if gap_warning:
+        lead = sum(1 for _ in itertools.takewhile(
+            lambda w: w.startswith(("ARTIFACT DOES NOT MATCH", "MALICIOUS PACKAGE")), warnings))
+        warnings.insert(lead, gap_warning)  # after the malware and tampering alerts, before everything else
+    triage_info = triage.apply(findings, check_info)
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
+    lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc)) if lk_cfg else None
 
     assessment = {
@@ -696,11 +726,12 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "epss": epss_info,
         "exploits": exploit_info,
         "triage": triage_info,
+        "checks": check_info,
         "decisions": decision_info,
         "registry_check": getattr(args, "registry_result", None),
         "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
-        "coverage": coverage.compute(findings),
+        "coverage": coverage.compute(findings, looked_up=bool(net) and not args.no_fix_dates),
         "health": health,
         "scorecard": sc,
         "likelihood": lk,
@@ -748,7 +779,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     print(f"findings={lag_m['total']} critical={sev['CRITICAL']} high={sev['HIGH']} "
           f"with_fix={lag_m['with_fix']} fix_before_release={lag_m['fix_available_at_release']} "
           f"fix_date_unknown={lag_m['fix_date_unknown']}"
-          + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else ""))
+          + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else "")
+          + (f" not_checked={','.join(checks.gaps(check_info))}" if checks.gaps(check_info) else ""))
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
