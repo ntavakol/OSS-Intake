@@ -218,10 +218,10 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |
 | `--scanners` | `auto` (default: Trivy and OSV, plus Grype if found) or a list such as `trivy,grype,osv` |
 | `--trivy-version`, `--grype-version` | Required scanner version; the run fails on mismatch |
-| `--trivy-sha256`, `--grype-sha256` | Expected SHA-256 of the executable |
+| `--trivy-sha256`, `--grype-sha256` | Expected SHA-256 of the executable, checked before it is run at all |
 | `--trivy-cosign-bundle`, `--grype-cosign-bundle` | Verify a Sigstore bundle with cosign (cosign must be on PATH) |
 | `--trivy-arg`, `--grype-arg` | Pass extra arguments, e.g. `--trivy-arg=--db-repository=ghcr.io/aquasecurity/trivy-db:2` |
-| `--from-trivy-json`, `--from-grype-json` | Use an existing JSON report instead of running the scanner |
+| `--from-trivy-json`, `--from-grype-json` | Use an existing JSON report instead of running the scanner; a file that is not that scanner's report is refused (exit 2) |
 | `--release-tag`, `--release-date` | Set the release the image corresponds to, when tags do not match |
 | `--grace-days` | A fix must predate the release by this many days to count as missed (default 14) |
 | `--unshipped-days` | Days a fix must be public, with no newer release, to count as unshipped (default 90) |
@@ -256,6 +256,11 @@ Other commands: `oss-intake doctor` (scanner paths, versions, hashes and known-b
 
 Exit codes: `0` success, `1` error (including any integrity failure), `2` invalid input, `3` likelihood
 threshold reached.
+
+When a source was not consulted (`--offline`, `--no-kev`, `--no-exploits`, `--no-epss`, a failed download, or no
+OSV query), the reports show it as "not checked" in grey rather than as a green zero, the Routine reasons say
+which checks did not run, assessment.json records each source's state under `checks`, and the summary line ends
+with `not_checked=` and the sources concerned.
 
 `GITHUB_TOKEN` is optional. It is only sent to `api.github.com`, and it is never logged or written to reports.
 

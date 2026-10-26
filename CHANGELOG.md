@@ -5,6 +5,28 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-26
+
+Fixes from the 0.6.0 review: no report may look cleaner than the checks behind it.
+
+### Fixed
+- Sources that did not run (CISA KEV, exploit indexes, EPSS, OSV malicious package data) were shown as green
+  zeros, and Routine reasons said "no exploit indexed, EPSS below 0.1" even with `--offline`. They now show as
+  "not checked" with the reason, Routine reasons name only the checks that ran, a warning says a zero means not
+  checked, and the summary line adds `not_checked=`. Fix-date coverage no longer blames an ecosystem when dates
+  were not looked up.
+- A wrong or empty file given to `--from-trivy-json` or `--from-grype-json` (for example Grype JSON as Trivy, or
+  `{}`) gave `findings=0` and exit 0. It is now refused with exit 2, saying what the file looks like. An imported
+  Trivy report for a different image than `--image` gives a warning.
+- An impossible date (`--as-of 2026-02-30`, or one in scanner or API data) crashed the run; it is now a usage
+  error, or ignored in data.
+- `verify` printed `OK sha256` and then failed on a missing `--cosign-identity`; all options are checked first.
+
+### Security
+- With `--trivy-sha256` or `--grype-sha256`, the scanner's hash (and cosign signature, if given) is checked
+  before the binary is executed at all; previously its `--version` ran first. `doctor` records the hash before
+  running `--version` and notes that the binary was not verified.
+
 ## [0.6.0] - 2026-10-26
 
 Checks that a downloaded artifact is the published one, a one-page summary for an inventory, and VEX for

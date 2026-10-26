@@ -4,7 +4,33 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next
-To be agreed: pick from the sections below.
+From the 0.6.0 review (bug and security IDs as in the review). Planned order:
+
+0.7.0, decisions and versions you can trust:
+- Decision round-trip: match decisions on id, package and version (B3); strip the deb, rpm and apk namespace and
+  read the epoch when loading OpenVEX (B4); export `mitigated` as not_affected with
+  `inline_mitigations_already_exist`, not fixed (B14); keep notes exactly, including a leading `-`, `=`, `+`, `@`
+  and line breaks (B18, B21).
+- Versions and fixes: ignore OSV GIT range hashes as fixes (B5); sort letter patches such as 1.1.1m (B6); pick a
+  minimum fix that clears every finding on its branch (B7); normalise PyPI names in a purl column (B8); merge Go
+  versions with and without `v` (B19).
+- Release-age check: flag a version published in the last N days (default 7), the window in which most
+  compromised releases are caught and pulled.
+- `--fail-on act,critical` exit code for CI.
+- Packaging and project: sdist that can run its tests (B11), exit codes as documented (B16), reject placeholder
+  versions such as `4.x` and `31.+` (B17), PyPI summary and classifiers, a Documentation URL, CI on Python 3.10
+  to 3.13, issue templates. Rebuild the live sample on each release (B13).
+
+0.8.0, hardening and regular use:
+- Untrusted input: size and member limits for archives (S2), CSV and Markdown escaping of all untrusted text
+  (S3 to S5), path checks on registry lookups (S6), bounded regex input (S7), temporary copies always removed
+  (S8). Pin govulncheck, docker and crane like Trivy and Grype (S9).
+- A ready-made scheduled workflow that re-scans an inventory weekly, carries decisions forward and opens an
+  issue on new Act now findings.
+- Confirm against an official bundle whether `--trivy-cosign-bundle` verifies the right file, and fix it (B10).
+- Smaller fixes: only treat a `.tar.gz` as a Python sdist when it has PKG-INFO (B20); warn on options that have no
+  effect in the chosen mode (B22); range-check numbers and turn off option abbreviations (B23); create the output
+  folder only after the scanners are found (B24).
 
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:
