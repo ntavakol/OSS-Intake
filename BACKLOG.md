@@ -6,20 +6,7 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 ## Next
 From the 0.6.0 review (bug and security IDs as in the review). Planned order:
 
-0.7.0, decisions and versions you can trust:
-- Decision round-trip: match decisions on id, package and version (B3); strip the deb, rpm and apk namespace and
-  read the epoch when loading OpenVEX (B4); export `mitigated` as not_affected with
-  `inline_mitigations_already_exist`, not fixed (B14); keep notes exactly, including a leading `-`, `=`, `+`, `@`
-  and line breaks (B18, B21).
-- Versions and fixes: ignore OSV GIT range hashes as fixes (B5); sort letter patches such as 1.1.1m (B6); pick a
-  minimum fix that clears every finding on its branch (B7); normalise PyPI names in a purl column (B8); merge Go
-  versions with and without `v` (B19).
-- Release-age check: flag a version published in the last N days (default 7), the window in which most
-  compromised releases are caught and pulled.
-- `--fail-on act,critical` exit code for CI.
-- Packaging and project: sdist that can run its tests (B11), exit codes as documented (B16), reject placeholder
-  versions such as `4.x` and `31.+` (B17), PyPI summary and classifiers, a Documentation URL, CI on Python 3.10
-  to 3.13, issue templates. Rebuild the live sample on each release (B13).
+Rebuild the live sample on each release (B13): `sh examples/compromised-npm/build.sh`.
 
 0.8.0, hardening and regular use:
 - Untrusted input: size and member limits for archives (S2), CSV and Markdown escaping of all untrusted text

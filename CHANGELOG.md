@@ -5,6 +5,53 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-26
+
+Decisions and versions you can trust, a check for brand-new releases, and a CI gate.
+
+### Added
+- New-release check: every language package version the run knows about (inventory entries, or the image's or
+  lockfile's package list) is looked up on deps.dev, and versions published fewer than `--release-age-days` ago
+  (default 7; `0` turns it off) are flagged in a warning, a "New releases" tile and section, the executive summary,
+  and `packages.csv` (new `published` and `new_release` columns). Compromised releases are usually live for hours
+  or days before they are pulled and before any advisory exists. Up to 400 lookups per run.
+- `--fail-on` for CI: exit 3 when any of `malicious`, `kev`, `act`, `critical`, `high`, `recent` or `mismatch` is
+  found, naming which. Findings set aside by evidence or an assessor decision do not count; malicious packages
+  always do. A gate whose check is turned off (`--offline`, `--release-age-days 0`, `--no-registry-check`) is
+  refused, and one whose check could not run fully (deps.dev errors, no package list) exits 1 rather than pass.
+- findings.csv column `triage_justification` (optional OpenVEX justification), so decisions survive
+  findings.csv to OpenVEX and back unchanged.
+- Issue templates; security reports are pointed to private advisories.
+
+### Changed
+- **Breaking for existing findings.csv files:** `mitigated` in `triage_status` now means not affected with the
+  justification `inline_mitigations_already_exist` (CycloneDX `protected_by_mitigating_control`), not fixed: a
+  compensating control is not a fix. A `mitigated` row now needs `triage_notes`; one without stops the run
+  (exit 2), where 0.6 read it as `fixed`. Rows already saved as `fixed` are unchanged.
+- A decision for another version of a finding that is still present is no longer listed as resolved.
+- An inventory's "upgrade to" is the lowest listed fix that is fixed for every finding on its release line.
+- PyPI metadata: current summary, Python 3.10 to 3.13 classifiers, Documentation and Sample report links. CI also
+  runs Python 3.11 and 3.12.
+
+### Fixed
+- Two decisions for one vulnerability in one package at two versions overwrote each other; the one for the
+  installed version now wins (B3).
+- The tool could not read back its own openvex.json for OS packages (`pkg:deb/ubuntu/libc6` loaded as package
+  `ubuntu/libc6`); the distro namespace is dropped, the epoch qualifier read, and encoded versions decoded
+  (`7.88.1-10%2Bdeb12u14`) (B4).
+- Notes starting with `-`, `=`, `+` or `@` gained a quote, and multi-line notes were flattened, after a round trip
+  (B18, B21).
+- OSV commit hashes from GIT ranges could become the fix and "upgrade to" version (B5).
+- Letter-patched versions sorted wrong (OpenSSL `1.1.1m` below `1.1.1l`), so their fixes were missed; OpenSSL's
+  letters past z (`0.9.8za` to `0.9.8zh`) sort after `z`, and PEP 440 pre-releases such as `1.0a` stay before
+  `1.0` (B6).
+- "Upgrade to at least" could name a version that still had a vulnerability fixed on another release line (B7).
+- PyPI names in an inventory `purl` column were not normalised, so OSV's fixes never matched (B8).
+- The same Go fix appeared twice when sources disagreed on the `v` prefix (B19).
+- The sdist now contains the test fixtures, so its tests run (B11).
+- A malformed pinned hash (`--trivy-sha256`, `--grype-sha256`, `verify --sha256`) is an input error, exit 2 (B16).
+- Placeholder versions such as `4.x`, `4.1.X` and `31.+` are refused in an inventory (B17).
+
 ## [0.6.1] - 2026-10-26
 
 Fixes from the 0.6.0 review: no report may look cleaner than the checks behind it.
