@@ -1,0 +1,43 @@
+{
+    "name": "demo-app",
+    "version": "1.0.0",
+    "lockfileVersion": 3,
+    "requires": true,
+    "packages": {
+        "": {
+            "name": "demo-app",
+            "version": "1.0.0",
+            "dependencies": {
+                "chalk": "5.6.1",
+                "debug": "4.4.2",
+                "@ctrl/tinycolor": "4.1.1",
+                "ua-parser-js": "0.7.29",
+                "event-stream": "3.3.6"
+            }
+        },
+        "node_modules/chalk": {
+            "version": "5.6.1",
+            "resolved": "https://registry.npmjs.org/chalk/-/chalk-5.6.1.tgz"
+        },
+        "node_modules/debug": {
+            "version": "4.4.2",
+            "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.2.tgz"
+        },
+        "node_modules/@ctrl/tinycolor": {
+            "version": "4.1.1",
+            "resolved": "https://registry.npmjs.org/@ctrl/tinycolor/-/tinycolor-4.1.1.tgz"
+        },
+        "node_modules/ua-parser-js": {
+            "version": "0.7.29",
+            "resolved": "https://registry.npmjs.org/ua-parser-js/-/ua-parser-js-0.7.29.tgz"
+        },
+        "node_modules/event-stream": {
+            "version": "3.3.6",
+            "resolved": "https://registry.npmjs.org/event-stream/-/event-stream-3.3.6.tgz"
+        },
+        "node_modules/flatmap-stream": {
+            "version": "0.1.1",
+            "resolved": "https://registry.npmjs.org/flatmap-stream/-/flatmap-stream-0.1.1.tgz"
+        }
+    }
+}

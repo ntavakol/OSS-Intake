@@ -466,7 +466,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 if f.malicious or SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     bad = sorted({f"{f.package}@{f.installed}" for f in findings if f.malicious})
     if bad:
-        listed = ", ".join(bad[:5]) + (" ..." if len(bad) > 5 else "")
+        listed = ", ".join(bad[:10]) + (f" and {len(bad) - 10} more" if len(bad) > 10 else "")
         warnings.insert(0, f"MALICIOUS PACKAGE: {len(bad)} package(s) are listed as malware (OpenSSF malicious "
                            f"packages, or an advisory classed as embedded malicious code, CWE-506): {listed}. "
                            "Treat the artifact as compromised, not as a patching task")

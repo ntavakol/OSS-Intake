@@ -242,7 +242,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     if o:
         lag_rows.append(["Oldest available fix", f"{o['id']} in {o['package']}: {o['fix_version']} "
                                                  f"published {o['fix_published']} ({o['days']} days)"])
-    lag_rows.append(["Known malicious packages (OpenSSF, or CWE-506 advisories)", lag.get("malicious", 0)])
+    lag_rows.append(["Known malicious packages (OpenSSF, or CWE-506 advisories)",
+                     len(lag.get("malicious_packages") or [])])
     lag_rows.append(["Known exploited (CISA KEV) with fix", lag["kev_with_fix"]])
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]
@@ -346,8 +347,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                                                                "Days fix available"],
                                                      rows), ("p", CVSS_NOTE), ("p", EXPLOIT_NOTE),
                                                     ("p", "Full list, with each advisory's conditions: findings.csv")]))
-    if a.get("warnings"):
-        secs.append(("Warnings", [("list", a["warnings"])]))
+    if a.get("warnings"):  # first, as in the HTML report: they change how the rest should be read
+        secs.insert(0, ("Warnings", [("list", a["warnings"])]))
     return secs
 
 

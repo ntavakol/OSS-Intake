@@ -313,6 +313,10 @@ def test_cwe_506_advisory_is_malicious(tmp_path):
     (f,) = a["findings"]
     assert f["suggested_group"] == "Act now" and f["cwes"] == "CWE-506;CWE-912"
     assert "ua-parser-js@0.7.29" in a["warnings"][0]
+    assert a["lag"]["malicious_packages"] == ["ua-parser-js@0.7.29"]
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert '<header class="c">' in html and "Malicious packages" in html
+    assert html.index("MALICIOUS PACKAGE") < html.index("Findings by severity")  # warnings before the detail
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the stand-in govulncheck is a #! script, which Windows "

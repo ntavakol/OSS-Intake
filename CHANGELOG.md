@@ -5,6 +5,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-26
+
+Malicious packages are now the first thing a report shows.
+
+### Changed
+- HTML and Markdown reports show Warnings straight after the summary, not at the end: a malicious package or a
+  missing input changes how everything below should be read.
+- The HTML report has a "Malicious packages" tile and a red header stripe when any package is malware.
+- "Known malicious packages" counts packages, not findings (one package can have several advisories).
+
+### Fixed
+- The malicious-package warning listed only five packages and ended in four dots; it now lists up to ten.
+
+### Added
+- `examples/compromised-npm/`: a lockfile with six well-known compromised npm releases (chalk, debug,
+  @ctrl/tinycolor, ua-parser-js, event-stream, flatmap-stream) and a script that rebuilds the sample report.
+
 ## [0.2.3] - 2026-10-26
 
 Compromised releases of trusted packages are now flagged reliably. Found by scanning a lockfile with the
