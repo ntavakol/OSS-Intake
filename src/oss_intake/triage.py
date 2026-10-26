@@ -25,7 +25,8 @@ MEANING = {
     "act": "Malicious package, exploited in the wild, or a ready-to-use exploit exists",
     "review": "Published exploit, notable exploitation probability, or a critical that applies without conditions",
     "conditions": "The advisory says it applies only under stated conditions; confirm whether they hold",
-    "routine": "No exploit indexed, low exploitation probability, no stated conditions; normal patch cycle",
+    "routine": "No exploit, KEV or EPSS signal in the sources that were checked, no stated conditions; normal "
+               "patch cycle",
     "aside": "Evidence it does not apply: kernel header package, already fixed, govulncheck shows the "
              "vulnerable function is not in the binary, or the assessor recorded not affected or fixed",
 }
