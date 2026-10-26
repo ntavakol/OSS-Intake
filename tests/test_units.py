@@ -1503,3 +1503,81 @@ def test_mitigated_needs_a_note(tmp_path):
     p.write_text("id,package,installed,triage_status,triage_notes\nCVE-1,p,1,mitigated,\n", encoding="utf-8")
     with pytest.raises(InputError, match="mitigated needs triage_notes"):
         decisions.load(p)
+
+
+@pytest.mark.parametrize("a,b,expected", [
+    ("1.1.1m", "1.1.1l", 1),       # OpenSSL letter patches (B6)
+    ("1.1.1l", "1.1.1", 1),
+    ("1.1.1m", "1.1.2", -1),
+    ("1.1.1m-r0", "1.1.1l-r0", 1),  # Alpine
+    ("1.0a1", "1.0", -1),           # still a pre-release
+    ("2.0.0-M2", "2.0.0", -1),
+    ("8.4p1", "8.4", 1),
+])
+def test_letter_patch_versions(a, b, expected):
+    from oss_intake import versions
+
+    assert versions.compare(a, b) == expected
+
+
+def test_nearest_fix_with_letter_patch():
+    from oss_intake import versions
+
+    assert versions.nearest_fix("1.1.1l-r0", ["1.1.1m-r0"]) == "1.1.1m-r0"
+
+
+def test_minimum_upgrade_respects_release_lines():
+    # B7: CVE-A fixed in 1.2.9 or 1.3.2, CVE-B in 1.3.0: 1.3.0 still has CVE-A, so the answer is 1.3.2.
+    from oss_intake import versions
+
+    assert versions.minimum_upgrade("1.2.5", [["1.2.9", "1.3.2"], ["1.3.0"]]) == "1.3.2"
+    assert versions.minimum_upgrade("1.2.5", [["1.2.9", "1.3.2"]]) == "1.2.9"
+    # Log4Shell: fixed on three lines; 2.14.1 moves to 2.15.0, 2.12.1 to 2.12.2.
+    log4shell = ["2.3.1", "2.12.2", "2.15.0"]
+    assert versions.minimum_upgrade("2.14.1", [log4shell]) == "2.15.0"
+    assert versions.minimum_upgrade("2.12.1", [log4shell]) == "2.12.2"
+    assert versions.minimum_upgrade("2.14.1", [log4shell, ["2.16.0"]]) == "2.16.0"
+    assert versions.minimum_upgrade("3.0", [["2.0"]]) is None
+
+
+def test_inventory_upgrade_uses_release_lines():
+    from oss_intake import inventory_report
+
+    a = _f(vuln_id="CVE-A", package="p", installed="1.2.5", fixed_versions=["1.2.9", "1.3.2"])
+    b = _f(vuln_id="CVE-B", package="p", installed="1.2.5", fixed_versions=["1.3.0"])
+    for f in (a, b):
+        f.purl = "pkg:npm/p@1.2.5"
+    (row,) = inventory_report.package_rows([{"purl": "pkg:npm/p@1.2.5", "labels": {}}], [a, b])
+    assert row["upgrade_to"] == "1.3.2"
+
+
+def test_osv_git_ranges_are_not_fixes():
+    # B5: a GIT range's fixed event is a commit hash.
+    from oss_intake.scanners import osv
+
+    vuln = {"affected": [{"package": {"ecosystem": "PyPI", "name": "p", "purl": "pkg:pypi/p"},
+                          "ranges": [{"type": "GIT", "repo": "https://example.org/p",
+                                      "events": [{"introduced": "0"}, {"fixed": "2a1b9f0c" * 5}]},
+                                     {"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.5.0"}]}]}]}
+    assert osv._fixed_for(vuln, "pkg:pypi/p@2.0.0") == ["2.5.0"]
+
+
+def test_inventory_purl_column_normalises_pypi_names(tmp_path):
+    # B8: pkg:pypi/Django@3.2.0 must become pkg:pypi/django@3.2.0 for OSV's ranges to match.
+    from oss_intake import inputs
+
+    p = tmp_path / "inv.csv"
+    p.write_text("purl\npkg:pypi/Django@3.2.0\npkg:pypi/Typing_Extensions@4.0.0\n", encoding="utf-8")
+    assert [e["purl"] for e in inputs.inventory(p)] == ["pkg:pypi/django@3.2.0",
+                                                         "pkg:pypi/typing-extensions@4.0.0"]
+
+
+def test_go_fixes_with_and_without_v_merge():
+    # B19: Trivy 0.17.0 and OSV v0.17.0 are one fix.
+    from oss_intake import merge
+
+    t = _f(vuln_id="CVE-2099-1", package="golang.org/x/net", installed="v0.16.0", fixed_versions=["0.17.0"])
+    o = _f(vuln_id="CVE-2099-1", package="golang.org/x/net", installed="v0.16.0", fixed_versions=["v0.17.0"])
+    t.purl = o.purl = "pkg:golang/golang.org/x/net@v0.16.0"
+    (m,) = merge.merge([t], [o])
+    assert m.fixed_versions == ["v0.17.0"]

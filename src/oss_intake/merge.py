@@ -50,9 +50,14 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             cur.source_severity.update(f.source_severity)
             cur.cwes |= f.cwes
             cur.aliases |= f.aliases | ({f.vuln_id} if f.vuln_id != cur.vuln_id else set())
+            go = (cur.purl or f.purl or "").startswith("pkg:golang/")
             for v in f.fixed_versions:
-                if v not in cur.fixed_versions:
+                # Go versions carry a v that some sources leave out: v0.17.0 and 0.17.0 are one fix.
+                same = [x for x in cur.fixed_versions if x == v or (go and x.lstrip("v") == v.lstrip("v"))]
+                if not same:
                     cur.fixed_versions.append(v)
+                elif go and v.startswith("v") and not same[0].startswith("v"):
+                    cur.fixed_versions[cur.fixed_versions.index(same[0])] = v
             # Conservative: keep the highest severity any source reported.
             if SEVERITY_ORDER[f.severity] > SEVERITY_ORDER[cur.severity]:
                 cur.severity = f.severity

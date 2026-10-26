@@ -14,6 +14,9 @@ _PRE = {"dev": -5, "snapshot": -5, "alpha": -4, "a": -4, "beta": -3, "b": -3, "m
         "rc": -1, "cr": -1, "pre": -1}
 _RELEASE = {"final": 0, "ga": 0, "release": 0, "r": 0}
 _TOKEN = re.compile(r"\d+|[A-Za-z]+")
+# A single letter straight after a number and not followed by one is a patch letter, newer than the plain
+# number: OpenSSL 1.1.1m > 1.1.1l > 1.1.1, Alpine 1.1.1m-r0. "1.0a1" or "1.0b2" stay pre-releases.
+_PATCH_LETTER = re.compile(r"(?<=\d)([A-Za-z])(?![A-Za-z0-9])")
 # Build labels that identify a variant of the same release, not a different version
 # (e.g. mssql-jdbc 12.10.2.jre11, guava 33.0.0-jre / -android). Ignored when comparing.
 _LABEL = re.compile(r"[.\-_+](?:jre|jdk|java)\d*$|[.\-_+]android$", re.IGNORECASE)
@@ -29,6 +32,7 @@ def _key(v: str) -> list[tuple[int, int, str]]:
     if ":" in v and v.split(":", 1)[0].isdigit():
         v = v.split(":", 1)[1]
     v = strip_label(v)
+    v = _PATCH_LETTER.sub(lambda m: f".{ord(m.group(1).lower()) - 96}", v)
     out: list[tuple[int, int, str]] = []
     for tok in _TOKEN.findall(v):
         if tok.isdigit():
@@ -115,6 +119,42 @@ def nearest_fix(installed: str, fixed: list[str]) -> str | None:
         if compare(c, best) < 0:
             best = c
     return best
+
+
+def _branch(v: str) -> tuple[int, ...]:
+    """Major and minor number: the release line a fix belongs to (1.2.9 and 1.3.2 are different lines)."""
+    nums = [rank for kind, rank, _ in _key(v) if kind == 1]
+    return tuple(nums[:2])
+
+
+def covers(candidate: str, fixed: list[str]) -> bool:
+    """Is candidate at or above a fix for this vulnerability on its own release line?
+
+    With fixes [1.2.9, 1.3.2], 1.2.9 and 1.3.2 are fixed, but 1.3.0 is not: the 1.3 line was fixed in 1.3.2.
+    A candidate on a line with no listed fix is covered when it is above the highest fix below it.
+    """
+    below = [f for f in fixed if compare(f, candidate) <= 0]
+    if not below:
+        return False
+    line = _branch(candidate)
+    return not any(compare(f, candidate) > 0 and _branch(f) == line for f in fixed)
+
+
+def minimum_upgrade(installed: str, fixed_sets: list[list[str]]) -> str | None:
+    """Lowest listed fix above installed that is fixed for every vulnerability (each a list of fixed versions),
+    taking release lines into account. None when there is none."""
+    sets = [s for s in fixed_sets if s]
+    candidates = {f for s in sets for f in s if compare(f, installed) > 0}
+    for c in sorted(candidates, key=_sort_key):
+        if all(covers(c, s) for s in sets):
+            return c
+    return None
+
+
+def _sort_key(v: str):
+    from functools import cmp_to_key
+
+    return cmp_to_key(compare)(v)
 
 
 def label_only_match(installed: str, fixed: list[str]) -> str | None:

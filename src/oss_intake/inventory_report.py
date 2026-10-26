@@ -43,12 +43,15 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
         groups = [f.triage_group for f in fs if f.triage_group]
         group = min(groups, key=GROUP_ORDER.index) if groups else ""
         malicious = any(f.malicious for f in fs)
-        fixes = [versions.nearest_fix(version, f.fixed_versions) for f in fs if f.fixed_versions]
         no_fix = sum(1 for f in fs if not f.fixed_versions)
         if malicious:
             upgrade = "remove: malicious release"
         else:
-            upgrade = _highest([v for v in fixes if v])
+            # The lowest version fixed for every finding on its release line, not just the highest nearest fix:
+            # with CVE-A fixed in 1.2.9 or 1.3.2 and CVE-B in 1.3.0, 1.3.0 still has CVE-A; 1.3.2 is the answer.
+            upgrade = versions.minimum_upgrade(version, [f.fixed_versions for f in fs if f.fixed_versions]) or \
+                _highest([v for v in (versions.nearest_fix(version, f.fixed_versions) for f in fs
+                                       if f.fixed_versions) if v])
         rows.append({
             "group": triage.LABEL.get(group, "") if group else "",
             "group_key": group,

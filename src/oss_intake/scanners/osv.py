@@ -78,6 +78,8 @@ def _fixed_for(vuln: dict, purl: str) -> list[str]:
         if not match:
             continue
         for rng in aff.get("ranges") or []:
+            if rng.get("type") == "GIT":
+                continue  # GIT ranges give commit hashes, not versions anyone can upgrade to
             for ev in rng.get("events") or []:
                 if ev.get("fixed"):
                     fix = ev["fixed"]

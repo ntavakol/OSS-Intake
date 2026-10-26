@@ -149,6 +149,9 @@ def _row_purl(row: dict[str, str]) -> str:
         path_part = rest[4:].split("/", 1)[1]
         if ptype == "npm" and path_part.startswith("@"):
             path_part = "%40" + path_part[1:]  # pkg:npm/@scope/name -> pkg:npm/%40scope/name, as OSV expects
+        if ptype == "pypi":
+            name_part, _, ver = path_part.rpartition("@")
+            path_part = f"{re.sub(r'[-_.]+', '-', name_part).lower()}@{ver}"  # PEP 503, as OSV matches it
         return f"pkg:{ptype}/{path_part}"
     eco, name, version = row.get("ecosystem", ""), row.get("name", ""), row.get("version", "")
     missing = [k for k, v in (("ecosystem", eco), ("name", name), ("version", version)) if not v]
