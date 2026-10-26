@@ -4,6 +4,7 @@
 [![codeql](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml/badge.svg)](https://github.com/ntavakol/OSS-Intake/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ntavakol/OSS-Intake/badge)](https://scorecard.dev/viewer/?uri=github.com/ntavakol/OSS-Intake)
 [![PyPI](https://img.shields.io/pypi/v/oss-intake)](https://pypi.org/project/oss-intake/)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12345/badge)](https://www.bestpractices.dev/projects/12345)
 
 **Evidence for deciding whether to adopt, keep or replace an open source component.** `oss-intake` runs
 Trivy and Grype, checks OSV, and turns the results into a reading order: malicious packages and exploited
