@@ -874,11 +874,12 @@ def test_cosign_runs_once_per_scanner(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(integrity, "cosign_verify_blob", lambda *a: calls.append(a))
     fake, runs = _stub_trivy(tmp_path, monkeypatch)
+    archive = _release_archive(tmp_path, fake)
     bundle = tmp_path / "b.json"
     bundle.write_text("{}", encoding="utf-8")
     cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
-              "--trivy-path", str(fake), "--trivy-cosign-bundle", str(bundle)])
-    assert len(calls) == 1 and runs
+              "--trivy-path", str(fake), "--trivy-archive", str(archive), "--trivy-cosign-bundle", str(bundle)])
+    assert len(calls) == 1 and str(calls[0][0]) == str(archive) and runs  # the signature is checked on the archive
 
 
 def _decisions_of(path):
@@ -1096,3 +1097,60 @@ def test_date_only_as_of_covers_the_whole_day(tmp_path):
     code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-latest", "--as-of", "2026-10-22",
                      "--fail-on", "recent"], http=http)
     assert code == cli.EXIT_THRESHOLD
+
+
+def _release_archive(tmp_path, exe, name="trivy_0.76.1_Linux-64bit.tar.gz", content=None):
+    import io
+    import tarfile
+
+    archive = tmp_path / name
+    data = exe.read_bytes() if content is None else content
+    with tarfile.open(archive, "w:gz") as t:
+        for member, body in (("LICENSE", b"license"), ("trivy", data)):
+            ti = tarfile.TarInfo(member)
+            ti.size = len(body)
+            t.addfile(ti, io.BytesIO(body))
+    return archive
+
+
+def test_executable_must_match_the_release_archive(tmp_path, monkeypatch, capsys):
+    # B10: the executable is compared with the one inside the (signed) archive, before it runs.
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
+    other = _release_archive(tmp_path, fake, content=b"the real trivy")
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--scanners", "trivy", "--trivy-path", str(fake), "--trivy-archive", str(other)])
+    assert code == cli.EXIT_ERROR and runs == []
+    assert "is not the trivy executable in trivy_0.76.1_Linux-64bit.tar.gz" in capsys.readouterr().err
+
+
+def test_grype_style_chain_bundle_on_checksums(tmp_path, monkeypatch):
+    from oss_intake import integrity
+
+    calls = []
+    monkeypatch.setattr(integrity, "cosign_verify_blob", lambda *a: calls.append(a))
+    exe = tmp_path / "grype"
+    exe.write_bytes(b"grype binary")
+    archive = tmp_path / "grype_0.121.0_linux_amd64.tar.gz"
+    import io
+    import tarfile
+
+    with tarfile.open(archive, "w:gz") as t:
+        ti = tarfile.TarInfo("grype")
+        ti.size = len(b"grype binary")
+        t.addfile(ti, io.BytesIO(b"grype binary"))
+    sums = tmp_path / "grype_0.121.0_checksums.txt"
+    sums.write_text(f"{integrity.sha256_file(archive)}  {archive.name}\n", encoding="utf-8")
+    done = integrity.verify_before_run("grype", str(exe), None, str(tmp_path / "b.json"), None, str(archive),
+                                       str(sums))
+    assert calls[0][0] == str(sums) and done["binary_matches_archive"] and done["signed"] == sums.name
+    sums.write_text("0" * 64 + f"  {archive.name}\n", encoding="utf-8")
+    with pytest.raises(integrity.IntegrityError, match="SHA-256 mismatch"):
+        integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums))
+
+
+def test_bundle_without_archive_is_refused(tmp_path, capsys):
+    b = tmp_path / "b.json"
+    b.write_text("{}", encoding="utf-8")
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--trivy-cosign-bundle", str(b)]) == \
+        cli.EXIT_USAGE
+    assert "signs its release archive or checksums file, not the extracted executable" in capsys.readouterr().err

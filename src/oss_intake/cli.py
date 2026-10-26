@@ -176,8 +176,15 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument(f"--{tool}-path", help=f"explicit path to the {tool} executable")
         s.add_argument(f"--{tool}-version", help=f"required {tool} version; the run fails on mismatch")
         s.add_argument(f"--{tool}-sha256", help=f"expected SHA-256 of the {tool} executable")
-        s.add_argument(f"--{tool}-cosign-bundle", help=f"Sigstore bundle to verify the {tool} executable "
-                                                      "(requires cosign on PATH)")
+        s.add_argument(f"--{tool}-archive", metavar="FILE",
+                       help=f"the release archive the {tool} executable came from: the executable must be "
+                            f"byte-for-byte the one inside it; the cosign bundle is checked against this archive "
+                            f"(or against --{tool}-checksums)")
+        s.add_argument(f"--{tool}-checksums", metavar="FILE",
+                       help=f"the release checksums file, which must list --{tool}-archive; with a cosign bundle "
+                            "that signs the checksums file (Grype publishes only this)")
+        s.add_argument(f"--{tool}-cosign-bundle", help=f"Sigstore bundle for the {tool} release archive, or for "
+                                                      f"--{tool}-checksums (requires cosign on PATH)")
         s.add_argument(f"--{tool}-cosign-identity", help="certificate identity regexp override")
         s.add_argument(f"--{tool}-arg", action="append", default=[], metavar="ARG",
                        help=f"extra argument passed to {tool} (repeatable), e.g. --{tool}-arg=--db-repository=...")
@@ -369,13 +376,15 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
         return data
     path = find_executable(tool, getattr(args, f"{tool}_path"))
     # A pinned hash or signature is checked before the binary runs at all, so a swapped binary never executes.
-    integrity.verify_before_run(tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
-                                getattr(args, f"{tool}_cosign_identity"))
+    release = integrity.verify_before_run(
+        tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
+        getattr(args, f"{tool}_cosign_identity"), getattr(args, f"{tool}_archive"),
+        getattr(args, f"{tool}_checksums"))
     info = mod.version_info(path)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
-    scanners_meta[tool] = {"enabled": True, **info, **check.as_dict()}
+    scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {})}
     target = args.path if args.path else args.image
     log(f"running {tool} {info['version']} on {target}", args.quiet)
     if args.path:
@@ -443,7 +452,15 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # Decisions are validated before anything is scanned, like every other input.
     args.decision_list = decisions.load(Path(args.decisions)) if args.decisions else None
     args.previous = decisions.previous_findings(Path(args.decisions)) if args.decisions else None
-    for flag in ("from_trivy_json", "from_grype_json", "trivy_cosign_bundle", "grype_cosign_bundle"):
+    for tool in ("trivy", "grype"):
+        if getattr(args, f"{tool}_checksums") and not getattr(args, f"{tool}_archive"):
+            raise UsageError(f"--{tool}-checksums needs --{tool}-archive (the archive it lists)")
+        if getattr(args, f"{tool}_cosign_bundle") and not getattr(args, f"{tool}_archive"):
+            raise UsageError(f"--{tool}-cosign-bundle needs --{tool}-archive: {tool} signs its release archive "
+                             "or checksums file, not the extracted executable, so the signature is checked on the "
+                             "archive and the executable compared with the one inside it")
+    for flag in ("from_trivy_json", "from_grype_json", "trivy_cosign_bundle", "grype_cosign_bundle",
+                 "trivy_archive", "grype_archive", "trivy_checksums", "grype_checksums"):
         val = getattr(args, flag)
         if val and not Path(val).is_file():
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")

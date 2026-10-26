@@ -122,6 +122,17 @@ Then record the SHA-256 of the extracted executable and pass it on every run (`o
 oss-intake doctor
 ```
 
+Or keep the release files and let each run check the whole chain before the scanner executes: the cosign
+signature on the checksums file, the archive's SHA-256 in it, and the executable byte-for-byte against the one in
+the archive. Trivy and Grype both sign their checksums file (Trivy also each archive); neither signs the
+extracted executable.
+
+```bash
+oss-intake --image owner/app:1.2.3 --out ./reports --trivy-version 0.76.1 \
+  --trivy-archive trivy_0.76.1_Linux-64bit.tar.gz --trivy-checksums trivy_0.76.1_checksums.txt \
+  --trivy-cosign-bundle trivy_0.76.1_checksums.txt.sigstore.json
+```
+
 Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2026). `oss-intake` refuses to
 run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
 
@@ -219,7 +230,9 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--scanners` | `auto` (default: Trivy and OSV, plus Grype if found) or a list such as `trivy,grype,osv` |
 | `--trivy-version`, `--grype-version` | Required scanner version; the run fails on mismatch |
 | `--trivy-sha256`, `--grype-sha256` | Expected SHA-256 of the executable, checked before it is run at all |
-| `--trivy-cosign-bundle`, `--grype-cosign-bundle` | Verify a Sigstore bundle with cosign (cosign must be on PATH) |
+| `--trivy-archive`, `--grype-archive` | The release archive the executable came from; the executable must be byte-for-byte the one inside it |
+| `--trivy-checksums`, `--grype-checksums` | The release checksums file, which must list the archive's SHA-256 |
+| `--trivy-cosign-bundle`, `--grype-cosign-bundle` | Verify the release's Sigstore bundle with cosign (on PATH): against the checksums file when given, otherwise the archive. Trivy signs its archives and checksums file, Grype only its checksums file; neither signs the extracted executable, so a bundle needs the archive |
 | `--trivy-arg`, `--grype-arg` | Pass extra arguments, e.g. `--trivy-arg=--db-repository=ghcr.io/aquasecurity/trivy-db:2` |
 | `--from-trivy-json`, `--from-grype-json` | Use an existing JSON report instead of running the scanner; a file that is not that scanner's report is refused (exit 2) |
 | `--release-tag`, `--release-date` | Set the release the image corresponds to, when tags do not match |

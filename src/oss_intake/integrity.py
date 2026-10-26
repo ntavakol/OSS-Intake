@@ -6,6 +6,11 @@ Lessons applied from the March 2026 Trivy compromise (CVE-2026-33634):
   * compare hashes over raw bytes; GitHub serves checksum files as
     application/octet-stream, so they are parsed from bytes with explicit decoding
   * signature verification is delegated to cosign when the user supplies a bundle
+
+What the projects sign: Trivy signs each release archive (trivy_X_Linux-64bit.tar.gz.sigstore.json) and its
+checksums file; Grype signs only its checksums file. Neither signs the extracted executable. So a signature is
+checked on the archive (or on the checksums file, which must then list the archive), and the executable that will
+run must be byte-for-byte the one inside that archive.
 """
 
 from __future__ import annotations
@@ -140,14 +145,79 @@ class BinaryCheck:
         return dict(self.__dict__)
 
 
+MAX_MEMBER_BYTES = 1024 * 1024 * 1024  # a scanner executable is ~200 MB; anything near 1 GB is not one
+
+
+def archive_member_sha256(archive: str | Path, names: tuple[str, ...]) -> tuple[str, str]:
+    """SHA-256 of the first regular file in a .tar.gz/.tgz or .zip release archive whose base name is one of
+    names (trivy, trivy.exe), streamed without extracting anything to disk. Returns (member name, hex)."""
+    import tarfile
+    import zipfile
+    from functools import partial
+
+    archive = Path(archive)
+    h = hashlib.sha256()
+    try:
+        if zipfile.is_zipfile(archive):
+            with zipfile.ZipFile(archive) as z:
+                for info in z.infolist():
+                    if not info.is_dir() and info.filename.rsplit("/", 1)[-1] in names:
+                        if info.file_size > MAX_MEMBER_BYTES:
+                            raise IntegrityError(f"{info.filename} in {archive.name} is implausibly large")
+                        with z.open(info) as fh:
+                            for chunk in iter(partial(fh.read, 1 << 20), b""):
+                                h.update(chunk)
+                        return info.filename, h.hexdigest()
+        else:
+            with tarfile.open(archive, "r:*") as t:
+                for m in t:
+                    if m.isfile() and m.name.rsplit("/", 1)[-1] in names:
+                        if m.size > MAX_MEMBER_BYTES:
+                            raise IntegrityError(f"{m.name} in {archive.name} is implausibly large")
+                        fh = t.extractfile(m)
+                        for chunk in iter(partial(fh.read, 1 << 20), b""):
+                            h.update(chunk)
+                        return m.name, h.hexdigest()
+    except (tarfile.TarError, zipfile.BadZipFile, OSError, EOFError) as exc:
+        raise IntegrityError(f"{archive.name} is not a readable release archive: {exc}") from None
+    raise IntegrityError(f"{archive.name} contains no {' or '.join(names)} executable")
+
+
 def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_bundle: str | None,
-                      cosign_identity: str | None) -> None:
+                      cosign_identity: str | None, archive: str | None = None,
+                      checksums: str | None = None) -> dict:
     """Checks that need nothing from the binary itself, done before it is executed even once (its --version
-    included): the pinned SHA-256 and the cosign signature. Raises IntegrityError on a mismatch."""
+    included). Raises IntegrityError on any mismatch. Returns what was verified, for the report.
+
+    The chain, when given: the cosign bundle signs the checksums file (Grype, and Trivy's checksums) or else the
+    archive (Trivy); the checksums file lists the archive's SHA-256; the executable equals the archive's member."""
+    done: dict = {}
     if expected_sha256:
         verify_sha256(path, expected_sha256)
-    if cosign_bundle:
-        cosign_verify_blob(path, cosign_bundle, cosign_identity or DEFAULT_COSIGN_IDENTITY[tool])
+    identity = cosign_identity or DEFAULT_COSIGN_IDENTITY[tool]
+    if archive:
+        if checksums:
+            if cosign_bundle:
+                cosign_verify_blob(checksums, cosign_bundle, identity)
+                done["signed"] = Path(checksums).name
+            done["archive_sha256"] = verify_against_checksums(archive, checksums)
+            done["checksums"] = Path(checksums).name
+        elif cosign_bundle:
+            cosign_verify_blob(archive, cosign_bundle, identity)
+            done["signed"] = Path(archive).name
+            done["archive_sha256"] = sha256_file(archive)
+        member, member_hash = archive_member_sha256(archive, (tool, f"{tool}.exe"))
+        actual = sha256_file(path)
+        if actual != member_hash:
+            raise IntegrityError(f"{Path(path).name} is not the {tool} executable in {Path(archive).name}: "
+                                 f"{actual} here, {member_hash} in the archive ({member})")
+        done.update(archive=Path(archive).name, binary_matches_archive=True)
+    elif cosign_bundle:
+        # A bundle without an archive can only be checked against the executable itself, which the projects do
+        # not sign; kept for executables someone signs directly.
+        cosign_verify_blob(path, cosign_bundle, identity)
+        done["signed"] = Path(path).name
+    return done
 
 
 def check_binary(tool: str, path: str, version: str, expected_version: str | None,
