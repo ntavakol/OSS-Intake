@@ -165,6 +165,19 @@ def triage_section(a: dict) -> tuple[str, list] | None:
     return ("Suggested triage", blocks)
 
 
+def release_age_section(a: dict) -> tuple[str, list] | None:
+    ra = a.get("release_age") or {}
+    if not ra.get("recent"):
+        return None
+    rows = [[r["package"], r["version"], r["published"][:10], r["age_days"]] for r in ra["recent"]]
+    return (f"New releases (published in the last {ra['days']} days)", [
+        ("table", ["Package", "Version", "Published", "Days old"], rows),
+        ("p", "Not a finding: most new releases are fine. But compromised releases are usually live for hours or "
+              "days before they are pulled and before any advisory exists, so a version this new has had little "
+              "scrutiny. Wait, or check the release (its changes, who published it, whether it matches the source "
+              "repository) before relying on it.")])
+
+
 def decisions_section(a: dict) -> tuple[str, list] | None:
     """Assessor decisions carried in with --decisions: what was applied, what needs another look."""
     d = a.get("decisions")
@@ -277,6 +290,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     tri = triage_section(a)
     if tri:
         secs.append(tri)
+    new = release_age_section(a)
+    if new:
+        secs.append(new)
     dec = decisions_section(a)
     if dec:
         secs.append(dec)

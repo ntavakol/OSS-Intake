@@ -28,6 +28,7 @@ from . import (
     merge,
     reachability,
     registry_check,
+    release_age,
     report,
     triage,
     upgrade,
@@ -58,6 +59,15 @@ from .scanners import osv as osv_mod
 from .scanners import trivy as trivy_mod
 
 EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_THRESHOLD = 0, 1, 2, 3
+FAIL_ON = {
+    "malicious": "a malicious package",
+    "kev": "a finding in CISA KEV",
+    "act": "a finding in Act now",
+    "critical": "a critical finding",
+    "high": "a high or critical finding",
+    "recent": "a package version published within --release-age-days",
+    "mismatch": "an artifact that does not match its registry checksum",
+}
 
 # Docker reference grammar, simplified. Anchored and cannot start with '-', which also
 # prevents a crafted value being read by the scanner as a command line option.
@@ -76,8 +86,8 @@ class UsageError(Exception):
     pass
 
 
-def log(msg: str, quiet: bool = False) -> None:
-    if not quiet:
+def log(msg: str, quiet: bool = False, force: bool = False) -> None:
+    if force or not quiet:
         print(f"[oss-intake] {msg}", file=sys.stderr)
 
 
@@ -216,6 +226,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--likelihood-config", metavar="FILE", help="custom likelihood rules (JSON); implies --likelihood")
     s.add_argument("--fail-on-likelihood", type=int, choices=range(1, 6), metavar="N",
                    help="exit 3 if the suggested likelihood is >= N (implies --likelihood)")
+    s.add_argument("--fail-on", metavar="LIST", default="",
+                   help="exit 3 if any of these is found, for CI: " + ", ".join(FAIL_ON) + " (comma separated; "
+                        "findings set aside by evidence or an assessor decision do not count)")
+    s.add_argument("--release-age-days", type=int, default=release_age.DEFAULT_DAYS, metavar="N",
+                   help=f"flag package versions published fewer than N days ago (default {release_age.DEFAULT_DAYS}; "
+                        "0 turns it off): new releases are when compromised versions are live, before advisories "
+                        "exist. One deps.dev request per language package")
     s.add_argument("--timeout", type=int, default=1800, help="per scanner timeout in seconds (default 1800)")
     s.add_argument("--top", type=int, default=25, help="findings listed in the summary (default 25)")
     s.add_argument("--quiet", action="store_true", help="only print errors and the final summary")
@@ -400,6 +417,9 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     release_override = validate_date(args.release_date, "--release-date")
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True
+    args.fail_on_set = csv_set(args.fail_on, set(FAIL_ON), "--fail-on") if args.fail_on else []
+    if args.release_age_days < 0:
+        raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
     lk_cfg = likelihood.load_config(args.likelihood_config) if args.likelihood else None
     # Decisions are validated before anything is scanned, like every other input.
     args.decision_list = decisions.load(Path(args.decisions)) if args.decisions else None
@@ -743,6 +763,18 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
 
     if args.grace_days < 0 or args.unshipped_days < 0:
         raise UsageError("--grace-days and --unshipped-days must be zero or more")
+    age_info: dict = {"status": "skipped", "days": args.release_age_days,
+                      "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
+    if net and args.release_age_days:
+        age_info = release_age.check(net, _language_purls(args, trivy_report), as_of, args.release_age_days)
+        age_warning = release_age.warning(age_info)
+        if age_warning:
+            warnings.append(age_warning)
+        if age_info["skipped_limit"]:
+            warnings.append(f"Release dates were looked up for the first {release_age.MAX_LOOKUPS} package versions "
+                            f"only; {age_info['skipped_limit']} were not checked for being new")
+        if age_info["errors"]:
+            warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s)")
     is_latest = health.get("scanned_is_latest") if not release_override else None
     decision_info = None
     if args.decision_list is not None:
@@ -788,6 +820,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "checks": check_info,
         "decisions": decision_info,
         "registry_check": getattr(args, "registry_result", None),
+        "release_age": age_info,
         "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings, looked_up=bool(net) and not args.no_fix_dates),
@@ -799,6 +832,12 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     pkg_rows = None
     if args.path_kind == "inventory":
         pkg_rows = inventory_report.package_rows(args.inventory, findings)
+        recent = {r["purl"]: r for r in age_info.get("recent") or []}
+        for r in pkg_rows:
+            hit = recent.get(r["purl"])
+            r["new_release"] = (f"yes, {hit['age_days']} day{'' if hit['age_days'] == 1 else 's'} old" if hit
+                                else "")
+            r["published"] = (age_info.get("published") or {}).get(r["purl"], "")
         up = upgrade.enrich(net, pkg_rows, latest=not args.no_latest) if net else {"status": "skipped"}
         if up.get("status") == "failed":
             warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
@@ -843,9 +882,38 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
+    tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None))
+    for t in tripped:
+        log(f"--fail-on {t}: found {FAIL_ON[t]}", args.quiet, force=True)
     if lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood:
         return EXIT_THRESHOLD
-    return EXIT_OK
+    return EXIT_THRESHOLD if tripped else EXIT_OK
+
+
+def _language_purls(args, trivy_report: dict | None) -> list[str]:
+    """Every language package version the run knows about, with or without findings (a compromised release is
+    new and usually has no advisory yet)."""
+    if getattr(args, "inventory", None) and args.path_kind == "inventory":
+        return [e["purl"] for e in args.inventory]
+    if trivy_report is not None:
+        return osv_mod.purls_from_trivy(trivy_report)
+    return []
+
+
+def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None) -> list[str]:
+    """The --fail-on conditions met. Findings set aside (evidence or an assessor decision) do not count, except
+    a malicious package, which no decision sets aside."""
+    live = [f for f in findings if f.triage_group != "aside"]
+    met = {
+        "malicious": any(f.malicious for f in findings),
+        "kev": any(f.kev for f in live),
+        "act": any(f.triage_group == "act" for f in live),
+        "critical": any(f.severity == "CRITICAL" for f in live),
+        "high": any(f.severity in ("CRITICAL", "HIGH") for f in live),
+        "recent": bool(age_info.get("recent")),
+        "mismatch": bool(registry and registry.get("status") == "mismatch"),
+    }
+    return [w for w in wanted if met[w]]
 
 
 def main(argv: list[str] | None = None, http: Http | None = None) -> int:

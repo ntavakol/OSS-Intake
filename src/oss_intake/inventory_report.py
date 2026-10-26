@@ -16,7 +16,7 @@ from .upgrade import describe
 GROUP_ORDER = ["act", "review", "conditions", "routine", "aside"]
 BASE_FIELDS = ["group", "ecosystem", "package", "version", "findings", "critical", "high", "malicious", "kev",
                "no_fix", "upgrade_to", "upgrade_left", "upgrade_major", "latest", "latest_left", "latest_major",
-               "purl"]
+               "published", "new_release", "purl"]
 
 
 def split_purl(purl: str) -> tuple[str, str, str]:

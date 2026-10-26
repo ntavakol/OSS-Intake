@@ -921,3 +921,87 @@ def test_decisions_round_trip_through_csv_openvex_and_back(tmp_path, fixtures):
     a3 = json.loads((out3 / "assessment.json").read_text(encoding="utf-8"))
     assert a3["decisions"]["applied"] == 3 and not a3["decisions"]["resolved"]
     assert _decisions_of(out3 / "findings.csv") == first
+
+
+def _inventory_http(published: dict):
+    class Http(FakeHttp):
+        def post_json(self, url, body):
+            self._check(url)
+            return 200, {"results": [{"vulns": []} for _ in body["queries"]]}
+
+    http = Http()
+    http.depsdev.update(published)
+    return http
+
+
+def test_new_release_is_flagged_and_can_fail_ci(tmp_path, capsys):
+    # F1: a version published days ago has had little scrutiny, advisory or not.
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version,owner\nnpm,fresh-pkg,5.6.1,Team A\nnpm,old-pkg,1.0.0,Team B\n"
+                   "npm,unknown-pkg,2.0.0,Team B\n", encoding="utf-8")
+    http = _inventory_http({"npm/fresh-pkg/5.6.1": "2026-10-20T13:16:00Z", "npm/old-pkg/1.0.0": "2024-01-01T00:00:00Z"})
+    out = tmp_path / "o"
+    code = cli.main(["--path", str(inv), "--out", str(out), "--no-latest", "--as-of", "2026-10-22T12:00:00Z",
+                     "--fail-on", "recent,act", "--quiet"], http=http)
+    assert code == cli.EXIT_THRESHOLD
+    assert "--fail-on recent: found a package version published within --release-age-days" in capsys.readouterr().err
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    ra = a["release_age"]
+    assert (ra["checked"], ra["unknown"]) == (2, 1)
+    assert [(r["package"], r["age_days"]) for r in ra["recent"]] == [("fresh-pkg", 1)]
+    assert any(w.startswith("1 package version(s) published in the last 7 days: fresh-pkg 5.6.1")
+               for w in a["warnings"])
+    pk = {r["package"]: r for r in csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))}
+    assert pk["fresh-pkg"]["new_release"] == "yes, 1 day old" and pk["fresh-pkg"]["published"] == "2026-10-20"
+    assert pk["old-pkg"]["new_release"] == "" and pk["old-pkg"]["published"] == "2024-01-01"
+    assert "New releases" in (out / "report.html").read_text(encoding="utf-8")
+    assert "fresh-pkg 5.6.1 (1 day old)" in (out / "executive-summary.html").read_text(encoding="utf-8")
+    assert "## New releases (published in the last 7 days)" in (out / "summary.md").read_text(encoding="utf-8")
+
+    # Off with 0, and the gate passes.
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o2"), "--no-latest", "--as-of", "2026-10-22",
+                     "--release-age-days", "0", "--fail-on", "recent"], http=_inventory_http({}))
+    assert code == cli.EXIT_OK
+
+
+def test_fail_on_gate(tmp_path, fixtures, fake_http, capsys):
+    code, _ = run(tmp_path / "a", fixtures, fake_http, "--fail-on", "kev")
+    assert code == cli.EXIT_THRESHOLD
+    code, _ = run(tmp_path / "b", fixtures, FakeHttp(), "--fail-on", "malicious,mismatch")
+    assert code == cli.EXIT_OK
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "c"), "--fail-on", "crtical"]) == cli.EXIT_USAGE
+    assert "crtical" in capsys.readouterr().err
+
+
+def test_fail_on_ignores_findings_set_aside_by_a_decision(tmp_path, fixtures):
+    code, out1 = run(tmp_path / "one", fixtures, FakeHttp())
+    rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
+    for r in rows:
+        if r["severity"] == "CRITICAL":
+            r.update(triage_status="not_affected", triage_notes="not deployed")
+    decided = tmp_path / "d.csv"
+    with decided.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    code, _ = run(tmp_path / "two", fixtures, FakeHttp(), "--decisions", str(decided), "--fail-on", "critical")
+    assert code == cli.EXIT_OK
+
+
+def test_release_age_lookup_limits_and_go():
+    from datetime import datetime, timezone
+
+    from oss_intake import release_age
+
+    http = FakeHttp()
+    http.depsdev.update({"go/golang.org/x/net/v0.60.0": "2026-10-21T00:00:00Z"})
+    as_of = datetime(2026, 10, 22, tzinfo=timezone.utc)
+    info = release_age.check(http, ["pkg:golang/golang.org/x/net@v0.60.0", "pkg:golang/stdlib@v1.25.0",
+                                    "pkg:deb/ubuntu/libc6@2.39"], as_of, 7)
+    assert [r["package"] for r in info["recent"]] == ["golang.org/x/net"] and info["unsupported"] == 2
+    many = [f"pkg:npm/p{i}@1.0.0" for i in range(5)]
+    capped = release_age.check(FakeHttp(), many, as_of, 7, limit=3)
+    assert capped["skipped_limit"] == 2 and capped["status"] == "partial"
+    future = release_age.check(http, ["pkg:golang/golang.org/x/net@v0.60.0"],
+                               datetime(2026, 10, 1, tzinfo=timezone.utc), 7)
+    assert future["recent"] == []  # did not exist yet on the --as-of date

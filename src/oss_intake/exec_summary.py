@@ -61,6 +61,8 @@ def compute(rows: list[dict], findings: list[Finding], as_of: datetime,
         "at_fix": after("upgrade_left") if upgrade_checked else None,
         "at_latest": after("latest_left") if latest_checked else None,
         "fix_clears_all": sum(1 for r in rows if (r.get("upgrade_left") or {}).get("total") == 0),
+        "new_releases": [f"{r['package']} {r['version']} ({r['new_release'].removeprefix('yes, ')})"
+                         for r in rows if r.get("new_release")],
         "previous": None,
     }
     if previous is not None:
@@ -133,6 +135,8 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
              ("a" if s["stale"] else "g", "No release in a year", "n/a" if s["stale"] is None else s["stale"],
               "possibly unmaintained"),
              ("n", "Packages checked", s["packages"], f"{s['with_findings']} with findings")]
+    if s.get("new_releases"):
+        tiles.insert(4, ("a", "New releases", len(s["new_releases"]), "published days ago: check before relying"))
     tile_html = '<div class="tiles">' + "".join(
         f'<div class="tile {t}"><div class="k">{_e(k)}</div><div class="v">{_e(str(v))}</div>'
         f'<div class="s">{_e(sub)}</div></div>' for t, k, v, sub in tiles) + "</div>"
@@ -176,6 +180,11 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
                                                                          kv[0]))]
         parts.append(_section(f"By {s['owner_column']}", _table(
             [s["owner_column"].capitalize(), "Packages", "With findings", "Act now"], orows, num={1, 2, 3})))
+    if s.get("new_releases"):
+        parts.append(_section("New releases", _note(
+            "; ".join(s["new_releases"][:15]) + (" ..." if len(s["new_releases"]) > 15 else "")
+            + ". Not a finding, but compromised releases are usually live for hours or days before they are pulled "
+              "and before any advisory exists. Wait, or check the release before relying on it.")))
     if s["stale_packages"]:
         parts.append(_section("No release for over a year", _note(
             "; ".join(s["stale_packages"][:15]) + (" ..." if len(s["stale_packages"]) > 15 else "")

@@ -241,6 +241,8 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
+| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages |
+| `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to 400 |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
 
 Other commands: `oss-intake doctor` (scanner paths, versions, hashes and known-bad status; `--trivy-path` and

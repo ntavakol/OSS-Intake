@@ -169,6 +169,9 @@ def _tiles(a: dict) -> str:
     else:
         tiles.append(("a" if lag["fix_available_at_release"] else "g", "Fix existed before release",
                       str(lag["fix_available_at_release"]), "not shipped in the scanned release"))
+    ra = a.get("release_age") or {}
+    if ra.get("recent"):
+        tiles.append(("a", "New releases", str(len(ra["recent"])), f"published in the last {ra['days']} days"))
     if sc.get("status") == "ok":
         tiles.append((tone_scorecard(sc.get("score")), "OpenSSF Scorecard",
                       Raw(f'{_e(str(sc.get("score")))}<span class="of">/10</span>'),
@@ -579,20 +582,29 @@ def _packages(a: dict) -> str:
     return _section("Packages", body)
 
 
-def _decisions(a: dict) -> str:
-    from .report import decisions_section
-
-    sec = decisions_section(a)
+def _blocks(sec: tuple[str, list] | None, num: set[int]) -> str:
     if not sec:
         return ""
     title, blocks = sec
     body = ""
     for b in blocks:
         if b[0] == "table":
-            body += _table(b[1], b[2], num={1})
+            body += _table(b[1], b[2], num=num)
         else:
             body += _note(b[1])
     return _section(title, body)
+
+
+def _decisions(a: dict) -> str:
+    from .report import decisions_section
+
+    return _blocks(decisions_section(a), {1})
+
+
+def _new_releases(a: dict) -> str:
+    from .report import release_age_section
+
+    return _blocks(release_age_section(a), {3})
 
 
 def _triage(a: dict) -> str:
@@ -643,7 +655,8 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_packages(a), _severity(a, caveat), _triage(a), _decisions(a), _likelihood(a, heuristic_note),
+    parts += [_packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _decisions(a),
+              _likelihood(a, heuristic_note),
               _lag(a, lag_note),
               f'<div class="grid2">{_health(a)}{_ci(a)}</div>',
               f'<div class="grid2">{_coverage(a)}{_agreement(a)}</div>',
