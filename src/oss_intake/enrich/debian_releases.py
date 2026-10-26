@@ -15,10 +15,10 @@ the newest banner are still waiting in proposed-updates: not yet available, so l
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from ..http import Http, HttpError
-from ..models import Finding
+from ..models import Finding, safe_date
 from ..versions import nearest_fix
 
 URL = "https://deb.debian.org/debian/dists/{codename}/ChangeLog"
@@ -47,8 +47,7 @@ def parse(text: str) -> dict[tuple[str, str], tuple[datetime | None, str]]:
     for line in text.splitlines():
         b = _BANNER.match(line)
         if b and b.group(2) in _MONTHS:
-            current = (datetime(int(b.group(3)), _MONTHS[b.group(2)], int(b.group(1)), tzinfo=timezone.utc),
-                       b.group(4))
+            current = (safe_date(int(b.group(3)), _MONTHS[b.group(2)], int(b.group(1))), b.group(4))
             continue
         e = _ENTRY.match(line)
         if e:

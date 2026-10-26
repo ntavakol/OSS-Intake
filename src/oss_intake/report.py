@@ -157,7 +157,7 @@ def triage_section(a: dict) -> tuple[str, list] | None:
         return None
     rows = [[LABEL[g], t["groups"][g]["total"], t["groups"][g]["with_fix"], MEANING[g]] for g in ORDER]
     blocks: list = [("table", ["Group", "Findings", "With fix", "Meaning"], rows), ("p", TRIAGE_NOTE)]
-    if not t.get("exploits_checked") and (a.get("checks") or {}).get("exploits"):
+    if checks_mod.state_of(a.get("checks"), "exploits") == checks_mod.NOT_CHECKED:
         blocks.append(("p", checks_mod.exploits_note(a["checks"])))
     return ("Suggested triage", blocks)
 
@@ -308,7 +308,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                      else f"{n_mal}, {checks_mod.describe(chk, 'malicious')}"])
     lag_rows.append(["Known exploited (CISA KEV) with fix",
                      lag["kev_with_fix"] if checks_mod.is_checked(chk, "kev") else checks_mod.describe(chk, "kev")])
-    if not lag.get("exploits_checked") and "exploits" in chk:
+    if checks_mod.state_of(chk, "exploits") != checks_mod.CHECKED:
         lag_rows.append(["Exploit indexes (Metasploit, Nuclei, Exploit-DB)", checks_mod.describe(chk, "exploits")])
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]

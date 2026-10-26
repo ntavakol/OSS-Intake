@@ -305,7 +305,7 @@ def _lag(a: dict, lag_note: str) -> str:
                             "r" if lag["kev_with_fix"] else "g"))
     else:
         rows.append(_metric("Known exploited (CISA KEV) with fix", checks_mod.describe(chk, "kev")))
-    if not lag.get("exploits_checked") and "exploits" in chk:
+    if checks_mod.state_of(chk, "exploits") != checks_mod.CHECKED:
         rows.append(_metric("Exploit indexes (Metasploit, Nuclei, Exploit-DB)", checks_mod.describe(chk, "exploits")))
     if lag.get("exploits_checked"):
         by = lag["exploit_with_fix_by_level"]
@@ -606,7 +606,7 @@ def _triage(a: dict) -> str:
                   "carries no risk; 'Set aside' is used only where the tool has evidence. Hover a group in the "
                   "findings table for its reason; "
                   "record the assessor's decisions in the triage columns of findings.csv.")
-    if not t.get("exploits_checked") and (a.get("checks") or {}).get("exploits"):
+    if checks_mod.state_of(a.get("checks"), "exploits") == checks_mod.NOT_CHECKED:
         body += _note(checks_mod.exploits_note(a["checks"]))
     return _section("Suggested triage", body)
 

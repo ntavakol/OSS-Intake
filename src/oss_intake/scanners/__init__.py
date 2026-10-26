@@ -54,10 +54,12 @@ def run(cmd: list[str], timeout: int) -> bytes:
 
 
 def load_json_bytes(data: bytes, what: str) -> dict:
+    # Windows PowerShell 5.1 redirection (trivy ... > out.json) writes UTF-16 with a byte order mark.
+    encoding = "utf-16" if data[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
     try:
-        return json.loads(data.decode("utf-8-sig"))
+        return json.loads(data.decode(encoding))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ScannerError(f"{what} output is not valid JSON: {exc}") from None
+        raise ScannerError(f"{what} is not valid JSON: {exc}") from None
 
 
 def report_kind(data: object) -> str:
@@ -66,9 +68,13 @@ def report_kind(data: object) -> str:
         return "unknown"
     if "SchemaVersion" in data and isinstance(data.get("Results", []), list) and "matches" not in data:
         return "trivy"
-    if isinstance(data.get("matches"), list) and "SchemaVersion" not in data:
-        name = (data.get("descriptor") or {}).get("name")
-        return "grype" if name in (None, "grype") else "unknown"
+    name = (data.get("descriptor") or {}).get("name") if isinstance(data.get("descriptor"), dict) else None
+    if "SchemaVersion" not in data and "matches" in data and name in (None, "grype"):
+        # Grype writes [] for a clean scan; very old releases wrote null, which only counts with Grype's descriptor.
+        if isinstance(data["matches"], list) or (data["matches"] is None and name == "grype"):
+            return "grype"
+    if data.get("bomFormat") == "CycloneDX" or "spdxVersion" in data:
+        return "sbom"
     return "unknown"
 
 
@@ -77,7 +83,8 @@ def check_report(data: object, tool: str, what: str) -> None:
     kind = report_kind(data)
     if kind == tool:
         return
-    looks = {"trivy": "a Trivy report", "grype": "a Grype report"}.get(kind)
+    looks = {"trivy": "a Trivy report", "grype": "a Grype report",
+             "sbom": "an SBOM (CycloneDX or SPDX), which lists packages but not vulnerabilities"}.get(kind)
     expected = {"trivy": "a Trivy JSON report (trivy ... --format json), with SchemaVersion and Results",
                 "grype": "a Grype JSON report (grype ... -o json), with matches"}[tool]
     raise ReportShapeError(f"{what} is not {expected}" + (f"; it looks like {looks}" if looks else

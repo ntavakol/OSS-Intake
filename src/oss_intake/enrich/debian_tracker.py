@@ -11,10 +11,10 @@ so this is the primary source for Debian; OSV remains the fallback for anything 
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from ..http import Http, HttpError
-from ..models import Finding
+from ..models import Finding, safe_date
 from ..versions import nearest_fix
 from .debian_releases import codename_for, no_epoch
 
@@ -30,7 +30,9 @@ def parse(text: str) -> dict[str, datetime]:
     for line in text.splitlines():
         m = _HEADER.match(line)
         if m and m.group(2) in _MONTHS:
-            out[m.group(4)] = datetime(int(m.group(3)), _MONTHS[m.group(2)], int(m.group(1)), tzinfo=timezone.utc)
+            dt = safe_date(int(m.group(3)), _MONTHS[m.group(2)], int(m.group(1)))
+            if dt:
+                out[m.group(4)] = dt
     return out
 
 
@@ -48,8 +50,8 @@ def parse_versions(text: str) -> dict[tuple[str, str, str], tuple[datetime, str]
     for line in text.splitlines():
         m = _HEADER.match(line)
         if m and m.group(2) in _MONTHS:
-            current = (datetime(int(m.group(3)), _MONTHS[m.group(2)], int(m.group(1)), tzinfo=timezone.utc),
-                       m.group(4))
+            dt = safe_date(int(m.group(3)), _MONTHS[m.group(2)], int(m.group(1)))
+            current = (dt, m.group(4)) if dt else None
             continue
         r = _RELEASE_LINE.match(line)
         if r and current:

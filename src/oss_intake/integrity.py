@@ -152,8 +152,9 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
 
 def check_binary(tool: str, path: str, version: str, expected_version: str | None,
                  expected_sha256: str | None, cosign_bundle: str | None,
-                 cosign_identity: str | None) -> BinaryCheck:
-    """Apply the policy. Raises IntegrityError on any failure; never warns-and-continues."""
+                 cosign_identity: str | None, verified: bool = False) -> BinaryCheck:
+    """Apply the policy. Raises IntegrityError on any failure; never warns-and-continues. verified=True means
+    verify_before_run already checked the hash and signature, so they are not checked (or cosign run) again."""
     notes: list[str] = []
     bad = known_bad_entry(tool, version)
     if bad:
@@ -168,12 +169,14 @@ def check_binary(tool: str, path: str, version: str, expected_version: str | Non
     digest = sha256_file(path)
     hash_ok = False
     if expected_sha256:
-        verify_sha256(path, expected_sha256)
+        if not verified:
+            verify_sha256(path, expected_sha256)
         hash_ok = True
     else:
         notes.append(f"{tool} binary hash not verified; pass --{tool}-sha256 to enforce it")
     sig_ok = False
     if cosign_bundle:
-        cosign_verify_blob(path, cosign_bundle, cosign_identity or DEFAULT_COSIGN_IDENTITY[tool])
+        if not verified:
+            cosign_verify_blob(path, cosign_bundle, cosign_identity or DEFAULT_COSIGN_IDENTITY[tool])
         sig_ok = True
     return BinaryCheck(tool, path, version, digest, hash_ok, sig_ok, expected_version, notes)

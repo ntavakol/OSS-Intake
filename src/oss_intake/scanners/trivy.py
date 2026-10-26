@@ -12,7 +12,7 @@ _CVSS_PREF = ["nvd", "ghsa", "redhat"]
 
 
 def version_info(binary: str) -> dict:
-    data = load_json_bytes(run([binary, "--version", "--format", "json"], timeout=60), "trivy --version")
+    data = load_json_bytes(run([binary, "--version", "--format", "json"], timeout=60), "trivy --version output")
     version = data.get("Version")
     if not version:
         raise ScannerError("could not determine trivy version")

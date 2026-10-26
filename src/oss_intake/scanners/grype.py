@@ -11,7 +11,7 @@ _SOURCE_PREFIX = {"remote": "registry:", "docker": "docker:", "podman": "podman:
 
 
 def version_info(binary: str) -> dict:
-    data = load_json_bytes(run([binary, "version", "-o", "json"], timeout=60), "grype version")
+    data = load_json_bytes(run([binary, "version", "-o", "json"], timeout=60), "grype version output")
     version = data.get("version")
     if not version:
         raise ScannerError("could not determine grype version")

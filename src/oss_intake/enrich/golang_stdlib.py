@@ -14,10 +14,10 @@ to "1.22.7". Major releases appear as go1.21.0 or, for older ones, go1.20; both 
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from ..http import Http, HttpError
-from ..models import Finding
+from ..models import Finding, safe_date
 from ..versions import nearest_fix
 
 URL = "https://go.dev/doc/devel/release"
@@ -38,7 +38,9 @@ def norm(v: str) -> str:
 def parse(text: str) -> dict[str, datetime]:
     out: dict[str, datetime] = {}
     for name, y, m, d in _RELEASE.findall(text):
-        out.setdefault(norm(name), datetime(int(y), int(m), int(d), tzinfo=timezone.utc))
+        dt = safe_date(int(y), int(m), int(d))
+        if dt:
+            out.setdefault(norm(name), dt)
     return out
 
 

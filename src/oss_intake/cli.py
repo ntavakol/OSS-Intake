@@ -301,17 +301,31 @@ def _resolve_scanners(args: argparse.Namespace) -> tuple[list[str], list[str]]:
     return chosen, warnings
 
 
+def _image_parts(ref: str) -> tuple[str, str, str]:
+    """(repository, tag, digest) with Docker Hub's implied prefixes removed; tag or digest may be ''."""
+    ref, _, digest = ref.strip().lower().partition("@")
+    for prefix in ("docker.io/library/", "docker.io/", "index.docker.io/library/", "index.docker.io/", "library/"):
+        if ref.startswith(prefix):
+            ref = ref[len(prefix):]
+            break
+    name, tag = ref, ""
+    last = ref.rsplit("/", 1)[-1]
+    if ":" in last:
+        name, tag = ref.rsplit(":", 1)
+    return name, tag, digest
+
+
 def _same_image(a: str, b: str) -> bool:
-    def norm(ref: str) -> str:
-        ref = ref.split("@", 1)[0].lower()
-        for prefix in ("docker.io/library/", "docker.io/", "index.docker.io/library/", "index.docker.io/"):
-            if ref.startswith(prefix):
-                ref = ref[len(prefix):]
-                break
-        if ref.startswith("library/"):
-            ref = ref[len("library/"):]
-        return ref if ":" in ref.rsplit("/", 1)[-1] else ref + ":latest"
-    return norm(a) == norm(b)
+    """False only when the two references are known to differ: another repository, two different digests, or
+    two different tags. A tag on one side and only a digest on the other cannot be compared, so it is not flagged."""
+    (na, ta, da), (nb, tb, db) = _image_parts(a), _image_parts(b)
+    if na != nb:
+        return False
+    if da and db:
+        return da == db
+    if da or db:
+        return True if not (ta and tb) else ta == tb
+    return (ta or "latest") == (tb or "latest")
 
 
 def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict,
@@ -323,10 +337,12 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
             check_report(data, tool, f"--from-{tool}-json {Path(loaded).name}")
         except (ReportShapeError, ScannerError) as exc:
             raise UsageError(str(exc)) from None
-        named = data.get("ArtifactName") if tool == "trivy" else None
+        named = (data.get("ArtifactName") if tool == "trivy"
+                 else ((data.get("source") or {}).get("target") or {}).get("userInput")
+                 if isinstance((data.get("source") or {}).get("target"), dict) else None)
         if named and args.image and not _same_image(str(named), args.image) and warnings is not None:
-            warnings.append(f"The imported Trivy report is for {named}, but the report is labelled {args.image} "
-                            "(--image); check that the right file was imported")
+            warnings.append(f"The imported {tool.capitalize()} report is for {named}, but the report is labelled "
+                            f"{args.image} (--image); check that the right file was imported")
         scanners_meta[tool] = {"enabled": True, "detail": f"imported from {Path(loaded).name}", "imported": True}
         return data
     path = find_executable(tool, getattr(args, f"{tool}_path"))
@@ -336,7 +352,7 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
     info = mod.version_info(path)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
-        getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"))
+        getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict()}
     target = args.path if args.path else args.image
     log(f"running {tool} {info['version']} on {target}", args.quiet)
@@ -353,7 +369,7 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
     if tool == "trivy" and args.sbom and not args.path:
         (out / "raw" / "sbom.cdx.json").write_bytes(
             mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout, args.platform or None))
-    data = load_json_bytes(raw, tool)
+    data = load_json_bytes(raw, f"{tool} output")
     try:
         check_report(data, tool, f"{tool} output")
     except ReportShapeError as exc:
@@ -453,7 +469,8 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
             try:
                 found = osv_mod.scan(net, list(labels))
             except HttpError as exc:
-                raise UsageError(f"OSV lookup failed, so the inventory could not be checked: {exc}") from None
+                # OSV is the only source here: a report without it would read as clean. Runtime failure: exit 1.
+                raise ScannerError(f"OSV lookup failed, so the inventory could not be checked: {exc}") from None
             for f in found:
                 f.labels = dict(labels.get(f.purl or "", {}))
             groups.append(found)
@@ -471,8 +488,10 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
                 scanners_meta["osv"] = {"enabled": True, "detail": f"{len(purls)} CRAN packages queried"}
                 args.malicious_check = checks.state(checks.CHECKED)
             except HttpError as exc:
-                warnings.append(f"OSV lookup failed: {exc}")
-                args.malicious_check = checks.state(checks.NOT_CHECKED, "OSV lookup failed")
+                # OSV is the only source for renv.lock: without it nothing was checked, so stop rather than
+                # write a report that reads as clean.
+                raise ScannerError(f"OSV lookup failed, so {Path(args.path).name} could not be checked: {exc}") \
+                    from None
         elif not purls:
             args.malicious_check = checks.state(checks.CHECKED, "no CRAN packages to look up")
         return None, groups, scan_info

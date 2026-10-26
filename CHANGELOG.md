@@ -16,15 +16,19 @@ Fixes from the 0.6.0 review: no report may look cleaner than the checks behind i
   checked, and the summary line adds `not_checked=`. Fix-date coverage no longer blames an ecosystem when dates
   were not looked up.
 - A wrong or empty file given to `--from-trivy-json` or `--from-grype-json` (for example Grype JSON as Trivy, or
-  `{}`) gave `findings=0` and exit 0. It is now refused with exit 2, saying what the file looks like. An imported
-  Trivy report for a different image than `--image` gives a warning.
-- An impossible date (`--as-of 2026-02-30`, or one in scanner or API data) crashed the run; it is now a usage
-  error, or ignored in data.
+  `{}`) gave `findings=0` and exit 0. It is now refused with exit 2, saying what the file looks like (an SBOM is
+  named as such). UTF-16 files, as Windows PowerShell 5.1 redirection writes them, are read. An imported Trivy or
+  Grype report for a different image than `--image` (another repository, tag or digest) gives a warning.
+- An `renv.lock` scan whose OSV lookup failed reported green zeros and exit 0; with OSV its only source, it now
+  stops with exit 1, as does an inventory (previously exit 2 there).
+- An impossible date (`--as-of 2026-02-30`, or one in scanner, API or Debian and Go release data) crashed the
+  run; it is now a usage error, or skipped in data.
 - `verify` printed `OK sha256` and then failed on a missing `--cosign-identity`; all options are checked first.
 
 ### Security
 - With `--trivy-sha256` or `--grype-sha256`, the scanner's hash (and cosign signature, if given) is checked
-  before the binary is executed at all; previously its `--version` ran first. `doctor` records the hash before
+  before the binary is executed at all; previously its `--version` ran first. Cosign now runs once per scanner,
+  not twice. `doctor` records the hash before
   running `--version` and notes that the binary was not verified.
 
 ## [0.6.0] - 2026-10-26

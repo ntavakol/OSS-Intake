@@ -41,6 +41,14 @@ def parse_datetime(value: str | None) -> datetime | None:
         return None
 
 
+def safe_date(year: int, month: int, day: int) -> datetime | None:
+    """A UTC date, or None for an impossible one (31 Feb) found in upstream data."""
+    try:
+        return datetime(year, month, day, tzinfo=timezone.utc)
+    except (ValueError, OverflowError):
+        return None
+
+
 def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None:
     if start is None or end is None:
         return None

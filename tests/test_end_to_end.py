@@ -776,3 +776,95 @@ def test_verify_checks_options_before_printing_ok(tmp_path, capsys):
     assert cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f),
                      "--cosign-identity", "x"]) == cli.EXIT_USAGE
     assert cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f)]) == cli.EXIT_OK
+
+
+def test_one_exploit_index_down_is_partial_not_unchecked(tmp_path, fixtures):
+    # Review of 0.6.1: Exploit-DB failing alone must not hide Metasploit and Nuclei results.
+    code, out = run(tmp_path, fixtures, FakeHttp(fail_hosts=("gitlab.com",)))
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["checks"]["exploits"] == {"state": "partial", "reason": "could not load exploit-db"}
+    assert a["lag"]["exploits_checked"] is True
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "so 'Act now' can only come from" not in md
+    assert "| Exploit indexes (Metasploit, Nuclei, Exploit-DB) | partial (could not load exploit-db) |" in md
+    assert "ready-to-use exploit (Metasploit or Nuclei)" in md
+    routine = [f["suggested_reason"] for f in a["findings"] if f["suggested_group"] == "Routine"]
+    assert all("no exploit in the indexes that loaded" in r for r in routine)
+
+
+def test_renv_without_osv_stops_instead_of_reporting_clean(tmp_path, capsys):
+    lock = tmp_path / "renv.lock"
+    lock.write_text('{"R": {"Version": "4.5.1"}, "Packages": {"jsonlite": {"Package": "jsonlite", '
+                    '"Version": "1.8.0", "Source": "Repository", "Repository": "CRAN"}}}', encoding="utf-8")
+    code = cli.main(["--path", str(lock), "--out", str(tmp_path / "o")], http=FakeHttp(fail_hosts=("api.osv.dev",)))
+    assert code == cli.EXIT_ERROR
+    assert "OSV lookup failed, so renv.lock could not be checked" in capsys.readouterr().err
+    assert not (tmp_path / "o" / "report.html").exists()
+
+
+def test_no_findings_does_not_print_checked_notes(tmp_path):
+    clean = tmp_path / "clean.json"
+    clean.write_text('{"SchemaVersion": 2, "ArtifactName": "example/webapp:2.0.0"}', encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--from-trivy-json", str(clean),
+                     "--scanners", "trivy", "--release-date", "2026-04-30"], http=FakeHttp()) == 0
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "no findings to look up" not in md and "Exploit indexes" not in md
+
+
+def test_imported_grype_report_for_another_image_warns(tmp_path, fixtures):
+    g = json.loads((fixtures / "grype.json").read_text(encoding="utf-8"))
+    g["source"] = {"type": "image", "target": {"userInput": "acme/other:1.0"}}
+    gj = tmp_path / "g.json"
+    gj.write_text(json.dumps(g), encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats", "json",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json", str(gj),
+                     "--scanners", "trivy,grype"]) == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert any("imported Grype report is for acme/other:1.0" in w for w in a["warnings"])
+
+
+@pytest.mark.parametrize("a,b,same", [
+    ("nginx@sha256:" + "a" * 64, "nginx@sha256:" + "b" * 64, False),
+    ("nginx:1.29@sha256:" + "a" * 64, "nginx@sha256:" + "a" * 64, True),
+    ("nginx:1.29", "nginx@sha256:" + "a" * 64, True),
+    ("localhost:5000/app:1", "localhost:5000/app:1", True),
+    ("localhost:5000/app", "localhost:5000/app:latest", True),
+])
+def test_same_image_digests(a, b, same):
+    assert cli._same_image(a, b) is same
+
+
+def test_utf16_import_and_sbom_message(tmp_path, fixtures, capsys):
+    u16 = tmp_path / "t16.json"
+    u16.write_bytes((fixtures / "trivy.json").read_text(encoding="utf-8").encode("utf-16"))
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--from-trivy-json", str(u16), "--scanners", "trivy", "--formats", "json"]) == 0
+    bom = tmp_path / "bom.json"
+    bom.write_text('{"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}', encoding="utf-8")
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o2"), "--offline",
+                     "--from-trivy-json", str(bom), "--scanners", "trivy"]) == cli.EXIT_USAGE
+    assert "it looks like an SBOM" in capsys.readouterr().err
+
+
+def test_impossible_upstream_dates_are_skipped():
+    from oss_intake.enrich import debian_tracker, golang_stdlib
+
+    assert debian_tracker.parse("[31 Feb 2024] DSA-9999-1 x\n[01 Mar 2024] DSA-9999-2 y") == {
+        "DSA-9999-2": parse_datetime("2024-03-01")}
+    assert golang_stdlib.parse("") == {}
+
+
+def test_cosign_runs_once_per_scanner(tmp_path, monkeypatch):
+    from oss_intake import integrity
+
+    calls = []
+    monkeypatch.setattr(integrity, "cosign_verify_blob", lambda *a: calls.append(a))
+    fake, marker = _marker_trivy(tmp_path)
+    bundle = tmp_path / "b.json"
+    bundle.write_text("{}", encoding="utf-8")
+    cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
+              "--trivy-path", str(fake), "--trivy-cosign-bundle", str(bundle)])
+    assert len(calls) == 1 and marker.exists()

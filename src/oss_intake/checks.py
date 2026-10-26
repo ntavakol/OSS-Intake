@@ -30,18 +30,22 @@ def compute(n_findings: int, kev: dict, epss: dict, exploits: dict, malicious: d
             out[name] = state(CHECKED, "no findings to look up")
         elif status == "skipped":
             out[name] = state(NOT_CHECKED, skipped_by.get(name, "not run"))
-        elif status != "ok":
-            out[name] = state(NOT_CHECKED, "could not be loaded" + (f": {info['note']}" if info.get("note") else ""))
-        elif name == "exploits" and info.get("failed"):
+        elif name == "exploits" and status in ("ok", "partial") and info.get("failed"):
             loaded = sorted(info.get("sources") or {})
             out[name] = (state(PARTIAL, "could not load " + ", ".join(info["failed"])) if loaded
                          else state(NOT_CHECKED, "no exploit index could be loaded"))
+        elif status != "ok":
+            out[name] = state(NOT_CHECKED, "could not be loaded" + (f": {info['note']}" if info.get("note") else ""))
         elif name == "epss" and info.get("errors"):
             out[name] = state(PARTIAL, f"{info['errors']} lookup batch(es) failed")
         else:
             out[name] = state(CHECKED)
     out["malicious"] = malicious
     return out
+
+
+def state_of(checks: dict | None, name: str) -> str:
+    return (checks or {}).get(name, {}).get("state", CHECKED)
 
 
 def is_checked(checks: dict | None, name: str) -> bool:
