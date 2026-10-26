@@ -21,6 +21,7 @@ import re
 import tarfile
 import zipfile
 from pathlib import Path
+from urllib.parse import quote
 
 from .http import Http, HttpError
 
@@ -29,6 +30,22 @@ PYPI = "https://pypi.org/pypi"
 NPM = "https://registry.npmjs.org"
 _WHEEL = re.compile(r"^(?P<name>[A-Za-z0-9_.]+)-(?P<version>[^-]+)-.+\.whl$")
 _SDIST = re.compile(r"^(?P<name>.+?)-(?P<version>\d[^-]*)\.(tar\.gz|zip)$")
+MAX_METADATA = 1024 * 1024  # pom.properties and package.json are a few KB; a larger one is not read (S2)
+# Identities come from inside the untrusted file, so they must look like real coordinates before they go into a
+# registry URL: no path segments, no '..' (S6). A tampered file must not be able to "match" another package.
+_MAVEN_PART = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-]{0,199}$")
+_NPM_NAME = re.compile(r"^(@[A-Za-z0-9_~-][A-Za-z0-9._~-]*/)?[A-Za-z0-9_~-][A-Za-z0-9._~-]{0,213}$")
+_VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+~-]{0,127}$")
+
+
+def _safe(value: str, pattern: re.Pattern) -> bool:
+    return bool(pattern.match(value)) and ".." not in value
+
+
+def _read_small(data: bytes | None) -> bytes:
+    if data is None or len(data) > MAX_METADATA:
+        raise ValueError("metadata file too large")
+    return data
 
 
 def _digest(path: Path, algo: str) -> str:
@@ -44,17 +61,22 @@ def _digest(path: Path, algo: str) -> str:
 def _maven_identity(path: Path) -> tuple[dict | None, str]:
     try:
         with zipfile.ZipFile(path) as z:
-            props = [n for n in z.namelist() if n.startswith("META-INF/maven/") and n.endswith("/pom.properties")]
+            props = [i for i in z.infolist() if i.filename.startswith("META-INF/maven/")
+                     and i.filename.endswith("/pom.properties")]
             found = []
-            for name in props:
+            for info in props[:200]:
+                if info.file_size > MAX_METADATA:
+                    continue  # not a real pom.properties; never decompressed (S2)
+                with z.open(info) as fh:
+                    raw = _read_small(fh.read(MAX_METADATA + 1))
                 kv = {}
-                for line in z.read(name).decode("utf-8", "replace").splitlines():
+                for line in raw.decode("utf-8", "replace").splitlines():
                     if "=" in line and not line.lstrip().startswith("#"):
                         k, _, v = line.partition("=")
                         kv[k.strip()] = v.strip()
                 if kv.get("groupId") and kv.get("artifactId") and kv.get("version"):
                     found.append(kv)
-    except (zipfile.BadZipFile, OSError, KeyError) as exc:
+    except (zipfile.BadZipFile, OSError, KeyError, ValueError, NotImplementedError, RuntimeError, EOFError) as exc:
         return None, f"not a readable archive ({type(exc).__name__})"
     if not found:
         return None, "no META-INF/maven/.../pom.properties, so the Maven coordinates are unknown"
@@ -71,6 +93,9 @@ def _check_maven(http: Http, path: Path) -> dict:
     if not ident:
         return {"status": "unknown", "detail": why}
     g, a, v = ident["groupId"], ident["artifactId"], ident["version"]
+    if not (_safe(g, _MAVEN_PART) and _safe(a, _MAVEN_PART) and _safe(v, _VERSION)):
+        return {"status": "unknown", "detail": f"pom.properties holds coordinates that are not valid Maven "
+                                               f"coordinates ({g}:{a}:{v}); not looked up"}
     ext = path.suffix.lstrip(".").lower() or "jar"
     base = f"{MAVEN}/{g.replace('.', '/')}/{a}/{v}/{a}-{v}"
     candidates = [f"{base}.{ext}"]
@@ -96,7 +121,7 @@ def _check_pypi(http: Http, path: Path) -> dict:
     if not m:
         return {"status": "unknown", "detail": "file name is not a wheel or sdist name"}
     name, version = m.group("name"), m.group("version")
-    status, data = http.get_json(f"{PYPI}/{name}/{version}/json")
+    status, data = http.get_json(f"{PYPI}/{quote(name, safe='')}/{quote(version, safe='')}/json")
     ident = f"{name} {version}"
     if status == 404:
         return {"status": "not_published", "registry": "PyPI", "identity": ident,
@@ -117,15 +142,24 @@ def _check_pypi(http: Http, path: Path) -> dict:
 def _check_npm(http: Http, path: Path) -> dict:
     try:
         with tarfile.open(path) as t:
-            member = t.extractfile("package/package.json")
-            pkg = json.loads(member.read().decode("utf-8")) if member else {}
-    except (tarfile.TarError, KeyError, OSError, ValueError) as exc:
+            info = t.getmember("package/package.json")
+            if info.size > MAX_METADATA:
+                raise ValueError("package.json too large")
+            member = t.extractfile(info)
+            pkg = json.loads(_read_small(member.read(MAX_METADATA + 1)).decode("utf-8")) if member else {}
+            if not isinstance(pkg, dict):
+                raise ValueError("package.json is not an object")
+    except (tarfile.TarError, KeyError, OSError, ValueError, EOFError, RuntimeError) as exc:
         return {"status": "unknown", "detail": f"no readable package/package.json ({type(exc).__name__})"}
     name, version = pkg.get("name"), pkg.get("version")
     if not name or not version:
         return {"status": "unknown", "detail": "package.json has no name or version"}
+    name, version = str(name), str(version)
+    if not (_safe(name, _NPM_NAME) and _safe(version, _VERSION)):
+        return {"status": "unknown", "detail": f"package.json name or version is not a valid npm name and version "
+                                               f"({name}@{version}); not looked up"}
     ident = f"{name}@{version}"
-    status, data = http.get_json(f"{NPM}/{name.replace('/', '%2F')}/{version}")
+    status, data = http.get_json(f"{NPM}/{quote(name, safe='@')}/{quote(version, safe='')}")
     if status == 404:
         return {"status": "not_published", "registry": "npm", "identity": ident,
                 "detail": "the npm registry has no such version"}
@@ -157,6 +191,8 @@ def check(http: Http, path: Path) -> dict:
             return _check_npm(http, path)
     except HttpError as exc:
         return {"status": "error", "detail": str(exc)}
+    except (OSError, ValueError, RuntimeError, NotImplementedError, EOFError) as exc:  # S8: never crash the run
+        return {"status": "unknown", "detail": f"the file could not be read ({type(exc).__name__})"}
     return {"status": "unsupported", "detail": "registry checks cover JAR/WAR/EAR, Python wheels and sdists, and "
                                                "npm .tgz files"}
 

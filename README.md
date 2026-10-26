@@ -224,6 +224,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--image` | Image with explicit tag or digest |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory `.csv` instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
+| `--govulncheck-sha256`, `--govulncheck-version` | Pin govulncheck like the scanners: hash checked before it runs, version after. The Docker or crane executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |
 | `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |

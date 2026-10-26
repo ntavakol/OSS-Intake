@@ -1621,3 +1621,144 @@ def test_superseded_decision_is_not_resolved():
 
     info = decisions.apply([f], [d("1.0"), d("2.0")])
     assert f.decision_version == "2.0" and info["resolved"] == []
+
+
+def _tgz(path, package_json: bytes):
+    import io
+    import tarfile
+
+    with tarfile.open(path, "w:gz") as t:
+        info = tarfile.TarInfo("package/package.json")
+        info.size = len(package_json)
+        t.addfile(info, io.BytesIO(package_json))
+    return path
+
+
+class _NoHttp:
+    def __init__(self):
+        self.calls = []
+
+    def get_json(self, url, params=None):
+        self.calls.append(url)
+        return 404, None
+
+    def get_text(self, url):
+        self.calls.append(url)
+        return 404, ""
+
+
+def test_registry_check_refuses_huge_metadata(tmp_path):
+    # S2: an 815 KB .tgz used to inflate a package.json to about 1.6 GB in memory.
+    import zipfile
+
+    from oss_intake import registry_check as rc
+
+    big = b'{"name": "x", "version": "1.0.0", "pad": "' + b" " * (5 * 1024 * 1024) + b'"}'
+    r = rc.check(_NoHttp(), _tgz(tmp_path / "x-1.0.0.tgz", big))
+    assert r["status"] == "unknown"
+    jar = tmp_path / "x-1.0.jar"
+    with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("META-INF/maven/g/x/pom.properties", "groupId=g\nartifactId=x\nversion=1.0\n#" + " " * 5_000_000)
+    assert rc.check(_NoHttp(), jar)["status"] == "unknown"
+
+
+@pytest.mark.parametrize("pkg", [
+    {"name": "lodash", "version": "4.17.21/../../evil-pkg/1.0.0"},
+    {"name": "../evil", "version": "1.0.0"},
+    {"name": "lodash", "version": "4.17.21?x=1"},
+])
+def test_registry_check_refuses_path_tricks(tmp_path, pkg):
+    # S6: identities from inside the file must not steer the registry URL to another package.
+    import json as _json
+
+    from oss_intake import registry_check as rc
+
+    http = _NoHttp()
+    r = rc.check(http, _tgz(tmp_path / "lodash-4.17.21.tgz", _json.dumps(pkg).encode()))
+    assert r["status"] == "unknown" and http.calls == []
+
+
+def test_registry_check_refuses_bad_maven_coordinates(tmp_path):
+    from oss_intake import registry_check as rc
+
+    jar = _jar(tmp_path / "x-1.0.jar", ("..", "x", "1.0"))
+    http = _NoHttp()
+    assert rc.check(http, jar)["status"] == "unknown" and http.calls == []
+
+
+def test_registry_check_survives_unreadable_archives(tmp_path):
+    # S8: a JAR with an unsupported compression method used to crash the run.
+    from oss_intake import registry_check as rc
+
+    jar = _jar(tmp_path / "x-1.0.jar", ("g", "x", "1.0"))
+    data = bytearray(jar.read_bytes())
+    # Set the compression method of every entry to 99 (AES), which zipfile cannot read.
+    i = 0
+    while (i := data.find(b"PK\x03\x04", i)) != -1:
+        data[i + 8:i + 10] = (99).to_bytes(2, "little")
+        i += 4
+    i = 0
+    while (i := data.find(b"PK\x01\x02", i)) != -1:
+        data[i + 10:i + 12] = (99).to_bytes(2, "little")
+        i += 4
+    jar.write_bytes(bytes(data))
+    assert rc.check(_NoHttp(), jar)["status"] == "unknown"
+
+
+def test_stage_removes_its_copy_on_failure(tmp_path, monkeypatch):
+    import shutil as _shutil
+    import tempfile
+
+    from oss_intake import inputs
+
+    made = []
+    real = tempfile.mkdtemp
+    monkeypatch.setattr(tempfile, "mkdtemp", lambda **kw: made.append(real(**kw)) or made[-1])
+
+    def boom(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(_shutil, "copy2", boom)
+    f = tmp_path / "a.jar"
+    f.write_bytes(b"x")
+    with pytest.raises(OSError):
+        inputs.stage(f, "artifact")
+    assert made and not any(__import__("os").path.exists(d) for d in made)
+
+
+@pytest.mark.parametrize("value,guarded", [
+    ("pkg;=HYPERLINK(\"http://x\")", "pkg;'=HYPERLINK(\"http://x\")"),
+    ("a, @SUM(1)", "a, '@SUM(1)"),
+    ("note; -cmd|' /C calc'!A0", "note; '-cmd|' /C calc'!A0"),
+    ("1.0;-1", "1.0;-1"),
+    ("grype;osv;trivy", "grype;osv;trivy"),
+    ("=1+1", "'=1+1"),
+])
+def test_csv_guard_covers_joined_values_and_round_trips(value, guarded):
+    # S4: a ; separated value could start a formula in a spreadsheet that splits on ;
+    from oss_intake import decisions, report
+
+    assert report.csv_safe(value) == guarded
+    assert decisions.unguard(report.csv_safe(value)) == value
+
+
+def test_markdown_cells_escape_untrusted_text():
+    # S5
+    from oss_intake import report
+
+    cell = report._md_cell('<img src=x onerror=alert(1)> [x](javascript:alert(1)) ![i](http://t/p.png) a|b')
+    assert "<img" not in cell and "[x](" not in cell and "![i]" not in cell and "a\\|b" in cell
+
+
+def test_regex_inputs_are_bounded():
+    # S7: a 35 KB crafted advisory took 1.34 s, 70 KB 5.3 s.
+    import time
+
+    from oss_intake import conditions
+    from oss_intake.health import workflows
+
+    crafted = "In " + "a before b, " * 20000 + "x"
+    t = time.perf_counter()
+    conditions.extract(crafted + " only if configured.")
+    workflows.analyse("w.yml", "- uses: " * 60000, [])
+    assert time.perf_counter() - t < 2

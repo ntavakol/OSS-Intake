@@ -28,7 +28,7 @@ _MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 
 
 def _clean(unit: str) -> str:
-    unit = _MD_LINK.sub(r"\1", unit)
+    unit = _MD_LINK.sub(r"\1", unit[:MAX_UNIT])
     stripped = _VERSION_LEAD.sub("", unit)
     if stripped != unit and stripped:
         unit = stripped[0].upper() + stripped[1:]
@@ -49,9 +49,14 @@ def _units(text: str) -> list[str]:
     return out
 
 
+MAX_TEXT = 8 * 1024  # advisory descriptions are untrusted; the patterns below are not linear on crafted input (S7)
+MAX_UNIT = 1024
+
+
 def extract(text: str) -> str:
     if not text:
         return ""
+    text = text[:MAX_TEXT]
     units = _units(text)
     picked: list[str] = []
     i = 0

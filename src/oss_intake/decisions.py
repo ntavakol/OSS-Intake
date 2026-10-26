@@ -19,6 +19,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,8 +44,12 @@ _MITIGATION_WORDS = ("mitigated", "compensating control")
 _FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
+_JOINED_GUARD = re.compile(r"([;,\t])(\s*)'([=@+\-])")
+
+
 def unguard(value: str) -> str:
-    """Undo report.csv_safe: a leading quote added before =, +, -, @, tab or CR to stop spreadsheet formulas."""
+    """Undo report.csv_safe: the quote it puts before a formula character at the start, or after a ; , or tab."""
+    value = _JOINED_GUARD.sub(r"\1\2\3", value)
     return value[1:] if value[:1] == "'" and value[1:2] in _FORMULA else value
 
 

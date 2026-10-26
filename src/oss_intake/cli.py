@@ -215,6 +215,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="check Go binaries with govulncheck (must be installed): is the vulnerable function in the "
                         "binary? Images need Docker or crane to copy the binaries out")
     s.add_argument("--govulncheck-path", help="path to the govulncheck executable")
+    s.add_argument("--govulncheck-sha256", help="expected SHA-256 of the govulncheck executable, checked before it "
+                                                "runs (S9)")
+    s.add_argument("--govulncheck-version", help="required govulncheck version; the run fails on mismatch")
     s.add_argument("--decisions", metavar="FILE",
                    help="carry assessor decisions into this run: a findings.csv from an earlier run with the "
                         "triage_status, triage_notes and triage_reachable columns filled in, or an OpenVEX .json")
@@ -432,7 +435,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True
     args.fail_on_set = csv_set(args.fail_on, set(FAIL_ON), "--fail-on") if args.fail_on else []
-    for tool in ("trivy", "grype"):  # a malformed pinned hash is an input error (exit 2), found before any work
+    for tool in ("trivy", "grype", "govulncheck"):  # a malformed pinned hash is an input error (exit 2)
         value = getattr(args, f"{tool}_sha256")
         if value:
             try:
@@ -475,10 +478,22 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
+    # The scanners that will run must exist before anything is written (B24: no empty output folder left behind).
+    for tool in ("trivy", "grype"):
+        if tool in chosen and not getattr(args, f"from_{tool}_json"):
+            find_executable(tool, getattr(args, f"{tool}_path"))
     out = prepare_out(args.out)
     scanned_offline = args.from_trivy_json and args.from_grype_json
-    if args.path and args.path_kind not in ("renv", "inventory") and not scanned_offline:
-        args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
+    try:
+        if args.path and args.path_kind not in ("renv", "inventory") and not scanned_offline:
+            args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
+        return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)
+    finally:  # S8: the temporary copy of the artifact is removed whatever happens
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg) -> int:
     log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
         f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
         + (f"image-src={args.image_src or 'scanner default'} platform={args.platform or 'scanner default'} "
@@ -499,11 +514,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         elif args.registry_result["status"] == "error":
             warnings.append("Registry checksum lookup failed: " + registry_check.summary(args.registry_result))
     # 2. Scanners. Integrity failures abort; scanner failures abort (a partial scan is misleading).
-    try:
-        trivy_report, groups, scan_info = _scan(args, chosen, out, net, scanners_meta, warnings)
-    finally:
-        if tmp_dir:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+    trivy_report, groups, scan_info = _scan(args, chosen, out, net, scanners_meta, warnings)
     return _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats,
                    as_of, release_override, lk_cfg)
 
@@ -592,11 +603,22 @@ def _govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: list[s
         return {}
     try:
         gv = govuln_mod.find(args.govulncheck_path)
+    except ScannerError as exc:
+        warnings.append(f"--reachability skipped: {exc}")
+        return {}
+    # Pinned like Trivy and Grype: hash before it runs, version after; a mismatch stops the run (S9).
+    if args.govulncheck_sha256:
+        integrity.verify_sha256(gv, args.govulncheck_sha256)
+    try:
         info = govuln_mod.version_info(gv)
     except ScannerError as exc:
         warnings.append(f"--reachability skipped: {exc}")
         return {}
+    if args.govulncheck_version and info["version"].lstrip("vV") != args.govulncheck_version.lstrip("vV"):
+        raise integrity.IntegrityError(f"govulncheck version {info['version']} does not match the pinned version "
+                                       f"{args.govulncheck_version}")
     scanners_meta["govulncheck"] = {"enabled": True, **info, "sha256": integrity.sha256_file(gv),
+                                    "hash_verified": bool(args.govulncheck_sha256),
                                     "detail": f"{len(targets)} Go binaries"}
     results: dict = {}
     with tempfile.TemporaryDirectory(prefix="oss-intake-go-") as td:
@@ -605,8 +627,12 @@ def _govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: list[s
             located = {t: base / t for t in targets} if base else {}
         else:
             try:
+                used: dict = {}
                 copied = govuln_mod.extract_from_image(args.image, targets, args.platform or None, Path(td),
-                                                       args.timeout)
+                                                       args.timeout, used)
+                if used.get("path"):
+                    used["sha256"] = integrity.sha256_file(used["path"])
+                    scanners_meta["govulncheck"]["copied_with"] = used
             except ScannerError as exc:
                 warnings.append(f"--reachability skipped: {exc}")
                 return {}

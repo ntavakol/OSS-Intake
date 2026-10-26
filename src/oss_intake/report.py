@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from pathlib import Path
 
 from . import checks as checks_mod
@@ -80,9 +81,17 @@ def _tri(v: bool | None) -> str:
     return "" if v is None else ("yes" if v else "no")
 
 
+_JOINED_FORMULA = re.compile(r"([;,\t])(\s*)([=@]|[+\-](?=[^\d\s]))")
+
+
 def csv_safe(value: object) -> object:
-    """Neutralise spreadsheet formula injection from untrusted advisory text."""
-    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+    """Neutralise spreadsheet formula injection from untrusted advisory text: a leading =, +, -, @, tab or CR,
+    and the same after a ; , or tab separator, where a spreadsheet using that separator would start a new cell
+    (S4). A quote is put in front; decisions.unguard takes it off again when findings.csv is read back."""
+    if not isinstance(value, str):
+        return value
+    value = _JOINED_FORMULA.sub(r"\1\2'\3", value)
+    if value[:1] in ("=", "+", "-", "@", "\t", "\r"):
         return "'" + value
     return value
 
@@ -455,8 +464,14 @@ def _drivers(lag: dict) -> str:
         if parts else "no KEV or EPSS signal; see the release lag table."
 
 
+_MD_SPECIAL = re.compile(r"([\\`*_\[\]!|~#])")
+
+
 def _md_cell(x: object) -> str:
-    return str(x).replace("|", "\\|").replace("\n", " ")
+    """Markdown table cell from untrusted text: Markdown and HTML characters are escaped, so a package name or
+    advisory title cannot add links, images or raw HTML to summary.md (S5)."""
+    text = _MD_SPECIAL.sub(r"\\\1", str(x)).replace("<", "&lt;").replace(">", "&gt;")
+    return text.replace("\r", " ").replace("\n", " ")
 
 
 def write_markdown(path: Path, a: dict, findings: list[Finding], top: int = 25) -> None:

@@ -42,8 +42,12 @@ def _version_from_ref(ref: str, line_comment: str) -> str | None:
     return None
 
 
+MAX_WORKFLOW = 256 * 1024  # a workflow file is a few KB; the text is untrusted (S7)
+
+
 def analyse(name: str, text: str, known_bad: list[dict]) -> dict:
     uses, unpinned, bad = [], [], []
+    text = text[:MAX_WORKFLOW]
     for m in _USES.finditer(text):
         ref_full = m.group(1)
         if ref_full.startswith(("./", "docker://")) or "@" not in ref_full:

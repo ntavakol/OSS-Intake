@@ -90,12 +90,16 @@ def safe_relpath(p: str) -> bool:
     return bool(parts) and ".." not in parts and not Path(p.lstrip("/")).is_absolute()
 
 
-def extract_from_image(image: str, paths: list[str], platform: str | None, dest: Path, timeout: int) -> list[str]:
+def extract_from_image(image: str, paths: list[str], platform: str | None, dest: Path, timeout: int,
+                       used: dict | None = None) -> list[str]:
     """Copy files out of an image with Docker (create + cp) or, failing that, crane export.
-    Returns the paths copied, relative to dest. Raises ScannerError when neither tool is available."""
+    Returns the paths copied, relative to dest. Raises ScannerError when neither tool is available.
+    used, when given, records which tool ran and its path, for the report."""
     wanted = [p.lstrip("/") for p in paths if safe_relpath(p)]
     docker = shutil.which("docker")
     if docker:
+        if used is not None:
+            used.update(tool="docker", path=docker)
         cmd = [docker, "create"] + (["--platform", platform] if platform else []) + [image, "/nonexistent"]
         cid = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if cid.returncode == 0:
@@ -113,6 +117,8 @@ def extract_from_image(image: str, paths: list[str], platform: str | None, dest:
             return copied
     crane = shutil.which("crane")
     if crane:
+        if used is not None:
+            used.update(tool="crane", path=crane)
         with tempfile.TemporaryDirectory() as td:
             tar_path = Path(td) / "fs.tar"
             cmd = [crane, "export"] + (["--platform", platform] if platform else []) + [image, str(tar_path)]

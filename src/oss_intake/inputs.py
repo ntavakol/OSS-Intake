@@ -62,7 +62,11 @@ def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
     if kind == "dir":
         return path, None
     tmp = Path(tempfile.mkdtemp(prefix="oss-intake-"))
-    shutil.copy2(path, tmp / path.name)
+    try:
+        shutil.copy2(path, tmp / path.name)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
     return tmp, tmp
 
 

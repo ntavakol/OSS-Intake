@@ -96,7 +96,8 @@ def write_csv(path: Path, rows: list[dict], safe) -> None:
     label_cols = sorted({k for r in rows for k in r["labels"]})
     with open(path, "w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=BASE_FIELDS + label_cols)
-        w.writeheader()
+        # Label columns are named by the inventory's author: the header row is guarded like every cell (S3).
+        csv.writer(fh).writerow([safe(c) for c in BASE_FIELDS + label_cols])
         for r in rows:
             out = {k: r.get(k, "") for k in BASE_FIELDS}
             out["malicious"] = "yes" if r["malicious"] else ""

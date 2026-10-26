@@ -1154,3 +1154,38 @@ def test_bundle_without_archive_is_refused(tmp_path, capsys):
     assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--trivy-cosign-bundle", str(b)]) == \
         cli.EXIT_USAGE
     assert "signs its release archive or checksums file, not the extracted executable" in capsys.readouterr().err
+
+
+def test_packages_csv_header_is_guarded(tmp_path):
+    # S3: inventory column names become header cells in packages.csv.
+    inv = tmp_path / "packages.csv"
+    inv.write_text('ecosystem,name,version,"=HYPERLINK(""http://x"",""c"")"\nnpm,a,1.0.0,t\n', encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(inv), "--out", str(out), "--no-latest", "--release-age-days", "0"],
+                    http=_inventory_http({})) == 0
+    header = next(csv.reader((out / "packages.csv").open(encoding="utf-8", newline="")))
+    assert header[-1].startswith("'=")
+
+
+def test_govulncheck_hash_is_checked_before_it_runs(tmp_path, fixtures, monkeypatch, capsys):
+    # S9
+    from oss_intake.scanners import govulncheck as gv
+
+    app = tmp_path / "app"
+    (app / "bin").mkdir(parents=True)
+    (app / "bin" / "server").write_bytes(b"\x7fELF")
+    trivy = {"SchemaVersion": 2, "Results": [{"Target": "bin/server", "Class": "lang-pkgs", "Type": "gobinary",
+             "Vulnerabilities": [{"PkgName": "stdlib", "InstalledVersion": "v1.21.0", "FixedVersion": "1.21.5",
+                                  "Severity": "HIGH", "VulnerabilityID": "CVE-2099-7777",
+                                  "PkgIdentifier": {"PURL": "pkg:golang/stdlib@v1.21.0"}}]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps(trivy), encoding="utf-8")
+    fake = tmp_path / "govulncheck"
+    fake.write_bytes(b"stand-in")
+    ran = []
+    monkeypatch.setattr(gv, "version_info", lambda b: ran.append(b) or {"version": "1.1.4", "db_updated": None})
+    code = cli.main(["--path", str(app), "--out", str(tmp_path / "o"), "--from-trivy-json", str(tj),
+                     "--scanners", "trivy", "--offline", "--reachability", "--govulncheck-path", str(fake),
+                     "--govulncheck-sha256", "0" * 64])
+    assert code == cli.EXIT_ERROR and ran == []
+    assert "SHA-256 mismatch for govulncheck" in capsys.readouterr().err
