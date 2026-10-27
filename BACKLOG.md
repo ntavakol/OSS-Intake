@@ -3,9 +3,54 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Next
-To be agreed: pick from the sections below. Every bug and security item from the 0.6.0 review is done (0.6.1 to
-0.8.0).
+## Next: the organisation view (agreed 28 Oct)
+Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
+a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no
+vendor API keys, and a new source never touches the scanning code. Package-level sources (purls) come first;
+application-level consoles (CrowdStrike, Tenable, Defender) already do CVE matching for installed applications
+and are not primary sources (see "Not planned" below).
+
+0.9.0, SBOM input:
+- `--path` accepts a CycloneDX (1.4 to 1.6) or SPDX (2.2, 2.3) JSON file, or a folder of them (one per system,
+  as Amazon Inspector exports them). Detected by content (`bomFormat`, `spdxVersion`), not file name.
+- Components are read by purl: CycloneDX components including nested ones; SPDX packages through their
+  `PACKAGE-MANAGER`/`PACKAGE_MANAGER` purl reference. Components with no purl, or only a CPE, are counted and
+  listed as not checked, never silently dropped. The SBOM's own subject (metadata.component, the SPDX document)
+  is a label, not a package.
+- OS packages: `pkg:deb`, `pkg:rpm`, `pkg:apk` (and `pkg:dpkg`, which Inspector's examples use) are queried in
+  OSV under the distro's ecosystem (Ubuntu, Debian, Alpine, Red Hat...) from the purl's `distro` qualifier; where
+  the release cannot be told, they are listed as not checked. Language packages work as for inventories today.
+- Labels: the SBOM subject becomes `system`, a component's supplier or group becomes `supplier`, and a new
+  `--label key=value` (repeatable) tags every row, e.g. `--label owner="Web team"`.
+- Same reports as an inventory: packages.csv, executive summary, upgrade comparison, new-release check,
+  decisions, `--fail-on`; the weekly re-scan workflow takes an SBOM folder as well as a CSV.
+- Validated before any lookup, with limits on file size and component count (hostile-input rules as in 0.8.0).
+- Tests from real SBOMs: Trivy and Syft output, a GitHub dependency-graph SPDX export, an Amazon Inspector
+  CycloneDX example.
+- Recipes in `examples/sbom/`: Amazon Inspector (`aws inspector2 create-sbom-export`, EC2, ECR and Lambda, to
+  S3), Syft or `trivy sbom` for hosts, images and folders (covers on-premises and Azure), and the GitHub
+  dependency graph for every repository in an organisation (`gh api .../dependency-graph/sbom`).
+
+0.10.0, organisation scale and laptops:
+- Each package version is checked once, however many hosts or SBOMs list it, and mapped back: packages.csv and
+  the executive summary gain "hosts" (count and names) and the top list is ranked by reach as well as severity.
+- A local cache (`--cache-dir`, default under the user cache folder, `--no-cache`) for deps.dev release dates
+  and OSV advisory details, with an age limit, so a weekly run does not repeat 100,000 lookups.
+- The new-release check's 400-lookup cap becomes configurable, and is applied after de-duplication.
+- osquery collector (`examples/osquery/`): a query over `deb_packages`, `rpm_packages`, `npm_packages`,
+  `python_packages`, `homebrew_packages` and `chocolatey_packages`, and a script that turns `osqueryi --json` or
+  a Fleet export into a CycloneDX file per host. Gives package-level visibility on laptops and servers for free.
+- A synthetic 100,000-row test to keep run time and memory in check.
+
+0.11.0, registry proxy gate:
+- Collectors for Artifactory (AQL) and Nexus (REST components API) that list what the proxy has cached, as an
+  SBOM or CSV, with "new since the last run".
+- A gate recipe: run on new cache entries with `--fail-on malicious,recent` before they are released to
+  developers (an assessment the proxy calls, not a proxy).
+
+Not planned: connectors for CrowdStrike Falcon, Tenable One or Microsoft Defender software inventories. They list
+installed applications by name, not packages, and already match CVEs for them. Use them to answer "which hosts
+run X" once oss-intake has flagged a package.
 
 On every release: rebuild the live sample (`sh examples/compromised-npm/build.sh`) and update the pinned version
 in `examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches).
@@ -13,8 +58,8 @@ in `examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches).
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:
 a package that was clean when approved can later turn out vulnerable or compromised.
-- Package inventory input, beyond CSV (done in 0.3.0): `.xlsx` read directly as an optional extra (openpyxl),
-  and CycloneDX and SPDX SBOMs as input, which most package repositories and Dependency-Track can export.
+- Package inventory as `.xlsx`, read directly as an optional extra (openpyxl). SBOM input is planned under Next.
+- Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
 - Upgrade comparison for image and lockfile reports (done for inventories in 0.4.0): per package, what is still
   known at the minimum fix and at the latest stable release, with major-version warnings.
 
