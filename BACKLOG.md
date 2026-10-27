@@ -10,27 +10,6 @@ vendor API keys, and a new source never touches the scanning code. Package-level
 application-level consoles (CrowdStrike, Tenable, Defender) already do CVE matching for installed applications
 and are not primary sources (see "Not planned" below).
 
-0.9.0, SBOM input:
-- `--path` accepts a CycloneDX (1.4 to 1.6) or SPDX (2.2, 2.3) JSON file, or a folder of them (one per system,
-  as Amazon Inspector exports them). Detected by content (`bomFormat`, `spdxVersion`), not file name.
-- Components are read by purl: CycloneDX components including nested ones; SPDX packages through their
-  `PACKAGE-MANAGER`/`PACKAGE_MANAGER` purl reference. Components with no purl, or only a CPE, are counted and
-  listed as not checked, never silently dropped. The SBOM's own subject (metadata.component, the SPDX document)
-  is a label, not a package.
-- OS packages: `pkg:deb`, `pkg:rpm`, `pkg:apk` (and `pkg:dpkg`, which Inspector's examples use) are queried in
-  OSV under the distro's ecosystem (Ubuntu, Debian, Alpine, Red Hat...) from the purl's `distro` qualifier; where
-  the release cannot be told, they are listed as not checked. Language packages work as for inventories today.
-- Labels: the SBOM subject becomes `system`, a component's supplier or group becomes `supplier`, and a new
-  `--label key=value` (repeatable) tags every row, e.g. `--label owner="Web team"`.
-- Same reports as an inventory: packages.csv, executive summary, upgrade comparison, new-release check,
-  decisions, `--fail-on`; the weekly re-scan workflow takes an SBOM folder as well as a CSV.
-- Validated before any lookup, with limits on file size and component count (hostile-input rules as in 0.8.0).
-- Tests from real SBOMs: Trivy and Syft output, a GitHub dependency-graph SPDX export, an Amazon Inspector
-  CycloneDX example.
-- Recipes in `examples/sbom/`: Amazon Inspector (`aws inspector2 create-sbom-export`, EC2, ECR and Lambda, to
-  S3), Syft or `trivy sbom` for hosts, images and folders (covers on-premises and Azure), and the GitHub
-  dependency graph for every repository in an organisation (`gh api .../dependency-graph/sbom`).
-
 0.10.0, organisation scale and laptops:
 - Each package version is checked once, however many hosts or SBOMs list it, and mapped back: packages.csv and
   the executive summary gain "hosts" (count and names) and the top list is ranked by reach as well as severity.

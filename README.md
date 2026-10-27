@@ -219,6 +219,26 @@ present. Run it on a schedule: a package that was clean when approved can turn
 out vulnerable or compromised later. A sample is in
 [examples/inventory](https://github.com/ntavakol/OSS-Intake/blob/main/examples/inventory/packages.sample.csv).
 
+### SBOMs
+
+An SBOM works wherever an inventory CSV does: a CycloneDX (1.2 to 1.7) or SPDX (2.2, 2.3) JSON file, or a folder
+that holds only SBOMs (one per host, image or repository). It is recognised by its content, and GitHub's
+dependency-graph export is read as is.
+
+```bash
+oss-intake --path ./sboms --out ./reports --label owner="Platform team"
+```
+
+Each component is read by its package URL. Language packages are checked as in an inventory. OS packages (deb,
+rpm, apk) are checked in OSV under the distro's own ecosystem and release (Ubuntu, Debian, Alpine, Rocky Linux,
+AlmaLinux, Wolfi, Chainguard) and by source package, as the distro files its advisories: `libssl3t64` is looked
+up as `openssl`. Components that cannot be checked (no package URL, a version range, an OS package whose release
+the SBOM does not state, or a distro OSV has no data for, such as Amazon Linux) are listed in the report with the
+reason, never counted as clean. The SBOM's subject becomes the `system` label and a component's supplier the
+`supplier` label; `--label key=value` adds your own to every package. Recipes for Amazon Inspector, Syft, Trivy
+and the GitHub dependency graph are in
+[examples/sbom](https://github.com/ntavakol/OSS-Intake/tree/main/examples/sbom).
+
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 
 | Option | Purpose |
@@ -249,6 +269,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
 | `--no-registry-check` | Skip comparing a JAR, wheel, sdist or npm `.tgz` with its registry's published checksum |
+| `--label KEY=VALUE` | Inventories and SBOMs: tag every package (repeatable), e.g. `--label owner="Web team"`; labels group packages.csv and the executive summary |
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |

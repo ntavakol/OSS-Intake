@@ -30,6 +30,7 @@ from . import (
     registry_check,
     release_age,
     report,
+    sbom,
     triage,
     upgrade,
 )
@@ -218,6 +219,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--govulncheck-sha256", help="expected SHA-256 of the govulncheck executable, checked before it "
                                                 "runs (S9)")
     s.add_argument("--govulncheck-version", help="required govulncheck version; the run fails on mismatch")
+    s.add_argument("--label", action="append", default=[], metavar="KEY=VALUE",
+                   help="package inventories and SBOMs: tag every package with a label, e.g. --label owner='Web team' "
+                        "(repeatable); labels group packages.csv and the executive summary")
     s.add_argument("--decisions", metavar="FILE",
                    help="carry assessor decisions into this run: a findings.csv from an earlier run with the "
                         "triage_status, triage_notes and triage_reachable columns filled in, or an OpenVEX .json")
@@ -313,6 +317,23 @@ def cmd_verify(args: argparse.Namespace) -> int:
         integrity.cosign_verify_blob(args.file, args.cosign_bundle, args.cosign_identity)
         print("OK cosign signature")
     return EXIT_OK
+
+
+_LABEL_KEY = re.compile(r"^[a-z][a-z0-9_ -]{0,39}$")
+
+
+def _labels(values: list[str]) -> dict[str, str]:
+    """--label owner=Web team -> {"owner": "Web team"}. Keys are column names in packages.csv."""
+    out: dict[str, str] = {}
+    for v in values:
+        key, sep, value = v.partition("=")
+        key, value = key.strip().lower(), value.strip()
+        if not sep or not value or not _LABEL_KEY.match(key):
+            raise UsageError(f"--label {v!r}: use key=value, with a key of letters, digits, spaces, - or _")
+        if key in inputs.INVENTORY_KEYS:
+            raise UsageError(f"--label {key} would replace the package's own {key}; use another name")
+        out[key] = value
+    return out
 
 
 def _ineffective_options(args, chosen: list[str]) -> list[str]:
@@ -505,15 +526,42 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         val = getattr(args, flag)
         if val and not Path(val).is_file():
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")
+    args.os_queries, args.sbom_info, args.input_format = None, None, None
+    args.label_list = _labels(args.label)
+    if args.path_kind == "sbom":
+        # An SBOM is a package inventory in another format: read and validate it all, then treat it as one.
+        args.inventory, args.os_queries, args.sbom_info = sbom.read(Path(args.path))
+        args.path_kind = "inventory"
+        nc = args.sbom_info["not_checked"]
+        if nc:
+            why: dict[str, int] = {}
+            for c in nc:
+                why[c["reason"]] = why.get(c["reason"], 0) + 1
+            top = "; ".join(f"{n} {r}" for r, n in sorted(why.items(), key=lambda kv: -kv[1])[:4])
+            args.sbom_warning = (f"{len(nc)} of {args.sbom_info['components']} SBOM components were not checked "
+                                 f"({top}); they are listed in the report, not counted as clean")
+        if not args.inventory:
+            raise UsageError(f"{Path(args.path).name}: none of the {args.sbom_info['components']} components can "
+                             "be checked; see the reasons with --quiet off")
+        args.input_format = ", ".join(f"{k} ({v} file{'s' if v != 1 else ''})"
+                                      for k, v in sorted(args.sbom_info["formats"].items()))
     if args.path_kind in ("renv", "inventory"):
         chosen, warnings = ([] if args.offline else ["osv"]), []
+        if getattr(args, "sbom_warning", None):
+            warnings.append(args.sbom_warning)
         if args.offline:
             raise UsageError(f"{Path(args.path).name} is checked against OSV, which needs the network; "
                              "drop --offline")
-        if args.path_kind == "inventory":
+        if args.path_kind == "inventory" and args.sbom_info is None:
             args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
+            args.input_format = "CSV inventory"
+        for e in args.inventory if args.path_kind == "inventory" else []:
+            e["labels"] = {**e["labels"], **args.label_list}
     else:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
+    if args.label_list and args.path_kind != "inventory":
+        raise UsageError("--label applies to a package inventory or SBOM (--path *.csv, *.json or a folder of "
+                         "SBOMs)")
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     warnings += _ineffective_options(args, chosen)
@@ -573,7 +621,7 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
         labels = {e["purl"]: e["labels"] for e in args.inventory}
         if net:
             try:
-                found = osv_mod.scan(net, list(labels))
+                found = osv_mod.scan(net, list(labels), args.os_queries)
             except HttpError as exc:
                 # OSV is the only source here: a report without it would read as clean. Runtime failure: exit 1.
                 raise ScannerError(f"OSV lookup failed, so the inventory could not be checked: {exc}") from None
@@ -914,7 +962,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "inputs": {"image": args.image, "path": args.path, "path_kind": args.path_kind, "repo": args.repo,
                    "image_src": args.image_src, "platform": args.platform,
                    "release_tag": args.release_tag, "release_date": args.release_date,
-                   "min_severity": args.min_severity},
+                   "min_severity": args.min_severity, "format": args.input_format},
         "scanners": scanners_meta,
         "scan_info": scan_info,
         "agreement": merge.source_agreement(findings, enabled),
@@ -935,6 +983,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "likelihood": lk,
         "warnings": warnings,
     }
+    if args.sbom_info:
+        assessment["sbom"] = args.sbom_info
     pkg_rows = None
     if args.path_kind == "inventory":
         pkg_rows = inventory_report.package_rows(args.inventory, findings)
@@ -944,7 +994,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             r["new_release"] = (f"yes, {hit['age_days']} day{'' if hit['age_days'] == 1 else 's'} old" if hit
                                 else "")
             r["published"] = (age_info.get("published") or {}).get(r["purl"], "")
-        up = upgrade.enrich(net, pkg_rows, latest=not args.no_latest) if net else {"status": "skipped"}
+        up = (upgrade.enrich(net, pkg_rows, latest=not args.no_latest, os_queries=args.os_queries) if net
+              else {"status": "skipped"})
         if up.get("status") == "failed":
             warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
         assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows,

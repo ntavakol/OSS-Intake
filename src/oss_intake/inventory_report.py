@@ -21,9 +21,11 @@ BASE_FIELDS = ["group", "ecosystem", "package", "version", "findings", "critical
 
 def split_purl(purl: str) -> tuple[str, str, str]:
     """pkg:npm/%40ctrl/tinycolor@4.1.1 -> ('npm', '@ctrl/tinycolor', '4.1.1'); Maven names as group:artifact."""
-    ptype, rest = purl[4:].split("/", 1)
+    ptype, rest = purl[4:].split("#", 1)[0].split("?", 1)[0].split("/", 1)
     name, _, version = rest.rpartition("@")
     name = unquote(name)
+    if ptype in ("deb", "rpm", "apk"):
+        name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
     return ptype, (name.replace("/", ":") if ptype == "maven" else name), version
 
 

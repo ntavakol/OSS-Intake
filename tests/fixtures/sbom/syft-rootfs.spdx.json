@@ -1,0 +1,519 @@
+{
+ "spdxVersion": "SPDX-2.3",
+ "dataLicense": "CC0-1.0",
+ "SPDXID": "SPDXRef-DOCUMENT",
+ "name": "rootfs",
+ "documentNamespace": "https://anchore.com/syft/dir/rootfs-d268e94d-3354-44cd-88ef-157827c9d87b",
+ "creationInfo": {
+  "licenseListVersion": "3.27",
+  "creators": [
+   "Organization: Anchore, Inc",
+   "Tool: syft-1.33.0"
+  ],
+  "created": "2026-10-28T00:00:00Z"
+ },
+ "packages": [
+  {
+   "name": "bash",
+   "SPDXID": "SPDXRef-Package-deb-bash-c1b181c9737c4d84",
+   "versionInfo": "5.2.21-2ubuntu4",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:bash:bash:5.2.21-2ubuntu4:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04"
+    }
+   ]
+  },
+  {
+   "name": "curl",
+   "SPDXID": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "versionInfo": "8.5.0-2ubuntu10.16",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:curl:curl:8.5.0-2ubuntu10.16:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04"
+    }
+   ]
+  },
+  {
+   "name": "gzip",
+   "SPDXID": "SPDXRef-Package-deb-gzip-34d36cdb03aa9828",
+   "versionInfo": "1.12-1ubuntu3.2",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:gzip:gzip:1.12-1ubuntu3.2:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04"
+    }
+   ]
+  },
+  {
+   "name": "libc6",
+   "SPDXID": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "versionInfo": "2.39-0ubuntu8.9",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:libc6:libc6:2.39-0ubuntu8.9:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&upstream=glibc"
+    }
+   ]
+  },
+  {
+   "name": "libcurl4t64",
+   "SPDXID": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "versionInfo": "8.5.0-2ubuntu10.16",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:libcurl4t64:libcurl4t64:8.5.0-2ubuntu10.16:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&upstream=curl"
+    }
+   ]
+  },
+  {
+   "name": "libssl3t64",
+   "SPDXID": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "versionInfo": "3.0.13-0ubuntu3.16",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:libssl3t64:libssl3t64:3.0.13-0ubuntu3.16:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&upstream=openssl"
+    }
+   ]
+  },
+  {
+   "name": "libsystemd0",
+   "SPDXID": "SPDXRef-Package-deb-libsystemd0-2e4c26beb47b3567",
+   "versionInfo": "255.4-1ubuntu8.18",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:libsystemd0:libsystemd0:255.4-1ubuntu8.18:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04&upstream=systemd"
+    }
+   ]
+  },
+  {
+   "name": "openssl",
+   "SPDXID": "SPDXRef-Package-deb-openssl-8fc3b6458b1cefb7",
+   "versionInfo": "3.0.13-0ubuntu3.16",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:openssl:openssl:3.0.13-0ubuntu3.16:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04"
+    }
+   ]
+  },
+  {
+   "name": "passwd",
+   "SPDXID": "SPDXRef-Package-deb-passwd-f6e46a5b6eac2c9f",
+   "versionInfo": "1:4.13+dfsg1-4ubuntu3.2",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:passwd:passwd:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/passwd@1%3A4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&upstream=shadow"
+    }
+   ]
+  },
+  {
+   "name": "tar",
+   "SPDXID": "SPDXRef-Package-deb-tar-ab2b9ca964a58e8a",
+   "versionInfo": "1.35+dfsg-3ubuntu0.4",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:tar:tar:1.35\\+dfsg-3ubuntu0.4:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04"
+    }
+   ]
+  },
+  {
+   "name": "zlib1g",
+   "SPDXID": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "versionInfo": "1:1.3.dfsg-3.1ubuntu2.2",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:zlib1g:zlib1g:1\\:1.3.dfsg-3.1ubuntu2.2:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&upstream=zlib"
+    }
+   ]
+  },
+  {
+   "name": "rootfs",
+   "SPDXID": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "primaryPackagePurpose": "FILE"
+  }
+ ],
+ "files": [
+  {
+   "fileName": "var/lib/dpkg/status",
+   "SPDXID": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "fileTypes": [
+    "TEXT"
+   ],
+   "checksums": [
+    {
+     "algorithm": "SHA1",
+     "checksumValue": "3f269535308e5acf6da95cc024423c7a671ed088"
+    },
+    {
+     "algorithm": "SHA256",
+     "checksumValue": "3b6c5b22140ea80f85011c47634fa40e86c689e8b9ace60adbaf448113a50094"
+    }
+   ],
+   "licenseConcluded": "NOASSERTION",
+   "licenseInfoInFiles": [
+    "NOASSERTION"
+   ],
+   "copyrightText": "NOASSERTION"
+  }
+ ],
+ "relationships": [
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libsystemd0-2e4c26beb47b3567",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-gzip-34d36cdb03aa9828",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-openssl-8fc3b6458b1cefb7",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-tar-ab2b9ca964a58e8a",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-bash-c1b181c9737c4d84",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-Package-deb-passwd-f6e46a5b6eac2c9f",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "relatedSpdxElement": "SPDXRef-Package-deb-openssl-8fc3b6458b1cefb7",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "relatedSpdxElement": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relatedSpdxElement": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "relationshipType": "DEPENDENCY_OF"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libsystemd0-2e4c26beb47b3567",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-gzip-34d36cdb03aa9828",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-openssl-8fc3b6458b1cefb7",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-tar-ab2b9ca964a58e8a",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-bash-c1b181c9737c4d84",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-deb-passwd-f6e46a5b6eac2c9f",
+   "relatedSpdxElement": "SPDXRef-File-var-lib-dpkg-status-3e140e9b56072de1",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-bash-c1b181c9737c4d84",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-curl-523f74f9d81af047",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-gzip-34d36cdb03aa9828",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libc6-16ca8f55830ffccb",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libcurl4t64-f6d7977d4619b672",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libssl3t64-8ebb7fd0354055a7",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-libsystemd0-2e4c26beb47b3567",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-openssl-8fc3b6458b1cefb7",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-passwd-f6e46a5b6eac2c9f",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-tar-ab2b9ca964a58e8a",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relatedSpdxElement": "SPDXRef-Package-deb-zlib1g-c10f52bcbfcb1771",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DOCUMENT",
+   "relatedSpdxElement": "SPDXRef-DocumentRoot-Directory-rootfs",
+   "relationshipType": "DESCRIBES"
+  }
+ ]
+}

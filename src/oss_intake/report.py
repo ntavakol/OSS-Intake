@@ -175,6 +175,18 @@ def triage_section(a: dict) -> tuple[str, list] | None:
     return ("Suggested triage", blocks)
 
 
+def not_checked_section(a: dict) -> tuple[str, list] | None:
+    nc = (a.get("sbom") or {}).get("not_checked") or []
+    if not nc:
+        return None
+    rows = [[c["component"], c["system"], c["reason"]] for c in nc[:100]]
+    return (f"SBOM components not checked ({len(nc)})", [
+        ("table", ["Component", "System", "Why not checked"], rows),
+        ("p", "These components are in the SBOM but could not be looked up, so the report says nothing about them: "
+              "not that they are clean." + (f" The first 100 of {len(nc)} are shown; all are in assessment.json."
+                                             if len(nc) > 100 else ""))])
+
+
 def release_age_section(a: dict) -> tuple[str, list] | None:
     ra = a.get("release_age") or {}
     if not ra.get("recent"):
@@ -244,7 +256,7 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     inp = a["inputs"]
     secs: list[tuple[str, list]] = []
 
-    target_row = (["Artifact", f"{inp['path']} ({inp.get('path_kind')})"] if inp.get("path")
+    target_row = (["Artifact", f"{inp['path']} ({inp.get('format') or inp.get('path_kind')})"] if inp.get("path")
                   else ["Image", _v(inp.get("image"))])
     scope_rows = [target_row, ["Repository", _v(inp.get("repo"))],
                   ["Release used for lag", release_used(lag, health)],
@@ -303,6 +315,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     new = release_age_section(a)
     if new:
         secs.append(new)
+    unchecked = not_checked_section(a)
+    if unchecked:
+        secs.append(unchecked)
     dec = decisions_section(a)
     if dec:
         secs.append(dec)

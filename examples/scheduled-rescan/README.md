@@ -13,6 +13,8 @@ What it does each week:
 
 1. Installs a pinned version of oss-intake.
 2. Runs `oss-intake --path inventory.csv --decisions oss-intake/findings.csv --fail-on act,malicious,recent`.
+   Set `INVENTORY` in the workflow to an SBOM file or a folder of SBOMs instead (see
+   [examples/sbom](../sbom/README.md)).
 3. Uploads the reports (executive summary, report, packages.csv, findings.csv) as a build artifact for 90 days.
 4. Opens an issue listing the Act now findings (malicious, known exploited, or a ready-to-use exploit) that no
    decision has set aside, and releases under a week old. The issue title carries a fingerprint of that list, so

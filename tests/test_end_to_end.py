@@ -1281,3 +1281,125 @@ def test_scanner_pins_without_a_scanner_run_are_named(tmp_path, fixtures):
     w = " ".join(json.loads((out / "assessment.json").read_text(encoding="utf-8"))["warnings"])
     assert "--trivy-sha256 has no effect: trivy does not run" in w
     assert "--govulncheck-sha256 has no effect without --reachability" in w
+
+
+# --- 0.9.0: SBOM input ---
+
+_UBUNTU_ADV = {"id": "UBUNTU-CVE-2099-1111", "upstream": ["CVE-2099-1111"], "summary": "openssl flaw",
+               "severity": [{"type": "Ubuntu", "score": "high"}],
+               "affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl"},
+                             "ranges": [{"type": "ECOSYSTEM",
+                                         "events": [{"introduced": "0"}, {"fixed": "3.0.13-0ubuntu3.17"}]}]}]}
+_MAL = {"id": "MAL-2099-7", "summary": "malicious release",
+        "affected": [{"package": {"ecosystem": "npm", "name": "@ctrl/tinycolor", "purl": "pkg:npm/%40ctrl/tinycolor"},
+                      "versions": ["4.1.1"]}]}
+
+
+class SbomHttp(FakeHttp):
+    """OSV that knows one Ubuntu openssl advisory (fixed in ...17) and one malicious npm release."""
+
+    def __init__(self):
+        super().__init__()
+        self.queries = []
+
+    def post_json(self, url, body):
+        self._check(url)
+        out = []
+        for q in body["queries"]:
+            self.queries.append(q)
+            p = q["package"]
+            vulnerable = (p.get("ecosystem") == "Ubuntu:24.04:LTS" and p.get("name") == "openssl"
+                          and q.get("version") == "3.0.13-0ubuntu3.16")
+            if vulnerable:
+                out.append({"vulns": [{"id": _UBUNTU_ADV["id"]}]})
+            elif p.get("purl") == "pkg:npm/%40ctrl/tinycolor@4.1.1":
+                out.append({"vulns": [{"id": _MAL["id"]}]})
+            else:
+                out.append({})
+        return 200, {"results": out}
+
+    def get_json(self, url, params=None):
+        for adv in (_UBUNTU_ADV, _MAL):
+            if url.endswith("/vulns/" + adv["id"]):
+                return 200, adv
+        return super().get_json(url, params)
+
+
+def test_sbom_run_checks_os_and_language_packages(tmp_path, fixtures):
+    import shutil
+
+    sboms = tmp_path / "sboms"
+    sboms.mkdir()
+    shutil.copy(fixtures / "sbom" / "trivy-rootfs.cdx.json", sboms / "web-01.cdx.json")
+    shutil.copy(fixtures / "sbom" / "syft-app.spdx.json", sboms / "portal.spdx.json")
+    out = tmp_path / "o"
+    http = SbomHttp()
+    code = cli.main(["--path", str(sboms), "--out", str(out), "--no-latest", "--release-age-days", "0",
+                     "--as-of", AS_OF, "--label", "owner=Platform team", "--fail-on", "malicious"], http=http)
+    assert code == cli.EXIT_THRESHOLD  # the malicious npm release trips the gate
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["format"] == "CycloneDX 1.7 (1 file), SPDX-2.3 (1 file)"
+    assert a["sbom"]["files"] == 2 and a["sbom"]["not_checked"] == []
+    f = {(x["id"], x["package"]): x for x in a["findings"]}
+    ssl = f[("CVE-2099-1111", "libssl3t64")]  # canonical CVE id from the record's upstream field
+    assert ssl["fixed_versions"] == "3.0.13-0ubuntu3.17" and ssl["severity"] == "HIGH"
+    assert f[("MAL-2099-7", "@ctrl/tinycolor")]["suggested_group"] == "Act now"
+    os_q = [q for q in http.queries if "ecosystem" in q["package"]]
+    assert {"name": "openssl", "ecosystem": "Ubuntu:24.04:LTS"} in [q["package"] for q in os_q]
+    rows = {r["package"]: r for r in csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))}
+    assert rows["libssl3t64"]["upgrade_to"] == "3.0.13-0ubuntu3.17"
+    assert rows["libssl3t64"]["upgrade_left"] == "0 known"  # the minimum fix is asked about too, by source name
+    assert rows["libssl3t64"]["owner"] == "Platform team" and rows["libssl3t64"]["system"] == "rootfs"
+    assert rows["chalk"]["system"] == "app"
+    assert "CycloneDX 1.7 (1 file), SPDX-2.3 (1 file)" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_sbom_components_not_checked_are_reported(tmp_path):
+    bom = {"bomFormat": "CycloneDX", "specVersion": "1.5", "metadata": {"component": {"name": "web-02"}},
+           "components": [{"type": "library", "name": "mystery", "version": "1"},
+                          {"type": "library", "name": "glibc",
+                           "purl": "pkg:rpm/amzn/glibc@2.34-52.amzn2023?distro=amzn-2023"},
+                          {"type": "library", "name": "lodash", "purl": "pkg:npm/lodash@4.17.20"}]}
+    p = tmp_path / "b.cdx.json"
+    p.write_text(json.dumps(bom), encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(p), "--out", str(out), "--no-latest", "--release-age-days", "0"],
+                    http=SbomHttp()) == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert any(w.startswith("2 of 3 SBOM components were not checked") for w in a["warnings"])
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "## SBOM components not checked (2)" in md and "OSV has no Amazon Linux advisories" in md
+    assert "SBOM components not checked" in (out / "report.html").read_text(encoding="utf-8")
+
+
+def test_sbom_with_nothing_checkable_is_refused(tmp_path, capsys):
+    p = tmp_path / "b.json"
+    p.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6",
+                             "components": [{"type": "library", "name": "x", "version": "1"}]}), encoding="utf-8")
+    assert cli.main(["--path", str(p), "--out", str(tmp_path / "o")], http=SbomHttp()) == cli.EXIT_USAGE
+    assert "none of the 1 components can be checked" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("argv,msg", [
+    (["--label", "owner"], "use key=value"),
+    (["--label", "purl=x"], "would replace the package's own purl"),
+])
+def test_label_validation(tmp_path, fixtures, capsys, argv, msg):
+    code = cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(tmp_path / "o"), *argv],
+                    http=SbomHttp())
+    assert code == cli.EXIT_USAGE and msg in capsys.readouterr().err
+
+
+def test_label_needs_an_inventory(tmp_path, capsys):
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--label", "owner=x"]) == cli.EXIT_USAGE
+    assert "--label applies to a package inventory or SBOM" in capsys.readouterr().err
+
+
+def test_label_on_csv_inventory(tmp_path):
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\nnpm,lodash,4.17.20\n", encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(inv), "--out", str(out), "--no-latest", "--release-age-days", "0",
+                     "--label", "Business Unit=Finance"], http=SbomHttp()) == 0
+    (row,) = csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))
+    assert row["business unit"] == "Finance"

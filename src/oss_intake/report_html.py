@@ -434,7 +434,8 @@ def _scope(a: dict) -> str:
     from .report import release_used
 
     rel = release_used(lag, health)
-    target = (["Artifact", Raw(f"{_code(inp['path'])} ({_e(str(inp.get('path_kind')))})")] if inp.get("path")
+    kind = str(inp.get("format") or inp.get("path_kind"))
+    target = (["Artifact", Raw(f"{_code(inp['path'])} ({_e(kind)})")] if inp.get("path")
               else ["Image", _code(inp["image"]) if inp.get("image") else "n/a"])
     rows = [target,
             ["Repository", _code(inp["repo"]) if inp.get("repo") else "n/a"],
@@ -601,6 +602,12 @@ def _decisions(a: dict) -> str:
     return _blocks(decisions_section(a), {1})
 
 
+def _not_checked(a: dict) -> str:
+    from .report import not_checked_section
+
+    return _blocks(not_checked_section(a), set())
+
+
 def _new_releases(a: dict) -> str:
     from .report import release_age_section
 
@@ -655,7 +662,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _decisions(a),
+    parts += [_packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _not_checked(a), _decisions(a),
               _likelihood(a, heuristic_note),
               _lag(a, lag_note),
               f'<div class="grid2">{_health(a)}{_ci(a)}</div>',

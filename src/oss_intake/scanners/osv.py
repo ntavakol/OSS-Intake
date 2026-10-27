@@ -11,6 +11,7 @@ from urllib.parse import unquote
 from ..cvss import base_score, severity_from_score, version_of
 from ..http import Http, HttpError
 from ..models import Finding, normalise_purl, normalise_severity, parse_datetime, purl_without_version
+from ..os_packages import is_os_purl
 from ..versions import split_fixed
 
 NAME = "osv"
@@ -43,15 +44,18 @@ def purls_from_cyclonedx(sbom: dict) -> list[str]:
     return list(seen)
 
 
-def _query_batch(http: Http, purls: list[str]) -> dict[str, list[str]]:
-    """Return {purl: [vuln ids]}, following per-query pagination tokens."""
+def _query_batch(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None) -> dict[str, list[str]]:
+    """Return {purl: [vuln ids]}, following per-query pagination tokens. A purl in os_queries is asked by distro
+    ecosystem, source package name and version instead of by purl (see os_packages)."""
     out: dict[str, list[str]] = {p: [] for p in purls}
     pending = [(p, None) for p in purls]
     while pending:
         chunk, pending = pending[:BATCH], pending[BATCH:]
         queries = []
         for purl, token in chunk:
-            q: dict = {"package": {"purl": purl}}
+            osq = (os_queries or {}).get(purl)
+            q: dict = ({"package": {"name": osq["name"], "ecosystem": osq["ecosystem"]}, "version": osq["version"]}
+                       if osq else {"package": {"purl": purl}})
             if token:
                 q["page_token"] = token
             queries.append(q)
@@ -62,6 +66,49 @@ def _query_batch(http: Http, purls: list[str]) -> dict[str, list[str]]:
             out[purl].extend(v["id"] for v in (res or {}).get("vulns") or [] if v.get("id"))
             if (res or {}).get("next_page_token"):
                 pending.append((purl, res["next_page_token"]))
+    return out
+
+
+def _fixed_for_os(vuln: dict, osq: dict) -> list[str]:
+    """Fix versions for a distro package: the affected entry for its ecosystem and source package."""
+    fixed: list[str] = []
+    for aff in vuln.get("affected") or []:
+        pkg = aff.get("package") or {}
+        if pkg.get("ecosystem") != osq["ecosystem"] or pkg.get("name") != osq["name"]:
+            continue
+        for rng in aff.get("ranges") or []:
+            if rng.get("type") == "GIT":
+                continue
+            fixed += [ev["fixed"] for ev in rng.get("events") or [] if ev.get("fixed")]
+    return split_fixed(fixed)
+
+
+# Distro notices group several CVEs (USN-7000-1, DSA-5700-1); the same CVEs also come as one record each
+# (UBUNTU-CVE-2024-1234, DEBIAN-CVE-2024-1234). When both kinds are returned, the notices are dropped so a CVE
+# is counted once.
+_NOTICE = ("USN-", "DSA-", "DLA-", "DTSA-")
+_PER_CVE = ("UBUNTU-CVE-", "DEBIAN-CVE-")
+
+
+def _per_cve_only(ids: list[str]) -> list[str]:
+    if any(i.startswith(_PER_CVE) for i in ids):
+        return [i for i in ids if not i.startswith(_NOTICE)]
+    return ids
+
+
+def _upstream_cve(vuln: dict) -> set[str]:
+    """A per-CVE distro record names its CVE in 'upstream', not 'aliases'; it is added as an alias so KEV, EPSS
+    and exploit lookups find it. A notice listing several CVEs is left alone: it is not any one of them."""
+    up = [u for u in vuln.get("upstream") or [] if str(u).upper().startswith("CVE-")]
+    return set(up) if len(up) == 1 else set()
+
+
+def os_query_index(os_queries: dict[str, dict] | None) -> dict[str, dict]:
+    """The same queries keyed by purl without version, to ask about another version of a package (the upgrade
+    comparison asks about the minimum fix)."""
+    out: dict[str, dict] = {}
+    for purl, q in (os_queries or {}).items():
+        out.setdefault(purl_without_version(purl) or purl, q)
     return out
 
 
@@ -93,26 +140,48 @@ def _severity(vuln: dict) -> tuple[str, float | None, str]:
     """Severity, v3 base score and its version. OSV gives vectors only; v4 scores need the full CVSS v4
     lookup tables to compute, so OSV contributes v3 scores only."""
     score, version = None, ""
+    distro_rating = ""
+    for s in vuln.get("severity") or []:
+        if str(s.get("type", "")).lower() in ("ubuntu", "debian"):  # a distro's own rating, as text
+            distro_rating = str(s.get("score", ""))
     for s in vuln.get("severity") or []:
         if str(s.get("type", "")).startswith("CVSS_V3"):
             score = base_score(s.get("score", ""))
             if score is not None:
                 version = version_of(s.get("score", ""), "3")
                 break
-    sev = normalise_severity((vuln.get("database_specific") or {}).get("severity"))
+    sev = normalise_severity((vuln.get("database_specific") or {}).get("severity") or distro_rating)
     if sev == "UNKNOWN":
         sev = severity_from_score(score)
     return sev, score, version
 
 
-def scan(http: Http, purls: list[str]) -> list[Finding]:
-    hits = _query_batch(http, purls)
+def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None) -> list[Finding]:
+    """Findings for each purl. OS package purls are asked only when os_queries says how (distro ecosystem,
+    source name); one without is skipped, since a purl query for it would silently find nothing."""
+    by_base = os_query_index(os_queries)
+    queries: dict[str, dict] = {}
+    asked: list[str] = []
+    for purl in purls:
+        if is_os_purl(purl):
+            q = (os_queries or {}).get(purl)
+            if q is None and purl_without_version(purl) in by_base:  # another version, e.g. the minimum fix
+                q = {**by_base[purl_without_version(purl)], "version": purl.rpartition("@")[2]}
+            if q is None:
+                continue
+            queries[purl] = q
+        asked.append(purl)
+    hits = _query_batch(http, asked, queries)
     cache: dict[str, dict] = {}
     findings: list[Finding] = []
     for purl, ids in hits.items():
         name_ver = purl[4:].split("/", 1)[1]
         name, _, version = name_ver.rpartition("@")
         name = unquote(name)  # pkg:npm/%40ctrl/tinycolor -> @ctrl/tinycolor, as Trivy and Grype name it
+        osq = queries.get(purl)
+        if osq:
+            name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
+            ids = _per_cve_only(ids)
         for vid in ids:
             if vid not in cache:
                 status, data = http.get_json(f"{API}/vulns/{vid}")
@@ -124,14 +193,14 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 package=name.replace("/", ":") if purl.startswith("pkg:maven/") else name,
                 installed=version,
                 severity=sev,
-                fixed_versions=_fixed_for(v, purl),
+                fixed_versions=_fixed_for_os(v, osq) if osq else _fixed_for(v, purl),
                 cvss=score,
                 cvss_version=cvss_ver if score is not None else "",
                 cvss_source=("ghsa" if vid.startswith("GHSA-") else "osv") if score is not None else "",
                 published=parse_datetime(v.get("published")),
                 purl=purl,
                 pkg_type=purl[4:].split("/", 1)[0],
-                aliases=set(v.get("aliases") or []),
+                aliases=set(v.get("aliases") or []) | _upstream_cve(v),
                 cwes={str(c).upper() for c in (v.get("database_specific") or {}).get("cwe_ids") or []},
                 title=(v.get("summary") or "")[:200],
                 description=v.get("details") or "",
@@ -139,5 +208,7 @@ def scan(http: Http, purls: list[str]) -> list[Finding]:
                 sources={NAME},
             )
             f.source_severity[NAME] = sev
+            if osq:
+                f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
             findings.append(f)
     return findings

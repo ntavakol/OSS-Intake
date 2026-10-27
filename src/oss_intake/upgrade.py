@@ -78,7 +78,7 @@ def latest_version(http: Http, purl: str) -> str | None:
     return found[0] if found else None
 
 
-def enrich(http: Http, rows: list[dict], latest: bool = True) -> dict:
+def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict | None = None) -> dict:
     info: dict = {"status": "ok", "latest_checked": 0, "latest_unknown": 0, "errors": 0, "latest": latest}
     for r in rows:
         r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",
@@ -108,7 +108,7 @@ def enrich(http: Http, rows: list[dict], latest: bool = True) -> dict:
     if not targets:
         return info
     try:
-        found = osv_mod.scan(http, sorted(targets))
+        found = osv_mod.scan(http, sorted(targets), os_queries)
     except HttpError as exc:
         info.update(status="failed", error=str(exc))
         return info

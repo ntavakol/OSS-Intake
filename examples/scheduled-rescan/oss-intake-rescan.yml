@@ -3,7 +3,8 @@
 # A package that was clean when it was approved can later turn out vulnerable or compromised, so the inventory is
 # checked again on a schedule. Copy this file to .github/workflows/ in the repository that holds the inventory:
 #
-#   inventory.csv                    ecosystem,name,version (+ any label columns: owner, system...)
+#   inventory.csv                    ecosystem,name,version (+ any label columns: owner, system...), or set
+#                                    INVENTORY below to an SBOM file or a folder of SBOMs (see examples/sbom)
 #   oss-intake/findings.csv          the assessor's decisions (optional; the previous run's findings.csv with the
 #                                    triage columns filled in)
 #
@@ -25,6 +26,9 @@ permissions:
   contents: read
   issues: write
 
+env:
+  INVENTORY: inventory.csv   # or a CycloneDX/SPDX file, or a folder of them
+
 concurrency:
   group: oss-intake-rescan
   cancel-in-progress: false
@@ -41,14 +45,14 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install oss-intake (pinned)
-        run: python -m pip install "oss-intake==0.8.0"
+        run: python -m pip install "oss-intake==0.9.0"
       - name: Scan the inventory
         id: scan
         run: |
           decisions=()
           if [ -f oss-intake/findings.csv ]; then decisions=(--decisions oss-intake/findings.csv); fi
           set +e
-          oss-intake --path inventory.csv --out reports "${decisions[@]}" --fail-on act,malicious,recent --quiet
+          oss-intake --path "$INVENTORY" --out reports "${decisions[@]}" --fail-on act,malicious,recent --quiet
           code=$?
           set -e
           echo "exit=$code" >> "$GITHUB_OUTPUT"
@@ -78,7 +82,7 @@ jobs:
             echo "Already reported in an open issue (${fingerprint})"; exit 0
           fi
           {
-            echo "The weekly re-scan of inventory.csv found something to act on:"
+            echo "The weekly re-scan of ${INVENTORY} found something to act on:"
             echo
             sed 's/^/- /' items.txt
             echo

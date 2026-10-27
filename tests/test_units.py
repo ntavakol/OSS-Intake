@@ -1777,3 +1777,210 @@ def test_scheduled_workflow_is_pinned_and_current():
     assert uses and all(re.search(r"@[0-9a-f]{40}$", u) for u in uses)
     assert f'"oss-intake=={__version__}"' in text
     assert "contents: read" in text and "issues: write" in text and "write-all" not in text
+
+
+# --- 0.9.0: SBOM input and OS packages ---
+
+@pytest.mark.parametrize("purl,props,expected", [
+    ("pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&upstream=openssl", {},
+     ("Ubuntu:24.04:LTS", "openssl", "3.0.13-0ubuntu3.16")),
+    ("pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+     {"aquasecurity:trivy:SrcName": "openssl", "aquasecurity:trivy:SrcVersion": "3.0.13",
+      "aquasecurity:trivy:SrcRelease": "0ubuntu3.16"}, ("Ubuntu:24.04:LTS", "openssl", "3.0.13-0ubuntu3.16")),
+    ("pkg:deb/ubuntu/curl@8.9.1-2ubuntu2?distro=ubuntu-24.10", {}, ("Ubuntu:24.10", "curl", "8.9.1-2ubuntu2")),
+    ("pkg:deb/debian/zlib1g@1.2.13.dfsg-1?arch=amd64&epoch=1&distro=debian-12.5&upstream=zlib", {},
+     ("Debian:12", "zlib", "1:1.2.13.dfsg-1")),
+    ("pkg:apk/alpine/libcrypto3@3.1.4-r5?arch=x86_64&distro=3.19.1",
+     {"aquasecurity:trivy:SrcName": "openssl", "aquasecurity:trivy:SrcVersion": "3.1.4-r5"},
+     ("Alpine:v3.19", "openssl", "3.1.4-r5")),
+    ("pkg:apk/alpine/musl@1.2.4-r4?distro=alpine-3.19.1", {}, ("Alpine:v3.19", "musl", "1.2.4-r4")),
+    ("pkg:rpm/rocky/openssl-libs@3.0.7-25.el9_3?arch=x86_64&epoch=1&upstream=openssl-3.0.7-25.el9_3.src.rpm"
+     "&distro=rocky-9.3", {}, ("Rocky Linux:9", "openssl", "1:3.0.7-25.el9_3")),
+    ("pkg:apk/wolfi/glibc@2.40-r3?distro=wolfi-20230201", {}, ("Wolfi", "glibc", "2.40-r3")),
+    ("pkg:deb/debian/curl@7.88.1-10+deb12u14?distro=debian-bookworm", {}, ("Debian:12", "curl", "7.88.1-10+deb12u14")),
+    ("pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.6?distro=ubuntu-noble", {},
+     ("Ubuntu:24.04:LTS", "curl", "8.5.0-2ubuntu10.6")),
+    ("pkg:dpkg/ubuntu/bash@5.2.21-2ubuntu4?distro=ubuntu-24.04", {}, ("Ubuntu:24.04:LTS", "bash", "5.2.21-2ubuntu4")),
+])
+def test_os_package_queries(purl, props, expected):
+    from oss_intake import os_packages
+
+    q, why = os_packages.osv_query(purl, props)
+    assert why == "" and (q["ecosystem"], q["name"], q["version"]) == expected
+
+
+@pytest.mark.parametrize("purl,reason", [
+    ("pkg:rpm/amzn/glibc@2.34-52.amzn2023?distro=amzn-2023", "OSV has no Amazon Linux advisories"),
+    ("pkg:rpm/redhat/openssl@3.0.7-27.el9?distro=redhat-9.4", "per product stream"),
+    ("pkg:deb/debian/zlib1g@1.2.13.dfsg-1", "does not say which debian release"),
+    ("pkg:deb/ubuntu/zlib1g@1.2.13?distro=ubuntu-mantic", "does not say which ubuntu release"),
+])
+def test_os_packages_that_cannot_be_checked_say_why(purl, reason):
+    from oss_intake import os_packages
+
+    q, why = os_packages.osv_query(purl)
+    assert q is None and reason in why
+
+
+def _sbom_dir():
+    from pathlib import Path
+
+    return Path(__file__).resolve().parent / "fixtures" / "sbom"
+
+
+@pytest.mark.parametrize("name,packages,ecosystems", [
+    ("syft-rootfs.cdx.json", 11, {"Ubuntu:24.04:LTS"}), ("syft-rootfs.spdx.json", 11, {"Ubuntu:24.04:LTS"}),
+    ("trivy-rootfs.cdx.json", 11, {"Ubuntu:24.04:LTS"}), ("syft-alp.cdx.json", 3, {"Alpine:v3.19"}),
+    ("trivy-alp.cdx.json", 3, {"Alpine:v3.19"}), ("syft-app.cdx.json", 6, set()),
+    ("syft-app.spdx.json", 6, set()), ("trivy-app.cdx.json", 5, set()),
+])
+def test_real_sboms_are_read(name, packages, ecosystems):
+    # Generated with Syft 1.33.0 and Trivy 0.76.1 from an Ubuntu 24.04 and an Alpine 3.19 package database and a
+    # small npm and Python app; host paths replaced.
+    from oss_intake import inputs, sbom
+
+    path = _sbom_dir() / name
+    assert inputs.classify(path) == "sbom"
+    entries, queries, info = sbom.read(path)
+    assert info["packages"] == packages and info["not_checked"] == []
+    assert {q["ecosystem"] for q in queries.values()} == ecosystems
+    assert all(e["labels"]["system"] in ("rootfs", "alp", "app") for e in entries)
+
+
+def test_sbom_source_packages_and_labels():
+    from oss_intake import sbom
+
+    entries, queries, _ = sbom.read(_sbom_dir() / "trivy-rootfs.cdx.json")
+    q = queries["pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16"]
+    assert (q["name"], q["version"]) == ("openssl", "3.0.13-0ubuntu3.16")
+    e = next(x for x in entries if x["purl"] == "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16")
+    assert e["labels"]["supplier"].startswith("Ubuntu Developers")
+
+
+def test_github_dependency_graph_export_and_folders(tmp_path):
+    import json as _json
+    import shutil
+
+    from oss_intake import inputs, sbom
+
+    spdx = _json.loads((_sbom_dir() / "syft-app.spdx.json").read_text(encoding="utf-8"))
+    (tmp_path / "repo-a.json").write_text(_json.dumps({"sbom": spdx}), encoding="utf-8")
+    shutil.copy(_sbom_dir() / "syft-alp.cdx.json", tmp_path / "host-b.cdx.json")
+    (tmp_path / "README.md").write_text("exports", encoding="utf-8")
+    assert inputs.classify(tmp_path) == "sbom"
+    entries, queries, info = sbom.read(tmp_path)
+    assert info["files"] == 2 and info["packages"] == 9 and set(info["formats"]) == {"SPDX-2.3", "CycloneDX 1.6"}
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "package.json").write_text('{"name": "x"}', encoding="utf-8")
+    assert inputs.classify(app) == "dir"  # an application folder is not an SBOM folder
+
+
+def test_nested_components_and_unchecked_reasons(tmp_path):
+    import json as _json
+
+    from oss_intake import sbom
+
+    bom = {"bomFormat": "CycloneDX", "specVersion": "1.5", "metadata": {"component": {"name": "web", "version": "2"}},
+           "components": [{"type": "application", "name": "inner", "purl": "pkg:npm/inner@1.0.0",
+                           "components": [{"type": "library", "name": "deep", "purl": "pkg:npm/deep@2.0.0"}]},
+                          {"type": "library", "name": "nopurl", "version": "1"},
+                          {"type": "library", "name": "range", "purl": "pkg:npm/r@^1.2.0"},
+                          {"type": "library", "name": "cpe", "cpe": "cpe:2.3:a:x:y:1:*:*:*:*:*:*:*"},
+                          {"type": "operating-system", "name": "ubuntu"}]}
+    p = tmp_path / "b.json"
+    p.write_text(_json.dumps(bom), encoding="utf-8")
+    entries, _, info = sbom.read(p)
+    assert sorted(e["purl"] for e in entries) == ["pkg:npm/deep@2.0.0", "pkg:npm/inner@1.0.0"]
+    assert entries[0]["labels"]["system"] == "web 2"
+    reasons = {c["component"]: c["reason"] for c in info["not_checked"]}
+    assert set(reasons) == {"nopurl 1", "range", "cpe"} and "range or placeholder" in reasons["range"]
+
+
+@pytest.mark.parametrize("content,msg", [
+    ("not json", "not valid JSON"),
+    ('{"bomFormat": "CycloneDX", "specVersion": "9.9", "components": []}', "specVersion '9.9' is not supported"),
+    ('{"spdxVersion": "SPDX-3.0", "packages": []}', "SPDX version 'SPDX-3.0' is not supported"),
+    ('{"hello": 1}', "not a CycloneDX or SPDX JSON SBOM"),
+])
+def test_bad_sboms_stop_before_lookup(tmp_path, content, msg):
+    from oss_intake import sbom
+    from oss_intake.inputs import InputError
+
+    p = tmp_path / "x.json"
+    p.write_text(content, encoding="utf-8")
+    with pytest.raises(InputError, match=msg):
+        sbom.read(p)
+
+
+def test_sbom_size_and_component_limits(tmp_path, monkeypatch):
+    import json as _json
+
+    from oss_intake import sbom
+    from oss_intake.inputs import InputError
+
+    p = tmp_path / "x.json"
+    p.write_text(_json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [
+        {"type": "library", "name": f"p{i}", "purl": f"pkg:npm/p{i}@1.0.0"} for i in range(5)]}), encoding="utf-8")
+    monkeypatch.setattr(sbom, "MAX_COMPONENTS", 3)
+    with pytest.raises(InputError, match="more than 3 components"):
+        sbom.read(p)
+    monkeypatch.setattr(sbom, "MAX_FILE_BYTES", 10)
+    with pytest.raises(InputError, match="larger than"):
+        sbom.read(p)
+
+
+def test_osv_distro_records_counted_once_and_cve_mapped():
+    from oss_intake.scanners import osv
+
+    assert osv._per_cve_only(["USN-7000-1", "UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]) == [
+        "UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]
+    assert osv._per_cve_only(["USN-7000-1"]) == ["USN-7000-1"]
+    assert osv._upstream_cve({"upstream": ["CVE-2024-1"]}) == {"CVE-2024-1"}
+    assert osv._upstream_cve({"upstream": ["CVE-2024-1", "CVE-2024-2"]}) == set()
+    v = {"affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl"},
+                       "ranges": [{"type": "ECOSYSTEM",
+                                   "events": [{"introduced": "0"}, {"fixed": "3.0.13-0ubuntu3.17"}]}]},
+                      {"package": {"ecosystem": "Ubuntu:22.04:LTS", "name": "openssl"},
+                       "ranges": [{"type": "ECOSYSTEM", "events": [{"fixed": "3.0.2-0ubuntu1.18"}]}]}]}
+    assert osv._fixed_for_os(v, {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl"}) == ["3.0.13-0ubuntu3.17"]
+
+
+def test_osv_scan_queries_os_packages_by_ecosystem():
+    from oss_intake.scanners import osv
+
+    class H:
+        def __init__(self):
+            self.queries = []
+
+        def post_json(self, url, body):
+            self.queries += body["queries"]
+            return 200, {"results": [{"vulns": [{"id": "UBUNTU-CVE-2099-1"}]} if "ecosystem" in q["package"] else {}
+                                     for q in body["queries"]]}
+
+        def get_json(self, url, params=None):
+            return 200, {"id": "UBUNTU-CVE-2099-1", "upstream": ["CVE-2099-1"],
+                         "severity": [{"type": "Ubuntu", "score": "medium"}],
+                         "affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl"},
+                                       "ranges": [{"type": "ECOSYSTEM", "events": [{"fixed": "3.0.13-0ubuntu3.17"}]}]}]}
+
+    purl = "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16"
+    qs = {purl: {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl", "version": "3.0.13-0ubuntu3.16",
+                 "os_release": "ubuntu 24.04"}}
+    h = H()
+    (f,) = osv.scan(h, [purl, "pkg:deb/ubuntu/unknown@1"], qs)  # an OS purl with no query is not asked
+    assert h.queries == [{"package": {"name": "openssl", "ecosystem": "Ubuntu:24.04:LTS"},
+                          "version": "3.0.13-0ubuntu3.16"}]
+    assert (f.package, f.installed, f.fixed_versions, f.severity) == (
+        "libssl3t64", "3.0.13-0ubuntu3.16", ["3.0.13-0ubuntu3.17"], "MEDIUM")
+    assert "CVE-2099-1" in f.aliases and f.os_release == "ubuntu 24.04" and f.src_name == "openssl"
+    h2 = H()
+    osv.scan(h2, ["pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.17"], qs)  # the upgrade comparison's question
+    assert h2.queries[0]["version"] == "3.0.13-0ubuntu3.17" and h2.queries[0]["package"]["name"] == "openssl"
+
+
+def test_split_purl_drops_distro_namespace():
+    from oss_intake import inventory_report
+
+    assert inventory_report.split_purl("pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16") == (
+        "deb", "libssl3t64", "3.0.13-0ubuntu3.16")

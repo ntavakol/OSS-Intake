@@ -3,6 +3,7 @@
 Kinds, decided from the path:
   inventory a CSV list of packages (ecosystem, name, version or purl), e.g. exported from a package repository:
             read here and checked against OSV; no scanner is run
+  sbom      a CycloneDX or SPDX JSON SBOM, or a folder holding only SBOMs: read as an inventory (see sbom.py)
   renv      an R renv.lock: read here and checked against OSV's CRAN advisories (neither Trivy nor Grype
             reads renv.lock)
   lockfile  a dependency lockfile the scanners understand (Python, npm, Maven, Go, Rust, PHP, Ruby, .NET):
@@ -42,6 +43,10 @@ class InputError(Exception):
 
 
 def classify(path: Path) -> str:
+    from . import sbom
+
+    if sbom.is_sbom(path):  # by content: an SBOM file, or a folder that holds only SBOMs
+        return "sbom"
     if path.is_dir():
         return "dir"
     if path.name == "renv.lock":

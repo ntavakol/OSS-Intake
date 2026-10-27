@@ -1,0 +1,494 @@
+{
+ "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.7",
+ "version": 1,
+ "metadata": {
+  "tools": {
+   "components": [
+    {
+     "type": "application",
+     "manufacturer": {
+      "name": "Aqua Security Software Ltd."
+     },
+     "group": "aquasecurity",
+     "name": "trivy",
+     "version": "0.76.1"
+    }
+   ]
+  },
+  "component": {
+   "bom-ref": "a5746541-32eb-45b6-9805-8c7c6144b1ee",
+   "type": "application",
+   "name": "rootfs",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:SchemaVersion",
+     "value": "2"
+    }
+   ]
+  }
+ },
+ "components": [
+  {
+   "bom-ref": "7bd8145f-dfb4-411f-90b2-8e82468ab5b8",
+   "type": "operating-system",
+   "name": "ubuntu",
+   "version": "24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:Class",
+     "value": "os-pkgs"
+    },
+    {
+     "name": "aquasecurity:trivy:Type",
+     "value": "ubuntu"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "bash",
+   "version": "5.2.21-2ubuntu4",
+   "purl": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "bash@5.2.21-2ubuntu4"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "bash"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "2ubuntu4"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "5.2.21"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "curl",
+   "version": "8.5.0-2ubuntu10.16",
+   "purl": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "curl@8.5.0-2ubuntu10.16"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "curl"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "2ubuntu10.16"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "8.5.0"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "gzip",
+   "version": "1.12-1ubuntu3.2",
+   "purl": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "gzip@1.12-1ubuntu3.2"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "gzip"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "1ubuntu3.2"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "1.12"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "libc6",
+   "version": "2.39-0ubuntu8.9",
+   "purl": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "libc6@2.39-0ubuntu8.9"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "glibc"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "0ubuntu8.9"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "2.39"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "libcurl4t64",
+   "version": "8.5.0-2ubuntu10.16",
+   "purl": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "libcurl4t64@8.5.0-2ubuntu10.16"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "curl"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "2ubuntu10.16"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "8.5.0"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "libssl3t64",
+   "version": "3.0.13-0ubuntu3.16",
+   "purl": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "libssl3t64@3.0.13-0ubuntu3.16"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "openssl"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "0ubuntu3.16"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "3.0.13"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "libsystemd0",
+   "version": "255.4-1ubuntu8.18",
+   "purl": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "libsystemd0@255.4-1ubuntu8.18"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "systemd"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "1ubuntu8.18"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "255.4"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "openssl",
+   "version": "3.0.13-0ubuntu3.16",
+   "purl": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "openssl@3.0.13-0ubuntu3.16"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "openssl"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "0ubuntu3.16"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "3.0.13"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/passwd@4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "passwd",
+   "version": "1:4.13+dfsg1-4ubuntu3.2",
+   "purl": "pkg:deb/ubuntu/passwd@4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "passwd@1:4.13+dfsg1-4ubuntu3.2"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcEpoch",
+     "value": "1"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "shadow"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "4ubuntu3.2"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "4.13+dfsg1"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "tar",
+   "version": "1.35+dfsg-3ubuntu0.4",
+   "purl": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "tar@1.35+dfsg-3ubuntu0.4"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "tar"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "3ubuntu0.4"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "1.35+dfsg"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/zlib1g@1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "type": "library",
+   "supplier": {
+    "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+   },
+   "name": "zlib1g",
+   "version": "1:1.3.dfsg-3.1ubuntu2.2",
+   "purl": "pkg:deb/ubuntu/zlib1g@1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "zlib1g@1:1.3.dfsg-3.1ubuntu2.2"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "ubuntu"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcEpoch",
+     "value": "1"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcName",
+     "value": "zlib"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcRelease",
+     "value": "3.1ubuntu2.2"
+    },
+    {
+     "name": "aquasecurity:trivy:SrcVersion",
+     "value": "1.3.dfsg"
+    }
+   ]
+  }
+ ],
+ "dependencies": [
+  {
+   "ref": "7bd8145f-dfb4-411f-90b2-8e82468ab5b8",
+   "dependsOn": [
+    "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/passwd@4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+    "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04"
+   ]
+  },
+  {
+   "ref": "a5746541-32eb-45b6-9805-8c7c6144b1ee",
+   "dependsOn": [
+    "7bd8145f-dfb4-411f-90b2-8e82468ab5b8"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/zlib1g@1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&epoch=1"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/zlib1g@1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&epoch=1"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04",
+    "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/passwd@4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:deb/ubuntu/zlib1g@1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&epoch=1",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04"
+   ]
+  }
+ ],
+ "vulnerabilities": []
+}

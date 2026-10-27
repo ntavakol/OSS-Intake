@@ -1,0 +1,530 @@
+{
+ "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.6",
+ "version": 1,
+ "metadata": {
+  "tools": {
+   "components": [
+    {
+     "type": "application",
+     "author": "anchore",
+     "name": "syft",
+     "version": "1.33.0"
+    }
+   ]
+  },
+  "component": {
+   "bom-ref": "e199d6951007e9ac",
+   "type": "file",
+   "name": "rootfs"
+  }
+ },
+ "components": [
+  {
+   "bom-ref": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04&package-id=c1b181c9737c4d84",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "bash",
+   "version": "5.2.21-2ubuntu4",
+   "cpe": "cpe:2.3:a:bash:bash:5.2.21-2ubuntu4:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "1900"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&package-id=523f74f9d81af047",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "curl",
+   "version": "8.5.0-2ubuntu10.16",
+   "cpe": "cpe:2.3:a:curl:curl:8.5.0-2ubuntu10.16:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "524"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04&package-id=34d36cdb03aa9828",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "gzip",
+   "version": "1.12-1ubuntu3.2",
+   "cpe": "cpe:2.3:a:gzip:gzip:1.12-1ubuntu3.2:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "244"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "libc6",
+   "version": "2.39-0ubuntu8.9",
+   "cpe": "cpe:2.3:a:libc6:libc6:2.39-0ubuntu8.9:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&upstream=glibc",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "13432"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "glibc"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&package-id=f6d7977d4619b672&upstream=curl",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "libcurl4t64",
+   "version": "8.5.0-2ubuntu10.16",
+   "cpe": "cpe:2.3:a:libcurl4t64:libcurl4t64:8.5.0-2ubuntu10.16:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&upstream=curl",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "928"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "curl"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8ebb7fd0354055a7&upstream=openssl",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "libssl3t64",
+   "version": "3.0.13-0ubuntu3.16",
+   "cpe": "cpe:2.3:a:libssl3t64:libssl3t64:3.0.13-0ubuntu3.16:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&upstream=openssl",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "6615"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "openssl"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04&package-id=2e4c26beb47b3567&upstream=systemd",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "libsystemd0",
+   "version": "255.4-1ubuntu8.18",
+   "cpe": "cpe:2.3:a:libsystemd0:libsystemd0:255.4-1ubuntu8.18:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04&upstream=systemd",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "1028"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "systemd"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8fc3b6458b1cefb7",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "openssl",
+   "version": "3.0.13-0ubuntu3.16",
+   "cpe": "cpe:2.3:a:openssl:openssl:3.0.13-0ubuntu3.16:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "1885"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/passwd@1%3A4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&package-id=f6e46a5b6eac2c9f&upstream=shadow",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "passwd",
+   "version": "1:4.13+dfsg1-4ubuntu3.2",
+   "cpe": "cpe:2.3:a:passwd:passwd:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/passwd@1%3A4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&upstream=shadow",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "2419"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "shadow"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04&package-id=ab2b9ca964a58e8a",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "tar",
+   "version": "1.35+dfsg-3ubuntu0.4",
+   "cpe": "cpe:2.3:a:tar:tar:1.35\\+dfsg-3ubuntu0.4:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "716"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&package-id=c10f52bcbfcb1771&upstream=zlib",
+   "type": "library",
+   "publisher": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+   "name": "zlib1g",
+   "version": "1:1.3.dfsg-3.1ubuntu2.2",
+   "cpe": "cpe:2.3:a:zlib1g:zlib1g:1\\:1.3.dfsg-3.1ubuntu2.2:*:*:*:*:*:*:*",
+   "purl": "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&upstream=zlib",
+   "properties": [
+    {
+     "name": "syft:package:foundBy",
+     "value": "dpkg-db-cataloger"
+    },
+    {
+     "name": "syft:package:type",
+     "value": "deb"
+    },
+    {
+     "name": "syft:package:metadataType",
+     "value": "dpkg-db-entry"
+    },
+    {
+     "name": "syft:location:0:path",
+     "value": "/var/lib/dpkg/status"
+    },
+    {
+     "name": "syft:metadata:installedSize",
+     "value": "163"
+    },
+    {
+     "name": "syft:metadata:source",
+     "value": "zlib"
+    }
+   ]
+  },
+  {
+   "bom-ref": "os:ubuntu@24.04",
+   "type": "operating-system",
+   "name": "ubuntu",
+   "version": "24.04",
+   "description": "Ubuntu 24.04.5 LTS",
+   "swid": {
+    "tagId": "ubuntu",
+    "name": "ubuntu",
+    "version": "24.04"
+   },
+   "externalReferences": [
+    {
+     "url": "https://bugs.launchpad.net/ubuntu/",
+     "type": "issue-tracker"
+    },
+    {
+     "url": "https://www.ubuntu.com/",
+     "type": "website"
+    },
+    {
+     "url": "https://help.ubuntu.com/",
+     "comment": "support",
+     "type": "other"
+    },
+    {
+     "url": "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy",
+     "comment": "privacyPolicy",
+     "type": "other"
+    }
+   ],
+   "properties": [
+    {
+     "name": "syft:distro:extendedSupport",
+     "value": "false"
+    },
+    {
+     "name": "syft:distro:id",
+     "value": "ubuntu"
+    },
+    {
+     "name": "syft:distro:idLike:0",
+     "value": "debian"
+    },
+    {
+     "name": "syft:distro:prettyName",
+     "value": "Ubuntu 24.04.5 LTS"
+    },
+    {
+     "name": "syft:distro:versionCodename",
+     "value": "noble"
+    },
+    {
+     "name": "syft:distro:versionID",
+     "value": "24.04"
+    }
+   ]
+  },
+  {
+   "bom-ref": "3e140e9b56072de1",
+   "type": "file",
+   "name": "/var/lib/dpkg/status",
+   "hashes": [
+    {
+     "alg": "SHA-1",
+     "content": "3f269535308e5acf6da95cc024423c7a671ed088"
+    },
+    {
+     "alg": "SHA-256",
+     "content": "3b6c5b22140ea80f85011c47634fa40e86c689e8b9ace60adbaf448113a50094"
+    }
+   ]
+  }
+ ],
+ "dependencies": [
+  {
+   "ref": "pkg:deb/ubuntu/bash@5.2.21-2ubuntu4?arch=amd64&distro=ubuntu-24.04&package-id=c1b181c9737c4d84",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&package-id=523f74f9d81af047",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc",
+    "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&package-id=f6d7977d4619b672&upstream=curl",
+    "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&package-id=c10f52bcbfcb1771&upstream=zlib"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/gzip@1.12-1ubuntu3.2?arch=amd64&distro=ubuntu-24.04&package-id=34d36cdb03aa9828",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libcurl4t64@8.5.0-2ubuntu10.16?arch=amd64&distro=ubuntu-24.04&package-id=f6d7977d4619b672&upstream=curl",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc",
+    "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8ebb7fd0354055a7&upstream=openssl",
+    "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&package-id=c10f52bcbfcb1771&upstream=zlib"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8ebb7fd0354055a7&upstream=openssl",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/libsystemd0@255.4-1ubuntu8.18?arch=amd64&distro=ubuntu-24.04&package-id=2e4c26beb47b3567&upstream=systemd",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/openssl@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8fc3b6458b1cefb7",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc",
+    "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?arch=amd64&distro=ubuntu-24.04&package-id=8ebb7fd0354055a7&upstream=openssl"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/passwd@1%3A4.13%2Bdfsg1-4ubuntu3.2?arch=amd64&distro=ubuntu-24.04&package-id=f6e46a5b6eac2c9f&upstream=shadow",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/tar@1.35%2Bdfsg-3ubuntu0.4?arch=amd64&distro=ubuntu-24.04&package-id=ab2b9ca964a58e8a",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  },
+  {
+   "ref": "pkg:deb/ubuntu/zlib1g@1%3A1.3.dfsg-3.1ubuntu2.2?arch=amd64&distro=ubuntu-24.04&package-id=c10f52bcbfcb1771&upstream=zlib",
+   "dependsOn": [
+    "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9?arch=amd64&distro=ubuntu-24.04&package-id=16ca8f55830ffccb&upstream=glibc"
+   ]
+  }
+ ]
+}

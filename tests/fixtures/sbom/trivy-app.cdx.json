@@ -1,0 +1,187 @@
+{
+ "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.7",
+ "version": 1,
+ "metadata": {
+  "tools": {
+   "components": [
+    {
+     "type": "application",
+     "manufacturer": {
+      "name": "Aqua Security Software Ltd."
+     },
+     "group": "aquasecurity",
+     "name": "trivy",
+     "version": "0.76.1"
+    }
+   ]
+  },
+  "component": {
+   "bom-ref": "0ef18a32-befb-4f57-bc3b-cee682eff602",
+   "type": "application",
+   "name": "app",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:SchemaVersion",
+     "value": "2"
+    }
+   ]
+  }
+ },
+ "components": [
+  {
+   "bom-ref": "0651b716-bb20-4601-985a-5cff32a31fe1",
+   "type": "application",
+   "name": "requirements.txt",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:Class",
+     "value": "lang-pkgs"
+    },
+    {
+     "name": "aquasecurity:trivy:Type",
+     "value": "pip"
+    }
+   ]
+  },
+  {
+   "bom-ref": "aaa0514b-efa5-40ef-a259-f6aa77c7f419",
+   "type": "application",
+   "name": "package-lock.json",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:Class",
+     "value": "lang-pkgs"
+    },
+    {
+     "name": "aquasecurity:trivy:Type",
+     "value": "npm"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:npm/%40ctrl/tinycolor@4.1.1",
+   "type": "library",
+   "group": "@ctrl",
+   "name": "tinycolor",
+   "version": "4.1.1",
+   "purl": "pkg:npm/%40ctrl/tinycolor@4.1.1",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "@ctrl/tinycolor@4.1.1"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "npm"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:npm/chalk@5.6.1",
+   "type": "library",
+   "name": "chalk",
+   "version": "5.6.1",
+   "purl": "pkg:npm/chalk@5.6.1",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "chalk@5.6.1"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "npm"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:npm/lodash@4.17.20",
+   "type": "library",
+   "name": "lodash",
+   "version": "4.17.20",
+   "purl": "pkg:npm/lodash@4.17.20",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgID",
+     "value": "lodash@4.17.20"
+    },
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "npm"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:pypi/django@3.2.0",
+   "type": "library",
+   "name": "Django",
+   "version": "3.2.0",
+   "purl": "pkg:pypi/django@3.2.0",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "pip"
+    }
+   ]
+  },
+  {
+   "bom-ref": "pkg:pypi/requests@2.25.0",
+   "type": "library",
+   "name": "requests",
+   "version": "2.25.0",
+   "purl": "pkg:pypi/requests@2.25.0",
+   "properties": [
+    {
+     "name": "aquasecurity:trivy:PkgType",
+     "value": "pip"
+    }
+   ]
+  }
+ ],
+ "dependencies": [
+  {
+   "ref": "0651b716-bb20-4601-985a-5cff32a31fe1",
+   "dependsOn": [
+    "pkg:pypi/django@3.2.0",
+    "pkg:pypi/requests@2.25.0"
+   ]
+  },
+  {
+   "ref": "0ef18a32-befb-4f57-bc3b-cee682eff602",
+   "dependsOn": [
+    "0651b716-bb20-4601-985a-5cff32a31fe1",
+    "aaa0514b-efa5-40ef-a259-f6aa77c7f419"
+   ]
+  },
+  {
+   "ref": "aaa0514b-efa5-40ef-a259-f6aa77c7f419",
+   "dependsOn": [
+    "pkg:npm/%40ctrl/tinycolor@4.1.1",
+    "pkg:npm/chalk@5.6.1",
+    "pkg:npm/lodash@4.17.20"
+   ]
+  },
+  {
+   "ref": "pkg:npm/%40ctrl/tinycolor@4.1.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:npm/chalk@5.6.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:npm/lodash@4.17.20",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/django@3.2.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/requests@2.25.0",
+   "dependsOn": []
+  }
+ ],
+ "vulnerabilities": []
+}

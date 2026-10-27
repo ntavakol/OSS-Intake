@@ -1,0 +1,346 @@
+{
+ "spdxVersion": "SPDX-2.3",
+ "dataLicense": "CC0-1.0",
+ "SPDXID": "SPDXRef-DOCUMENT",
+ "name": "app",
+ "documentNamespace": "https://anchore.com/syft/dir/app-07881dd5-e122-448e-9945-ccbb6296eb4d",
+ "creationInfo": {
+  "licenseListVersion": "3.27",
+  "creators": [
+   "Organization: Anchore, Inc",
+   "Tool: syft-1.33.0"
+  ],
+  "created": "2026-10-28T00:00:00Z"
+ },
+ "packages": [
+  {
+   "name": "@ctrl/tinycolor",
+   "SPDXID": "SPDXRef-Package-npm--ctrl-tinycolor-24170a7beb716654",
+   "versionInfo": "4.1.1",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "https://registry.npmjs.org/@ctrl/tinycolor/-/tinycolor-4.1.1.tgz",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed node module manifest file: /package-lock.json",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:\\@ctrl\\/tinycolor:\\@ctrl\\/tinycolor:4.1.1:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:npm/%40ctrl/tinycolor@4.1.1"
+    }
+   ]
+  },
+  {
+   "name": "chalk",
+   "SPDXID": "SPDXRef-Package-npm-chalk-f36ea5286f5f7af7",
+   "versionInfo": "5.6.1",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "https://registry.npmjs.org/chalk/-/chalk-5.6.1.tgz",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed node module manifest file: /package-lock.json",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:chalk:chalk:5.6.1:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:npm/chalk@5.6.1"
+    }
+   ]
+  },
+  {
+   "name": "demo",
+   "SPDXID": "SPDXRef-Package-npm-demo-43cd0a56be954170",
+   "versionInfo": "1.0.0",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed node module manifest file: /package-lock.json",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:demo:demo:1.0.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:npm/demo@1.0.0"
+    }
+   ]
+  },
+  {
+   "name": "django",
+   "SPDXID": "SPDXRef-Package-python-django-17cece323eb9e13c",
+   "versionInfo": "3.2.0",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python-django:python-django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python-django:python_django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python_django:python-django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python_django:python_django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:django:python-django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:django:python_django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python-django:django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python:python-django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python:python_django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python_django:django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:django:django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python:django:3.2.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:pypi/django@3.2.0"
+    }
+   ]
+  },
+  {
+   "name": "lodash",
+   "SPDXID": "SPDXRef-Package-npm-lodash-8b06c79170393cb2",
+   "versionInfo": "4.17.20",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed node module manifest file: /package-lock.json",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:lodash:lodash:4.17.20:*:*:*:*:node.js:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:npm/lodash@4.17.20"
+    }
+   ]
+  },
+  {
+   "name": "requests",
+   "SPDXID": "SPDXRef-Package-python-requests-4490ba0ca521985d",
+   "versionInfo": "2.25.0",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "externalRefs": [
+    {
+     "referenceCategory": "SECURITY",
+     "referenceType": "cpe23Type",
+     "referenceLocator": "cpe:2.3:a:python:requests:2.25.0:*:*:*:*:*:*:*"
+    },
+    {
+     "referenceCategory": "PACKAGE-MANAGER",
+     "referenceType": "purl",
+     "referenceLocator": "pkg:pypi/requests@2.25.0"
+    }
+   ]
+  },
+  {
+   "name": "app",
+   "SPDXID": "SPDXRef-DocumentRoot-Directory-app",
+   "supplier": "NOASSERTION",
+   "downloadLocation": "NOASSERTION",
+   "filesAnalyzed": false,
+   "licenseConcluded": "NOASSERTION",
+   "licenseDeclared": "NOASSERTION",
+   "copyrightText": "NOASSERTION",
+   "primaryPackagePurpose": "FILE"
+  }
+ ],
+ "files": [
+  {
+   "fileName": "package-lock.json",
+   "SPDXID": "SPDXRef-File-package-lock.json-fd71c2238fc07657",
+   "fileTypes": [
+    "APPLICATION"
+   ],
+   "checksums": [
+    {
+     "algorithm": "SHA1",
+     "checksumValue": "93301ad4c908433bafe8daece900d839a106c4e5"
+    },
+    {
+     "algorithm": "SHA256",
+     "checksumValue": "27e871ddd8aaf57c11ebbb35bca861bb3055fc0398fbe6522adebb63fcde2ec5"
+    }
+   ],
+   "licenseConcluded": "NOASSERTION",
+   "licenseInfoInFiles": [
+    "NOASSERTION"
+   ],
+   "copyrightText": "NOASSERTION"
+  },
+  {
+   "fileName": "requirements.txt",
+   "SPDXID": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+   "fileTypes": [
+    "TEXT"
+   ],
+   "checksums": [
+    {
+     "algorithm": "SHA1",
+     "checksumValue": "4b8fcec6e143fdd399cec14baf9aef29fa3ea853"
+    },
+    {
+     "algorithm": "SHA256",
+     "checksumValue": "6d4ed60927c89ee7959325474341dcc6e6f65008ffbe7ced79f99faaa74b6fa3"
+    }
+   ],
+   "licenseConcluded": "NOASSERTION",
+   "licenseInfoInFiles": [
+    "NOASSERTION"
+   ],
+   "copyrightText": "NOASSERTION"
+  }
+ ],
+ "relationships": [
+  {
+   "spdxElementId": "SPDXRef-Package-python-django-17cece323eb9e13c",
+   "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-npm--ctrl-tinycolor-24170a7beb716654",
+   "relatedSpdxElement": "SPDXRef-File-package-lock.json-fd71c2238fc07657",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-npm-demo-43cd0a56be954170",
+   "relatedSpdxElement": "SPDXRef-File-package-lock.json-fd71c2238fc07657",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-python-requests-4490ba0ca521985d",
+   "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-npm-lodash-8b06c79170393cb2",
+   "relatedSpdxElement": "SPDXRef-File-package-lock.json-fd71c2238fc07657",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-Package-npm-chalk-f36ea5286f5f7af7",
+   "relatedSpdxElement": "SPDXRef-File-package-lock.json-fd71c2238fc07657",
+   "relationshipType": "OTHER",
+   "comment": "evident-by: indicates the package's existence is evident by the given file"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-npm--ctrl-tinycolor-24170a7beb716654",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-npm-chalk-f36ea5286f5f7af7",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-npm-demo-43cd0a56be954170",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-python-django-17cece323eb9e13c",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-npm-lodash-8b06c79170393cb2",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DocumentRoot-Directory-app",
+   "relatedSpdxElement": "SPDXRef-Package-python-requests-4490ba0ca521985d",
+   "relationshipType": "CONTAINS"
+  },
+  {
+   "spdxElementId": "SPDXRef-DOCUMENT",
+   "relatedSpdxElement": "SPDXRef-DocumentRoot-Directory-app",
+   "relationshipType": "DESCRIBES"
+  }
+ ]
+}
