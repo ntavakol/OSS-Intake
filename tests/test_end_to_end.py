@@ -1382,7 +1382,8 @@ def test_sbom_with_nothing_checkable_is_refused(tmp_path, capsys):
 
 @pytest.mark.parametrize("argv,msg", [
     (["--label", "owner"], "use key=value"),
-    (["--label", "purl=x"], "would replace the package's own purl"),
+    (["--label", "purl=x"], "is a column oss-intake fills in"),
+    (["--label", "critical=0"], "is a column oss-intake fills in"),
 ])
 def test_label_validation(tmp_path, fixtures, capsys, argv, msg):
     code = cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(tmp_path / "o"), *argv],
@@ -1403,3 +1404,12 @@ def test_label_on_csv_inventory(tmp_path):
                      "--label", "Business Unit=Finance"], http=SbomHttp()) == 0
     (row,) = csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))
     assert row["business unit"] == "Finance"
+
+
+def test_label_does_not_overwrite_what_a_package_has(tmp_path, fixtures):
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(out), "--no-latest",
+                     "--release-age-days", "0", "--label", "system=prod", "--label", "owner=Web"],
+                    http=SbomHttp()) in (0, 3)
+    rows = list(csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline="")))
+    assert {r["system"] for r in rows} == {"app"} and {r["owner"] for r in rows} == {"Web"}

@@ -20,11 +20,21 @@ from urllib.parse import parse_qs, unquote
 OS_TYPES = {"deb", "dpkg", "rpm", "apk"}
 _UBUNTU_REL = re.compile(r"^(\d{2})\.(\d{2})")
 _SRPM = re.compile(r"^(?P<name>.+)-[^-]+-[^-]+\.src\.rpm$")
+_SRC_DPKG = re.compile(r"^(?P<name>.+?)-\d[^/]*\.src\.dpkg$")  # Amazon Inspector: libss2-1.44.5-1+deb10u3.src.dpkg
 
 # Families OSV has no data for: listed with the reason instead of being queried.
 NO_OSV_DATA = {"amzn": "Amazon Linux", "amazon": "Amazon Linux", "rhel": "Red Hat Enterprise Linux",
                "redhat": "Red Hat Enterprise Linux", "centos": "CentOS", "fedora": "Fedora",
-               "ol": "Oracle Linux", "oracle": "Oracle Linux", "photon": "Photon OS", "mariner": "CBL-Mariner"}
+               "ol": "Oracle Linux", "oracle": "Oracle Linux"}
+# Families OSV does cover, under ecosystems oss-intake does not map yet.
+NOT_MAPPED = {"photon": "Photon OS", "mariner": "Azure Linux", "azurelinux": "Azure Linux", "sles": "SUSE",
+              "suse": "SUSE", "opensuse": "openSUSE", "opensuse-leap": "openSUSE", "opensuse-tumbleweed": "openSUSE"}
+# Which distro families a package type can belong to: a mismatch means the SBOM tool mislabelled it (an Alpine
+# root file system found inside an Ubuntu host, say), and a query would ask the wrong distro.
+FAMILIES = {"deb": {"debian", "ubuntu"}, "dpkg": {"debian", "ubuntu"}, "apk": {"alpine", "wolfi", "chainguard"},
+            "rpm": {"rocky", "rocky-linux", "rockylinux", "almalinux", "alma", "amzn", "amazon", "rhel", "redhat",
+                    "centos", "fedora", "ol", "oracle", "photon", "mariner", "azurelinux", "sles", "suse",
+                    "opensuse", "opensuse-leap", "opensuse-tumbleweed"}}
 # Red Hat is in OSV, but under CPE-style ecosystems per product stream (Red Hat:enterprise_linux:9::appstream)
 # that a package's purl does not state, so a query would be a guess.
 NO_OSV_REASON = {"Red Hat Enterprise Linux": "OSV files Red Hat advisories per product stream, which the SBOM "
@@ -72,6 +82,8 @@ def ecosystem(family: str, release: str) -> tuple[str | None, str]:
     if family in NO_OSV_DATA:
         name = NO_OSV_DATA[family]
         return None, NO_OSV_REASON.get(name, f"OSV has no {name} advisories")
+    if family in NOT_MAPPED:
+        return None, f"oss-intake does not query OSV's {NOT_MAPPED[family]} advisories yet"
     if family in ("wolfi", "chainguard"):
         return family.capitalize(), ""
     if not release:
@@ -104,6 +116,9 @@ def source_name(ptype: str, name: str, quals: dict, props: dict) -> tuple[str, s
         if ptype == "rpm":
             m = _SRPM.match(up)
             return (m.group("name"), "") if m else (up, "")
+        m = _SRC_DPKG.match(up)
+        if m:
+            return m.group("name"), ""
         src, _, ver = up.partition("@")  # Syft may write 'upstream=name@version' when they differ
         return src, ver
     src = props.get("aquasecurity:trivy:SrcName", "")
@@ -125,6 +140,8 @@ def osv_query(purl: str, props: dict | None = None) -> tuple[dict | None, str]:
     if not name or not version:
         return None, "no name or version in the purl"
     family, release = _distro(namespace, quals)
+    if family and family not in FAMILIES.get(ptype, set()):
+        return None, f"the SBOM names distro '{family}' for a {ptype} package, which cannot be"
     eco, why = ecosystem(family, release)
     if not eco:
         return None, why
@@ -133,4 +150,26 @@ def osv_query(purl: str, props: dict | None = None) -> tuple[dict | None, str]:
     if not src_version:
         src_version = f"{epoch}:{version}" if epoch and epoch != "0" and ":" not in version else version
     return {"ecosystem": eco, "name": src, "version": src_version,
-            "os_release": f"{family} {release}".strip()}, ""
+            "os_release": f"{family} {release}".strip(), "distro": distro_key(family, release)}, ""
+
+
+def distro_key(family: str, release: str) -> str:
+    """A canonical distro qualifier for the package's identity, so the same package version in two releases
+    (zlib 1.3.1-r0 in Alpine 3.19 and 3.20) stays two packages: 'alpine-3.19', 'ubuntu-24.04', 'debian-12'."""
+    if family in ("alpine",):
+        release = ".".join(release.split(".")[:2])
+    elif family in ("debian", "rocky", "rocky-linux", "rockylinux", "almalinux", "alma"):
+        release = release.split(".")[0]
+    elif family == "ubuntu":
+        m = _UBUNTU_REL.match(release)
+        release = f"{m.group(1)}.{m.group(2)}" if m else release
+    return f"{family}-{release}" if release else family
+
+
+def identity(purl: str) -> str:
+    """Package identity without version: for an OS package, type/namespace/name plus its canonical distro, so
+    findings and upgrade questions for two releases never mix. Used by merge and the OSV scan."""
+    ptype, namespace, name, _, quals = _parts(purl)
+    family, release = _distro(namespace, quals)
+    base = f"pkg:{'deb' if ptype == 'dpkg' else ptype}/{namespace + '/' if namespace else ''}{name}"
+    return f"{base}?distro={distro_key(family, release)}" if family or release else base

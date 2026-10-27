@@ -18,16 +18,18 @@ aws inspector2 create-sbom-export --report-format CYCLONEDX_1_4 \
   --s3-destination bucketName=my-sbom-bucket,keyPrefix=inspector,kmsKeyArn=arn:aws:kms:REGION:ACCOUNT:key/KEY-ID
 aws inspector2 get-sbom-export --report-id REPORT-ID          # wait for SUCCEEDED
 aws s3 sync s3://my-sbom-bucket/inspector ./inspector-export
-mkdir -p sboms && find ./inspector-export -name '*.json' -exec cp {} sboms/ \;
+oss-intake --path ./inspector-export --out ./reports      # subfolders are read too
 ```
 
-Check the first run's "SBOM components not checked" section: OS packages whose release Inspector does not state
-are listed there rather than guessed, and Amazon Linux packages are listed because OSV has no Amazon Linux data
-(Inspector itself covers those).
+Check the first run's "SBOM components not checked" section. Inspector's OS package URLs
+(`pkg:dpkg/libss2@...?upstream=libss2-1.44.5-1+deb10u3.src.dpkg`) may not name the distro release, and those are
+listed there rather than guessed; so are Amazon Linux packages, since OSV has no Amazon Linux data (Inspector
+itself covers those). Language packages are checked either way.
 
 ## Syft or Trivy (hosts, images, folders; on-premises and other clouds)
 
 ```bash
+mkdir -p sboms
 syft scan dir:/ -o cyclonedx-json=sboms/$(hostname).cdx.json                   # a Linux host
 syft scan registry:ghcr.io/owner/app:1.2.3 -o cyclonedx-json=sboms/app-1.2.3.cdx.json
 trivy image --format cyclonedx --output sboms/app-1.2.3.cdx.json ghcr.io/owner/app:1.2.3
@@ -35,7 +37,10 @@ trivy rootfs --format cyclonedx --output sboms/$(hostname).cdx.json /
 ```
 
 Pin and verify the tool as for the scanners (see the main README). Both write the distro release and source
-package that oss-intake needs for OS packages.
+package that oss-intake needs for OS packages. On a host, `syft scan dir:/` also finds root file systems nested
+inside it (container layers, chroots); a package whose type does not match the distro it is labelled with is
+listed as not checked. `trivy rootfs` downloads Trivy's Java database when the host has JAR files, so it needs
+network access to ghcr.io.
 
 ## GitHub dependency graph (every repository in an organisation)
 

@@ -11,7 +11,7 @@ from urllib.parse import unquote
 from ..cvss import base_score, severity_from_score, version_of
 from ..http import Http, HttpError
 from ..models import Finding, normalise_purl, normalise_severity, parse_datetime, purl_without_version
-from ..os_packages import is_os_purl
+from ..os_packages import identity, is_os_purl
 from ..versions import split_fixed
 
 NAME = "osv"
@@ -90,10 +90,20 @@ _NOTICE = ("USN-", "DSA-", "DLA-", "DTSA-")
 _PER_CVE = ("UBUNTU-CVE-", "DEBIAN-CVE-")
 
 
-def _per_cve_only(ids: list[str]) -> list[str]:
-    if any(i.startswith(_PER_CVE) for i in ids):
-        return [i for i in ids if not i.startswith(_NOTICE)]
-    return ids
+def _per_cve_only(ids: list[str], records: dict[str, dict] | None = None) -> list[str]:
+    """Drop a notice only when every CVE it names is also returned as its own record, so nothing is lost."""
+    covered = set()
+    for i in ids:
+        if i.startswith(_PER_CVE):
+            covered |= _upstream_cve((records or {}).get(i) or {}) or {i.split("-", 1)[1]}
+    out = []
+    for i in ids:
+        if i.startswith(_NOTICE) and covered:
+            named = {u for u in ((records or {}).get(i) or {}).get("upstream") or [] if str(u).startswith("CVE-")}
+            if named and named <= covered:
+                continue
+        out.append(i)
+    return out
 
 
 def _upstream_cve(vuln: dict) -> set[str]:
@@ -108,7 +118,7 @@ def os_query_index(os_queries: dict[str, dict] | None) -> dict[str, dict]:
     comparison asks about the minimum fix)."""
     out: dict[str, dict] = {}
     for purl, q in (os_queries or {}).items():
-        out.setdefault(purl_without_version(purl) or purl, q)
+        out.setdefault(identity(purl), q)
     return out
 
 
@@ -165,8 +175,8 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
     for purl in purls:
         if is_os_purl(purl):
             q = (os_queries or {}).get(purl)
-            if q is None and purl_without_version(purl) in by_base:  # another version, e.g. the minimum fix
-                q = {**by_base[purl_without_version(purl)], "version": purl.rpartition("@")[2]}
+            if q is None and identity(purl) in by_base:  # another version of it, e.g. the minimum fix
+                q = {**by_base[identity(purl)], "version": unquote(purl.split("?", 1)[0].rpartition("@")[2])}
             if q is None:
                 continue
             queries[purl] = q
@@ -175,17 +185,23 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
     cache: dict[str, dict] = {}
     findings: list[Finding] = []
     for purl, ids in hits.items():
-        name_ver = purl[4:].split("/", 1)[1]
+        name_ver = purl.split("?", 1)[0][4:].split("/", 1)[1]
         name, _, version = name_ver.rpartition("@")
-        name = unquote(name)  # pkg:npm/%40ctrl/tinycolor -> @ctrl/tinycolor, as Trivy and Grype name it
-        osq = queries.get(purl)
-        if osq:
-            name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
-            ids = _per_cve_only(ids)
+        name, version = unquote(name), unquote(version)  # pkg:npm/%40ctrl/tinycolor -> @ctrl/tinycolor
         for vid in ids:
             if vid not in cache:
                 status, data = http.get_json(f"{API}/vulns/{vid}")
                 cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid}
+        osq = queries.get(purl)
+        note = ""
+        if osq:
+            name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
+            ids = _per_cve_only(ids, cache)
+            if osq["version"] != version:
+                # Distro fixes are versions of the source package; compare like with like.
+                note = f"{name} {version} is built from {osq['name']} {osq['version']}; versions are the source's"
+                version = osq["version"]
+        for vid in ids:
             v = cache[vid]
             sev, score, cvss_ver = _severity(v)
             f = Finding(
@@ -210,5 +226,6 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
             f.source_severity[NAME] = sev
             if osq:
                 f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
+                f.note = note
             findings.append(f)
     return findings

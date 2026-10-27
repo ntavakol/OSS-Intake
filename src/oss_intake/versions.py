@@ -9,6 +9,7 @@ so an occasional mis-ordering affects a date estimate, never which findings are 
 from __future__ import annotations
 
 import re
+from urllib.parse import unquote
 
 _PRE = {"dev": -5, "snapshot": -5, "alpha": -4, "a": -4, "beta": -3, "b": -3, "m": -2, "milestone": -2,
         "rc": -1, "cr": -1, "pre": -1}
@@ -38,7 +39,9 @@ def strip_label(v: str) -> str:
     return _LABEL.sub("", v.strip())
 
 
-def _key(v: str) -> list[tuple[int, int, str]]:
+def _key(v: str, pre: bool = True) -> list[tuple[int, int, str]]:
+    """Comparable segments. pre=False reads letters as plain text, never as a pre-release marker: in a Debian
+    revision '+b1' (a rebuild) or 'ubuntu' is newer, not older."""
     v = v.strip().lstrip("vV")
     # Debian-style epoch "1:2.3" -> drop epoch only for ordering within one package.
     if ":" in v and v.split(":", 1)[0].isdigit():
@@ -51,9 +54,9 @@ def _key(v: str) -> list[tuple[int, int, str]]:
             out.append((1, int(tok), ""))
         else:
             t = tok.lower()
-            if t in _RELEASE:
+            if t in _RELEASE and pre:
                 continue
-            out.append((0, _PRE.get(t, 0), t))
+            out.append((0, _PRE.get(t, 0) if pre else 0, t))
     return out
 
 
@@ -83,17 +86,27 @@ def _split_revision(v: str) -> tuple[str, str]:
 
 
 def compare(a: str, b: str) -> int:
+    a, b = unquote(a), unquote(b)  # versions read from purls may be encoded: 1%3A2.39 is 1:2.39
+    # Debian's tilde sorts before anything, even the end of the version: 2.4.62-1~deb12u2 < 2.4.62-1.
+    if "~" in a or "~" in b:
+        (a1, ta, a2), (b1, tb, b2) = a.partition("~"), b.partition("~")
+        c = compare(a1, b1)
+        if c or (not ta and not tb):
+            return c
+        if ta and tb:
+            return compare(a2, b2)
+        return -1 if ta else 1
     (base_a, rev_a), (base_b, rev_b) = _split_revision(a), _split_revision(b)
     if rev_a or rev_b:
         c = _compare(base_a, base_b)
         if c:
             return c
-        return _compare(rev_a.lstrip("r") or "0", rev_b.lstrip("r") or "0")
+        return _compare(rev_a.lstrip("r") or "0", rev_b.lstrip("r") or "0", pre=False)
     return _compare(a, b)
 
 
-def _compare(a: str, b: str) -> int:
-    ka, kb = _key(a), _key(b)
+def _compare(a: str, b: str, pre: bool = True) -> int:
+    ka, kb = _key(a, pre), _key(b, pre)
     for x, y in zip(ka, kb, strict=False):
         if x != y:
             return -1 if x < y else 1

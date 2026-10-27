@@ -57,16 +57,41 @@ def _peek(path: Path) -> str | None:
     return None
 
 
+# Files an SBOM folder may also hold: notes, not packages.
+_DOC_SUFFIXES = (".md", ".txt", ".yml", ".yaml", ".rst", ".html", ".csv", ".log")
+
+
+def _walk(path: Path) -> list[Path]:
+    """Regular files under a folder, subfolders included (an S3 sync keeps the bucket's folders), skipping hidden
+    files and folders."""
+    out = []
+    for p in sorted(path.rglob("*")):
+        rel = p.relative_to(path).parts
+        if p.is_file() and not any(part.startswith(".") for part in rel):
+            out.append(p)
+            if len(out) > MAX_FILES * 2:
+                break
+    return out
+
+
+def _is_doc(p: Path) -> bool:
+    return p.suffix.lower() in _DOC_SUFFIXES or p.name.upper().startswith(("README", "LICENSE", "NOTICE"))
+
+
 def is_sbom(path: Path) -> bool:
+    """An SBOM file, or a folder (subfolders included) whose files are all SBOMs, apart from notes such as a
+    README. A folder holding anything else, say package.json or a JAR, is an application folder and is scanned.
+    A folder that mixes SBOMs with other JSON files is refused by read() with the names, not guessed."""
     if path.is_file():
         return path.suffix.lower() == ".json" and _peek(path) is not None
     if path.is_dir():
-        files = [p for p in path.iterdir() if p.is_file() and not p.name.startswith(".")]
-        jsons = [p for p in files if p.suffix.lower() == ".json"]
-        # A folder counts as an SBOM folder only when every file in it is a JSON SBOM (a README is allowed), so
-        # an application folder that happens to hold package.json is still scanned as a folder.
-        others = [p for p in files if p.suffix.lower() not in (".json", ".md", ".txt")]
-        return bool(jsons) and not others and all(_peek(p) for p in jsons[:50])
+        files = [p for p in _walk(path) if not _is_doc(p)]
+        if not files or any(p.suffix.lower() != ".json" for p in files):
+            return False
+        if any(p.name in ("package.json", "package-lock.json", "composer.json", "npm-shrinkwrap.json")
+               for p in files):
+            return False
+        return any(_peek(p) for p in files[:200])
     return False
 
 
@@ -128,7 +153,9 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
         if not isinstance(p, dict):
             continue
         name = str(p.get("name") or "") + (f" {p.get('versionInfo')}" if p.get("versionInfo") else "")
-        if p.get("SPDXID") in described:
+        # The document describes one root (a repository, an image) or, as Amazon Inspector writes it, each package.
+        # Only a single described element is the subject; several are packages like any other.
+        if len(described) == 1 and p.get("SPDXID") in described:
             subject = str(p.get("name") or subject)
             continue
         purls = [r.get("referenceLocator") for r in p.get("externalRefs") or [] if isinstance(r, dict)
@@ -144,9 +171,13 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
 def files_of(path: Path) -> list[Path]:
     if path.is_file():
         return [path]
-    files = sorted(p for p in path.iterdir() if p.is_file() and p.suffix.lower() == ".json")
+    files = [p for p in _walk(path) if not _is_doc(p)]
     if len(files) > MAX_FILES:
         raise InputError(f"{path.name} holds more than {MAX_FILES} SBOM files; split the folder")
+    others = [str(p.relative_to(path)) for p in files if _peek(p) is None]
+    if others:
+        raise InputError(f"{path.name} mixes SBOMs with other files ({', '.join(others[:5])}"
+                         f"{' ...' if len(others) > 5 else ''}); pass a folder that holds only SBOMs")
     return files
 
 
@@ -203,9 +234,11 @@ def _purl(raw: str, props: dict, os_queries: dict) -> tuple[str | None, str]:
         query, why = os_packages.osv_query(raw, props)
         if not query:
             return None, why
-        purl = normalise_purl(raw.replace("pkg:dpkg/", "pkg:deb/", 1))
-        if not purl:
+        base = normalise_purl(raw.replace("pkg:dpkg/", "pkg:deb/", 1))
+        if not base:
             return None, "unreadable package URL"
+        # The distro stays in the package's identity: the same version in two releases is two packages.
+        purl = f"{base}?distro={query['distro']}"
         os_queries[purl] = query
         return purl, ""
     try:

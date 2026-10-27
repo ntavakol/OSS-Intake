@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from functools import cmp_to_key
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from . import versions as versions_mod
 from .enrich.fixdates import API, _system_and_name
@@ -36,7 +36,8 @@ def is_prerelease(v: str) -> bool:
 def breaking(current: str, target: str) -> bool:
     """True when moving from current to target crosses a semver compatibility line: a new major version, or a
     new minor version while the major is 0 (0.x releases may break on any minor bump)."""
-    a, b = _NUM.match(current or ""), _NUM.match(target or "")
+    current, target = (re.sub(r"^\d+:", "", unquote(v or "")) for v in (current, target))  # drop an epoch
+    a, b = _NUM.match(current), _NUM.match(target)
     if not a or not b:
         return False
     a_major, b_major = int(a.group(1)), int(b.group(1))
@@ -48,7 +49,9 @@ def breaking(current: str, target: str) -> bool:
 
 
 def _with_version(purl: str, version: str) -> str:
-    return f"{purl.rsplit('@', 1)[0]}@{version}"
+    """The same package at another version, keeping qualifiers (an OS package's distro)."""
+    head, _, query = purl.partition("?")
+    return f"{head.rsplit('@', 1)[0]}@{version}" + (f"?{query}" if query else "")
 
 
 def latest_release(http: Http, purl: str) -> tuple[str, str] | None:
@@ -84,7 +87,7 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
         r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",
                   "latest_left": None, "latest_major": False})
         if r["upgrade_to"] and not r["malicious"]:
-            r["upgrade_major"] = breaking(r["version"], r["upgrade_to"])
+            r["upgrade_major"] = breaking(r.get("compare_version") or r["version"], r["upgrade_to"])
     if latest:
         for r in rows:
             try:

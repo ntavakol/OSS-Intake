@@ -269,7 +269,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
 | `--no-registry-check` | Skip comparing a JAR, wheel, sdist or npm `.tgz` with its registry's published checksum |
-| `--label KEY=VALUE` | Inventories and SBOMs: tag every package (repeatable), e.g. `--label owner="Web team"`; labels group packages.csv and the executive summary |
+| `--label KEY=VALUE` | Inventories and SBOMs: label every package that has no such label yet (repeatable), e.g. `--label owner="Web team"`; labels group packages.csv and the executive summary |
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |

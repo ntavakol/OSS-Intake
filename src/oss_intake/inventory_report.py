@@ -23,7 +23,7 @@ def split_purl(purl: str) -> tuple[str, str, str]:
     """pkg:npm/%40ctrl/tinycolor@4.1.1 -> ('npm', '@ctrl/tinycolor', '4.1.1'); Maven names as group:artifact."""
     ptype, rest = purl[4:].split("#", 1)[0].split("?", 1)[0].split("/", 1)
     name, _, version = rest.rpartition("@")
-    name = unquote(name)
+    name, version = unquote(name), unquote(version)
     if ptype in ("deb", "rpm", "apk"):
         name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
     return ptype, (name.replace("/", ":") if ptype == "maven" else name), version
@@ -46,13 +46,16 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
         group = min(groups, key=GROUP_ORDER.index) if groups else ""
         malicious = any(f.malicious for f in fs)
         no_fix = sum(1 for f in fs if not f.fixed_versions)
+        # An OS package's fixes are versions of its source package (cpp 4:13.2.0 is built from gcc-defaults
+        # 1.214ubuntu1): compare those, not the binary's own version.
+        base = next((f.installed for f in fs if f.src_version), version)
         if malicious:
             upgrade = "remove: malicious release"
         else:
             # The lowest version fixed for every finding on its release line, not just the highest nearest fix:
             # with CVE-A fixed in 1.2.9 or 1.3.2 and CVE-B in 1.3.0, 1.3.0 still has CVE-A; 1.3.2 is the answer.
-            upgrade = versions.minimum_upgrade(version, [f.fixed_versions for f in fs if f.fixed_versions]) or \
-                _highest([v for v in (versions.nearest_fix(version, f.fixed_versions) for f in fs
+            upgrade = versions.minimum_upgrade(base, [f.fixed_versions for f in fs if f.fixed_versions]) or \
+                _highest([v for v in (versions.nearest_fix(base, f.fixed_versions) for f in fs
                                        if f.fixed_versions) if v])
         rows.append({
             "group": triage.LABEL.get(group, "") if group else "",
@@ -67,6 +70,7 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
             "kev": sum(1 for f in fs if f.kev),
             "no_fix": no_fix,
             "upgrade_to": upgrade,
+            "compare_version": base,
             "purl": purl,
             "labels": dict(entry.get("labels") or {}),
         })

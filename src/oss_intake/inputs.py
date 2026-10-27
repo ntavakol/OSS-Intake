@@ -22,6 +22,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
+from urllib.parse import unquote
 
 LOCKFILES = re.compile(
     r"^(requirements[\w.-]*\.txt|poetry\.lock|Pipfile\.lock|uv\.lock|pdm\.lock|package-lock\.json|"
@@ -148,7 +149,7 @@ def _row_purl(row: dict[str, str]) -> str:
             raise ValueError(f"purl '{purl}' is not a package URL (pkg:type/name@version)")
         ptype = purl[4:].split("/", 1)[0].lower()
         rest = purl.split("?", 1)[0].split("#", 1)[0]
-        version = rest.rpartition("@")[2] if "@" in rest[4:].split("/", 1)[1] else ""
+        version = unquote(rest.rpartition("@")[2]) if "@" in rest[4:].split("/", 1)[1] else ""  # %5E4.17 is ^4.17
         if ptype not in set(ECOSYSTEMS.values()):
             raise ValueError(f"purl type '{ptype}' is not supported (supported: "
                              f"{', '.join(sorted(set(ECOSYSTEMS.values())))})")

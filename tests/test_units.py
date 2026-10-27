@@ -1851,9 +1851,9 @@ def test_sbom_source_packages_and_labels():
     from oss_intake import sbom
 
     entries, queries, _ = sbom.read(_sbom_dir() / "trivy-rootfs.cdx.json")
-    q = queries["pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16"]
+    q = queries["pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?distro=ubuntu-24.04"]
     assert (q["name"], q["version"]) == ("openssl", "3.0.13-0ubuntu3.16")
-    e = next(x for x in entries if x["purl"] == "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16")
+    e = next(x for x in entries if x["purl"] == "pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16?distro=ubuntu-24.04")
     assert e["labels"]["supplier"].startswith("Ubuntu Developers")
 
 
@@ -1933,9 +1933,12 @@ def test_sbom_size_and_component_limits(tmp_path, monkeypatch):
 def test_osv_distro_records_counted_once_and_cve_mapped():
     from oss_intake.scanners import osv
 
-    assert osv._per_cve_only(["USN-7000-1", "UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]) == [
-        "UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]
-    assert osv._per_cve_only(["USN-7000-1"]) == ["USN-7000-1"]
+    recs = {"USN-7000-1": {"upstream": ["CVE-2024-1", "CVE-2024-2"]}, "USN-7001-1": {"upstream": ["CVE-2024-3"]}}
+    ids = ["USN-7000-1", "UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]
+    assert osv._per_cve_only(ids, recs) == ["UBUNTU-CVE-2024-1", "UBUNTU-CVE-2024-2"]  # notice fully covered
+    # Review of 0.9.0: a notice naming a CVE with no record of its own is kept, so that CVE is not lost.
+    assert osv._per_cve_only(["USN-7000-1", "UBUNTU-CVE-2024-1"], recs) == ["USN-7000-1", "UBUNTU-CVE-2024-1"]
+    assert osv._per_cve_only(["USN-7001-1"], recs) == ["USN-7001-1"]
     assert osv._upstream_cve({"upstream": ["CVE-2024-1"]}) == {"CVE-2024-1"}
     assert osv._upstream_cve({"upstream": ["CVE-2024-1", "CVE-2024-2"]}) == set()
     v = {"affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "openssl"},
@@ -1984,3 +1987,127 @@ def test_split_purl_drops_distro_namespace():
 
     assert inventory_report.split_purl("pkg:deb/ubuntu/libssl3t64@3.0.13-0ubuntu3.16") == (
         "deb", "libssl3t64", "3.0.13-0ubuntu3.16")
+
+
+def test_inspector_style_spdx_keeps_every_described_package(tmp_path):
+    # Review of 0.9.0: Amazon Inspector's SPDX has the document DESCRIBE each package; two of three vanished.
+    import json as _json
+
+    from oss_intake import sbom
+
+    def pkg(i, name, purl):
+        return {"SPDXID": f"SPDXRef-{i}", "name": name, "versionInfo": "1",
+                "externalRefs": [{"referenceCategory": "PACKAGE_MANAGER", "referenceType": "purl",
+                                  "referenceLocator": purl}]}
+    doc = {"spdxVersion": "SPDX-2.3", "name": "i-0abc", "packages": [
+        pkg(1, "lodash", "pkg:npm/lodash@4.17.20"), pkg(2, "requests", "pkg:pypi/requests@2.25.0"),
+        pkg(3, "libss2", "pkg:dpkg/libss2@1.44.5-1+deb10u3?upstream=libss2-1.44.5-1%2Bdeb10u3.src.dpkg")],
+        "relationships": [{"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES",
+                           "relatedSpdxElement": f"SPDXRef-{i}"} for i in (1, 2, 3)]}
+    p = tmp_path / "i.json"
+    p.write_text(_json.dumps(doc), encoding="utf-8")
+    entries, _, info = sbom.read(p)
+    assert sorted(e["purl"] for e in entries) == ["pkg:npm/lodash@4.17.20", "pkg:pypi/requests@2.25.0"]
+    assert entries[0]["labels"]["system"] == "i-0abc"
+    (nc,) = info["not_checked"]
+    assert nc["component"] == "libss2 1" and "does not say which" in nc["reason"]
+
+
+@pytest.mark.parametrize("purl", ["pkg:npm/lodash@%5E4.17.0", "pkg:pypi/requests@%3E%3D%202.0",
+                                  "pkg:npm/x@%2A"])
+def test_encoded_version_ranges_are_not_checked(purl):
+    # Review of 0.9.0: %5E4.17.0 is ^4.17.0, a range, and used to be queried as a literal version (clean).
+    from oss_intake import sbom
+
+    got, why = sbom._purl(purl, {}, {})
+    assert got is None and "range or placeholder" in why
+
+
+def test_sbom_folders_with_subfolders_and_notes(tmp_path):
+    # Review of 0.9.0: an S3 sync keeps the bucket's folders; a README or notes.yml must not turn the folder
+    # into an application scan.
+    import shutil
+
+    from oss_intake import inputs, sbom
+    from oss_intake.inputs import InputError
+
+    (tmp_path / "acct" / "region").mkdir(parents=True)
+    shutil.copy(_sbom_dir() / "syft-alp.cdx.json", tmp_path / "acct" / "region" / "a.json")
+    shutil.copy(_sbom_dir() / "syft-app.cdx.json", tmp_path / "b.json")
+    (tmp_path / "README").write_text("x", encoding="utf-8")
+    (tmp_path / "notes.yml").write_text("x: 1", encoding="utf-8")
+    assert inputs.classify(tmp_path) == "sbom"
+    assert sbom.read(tmp_path)[2]["files"] == 2
+    (tmp_path / "other.json").write_text('{"x": 1}', encoding="utf-8")
+    with pytest.raises(InputError, match=r"mixes SBOMs with other files \(other.json\)"):
+        sbom.read(tmp_path)
+    (tmp_path / "other.json").unlink()
+    (tmp_path / "package.json").write_text('{"name": "app"}', encoding="utf-8")
+    assert inputs.classify(tmp_path) == "dir"
+
+
+def test_package_type_must_match_its_distro():
+    # Review of 0.9.0: syft dir:/ labelled a nested Alpine root file system ubuntu-24.04.
+    from oss_intake import os_packages
+
+    q, why = os_packages.osv_query("pkg:apk/ubuntu/libcrypto3@3.1.4-r5?distro=ubuntu-24.04&upstream=openssl")
+    assert q is None and "names distro 'ubuntu' for a apk package" in why
+
+
+def test_same_package_in_two_releases_stays_two(tmp_path):
+    # Review of 0.9.0: zlib 1.3.1-r0 in Alpine 3.19 and 3.20 was asked about once, under 3.20.
+    import json as _json
+
+    from oss_intake import sbom
+
+    def bom(rel):
+        return {"bomFormat": "CycloneDX", "specVersion": "1.6", "metadata": {"component": {"name": f"img-{rel}"}},
+                "components": [{"type": "library", "name": "zlib",
+                                "purl": f"pkg:apk/alpine/zlib@1.3.1-r0?arch=x86_64&distro=alpine-{rel}.1"}]}
+    for rel in ("3.19", "3.20"):
+        (tmp_path / f"{rel}.json").write_text(_json.dumps(bom(rel)), encoding="utf-8")
+    entries, queries, _ = sbom.read(tmp_path)
+    assert sorted((e["purl"], e["labels"]["system"]) for e in entries) == [
+        ("pkg:apk/alpine/zlib@1.3.1-r0?distro=alpine-3.19", "img-3.19"),
+        ("pkg:apk/alpine/zlib@1.3.1-r0?distro=alpine-3.20", "img-3.20")]
+    assert sorted(q["ecosystem"] for q in queries.values()) == ["Alpine:v3.19", "Alpine:v3.20"]
+
+
+@pytest.mark.parametrize("a,b,expected", [
+    ("1.2-3+b1", "1.2-3", 1), ("2.4.62-1~deb12u2", "2.4.62-1", -1), ("1.0~rc2", "1.0~rc1", 1),
+    ("1%3A2.39.3-9ubuntu6.6", "1:2.39.3-9ubuntu6.5", 1),
+])
+def test_debian_version_ordering(a, b, expected):
+    from oss_intake import versions
+
+    assert versions.compare(a, b) == expected
+
+
+def test_epoch_is_not_a_major_upgrade():
+    from oss_intake import upgrade
+
+    assert upgrade.breaking("1%3A2.39.3-9ubuntu6.5", "1:2.39.3-9ubuntu6.6") is False
+
+
+def test_os_findings_compare_source_versions():
+    # Review of 0.9.0: cpp 4:13.2.0-7ubuntu1 is built from gcc-defaults 1.214ubuntu1; the fix 1.214ubuntu2 is a
+    # source version, so the upgrade comparison must use the source version too.
+    from oss_intake import inventory_report
+    from oss_intake.scanners import osv
+
+    class H:
+        def post_json(self, url, body):
+            return 200, {"results": [{"vulns": [{"id": "UBUNTU-CVE-2099-5"}]} for _ in body["queries"]]}
+
+        def get_json(self, url, params=None):
+            return 200, {"id": "UBUNTU-CVE-2099-5", "upstream": ["CVE-2099-5"],
+                         "affected": [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "gcc-defaults"},
+                                       "ranges": [{"type": "ECOSYSTEM", "events": [{"fixed": "1.214ubuntu2"}]}]}]}
+
+    purl = "pkg:deb/ubuntu/cpp@4%3A13.2.0-7ubuntu1?distro=ubuntu-24.04"
+    qs = {purl: {"ecosystem": "Ubuntu:24.04:LTS", "name": "gcc-defaults", "version": "1.214ubuntu1",
+                 "os_release": "ubuntu 24.04", "distro": "ubuntu-24.04"}}
+    (f,) = osv.scan(H(), [purl], qs)
+    assert f.installed == "1.214ubuntu1" and "cpp 4:13.2.0-7ubuntu1 is built from gcc-defaults" in f.note
+    (row,) = inventory_report.package_rows([{"purl": purl, "labels": {}}], [f])
+    assert row["version"] == "4:13.2.0-7ubuntu1" and row["upgrade_to"] == "1.214ubuntu2"

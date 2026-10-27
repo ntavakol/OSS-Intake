@@ -10,22 +10,35 @@ and the project uses [Semantic Versioning](https://semver.org/).
 SBOM input: CycloneDX and SPDX, including OS packages, wherever an inventory CSV worked.
 
 ### Added
-- `--path` takes a CycloneDX (1.2 to 1.7) or SPDX (2.2, 2.3) JSON SBOM, or a folder holding only SBOMs,
-  recognised by content; GitHub's dependency-graph export is read as is. It is checked like a package inventory:
+- `--path` takes a CycloneDX (1.2 to 1.7) or SPDX (2.2, 2.3) JSON SBOM, or a folder of them (subfolders
+  included, as an S3 sync leaves them; notes such as a README are allowed), recognised by content; GitHub's
+  dependency-graph export and Amazon Inspector's SPDX (which describes every package) are read as they are. A
+  folder mixing SBOMs with other JSON files is refused with their names. It is checked like a package inventory:
   packages.csv, executive summary, upgrade comparison, new-release check, decisions, `--fail-on`.
 - OS packages (deb, rpm, apk, and `dpkg` as some tools write it) are checked in OSV under the distro's ecosystem
   and release (Ubuntu, Debian, Alpine, Rocky Linux, AlmaLinux, Wolfi, Chainguard) and by source package
-  (`libssl3t64` is looked up as `openssl`), from Syft's `upstream` qualifier or Trivy's source properties. Per-CVE
-  distro records are counted once (grouped notices such as USN and DSA are dropped when both are returned), and
-  their CVE is used for KEV, EPSS and exploit lookups.
+  (`libssl3t64` is looked up as `openssl`), from Syft's `upstream` qualifier or Trivy's source properties, and
+  versions and fixes are compared as the source package's (`cpp` 4:13.2.0 is built from `gcc-defaults` 1.214).
+  The distro release is part of a package's identity, so the same version in two releases is checked twice. A
+  package type that does not match its distro label (an Alpine file system inside an Ubuntu host) is not checked.
+  Per-CVE distro records are counted once: a grouped notice (USN, DSA) is dropped only when every CVE it names is
+  also returned on its own. Their CVE is used for KEV, EPSS and exploit lookups; multi-CVE notices (Rocky,
+  AlmaLinux) keep their own ID and are not matched against KEV or EPSS.
 - Components that cannot be checked (no package URL, a version range, an OS release the SBOM does not state, a
   distro OSV has no data for such as Amazon Linux, or Red Hat's per-stream ecosystems) are listed in a "not
   checked" section and warning with the reason, never counted as clean.
 - Labels from the SBOM (`system` from its subject, `supplier` from each component) and `--label key=value` for
-  inventories and SBOMs.
+  inventories and SBOMs, which fills in a label a package does not already have; names of columns oss-intake
+  fills in are refused.
 - `examples/sbom`: recipes for Amazon Inspector, Syft, Trivy and the GitHub dependency graph of an organisation.
   The weekly re-scan workflow takes an SBOM file or folder through `INVENTORY`.
 - The report's scope shows the input format, e.g. "CycloneDX 1.7 (3 files)".
+
+### Fixed
+- Debian and Ubuntu version ordering: a tilde sorts first (`2.4.62-1~deb12u2` is older than `2.4.62-1`) and a
+  rebuild suffix is newer (`1.2-3+b1` is newer than `1.2-3`); percent-encoded versions from package URLs
+  (`1%3A2.39`) are decoded, and an epoch no longer reads as a major upgrade.
+- Percent-encoded version ranges in package URLs (`%5E4.17.0`) are recognised as ranges, not queried as versions.
 
 ## [0.8.0] - 2026-10-26
 

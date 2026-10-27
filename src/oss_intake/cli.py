@@ -220,8 +220,8 @@ def build_parser() -> argparse.ArgumentParser:
                                                 "runs (S9)")
     s.add_argument("--govulncheck-version", help="required govulncheck version; the run fails on mismatch")
     s.add_argument("--label", action="append", default=[], metavar="KEY=VALUE",
-                   help="package inventories and SBOMs: tag every package with a label, e.g. --label owner='Web team' "
-                        "(repeatable); labels group packages.csv and the executive summary")
+                   help="package inventories and SBOMs: label every package that has no such label yet, e.g. "
+                        "--label owner='Web team' (repeatable); labels group packages.csv and the executive summary")
     s.add_argument("--decisions", metavar="FILE",
                    help="carry assessor decisions into this run: a findings.csv from an earlier run with the "
                         "triage_status, triage_notes and triage_reachable columns filled in, or an OpenVEX .json")
@@ -330,8 +330,8 @@ def _labels(values: list[str]) -> dict[str, str]:
         key, value = key.strip().lower(), value.strip()
         if not sep or not value or not _LABEL_KEY.match(key):
             raise UsageError(f"--label {v!r}: use key=value, with a key of letters, digits, spaces, - or _")
-        if key in inputs.INVENTORY_KEYS:
-            raise UsageError(f"--label {key} would replace the package's own {key}; use another name")
+        if key in inputs.INVENTORY_KEYS or key in inventory_report.BASE_FIELDS:
+            raise UsageError(f"--label {key} is a column oss-intake fills in (packages.csv); use another name")
         out[key] = value
     return out
 
@@ -556,7 +556,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
             args.input_format = "CSV inventory"
         for e in args.inventory if args.path_kind == "inventory" else []:
-            e["labels"] = {**e["labels"], **args.label_list}
+            # A label the package already has (an inventory column, the SBOM's system) is kept: --label fills in.
+            e["labels"] = {**args.label_list, **e["labels"]}
     else:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.label_list and args.path_kind != "inventory":

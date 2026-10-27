@@ -164,6 +164,10 @@ class Finding:
     def merge_key(self) -> tuple[str, str, str]:
         # Decode %40 and friends: OSV and Trivy may encode an npm scope (@ctrl) differently.
         pkg = unquote(purl_without_version(self.purl) or "") or f"{self.pkg_type}:{self.package}".lower()
+        # An OS package from an SBOM (asked of OSV by distro): keep the release in its identity. Scanner purls
+        # (Trivy, Grype) carry other qualifiers too and are merged without them, as before.
+        if self.sources == {"osv"} and self.os_release and "?distro=" in (self.purl or ""):
+            pkg += "?" + self.purl.split("?", 1)[1]
         return (canonical_id(self.vuln_id, self.aliases), pkg, self.installed)
 
 
