@@ -2035,8 +2035,13 @@ def test_sbom_folders_with_subfolders_and_notes(tmp_path):
     shutil.copy(_sbom_dir() / "syft-alp.cdx.json", tmp_path / "acct" / "region" / "a.json")
     shutil.copy(_sbom_dir() / "syft-app.cdx.json", tmp_path / "b.json")
     (tmp_path / "README").write_text("x", encoding="utf-8")
-    (tmp_path / "notes.yml").write_text("x: 1", encoding="utf-8")
+    (tmp_path / "notes.md").write_text("x", encoding="utf-8")
     assert inputs.classify(tmp_path) == "sbom"
+    # Second review: anything that could list packages is not a note; the folder is scanned as a folder.
+    for extra in ("inventory.csv", "pnpm-lock.yaml", "environment.yml", "requirements.txt"):
+        (tmp_path / extra).write_text("x", encoding="utf-8")
+        assert inputs.classify(tmp_path) == "dir", extra
+        (tmp_path / extra).unlink()
     assert sbom.read(tmp_path)[2]["files"] == 2
     (tmp_path / "other.json").write_text('{"x": 1}', encoding="utf-8")
     with pytest.raises(InputError, match=r"mixes SBOMs with other files \(other.json\)"):
@@ -2108,6 +2113,9 @@ def test_os_findings_compare_source_versions():
     qs = {purl: {"ecosystem": "Ubuntu:24.04:LTS", "name": "gcc-defaults", "version": "1.214ubuntu1",
                  "os_release": "ubuntu 24.04", "distro": "ubuntu-24.04"}}
     (f,) = osv.scan(H(), [purl], qs)
-    assert f.installed == "1.214ubuntu1" and "cpp 4:13.2.0-7ubuntu1 is built from gcc-defaults" in f.note
+    # installed stays the package's own version (OpenVEX and decisions use it); fixes compare with the source's.
+    assert f.installed == "4:13.2.0-7ubuntu1" and f.vs_fix == "1.214ubuntu1"
+    assert "cpp 4:13.2.0-7ubuntu1 is built from gcc-defaults 1.214ubuntu1" in f.note
     (row,) = inventory_report.package_rows([{"purl": purl, "labels": {}}], [f])
-    assert row["version"] == "4:13.2.0-7ubuntu1" and row["upgrade_to"] == "1.214ubuntu2"
+    assert row["version"] == "4:13.2.0-7ubuntu1" and row["upgrade_to"] == "gcc-defaults 1.214ubuntu2"
+    assert row["upgrade_version"] == "1.214ubuntu2"

@@ -26,7 +26,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         if f.fix_published or f.likely_fixed or not f.fixed_versions or not f.purl:
             continue
         m = _GH_MODULE.match(f.purl)
-        fix = nearest_fix(f.installed, f.fixed_versions)
+        fix = nearest_fix(f.vs_fix, f.fixed_versions)
         if not m or not fix or f.package == "stdlib":
             continue
         tag = "v" + fix.lstrip("vV").removesuffix("+incompatible")

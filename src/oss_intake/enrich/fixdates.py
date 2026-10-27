@@ -39,7 +39,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     for f in findings:
         if not f.fixed_versions or f.likely_fixed:
             continue
-        fix = nearest_fix(f.installed, f.fixed_versions)
+        fix = nearest_fix(f.vs_fix, f.fixed_versions)
         f.fix_version_used = fix
         sn = _system_and_name(f.purl) if f.purl else None
         if not sn or not fix:

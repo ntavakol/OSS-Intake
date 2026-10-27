@@ -11,14 +11,17 @@ SBOM input: CycloneDX and SPDX, including OS packages, wherever an inventory CSV
 
 ### Added
 - `--path` takes a CycloneDX (1.2 to 1.7) or SPDX (2.2, 2.3) JSON SBOM, or a folder of them (subfolders
-  included, as an S3 sync leaves them; notes such as a README are allowed), recognised by content; GitHub's
+  included, as an S3 sync leaves them; notes such as a README are allowed, but a folder that also holds a
+  lockfile, CSV or YAML file is scanned as an application folder), recognised by content; GitHub's
   dependency-graph export and Amazon Inspector's SPDX (which describes every package) are read as they are. A
   folder mixing SBOMs with other JSON files is refused with their names. It is checked like a package inventory:
   packages.csv, executive summary, upgrade comparison, new-release check, decisions, `--fail-on`.
 - OS packages (deb, rpm, apk, and `dpkg` as some tools write it) are checked in OSV under the distro's ecosystem
   and release (Ubuntu, Debian, Alpine, Rocky Linux, AlmaLinux, Wolfi, Chainguard) and by source package
   (`libssl3t64` is looked up as `openssl`), from Syft's `upstream` qualifier or Trivy's source properties, and
-  versions and fixes are compared as the source package's (`cpp` 4:13.2.0 is built from `gcc-defaults` 1.214).
+  fixes are compared with the source package's version (`cpp` 4:13.2.0 is built from `gcc-defaults` 1.214);
+  packages.csv shows the fix as a version of the source (`gcc-defaults 1.214ubuntu2`) and the distro release in
+  the ecosystem column (`deb (ubuntu-24.04)`).
   The distro release is part of a package's identity, so the same version in two releases is checked twice. A
   package type that does not match its distro label (an Alpine file system inside an Ubuntu host) is not checked.
   Per-CVE distro records are counted once: a grouped notice (USN, DSA) is dropped only when every CVE it names is
@@ -28,8 +31,8 @@ SBOM input: CycloneDX and SPDX, including OS packages, wherever an inventory CSV
   distro OSV has no data for such as Amazon Linux, or Red Hat's per-stream ecosystems) are listed in a "not
   checked" section and warning with the reason, never counted as clean.
 - Labels from the SBOM (`system` from its subject, `supplier` from each component) and `--label key=value` for
-  inventories and SBOMs, which fills in a label a package does not already have; names of columns oss-intake
-  fills in are refused.
+  inventories and SBOMs, which fills in a label a package does not already have (and says so when every package
+  already has it); names of columns oss-intake fills in are refused.
 - `examples/sbom`: recipes for Amazon Inspector, Syft, Trivy and the GitHub dependency graph of an organisation.
   The weekly re-scan workflow takes an SBOM file or folder through `INVENTORY`.
 - The report's scope shows the input format, e.g. "CycloneDX 1.7 (3 files)".

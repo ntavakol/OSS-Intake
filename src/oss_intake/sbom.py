@@ -57,25 +57,40 @@ def _peek(path: Path) -> str | None:
     return None
 
 
-# Files an SBOM folder may also hold: notes, not packages.
-_DOC_SUFFIXES = (".md", ".txt", ".yml", ".yaml", ".rst", ".html", ".csv", ".log")
-
-
-def _walk(path: Path) -> list[Path]:
-    """Regular files under a folder, subfolders included (an S3 sync keeps the bucket's folders), skipping hidden
-    files and folders."""
-    out = []
-    for p in sorted(path.rglob("*")):
-        rel = p.relative_to(path).parts
-        if p.is_file() and not any(part.startswith(".") for part in rel):
-            out.append(p)
-            if len(out) > MAX_FILES * 2:
-                break
-    return out
+# The only other files an SBOM folder may hold: notes. Nothing that could list packages (a lockfile, a CSV
+# inventory, a YAML environment) counts as a note, so a folder holding one is scanned as a folder instead.
+_DOC_SUFFIXES = (".md", ".rst")
+_DOC_NAMES = ("README", "LICENSE", "NOTICE", "CHANGELOG")
 
 
 def _is_doc(p: Path) -> bool:
-    return p.suffix.lower() in _DOC_SUFFIXES or p.name.upper().startswith(("README", "LICENSE", "NOTICE"))
+    from .inputs import LOCKFILES
+
+    if LOCKFILES.match(p.name):
+        return False
+    stem = p.name.upper().split(".", 1)[0]
+    return p.suffix.lower() in _DOC_SUFFIXES or (stem in _DOC_NAMES and p.suffix.lower() in ("", ".txt"))
+
+
+def _iter_files(path: Path):
+    """Regular files under a folder, subfolders included (an S3 sync keeps the bucket's folders), in no set order,
+    skipping hidden files and folders. Lazy, so a caller can stop at the first file that settles a question."""
+    import os
+
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for name in files:
+            if not name.startswith("."):
+                yield Path(root) / name
+
+
+def _walk(path: Path) -> list[Path]:
+    out = []
+    for p in _iter_files(path):
+        out.append(p)
+        if len(out) > MAX_FILES * 2:
+            break
+    return sorted(out)
 
 
 def is_sbom(path: Path) -> bool:
@@ -85,13 +100,16 @@ def is_sbom(path: Path) -> bool:
     if path.is_file():
         return path.suffix.lower() == ".json" and _peek(path) is not None
     if path.is_dir():
-        files = [p for p in _walk(path) if not _is_doc(p)]
-        if not files or any(p.suffix.lower() != ".json" for p in files):
-            return False
-        if any(p.name in ("package.json", "package-lock.json", "composer.json", "npm-shrinkwrap.json")
-               for p in files):
-            return False
-        return any(_peek(p) for p in files[:200])
+        found = False
+        for n, p in enumerate(_iter_files(path)):
+            if _is_doc(p):
+                continue
+            # Stop at the first file an SBOM folder would not hold: an application folder is not walked in full.
+            if p.suffix.lower() != ".json" or p.name in ("package.json", "composer.json", "tsconfig.json"):
+                return False
+            if not found and n < 200:
+                found = _peek(p) is not None
+        return found
     return False
 
 

@@ -60,7 +60,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     for f in todo:
         stats["candidates"] += 1
         link = links.get(_REL.match(f.os_release.lower()).group(1))
-        fix = nearest_fix(f.installed, f.fixed_versions)
+        fix = nearest_fix(f.vs_fix, f.fixed_versions)
         if not link or not fix:
             continue
         src = f.src_name or f.package

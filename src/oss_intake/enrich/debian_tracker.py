@@ -102,7 +102,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
             stats["found"] += 1
             continue
         codename = codename_for(f.os_release)
-        fix = nearest_fix(f.installed, f.fixed_versions) if codename else None
+        fix = nearest_fix(f.vs_fix, f.fixed_versions) if codename else None
         hit = by_version.get((codename, f.src_name or f.package, no_epoch(fix))) if fix else None
         if hit:
             f.fix_published, vid = hit

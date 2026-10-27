@@ -126,7 +126,10 @@ class Finding:
     decision_notes: str = ""
     decision_reachable: str = ""
     decision_justification: str = ""
-    decision_version: str = ""  # the installed version the decision was made for
+    decision_version: str = ""
+    # For an OS package from an SBOM: the source package's version, which distro fixes are versions of (cpp
+    # 4:13.2.0 is built from gcc-defaults 1.214). 'installed' stays the package's own version, as everywhere.
+    source_installed: str = ""  # the installed version the decision was made for
     triage_group: str = ""  # suggested reading order: act | review | conditions | routine | aside
     triage_reason: str = ""
     # Enrichment
@@ -160,6 +163,11 @@ class Finding:
     @property
     def has_fix(self) -> bool:
         return bool(self.fixed_versions)
+
+    @property
+    def vs_fix(self) -> str:
+        """The version to compare with fix versions."""
+        return self.source_installed or self.installed
 
     def merge_key(self) -> tuple[str, str, str]:
         # Decode %40 and friends: OSV and Trivy may encode an npm scope (@ctrl) differently.

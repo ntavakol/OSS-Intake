@@ -30,7 +30,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         if f.fix_published or f.likely_fixed or not f.fixed_versions or not f.purl:
             continue
         name = _name(f.purl)
-        fix = nearest_fix(f.installed, f.fixed_versions)
+        fix = nearest_fix(f.vs_fix, f.fixed_versions)
         if not name or not fix:
             continue
         if name not in cache:

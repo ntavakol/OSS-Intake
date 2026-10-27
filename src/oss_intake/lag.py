@@ -17,7 +17,7 @@ def flag_label_matches(findings: list[Finding]) -> int:
     """Mark findings whose installed version equals a listed fix apart from a build label."""
     n = 0
     for f in findings:
-        match = label_only_match(f.installed, f.fixed_versions)
+        match = label_only_match(f.vs_fix, f.fixed_versions)
         if match:
             f.likely_fixed = True
             f.note = (f"Installed {f.installed} equals listed fix {match} apart from a build label; "
@@ -54,7 +54,7 @@ def flag_no_newer_fix(findings: list[Finding]) -> int:
     """Mark findings whose listed fixes are all at or below the installed version."""
     n = 0
     for f in findings:
-        if f.fixed_versions and not f.likely_fixed and nearest_fix(f.installed, f.fixed_versions) is None:
+        if f.fixed_versions and not f.likely_fixed and nearest_fix(f.vs_fix, f.fixed_versions) is None:
             f.note = (f"No listed fix ({', '.join(f.fixed_versions)}) is newer than installed {f.installed}; "
                       "scanner data may be wrong (often Go pseudo-versions). Check manually.")
             n += 1

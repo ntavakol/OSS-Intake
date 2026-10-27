@@ -48,6 +48,11 @@ def breaking(current: str, target: str) -> bool:
     return False
 
 
+def _target(r: dict) -> str:
+    """The minimum fix version (upgrade_to may read 'gcc-defaults 1.214ubuntu2' for an OS package)."""
+    return r.get("upgrade_version") or r["upgrade_to"]
+
+
 def _with_version(purl: str, version: str) -> str:
     """The same package at another version, keeping qualifiers (an OS package's distro)."""
     head, _, query = purl.partition("?")
@@ -87,7 +92,7 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
         r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",
                   "latest_left": None, "latest_major": False})
         if r["upgrade_to"] and not r["malicious"]:
-            r["upgrade_major"] = breaking(r.get("compare_version") or r["version"], r["upgrade_to"])
+            r["upgrade_major"] = breaking(r.get("compare_version") or r["version"], _target(r))
     if latest:
         for r in rows:
             try:
@@ -105,7 +110,7 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
     targets: dict[str, set[str]] = {}
     for r in rows:
         if r["upgrade_to"] and not r["malicious"]:
-            targets.setdefault(_with_version(r["purl"], r["upgrade_to"]), set()).add("upgrade")
+            targets.setdefault(_with_version(r["purl"], _target(r)), set()).add("upgrade")
         if r["latest"] and r["latest"] != r["version"]:
             targets.setdefault(_with_version(r["purl"], r["latest"]), set()).add("latest")
     if not targets:
@@ -124,7 +129,7 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
     empty = {"total": 0, "critical": 0, "malicious": False}
     for r in rows:
         if r["upgrade_to"] and not r["malicious"]:
-            r["upgrade_left"] = counts.get(_with_version(r["purl"], r["upgrade_to"]), empty)
+            r["upgrade_left"] = counts.get(_with_version(r["purl"], _target(r)), empty)
         if r["latest"]:
             r["latest_left"] = (counts.get(_with_version(r["purl"], r["latest"]), empty)
                                 if r["latest"] != r["version"] else

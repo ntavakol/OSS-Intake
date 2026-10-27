@@ -1347,7 +1347,8 @@ def test_sbom_run_checks_os_and_language_packages(tmp_path, fixtures):
     os_q = [q for q in http.queries if "ecosystem" in q["package"]]
     assert {"name": "openssl", "ecosystem": "Ubuntu:24.04:LTS"} in [q["package"] for q in os_q]
     rows = {r["package"]: r for r in csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline=""))}
-    assert rows["libssl3t64"]["upgrade_to"] == "3.0.13-0ubuntu3.17"
+    assert rows["libssl3t64"]["upgrade_to"] == "openssl 3.0.13-0ubuntu3.17"  # a version of its source package
+    assert rows["libssl3t64"]["ecosystem"] == "deb (ubuntu-24.04)"
     assert rows["libssl3t64"]["upgrade_left"] == "0 known"  # the minimum fix is asked about too, by source name
     assert rows["libssl3t64"]["owner"] == "Platform team" and rows["libssl3t64"]["system"] == "rootfs"
     assert rows["chalk"]["system"] == "app"
@@ -1413,3 +1414,36 @@ def test_label_does_not_overwrite_what_a_package_has(tmp_path, fixtures):
                     http=SbomHttp()) in (0, 3)
     rows = list(csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline="")))
     assert {r["system"] for r in rows} == {"app"} and {r["owner"] for r in rows} == {"Web"}
+
+
+def test_openvex_round_trip_for_sbom_os_packages_is_not_stale(tmp_path, fixtures):
+    # Second review of 0.9.0: with the source version stored as 'installed', the exported OpenVEX read back
+    # marked every decision on a package with a different source version as stale.
+    out1 = tmp_path / "one"
+    sbom = fixtures / "sbom" / "trivy-rootfs.cdx.json"
+    assert cli.main(["--path", str(sbom), "--out", str(out1), "--no-latest", "--release-age-days", "0"],
+                    http=SbomHttp()) == 0
+    rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
+    for r in rows:
+        r.update(triage_status="not_affected", triage_notes="not exposed")
+    d = tmp_path / "d.csv"
+    with d.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    out2 = tmp_path / "two"
+    assert cli.main(["--path", str(sbom), "--out", str(out2), "--no-latest", "--release-age-days", "0",
+                     "--decisions", str(d)], http=SbomHttp()) == 0
+    out3 = tmp_path / "three"
+    assert cli.main(["--path", str(sbom), "--out", str(out3), "--no-latest", "--release-age-days", "0",
+                     "--decisions", str(out2 / "openvex.json")], http=SbomHttp()) == 0
+    a3 = json.loads((out3 / "assessment.json").read_text(encoding="utf-8"))
+    assert a3["decisions"]["applied"] == len(rows) and a3["decisions"]["stale"] == 0
+
+
+def test_label_that_every_package_has_says_so(tmp_path, fixtures):
+    out = tmp_path / "o"
+    cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(out), "--no-latest",
+              "--release-age-days", "0", "--label", "system=prod"], http=SbomHttp())
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert "--label system has no effect: every package already has a system label (from the SBOM)" in a["warnings"]

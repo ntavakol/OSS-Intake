@@ -6,6 +6,7 @@ so OSV acts as an independent vulnerability DATABASE check, not an independent D
 
 from __future__ import annotations
 
+import re
 from urllib.parse import unquote
 
 from ..cvss import base_score, severity_from_score, version_of
@@ -197,10 +198,9 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
         if osq:
             name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
             ids = _per_cve_only(ids, cache)
-            if osq["version"] != version:
-                # Distro fixes are versions of the source package; compare like with like.
-                note = f"{name} {version} is built from {osq['name']} {osq['version']}; versions are the source's"
-                version = osq["version"]
+            src_v = osq["version"]
+            if re.sub(r"^\d+:", "", src_v) != re.sub(r"^\d+:", "", version) or osq["name"] != name:
+                note = f"{name} {version} is built from {osq['name']} {src_v}; fix versions are the source's"
         for vid in ids:
             v = cache[vid]
             sev, score, cvss_ver = _severity(v)
@@ -226,6 +226,6 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
             f.source_severity[NAME] = sev
             if osq:
                 f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
-                f.note = note
+                f.source_installed, f.note = osq["version"], note
             findings.append(f)
     return findings

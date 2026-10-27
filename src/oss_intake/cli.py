@@ -330,7 +330,8 @@ def _labels(values: list[str]) -> dict[str, str]:
         key, value = key.strip().lower(), value.strip()
         if not sep or not value or not _LABEL_KEY.match(key):
             raise UsageError(f"--label {v!r}: use key=value, with a key of letters, digits, spaces, - or _")
-        if key in inputs.INVENTORY_KEYS or key in inventory_report.BASE_FIELDS:
+        if key in inputs.INVENTORY_KEYS or key in inventory_report.BASE_FIELDS or key in (
+                "labels", "compare_version", "upgrade_version"):
             raise UsageError(f"--label {key} is a column oss-intake fills in (packages.csv); use another name")
         out[key] = value
     return out
@@ -555,9 +556,14 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         if args.path_kind == "inventory" and args.sbom_info is None:
             args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
             args.input_format = "CSV inventory"
+        unused = set(args.label_list)
         for e in args.inventory if args.path_kind == "inventory" else []:
             # A label the package already has (an inventory column, the SBOM's system) is kept: --label fills in.
-            e["labels"] = {**args.label_list, **e["labels"]}
+            unused -= {k for k in args.label_list if not e["labels"].get(k)}
+            e["labels"] = {**args.label_list, **{k: v for k, v in e["labels"].items() if v}}
+        for k in sorted(unused):
+            warnings.append(f"--label {k} has no effect: every package already has a {k} label"
+                            + (" (from the SBOM)" if args.sbom_info else ""))
     else:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.label_list and args.path_kind != "inventory":

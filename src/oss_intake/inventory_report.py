@@ -48,7 +48,8 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
         no_fix = sum(1 for f in fs if not f.fixed_versions)
         # An OS package's fixes are versions of its source package (cpp 4:13.2.0 is built from gcc-defaults
         # 1.214ubuntu1): compare those, not the binary's own version.
-        base = next((f.installed for f in fs if f.src_version), version)
+        base = next((f.source_installed for f in fs if f.source_installed), version)
+        src = next((f.src_name for f in fs if f.source_installed), "")
         if malicious:
             upgrade = "remove: malicious release"
         else:
@@ -60,7 +61,7 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
         rows.append({
             "group": triage.LABEL.get(group, "") if group else "",
             "group_key": group,
-            "ecosystem": ptype,
+            "ecosystem": ptype + (f" ({purl.split('?distro=', 1)[1]})" if "?distro=" in purl else ""),
             "package": name,
             "version": version,
             "findings": len(fs),
@@ -69,7 +70,10 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
             "malicious": malicious,
             "kev": sum(1 for f in fs if f.kev),
             "no_fix": no_fix,
-            "upgrade_to": upgrade,
+            # An OS package's fix is a version of its source package: say so, or 1.214ubuntu2 for cpp 13.2.0
+            # reads as a downgrade.
+            "upgrade_to": (f"{src} {upgrade}" if src and src != name and upgrade and not malicious else upgrade),
+            "upgrade_version": upgrade,
             "compare_version": base,
             "purl": purl,
             "labels": dict(entry.get("labels") or {}),

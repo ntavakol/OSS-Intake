@@ -48,7 +48,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         if f.fix_published or f.likely_fixed or f.excluded or not f.fixed_versions or not _is_alpine(f):
             continue
         branch = branch_for(f.os_release)
-        fix = nearest_fix(f.installed, f.fixed_versions)
+        fix = nearest_fix(f.vs_fix, f.fixed_versions)
         if not branch or not fix:
             continue
         stats["candidates"] += 1
