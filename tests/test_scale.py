@@ -219,3 +219,107 @@ def test_100k_row_inventory(tmp_path):
     assert len(systems) == 20 and systems[0]["findings"] == "1"
     assert elapsed < 120, f"100k rows took {elapsed:.0f} s"
     assert peak < 1024 * 1024 * 1024, f"peak memory {peak / 1e6:.0f} MB"
+
+
+# --- review fixes (29 Oct) -----------------------------------------------------------------------------------
+
+def test_not_found_is_never_cached(tmp_path):
+    """A version deps.dev has not indexed yet answers 404 today and a date tomorrow: keeping the 404 would let a
+    brand-new release pass --fail-on recent for as long as the entry lived."""
+    c = ResponseCache(tmp_path)
+    url = "https://api.deps.dev/v3/systems/npm/packages/chalk/versions/9.9.9"
+    c.put(url, 404, None)
+    assert c.get(url) is None and c.writes == 0
+
+
+@pytest.mark.parametrize("record", [
+    [], "x", {"url": "U", "fetched": 1e12, "status": 200, "data": {}},  # not an entry; from the future
+    {"url": "U", "fetched": 1_000_000.0, "status": 404, "data": None}])  # an old-format 404
+def test_cache_ignores_untrustworthy_entries(tmp_path, record):
+    url = "https://api.osv.dev/v1/vulns/CVE-2099-9"
+    c = ResponseCache(tmp_path, now=lambda: 1_000_100.0)
+    f = c._file(url)
+    f.parent.mkdir(parents=True)
+    if isinstance(record, dict):
+        record = {**record, "url": url}
+    f.write_text(json.dumps(record))
+    assert c.get(url) is None
+
+
+@pytest.mark.skipif(__import__("os").name == "nt", reason="POSIX permissions")
+def test_cache_folder_others_can_write_is_not_used(tmp_path, capsys):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o777)
+    assert "other users" in ResponseCache(shared).unsafe_reason()
+    own = tmp_path / "own"
+    assert ResponseCache(own).unsafe_reason() is None
+
+
+def test_prefetch_stops_after_repeated_failures(monkeypatch, tmp_path):
+    http, log = _client(monkeypatch, tmp_path, delay=0, cache=False)
+    http._workers = 1  # deterministic order
+    urls = [f"https://api.osv.dev/v1/vulns/boom?{i}" for i in range(40)]
+    monkeypatch.setattr(http, "_get_cached", lambda u: (_ for _ in ()).throw(HttpError("down")) if log.append(u)
+                        is None else None)
+    http.prefetch(urls)
+    assert len(log) == 3
+    with pytest.raises(HttpError, match="repeated failures"):
+        http.get_json(urls[-1])
+
+
+def test_text_downloads_are_counted(monkeypatch, tmp_path):
+    http, log = _client(monkeypatch, tmp_path, delay=0, cache=False)
+
+    class R:
+        status_code, content = 200, b"x"
+
+    monkeypatch.setattr(http._session, "get", lambda *a, **k: R(), raising=False)
+    http.get_text("https://example.invalid/list")
+    assert http.requests_made == 1
+
+
+def test_host_column_preferred_over_system(tmp_path):
+    inv = tmp_path / "p.csv"
+    lines = ["ecosystem,name,version,system,host"] + [f"npm,a,1.0.0,CRM,h{i}" for i in range(25)]
+    inv.write_text("\n".join(lines) + "\n")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(inv), "--out", str(out), "--no-latest", "--release-age-days", "0", "--no-cache",
+                     "--no-epss", "--no-kev", "--no-exploits"], http=ScaleHttp()) == cli.EXIT_OK
+    row = next(csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline="")))
+    assert row["systems"] == "25" and row["system"] == "CRM" and "and 5 more" in row["host"]
+    pairs = list(csv.DictReader((out / "package-systems.csv").open(encoding="utf-8", newline="")))
+    assert len(pairs) == 25
+
+
+def test_inventory_column_named_like_a_report_column_refused(tmp_path, capsys):
+    inv = tmp_path / "p.csv"
+    inv.write_text("purl,systems\npkg:npm/a@1.0.0,CRM\n")
+    assert cli.main(["--path", str(inv), "--out", str(tmp_path / "o")], http=ScaleHttp()) == cli.EXIT_USAGE
+    assert "systems" in capsys.readouterr().err
+
+
+def test_every_prefetched_url_is_then_asked_for(tmp_path):
+    """Prefetch lists are written apart from the loops that use them: a drift would waste requests or pass a
+    cap (proof-of-concept lookups). Run with every enrichment on and check prefetched <= requested."""
+
+    class Checking(ScaleHttp):
+        def __init__(self):
+            super().__init__()
+            self.prefetched, self.asked = set(), set()
+
+        def prefetch(self, urls):
+            self.prefetched |= set(urls)
+
+        def get_json(self, url, params=None):
+            self.asked.add(url)
+            if url.startswith("https://api.osv.dev/v1/vulns/GHSA-scal"):
+                v = super().get_json(url, params)[1]
+                return 200, {**v, "aliases": ["CVE-2021-44228"]}
+            return super().get_json(url, params)
+
+    inv = tmp_path / "p.csv"
+    inv.write_text("ecosystem,name,version\n" + "".join(f"npm,pkg-{p},1.0.{p % 10}\n" for p in range(30)))
+    h = Checking()
+    cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-cache", "--as-of", AS_OF], http=h)
+    assert h.prefetched and h.prefetched <= h.asked

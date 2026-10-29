@@ -11,7 +11,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - A response cache (`--cache-dir`, default the user cache folder; `--no-cache`): OSV advisory details for a day,
   deps.dev release dates for 30 days, latest versions for a day, proof-of-concept lists for 7 days. Which
   advisories affect a version, KEV, EPSS and the exploit indexes are always fetched fresh. assessment.json
-  records the requests made and cache hits under `network`.
+  records the requests made and cache hits under `network`. Only successful answers are kept, never "not
+  found"; entries that are not for the URL or are dated in the future are ignored; a cache folder other users
+  can write to is not used.
 - packages.csv gains `systems`: how many systems (SBOM subjects, or a system or host column) list each package
   version; equally bad packages on more systems rank first. Long host lists are shortened in reports and
   packages.csv, and `package-systems.csv` lists every package and system pair ("which hosts run X").
@@ -19,6 +21,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   across hosts are merged.
 
 ### Changed
+- A package version with no release date on deps.dev (not indexed yet, or not public) is now named in a
+  warning as not checked for being new, rather than passing silently.
+- An inventory column named like a column oss-intake fills in (`systems`, `findings`, `group`...) is refused
+  with the name, instead of overwriting it in packages.csv.
+- When several advisory lookups in a row fail, the rest are not attempted, so an unreachable service fails the
+  run in seconds rather than one timeout per advisory.
 - Package inventories may hold 500,000 rows (was 50,000), as many as SBOM components; a test runs 100,000 rows
   (5,000 versions on 20 hosts) in seconds.
 - Proof-of-concept lookups are capped at 1,000 per run (was 300), now that they run in parallel and are cached.

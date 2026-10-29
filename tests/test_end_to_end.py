@@ -440,7 +440,9 @@ def test_inventory_csv(tmp_path):
     html = (out / "report.html").read_text(encoding="utf-8")
     assert "<h2>Packages</h2>" in html and "4 packages checked" in html and "Team B" in html
     assert "Packages checked" in html and "Fix existed before release</div>" not in html
-    assert not any("release date" in w for w in a["warnings"])
+    assert not any("release date" in w and "not checked for being new" not in w for w in a["warnings"])
+    # the fake deps.dev knows none of these versions: said, not taken as "not new"
+    assert any(w.startswith("4 package version(s) have no release date") for w in a["warnings"])
     assert "## Packages" in (out / "summary.md").read_text(encoding="utf-8")
 
 

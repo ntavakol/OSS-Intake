@@ -195,6 +195,13 @@ def inventory(path: Path) -> list[dict]:
     if "purl" not in cols and not {"ecosystem", "name", "version"} <= cols:
         raise InputError(f"{path.name} needs a 'purl' column, or 'ecosystem', 'name' and 'version' columns "
                          f"(found: {', '.join(sorted(c for c in cols if c)) or 'no header row'})")
+    from .inventory_report import BASE_FIELDS
+
+    clash = sorted(c for c in cols if c in BASE_FIELDS and c not in INVENTORY_KEYS
+                   or c in ("labels", "compare_version", "upgrade_version"))
+    if clash:
+        raise InputError(f"{path.name}: column(s) {', '.join(clash)} share a name with a column oss-intake fills in "
+                         "(packages.csv); rename them, e.g. to inventory_" + clash[0])
     found: dict[str, dict[str, set[str]]] = {}
     errors: list[str] = []
     for n, raw in enumerate(reader, start=2):  # row 1 is the header

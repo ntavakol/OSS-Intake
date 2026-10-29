@@ -30,13 +30,17 @@ def split_purl(purl: str) -> tuple[str, str, str]:
     return ptype, (name.replace("/", ":") if ptype == "maven" else name), version
 
 
-SYSTEM_LABELS = ("system", "host", "hostname")
+SYSTEM_LABELS = ("host", "hostname", "system")  # a host column is the finer grain
+
+
+def system_key(labels: dict[str, str]) -> str | None:
+    return next((k for k in SYSTEM_LABELS if labels.get(k)), None)
 
 
 def systems(labels: dict[str, str]) -> int | None:
     """How many systems (hosts, images, repositories) list this package version: the distinct values of its
     system label (an SBOM's subject, or a system or host column), merged as 'a; b'. None without such a label."""
-    key = next((k for k in SYSTEM_LABELS if labels.get(k)), None)
+    key = system_key(labels)
     return len({v.strip() for v in labels[key].split(";") if v.strip()}) if key else None
 
 
@@ -136,7 +140,7 @@ def write_systems_csv(path: Path, rows: list[dict], safe) -> bool:
         w = csv.writer(fh)
         w.writerow(["system", "ecosystem", "package", "version", "group", "findings", "critical", "purl"])
         for r in rows:
-            key = next((k for k in SYSTEM_LABELS if r["labels"].get(k)), None)
+            key = system_key(r["labels"])
             if not key:
                 continue
             for system in sorted({v.strip() for v in r["labels"][key].split(";") if v.strip()}):
@@ -160,6 +164,7 @@ def write_csv(path: Path, rows: list[dict], safe) -> None:
                 out[k] = describe(r.get(k))
             for k in ("upgrade_major", "latest_major"):
                 out[k] = "yes" if r.get(k) else ""
+            listed = system_key(r["labels"])
             out.update({k: abbreviate(r["labels"].get(k, ""), CSV_SHOWN, "see package-systems.csv")
-                        if k in SYSTEM_LABELS else r["labels"].get(k, "") for k in label_cols})
+                        if k == listed else r["labels"].get(k, "") for k in label_cols})
             w.writerow({k: safe(v) for k, v in out.items()})

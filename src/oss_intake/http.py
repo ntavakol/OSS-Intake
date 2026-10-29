@@ -29,6 +29,7 @@ GITHUB_API_HOST = "api.github.com"
 
 
 DEFAULT_WORKERS = 8
+MAX_PREFETCH_FAILURES = 3
 DAY = 86400
 # (URL pattern, how long a response stays usable). GitHub API responses are never cached: they are personal to
 # the token and rate limited per user, and the cache folder is not the place for them.
@@ -55,7 +56,12 @@ def default_cache_dir() -> Path:
 
 
 class ResponseCache:
-    """Successful (200) and not-found (404) JSON responses for the URLs in CACHE_RULES, one file per URL."""
+    """Successful (200) JSON responses for the URLs in CACHE_RULES, one file per URL.
+
+    "Not found" is never kept: a release deps.dev has not indexed yet, or a proof of concept not yet listed,
+    answers 404 today and something else tomorrow, and keeping the 404 would hide exactly the new release the
+    release-age check exists for. Entries are trusted only as far as they must be: a file that is not an
+    entry for this URL, or that claims to come from the future, is ignored."""
 
     def __init__(self, folder: Path, now=time.time) -> None:
         self.folder = folder
@@ -77,22 +83,26 @@ class ResponseCache:
             return None
         try:
             rec = json.loads(self._file(url).read_text(encoding="utf-8"))
-            if rec.get("url") == url and self._now() - float(rec["fetched"]) <= age and rec["status"] in (200, 404):
+            if not isinstance(rec, dict):
+                raise ValueError("not an entry")
+            elapsed = self._now() - float(rec["fetched"])
+            if rec.get("url") == url and 0 <= elapsed <= age and rec.get("status") == 200:
                 with self._lock:
                     self.hits += 1
                 return int(rec["status"]), rec.get("data")
-        except (OSError, ValueError, KeyError, TypeError):
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
             pass
         with self._lock:
             self.misses += 1
         return None
 
     def put(self, url: str, status: int, data: Any) -> None:
-        if status not in (200, 404) or self.max_age(url) is None:
+        if status != 200 or self.max_age(url) is None:
             return
         f = self._file(url)
         try:
-            f.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+            f.parent.mkdir(exist_ok=True, mode=0o700)
             tmp = f.with_suffix(f".{threading.get_ident()}.tmp")
             tmp.write_text(json.dumps({"url": url, "fetched": self._now(), "status": status, "data": data}),
                            encoding="utf-8")
@@ -101,6 +111,24 @@ class ResponseCache:
                 self.writes += 1
         except OSError:
             pass  # a cache that cannot be written is only slower
+
+    def unsafe_reason(self) -> str | None:
+        """Why this folder should not be trusted, or None. Anyone who can write to it could plant answers (an
+        old release date for a malicious new version), so a folder others can write to is not used."""
+        if os.name == "nt":
+            return None
+        import stat
+
+        for p in [self.folder, *self.folder.parents]:
+            if p.exists():
+                st = p.stat()
+                if p == self.folder or not (st.st_mode & stat.S_ISVTX):
+                    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+                        return f"{p} can be written by other users"
+                    if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
+                        return f"{p} belongs to another user"
+                break
+        return None
 
     def stats(self) -> dict:
         return {"folder": str(self.folder), "hits": self.hits, "misses": self.misses, "written": self.writes}
@@ -198,10 +226,20 @@ class RequestsHttp(Http):
         if not todo:
             return
 
+        failures = [0]
+        lock = threading.Lock()
+
         def one(u: str):
+            # After a few failures the service is down or unreachable: answer the rest at once instead of
+            # waiting out a timeout for each, as the sequential code did by stopping at the first error.
+            with lock:
+                if failures[0] >= MAX_PREFETCH_FAILURES:
+                    return u, HttpError(f"GET {urlparse(u).netloc}: skipped after repeated failures")
             try:
                 return u, self._get_cached(u)
             except HttpError as exc:
+                with lock:
+                    failures[0] += 1
                 return u, exc
 
         if len(todo) == 1 or self._workers == 1:
@@ -214,6 +252,8 @@ class RequestsHttp(Http):
             self._ready[u] = r
 
     def get_text(self, url: str) -> tuple[int, str]:
+        with self._count_lock:
+            self.requests_made += 1
         try:
             r = self._session.get(url, headers={"Accept": "text/plain"}, timeout=max(self._timeout, 120))
         except self._requests.RequestException as exc:

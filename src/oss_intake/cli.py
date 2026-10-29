@@ -616,8 +616,13 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
            if args.image else "")
         + f"out={out} formats={','.join(formats)}", args.quiet)
 
-    net = None if args.offline else (http or RequestsHttp(cache=None if args.no_cache else ResponseCache(
-        Path(args.cache_dir).expanduser() if args.cache_dir else default_cache_dir())))
+    cache = None if args.no_cache or args.offline or http else ResponseCache(
+        Path(args.cache_dir).expanduser() if args.cache_dir else default_cache_dir())
+    if cache is not None and (why := cache.unsafe_reason()):
+        warnings.append(f"The lookup cache was not used: {why}, so its answers could have been planted. "
+                        "Use a folder only you can write to (--cache-dir), or --no-cache")
+        cache = None
+    net = None if args.offline else (http or RequestsHttp(cache=cache))
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 
     # Is the artifact the file the project released? Checked against the registry before scanning.
@@ -956,6 +961,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         if age_info["skipped_limit"]:
             warnings.append(f"Release dates were looked up for the first {args.release_age_max} package versions "
                             f"only; {age_info['skipped_limit']} were not checked for being new")
+        if age_info["unknown"]:
+            warnings.append(f"{age_info['unknown']} package version(s) have no release date on deps.dev (not "
+                            "indexed yet, which is likely for a release only hours old, or not public), so they "
+                            "were not checked for being new")
         if age_info["errors"]:
             warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s), "
                             "so they were not checked for being new")
