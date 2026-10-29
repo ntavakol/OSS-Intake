@@ -60,6 +60,10 @@ CISA KEV membership).
   compromised `trivy-action` tags), missing or write-all token permissions, and `pull_request_target` triggers.
 - Optionally suggests a likelihood value for a 5x5 risk matrix from configurable rules, clearly labelled
   as a heuristic.
+- Checks the open source an organisation already runs: a package inventory CSV or a folder of SBOMs, one per
+  host, image or repository (an [osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
+  collector makes them for laptops and servers), with each package version looked up once and counted per
+  system.
 - Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html`, plus the raw
   scanner output under `raw/` as evidence.
 - Applies integrity checks to the scanners it runs: version pinning, a known-bad version list, SHA-256
@@ -193,18 +197,27 @@ maven,org.apache.logging.log4j:log4j-core,2.14.1,Platform team,Payments
 Use either `ecosystem`, `name` and `version` columns, or one `purl` column (`pkg:npm/chalk@5.6.1`). Ecosystems:
 npm, pypi, maven (`group:artifact`), go, nuget, cargo, gem, composer, cran, hex and pub, plus common aliases
 such as python or java. Versions must be exact: ranges such as `^1.2` or `latest` are rejected. Any other
-column (owner, system, team...) is carried through to the reports as a label. Every row is validated first: if
-any row is invalid, the run stops and lists each problem with its row number, before anything is looked up.
+column (owner, system, host, team...) is carried through to the reports as a label; a column named like one
+oss-intake fills in (`systems`, `findings`, `group`...) is refused with its name. Every row is validated first:
+if any row is invalid, the run stops and lists each problem with its row number, before anything is looked up.
+A file may hold up to 500,000 rows, one per host and package if you like: each package version is looked up
+once however many rows list it.
 
 No scanner is needed: each package version is checked against OSV, so malicious releases are flagged as well as
 vulnerable ones. Besides the usual reports, `packages.csv` lists every package, worst first, with its findings
-and label columns, and an upgrade comparison:
+and label columns, `systems` (how many hosts, images or repositories list it, from a `host`, `hostname` or
+`system` column or the SBOM subjects; between equally bad packages, the one on more systems comes first), and an
+upgrade comparison:
 
 - **Upgrade to at least:** the lowest version that fixes every listed vulnerability with a fix, and what is
   still known to affect that version (`1.2.0 · 1 known` means the minimum fix is not enough on its own).
 - **Latest release:** the package's current release on deps.dev and what is known to affect it. Skip this lookup
   (one request per package) with `--no-latest` to see the current state and the minimum fix only.
 - **major:** the upgrade crosses a major version, or a minor version below 1.0, so expect breaking changes.
+
+When a package is on more than one system, `package-systems.csv` lists every package and system pair, so "which
+hosts run X" is a filter in a spreadsheet; long host lists are shortened elsewhere (Excel holds 32,767
+characters in a cell).
 
 Fewer known vulnerabilities is not proof that a version is safe: it may be less studied, or newer than the
 advisories. The HTML report shows the packages that need attention.
