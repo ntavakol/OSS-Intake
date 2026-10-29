@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-29
+
+Organisation scale: an osquery collector for laptops and servers, parallel lookups, a response cache, and how
+many systems each package is on.
+
 ### Added
 - Large inventories: lookups that can be planned (OSV advisory details, deps.dev fix and release dates, latest
   versions, Ubuntu notices, proof-of-concept lists) are fetched 8 at a time instead of one by one.
