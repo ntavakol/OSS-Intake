@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 
-from ..http import Http, HttpError
+from ..http import Http, HttpError, prefetch
 from ..models import Finding, parse_datetime
 
 API = "https://api.osv.dev/v1/vulns"
@@ -21,6 +21,9 @@ _ADVISORY = re.compile(r"^(DSA|DLA|USN)-\d+(-\d+)?$")
 def enrich(http: Http, findings: list[Finding]) -> dict:
     cache: dict[str, str | None] = {}
     stats = {"candidates": 0, "found": 0, "errors": 0}
+    prefetch(http, [f"{API}/{vid}" for f in findings
+                  if not (f.fix_published or f.likely_fixed or not f.fixed_versions)
+                  for vid in f.vendor_ids if _ADVISORY.match(vid)])
     for f in findings:
         if f.fix_published or f.likely_fixed or not f.fixed_versions:
             continue

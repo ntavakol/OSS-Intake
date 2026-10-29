@@ -10,7 +10,7 @@ import re
 from urllib.parse import unquote
 
 from ..cvss import base_score, severity_from_score, version_of
-from ..http import Http, HttpError
+from ..http import Http, HttpError, prefetch
 from ..models import Finding, normalise_purl, normalise_severity, parse_datetime, purl_without_version
 from ..os_packages import identity, is_os_purl
 from ..versions import split_fixed
@@ -185,6 +185,7 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
     hits = _query_batch(http, asked, queries)
     cache: dict[str, dict] = {}
     findings: list[Finding] = []
+    prefetch(http, [f"{API}/vulns/{vid}" for ids in hits.values() for vid in ids])
     for purl, ids in hits.items():
         name_ver = purl.split("?", 1)[0][4:].split("/", 1)[1]
         name, _, version = name_ver.rpartition("@")

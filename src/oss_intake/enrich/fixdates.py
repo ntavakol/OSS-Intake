@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote, unquote
 
-from ..http import Http, HttpError
+from ..http import Http, HttpError, prefetch
 from ..models import Finding, parse_datetime
 from ..versions import nearest_fix
 
@@ -33,9 +33,22 @@ def _system_and_name(purl: str) -> tuple[str, str] | None:
     return system, path
 
 
+def _first_url(f: Finding) -> str | None:
+    """The first deps.dev URL enrich() will ask for this finding, for prefetching; None if it asks none."""
+    if not f.fixed_versions or f.likely_fixed or not f.purl:
+        return None
+    fix, sn = nearest_fix(f.vs_fix, f.fixed_versions), _system_and_name(f.purl)
+    if not sn or not fix or (sn[0] == "go" and sn[1] == "stdlib"):
+        return None
+    if sn[0] == "go" and not fix.startswith("v"):
+        fix = f"v{fix}"
+    return f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/{quote(fix, safe='')}"
+
+
 def enrich(http: Http, findings: list[Finding]) -> dict:
     cache: dict[tuple[str, str, str], str | None] = {}
     stats = {"looked_up": 0, "found": 0, "unsupported": 0, "errors": 0}
+    prefetch(http, [u for u in map(_first_url, findings) if u])
     for f in findings:
         if not f.fixed_versions or f.likely_fixed:
             continue

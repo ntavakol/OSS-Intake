@@ -282,7 +282,9 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
 | `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
-| `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to 400 |
+| `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to `--release-age-max` |
+| `--release-age-max N` | Release-date lookups for at most N package versions, counted after duplicates across hosts are merged (default 400); the rest are reported as not checked, never as old |
+| `--cache-dir DIR`, `--no-cache` | Where slowly changing lookups are kept between runs: OSV advisory details for a day, deps.dev release dates for 30 days, latest versions for a day, proof-of-concept lists for 7 days (default: the user cache folder, e.g. `~/.cache/oss-intake` or `~/Library/Caches/oss-intake`). Which advisories affect a version, KEV, EPSS and the exploit indexes are always fetched fresh. `--no-cache` keeps nothing |
 | `--sbom` | Also write a CycloneDX SBOM to `raw/` |
 
 Other commands: `oss-intake doctor` (scanner paths, versions, hashes and known-bad status; `--trivy-path` and

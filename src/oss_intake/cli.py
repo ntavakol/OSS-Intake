@@ -51,7 +51,7 @@ from .enrich import (
     ubuntu_launchpad,
 )
 from .health import releases, scorecard, workflows
-from .http import Http, HttpError, RequestsHttp
+from .http import Http, HttpError, RequestsHttp, ResponseCache, default_cache_dir
 from .models import SEVERITY_ORDER, parse_datetime
 from .scanners import ReportShapeError, ScannerError, check_report, find_executable, load_json_bytes
 from .scanners import govulncheck as govuln_mod
@@ -247,6 +247,14 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"flag package versions published fewer than N days ago (default {release_age.DEFAULT_DAYS}; "
                         "0 turns it off): new releases are when compromised versions are live, before advisories "
                         "exist. One deps.dev request per language package")
+    s.add_argument("--release-age-max", type=int, default=release_age.MAX_LOOKUPS, metavar="N",
+                   help=f"look up release dates for at most N package versions, after duplicates are merged "
+                        f"(default {release_age.MAX_LOOKUPS}); the rest are reported as not checked")
+    s.add_argument("--cache-dir", metavar="DIR",
+                   help="keep slowly changing lookups (advisory details for a day, release dates for 30 days) "
+                        "here between runs (default: the user cache folder)")
+    s.add_argument("--no-cache", action="store_true",
+                   help="fetch everything fresh and keep nothing; what affects a version is always fetched fresh")
     s.add_argument("--timeout", type=int, default=1800, help="per scanner timeout in seconds (default 1800)")
     s.add_argument("--top", type=int, default=25, help="findings listed in the summary (default 25)")
     s.add_argument("--quiet", action="store_true", help="only print errors and the final summary")
@@ -495,6 +503,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 integrity.normalise_hash(value)
             except integrity.IntegrityError as exc:
                 raise UsageError(f"--{tool}-sha256: {exc}") from None
+    if args.release_age_max < 1:
+        raise UsageError("--release-age-max must be 1 or more (use --release-age-days 0 to turn the check off)")
+    if args.no_cache and args.cache_dir:
+        raise UsageError("--cache-dir and --no-cache cannot be used together")
     if args.release_age_days < 0:
         raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
     # B23: numbers are range-checked before any work.
@@ -587,6 +599,16 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _network_info(net) -> dict:
+    """Requests made and cache use, so a slow or fast run can be explained."""
+    if net is None:
+        return {"status": "offline"}
+    out: dict = {"requests": getattr(net, "requests_made", None)}
+    cache = getattr(net, "cache", None)
+    out["cache"] = cache.stats() if cache is not None else None
+    return out
+
+
 def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg) -> int:
     log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
         f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
@@ -594,7 +616,8 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
            if args.image else "")
         + f"out={out} formats={','.join(formats)}", args.quiet)
 
-    net = None if args.offline else (http or RequestsHttp())
+    net = None if args.offline else (http or RequestsHttp(cache=None if args.no_cache else ResponseCache(
+        Path(args.cache_dir).expanduser() if args.cache_dir else default_cache_dir())))
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 
     # Is the artifact the file the project released? Checked against the registry before scanning.
@@ -926,12 +949,12 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     elif net and args.release_age_days:
         # A date-only --as-of means the whole of that day.
         as_of_end = as_of + timedelta(days=1, seconds=-1) if args.as_of and "T" not in args.as_of else as_of
-        age_info = release_age.check(net, purls, as_of_end, args.release_age_days)
+        age_info = release_age.check(net, purls, as_of_end, args.release_age_days, limit=args.release_age_max)
         age_warning = release_age.warning(age_info)
         if age_warning:
             warnings.append(age_warning)
         if age_info["skipped_limit"]:
-            warnings.append(f"Release dates were looked up for the first {release_age.MAX_LOOKUPS} package versions "
+            warnings.append(f"Release dates were looked up for the first {args.release_age_max} package versions "
                             f"only; {age_info['skipped_limit']} were not checked for being new")
         if age_info["errors"]:
             warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s), "
@@ -982,6 +1005,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "decisions": decision_info,
         "registry_check": getattr(args, "registry_result", None),
         "release_age": age_info,
+        "network": _network_info(net),
         "reachability": reach_stats if args.reachability else {"status": "skipped"},
         "lag": {**lag_m, "release_date_source": release_date_source},
         "coverage": coverage.compute(findings, looked_up=bool(net) and not args.no_fix_dates),
@@ -1016,6 +1040,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if pkg_rows is not None:
         inventory_report.write_csv(out / "packages.csv", pkg_rows, report.csv_safe)
         written.append("packages.csv")
+        if inventory_report.write_systems_csv(out / "package-systems.csv", pkg_rows, report.csv_safe):
+            written.append("package-systems.csv")
         if "html" in formats:
             exec_summary.write(out / "executive-summary.html", assessment, pkg_rows,
                                assessment["inventory"]["executive"])

@@ -103,7 +103,7 @@ def renv_purls(path: Path) -> tuple[list[str], list[str]]:
 
 # --- Package inventory (a CSV list of packages, e.g. exported from Artifactory, Nexus or a spreadsheet) ---
 
-MAX_INVENTORY_ROWS = 50_000
+MAX_INVENTORY_ROWS = 500_000  # as many as SBOM components (sbom.MAX_COMPONENTS); one row per host and package
 INVENTORY_KEYS = {"purl", "ecosystem", "name", "version"}
 # Ecosystem names people use, mapped to purl types that OSV understands.
 ECOSYSTEMS = {

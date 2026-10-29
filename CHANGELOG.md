@@ -6,6 +6,22 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Large inventories: lookups that can be planned (OSV advisory details, deps.dev fix and release dates, latest
+  versions, Ubuntu notices, proof-of-concept lists) are fetched 8 at a time instead of one by one.
+- A response cache (`--cache-dir`, default the user cache folder; `--no-cache`): OSV advisory details for a day,
+  deps.dev release dates for 30 days, latest versions for a day, proof-of-concept lists for 7 days. Which
+  advisories affect a version, KEV, EPSS and the exploit indexes are always fetched fresh. assessment.json
+  records the requests made and cache hits under `network`.
+- packages.csv gains `systems`: how many systems (SBOM subjects, or a system or host column) list each package
+  version; equally bad packages on more systems rank first. Long host lists are shortened in reports and
+  packages.csv, and `package-systems.csv` lists every package and system pair ("which hosts run X").
+- `--release-age-max N` (default 400) sets how many release dates are looked up, counted after duplicates
+  across hosts are merged.
+
+### Changed
+- Package inventories may hold 500,000 rows (was 50,000), as many as SBOM components; a test runs 100,000 rows
+  (5,000 versions on 20 hosts) in seconds.
+- Proof-of-concept lookups are capped at 1,000 per run (was 300), now that they run in parallel and are cached.
 - osquery collector, `examples/osquery/osquery_sbom.py` (standard library only): turns osquery's package tables
   into one CycloneDX SBOM per host, from a local `osqueryi` run (with `--dir` for venvs and project folders),
   from osquery snapshot logs (`osqueryd.snapshots.log` with any pack delimiter, Fleet or any log pipeline; both

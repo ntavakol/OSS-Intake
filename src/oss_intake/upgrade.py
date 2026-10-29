@@ -20,7 +20,7 @@ from urllib.parse import quote, unquote
 
 from . import versions as versions_mod
 from .enrich.fixdates import API, _system_and_name
-from .http import Http, HttpError
+from .http import Http, HttpError, prefetch
 from .scanners import osv as osv_mod
 
 _NUM = re.compile(r"v?(\d+)(?:\.(\d+))?")
@@ -94,6 +94,8 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
         if r["upgrade_to"] and not r["malicious"]:
             r["upgrade_major"] = breaking(r.get("compare_version") or r["version"], _target(r))
     if latest:
+        prefetch(http, [f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}"
+                      for sn in (_system_and_name(r["purl"]) for r in rows) if sn])
         for r in rows:
             try:
                 found = latest_release(http, r["purl"])

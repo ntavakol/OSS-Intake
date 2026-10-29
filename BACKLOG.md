@@ -10,14 +10,6 @@ vendor API keys, and a new source never touches the scanning code. Package-level
 application-level consoles (CrowdStrike, Tenable, Defender) already do CVE matching for installed applications
 and are not primary sources (see "Not planned" below).
 
-0.10.0, organisation scale and laptops:
-- Each package version is checked once, however many hosts or SBOMs list it, and mapped back: packages.csv and
-  the executive summary gain "hosts" (count and names) and the top list is ranked by reach as well as severity.
-- A local cache (`--cache-dir`, default under the user cache folder, `--no-cache`) for deps.dev release dates
-  and OSV advisory details, with an age limit, so a weekly run does not repeat 100,000 lookups.
-- The new-release check's 400-lookup cap becomes configurable, and is applied after de-duplication.
-- A synthetic 100,000-row test to keep run time and memory in check.
-
 0.11.0, registry proxy gate:
 - Collectors for Artifactory (AQL) and Nexus (REST components API) that list what the proxy has cached, as an
   SBOM or CSV, with "new since the last run".

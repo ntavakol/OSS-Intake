@@ -14,7 +14,7 @@ from datetime import datetime
 from urllib.parse import quote
 
 from .enrich.fixdates import API, _system_and_name
-from .http import Http, HttpError
+from .http import Http, HttpError, prefetch
 from .models import parse_datetime
 
 DEFAULT_DAYS = 7
@@ -26,11 +26,23 @@ def _version(purl: str) -> str:
     return body.rpartition("@")[2] if "@" in body[4:] else ""
 
 
+def _url(sn: tuple[str, str], version: str) -> str:
+    if sn[0] == "go" and not version.startswith("v"):
+        version = f"v{version}"
+    return f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/{quote(version, safe='')}"
+
+
 def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int = MAX_LOOKUPS) -> dict:
     """as_of is the end of the assessment period: a version published after it did not exist yet. Ages are
     counted in calendar days (published yesterday = 1 day old)."""
     info: dict = {"status": "ok", "days": days, "checked": 0, "unknown": 0, "unsupported": 0, "errors": 0,
                   "skipped_limit": 0, "recent": [], "published": {}}
+    planned = []
+    for purl in dict.fromkeys(purls):
+        sn, version = _system_and_name(purl), _version(purl)
+        if sn and version and sn[1] != "stdlib" and len(planned) < limit:
+            planned.append(_url(sn, version))
+    prefetch(http, planned)
     for purl in dict.fromkeys(purls):
         sn = _system_and_name(purl)
         version = _version(purl)
@@ -43,8 +55,7 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
         if sn[0] == "go" and not version.startswith("v"):
             version = f"v{version}"
         try:
-            status, data = http.get_json(f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/"
-                                         f"{quote(version, safe='')}")
+            status, data = http.get_json(_url(sn, version))
         except HttpError:
             info["errors"] += 1
             continue

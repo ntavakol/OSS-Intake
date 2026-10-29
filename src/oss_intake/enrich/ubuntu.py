@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from ..http import Http, HttpError
+from ..http import Http, HttpError, prefetch
 from ..models import Finding, parse_datetime
 from ..versions import compare
 
@@ -70,6 +70,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     stats["packages_queried"] = len(keys)
 
     notices: dict[str, dict] = {}
+    prefetch(http, [f"{API}/vulns/{vid}" for ids in ids_per_key for vid in ids if vid.startswith("USN-")])
     for ids in ids_per_key:
         for vid in ids:
             if vid.startswith("USN-") and vid not in notices:

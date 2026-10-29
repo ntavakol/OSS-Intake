@@ -14,7 +14,8 @@ from .models import Finding
 from .upgrade import describe
 
 GROUP_ORDER = ["act", "review", "conditions", "routine", "aside"]
-BASE_FIELDS = ["group", "ecosystem", "package", "version", "findings", "critical", "high", "malicious", "kev",
+BASE_FIELDS = ["group", "ecosystem", "package", "version", "systems", "findings", "critical", "high", "malicious",
+               "kev",
                "no_fix", "upgrade_to", "upgrade_left", "upgrade_major", "latest", "latest_left", "latest_major",
                "published", "new_release", "purl"]
 
@@ -27,6 +28,16 @@ def split_purl(purl: str) -> tuple[str, str, str]:
     if ptype in ("deb", "rpm", "apk"):
         name = name.rsplit("/", 1)[-1]  # pkg:deb/ubuntu/libssl3t64 -> libssl3t64, as the distro names it
     return ptype, (name.replace("/", ":") if ptype == "maven" else name), version
+
+
+SYSTEM_LABELS = ("system", "host", "hostname")
+
+
+def systems(labels: dict[str, str]) -> int | None:
+    """How many systems (hosts, images, repositories) list this package version: the distinct values of its
+    system label (an SBOM's subject, or a system or host column), merged as 'a; b'. None without such a label."""
+    key = next((k for k in SYSTEM_LABELS if labels.get(k)), None)
+    return len({v.strip() for v in labels[key].split(";") if v.strip()}) if key else None
 
 
 def _highest(vs: list[str]) -> str:
@@ -64,6 +75,7 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
             "ecosystem": ptype + (f" ({purl.split('?distro=', 1)[1]})" if "?distro=" in purl else ""),
             "package": name,
             "version": version,
+            "systems": systems(entry.get("labels") or {}),
             "findings": len(fs),
             "critical": sum(1 for f in fs if f.severity == "CRITICAL"),
             "high": sum(1 for f in fs if f.severity == "HIGH"),
@@ -78,8 +90,10 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
             "purl": purl,
             "labels": dict(entry.get("labels") or {}),
         })
+    # Worst first; between equally bad packages, the one on more systems first.
     rows.sort(key=lambda r: (GROUP_ORDER.index(r["group_key"]) if r["group_key"] else len(GROUP_ORDER),
-                             -r["critical"], -r["findings"], r["ecosystem"], r["package"].lower(), r["version"]))
+                             -r["critical"], -(r["systems"] or 0), -r["findings"], r["ecosystem"],
+                             r["package"].lower(), r["version"]))
     return rows
 
 
@@ -97,8 +111,38 @@ def summary(rows: list[dict]) -> dict:
     }
 
 
+SHOWN = 5        # values of one label shown in reports before "and N more"
+CSV_SHOWN = 20   # in packages.csv: Excel holds at most 32,767 characters in a cell
+
+
+def abbreviate(value: str, shown: int = SHOWN, where: str = "") -> str:
+    """'h1; h2; ...; h900' -> 'h1; ...; h5; and 895 more'; the full list is in package-systems.csv."""
+    parts = [v for v in value.split("; ") if v]
+    if len(parts) <= shown:
+        return value
+    return "; ".join(parts[:shown]) + f"; and {len(parts) - shown} more" + (f" ({where})" if where else "")
+
+
 def label_text(labels: dict[str, str]) -> str:
-    return " · ".join(f"{k}: {v}" for k, v in labels.items())
+    return " · ".join(f"{k}: {abbreviate(v)}" for k, v in labels.items())
+
+
+def write_systems_csv(path: Path, rows: list[dict], safe) -> bool:
+    """package-systems.csv: one row per package version and system, to answer "which hosts run X". Written
+    when some package is on more than one system; False when there was nothing to write."""
+    if not any((r.get("systems") or 0) > 1 for r in rows):
+        return False
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["system", "ecosystem", "package", "version", "group", "findings", "critical", "purl"])
+        for r in rows:
+            key = next((k for k in SYSTEM_LABELS if r["labels"].get(k)), None)
+            if not key:
+                continue
+            for system in sorted({v.strip() for v in r["labels"][key].split(";") if v.strip()}):
+                w.writerow([safe(x) for x in (system, r["ecosystem"], r["package"], r["version"], r["group"],
+                                              r["findings"], r["critical"], r["purl"])])
+    return True
 
 
 def write_csv(path: Path, rows: list[dict], safe) -> None:
@@ -110,10 +154,12 @@ def write_csv(path: Path, rows: list[dict], safe) -> None:
         csv.writer(fh).writerow([safe(c) for c in BASE_FIELDS + label_cols])
         for r in rows:
             out = {k: r.get(k, "") for k in BASE_FIELDS}
+            out["systems"] = "" if r.get("systems") is None else r["systems"]
             out["malicious"] = "yes" if r["malicious"] else ""
             for k in ("upgrade_left", "latest_left"):
                 out[k] = describe(r.get(k))
             for k in ("upgrade_major", "latest_major"):
                 out[k] = "yes" if r.get(k) else ""
-            out.update({k: r["labels"].get(k, "") for k in label_cols})
+            out.update({k: abbreviate(r["labels"].get(k, ""), CSV_SHOWN, "see package-systems.csv")
+                        if k in SYSTEM_LABELS else r["labels"].get(k, "") for k in label_cols})
             w.writerow({k: safe(v) for k, v in out.items()})
