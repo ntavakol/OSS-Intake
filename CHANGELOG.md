@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- A replay test of 53 known-vulnerable PyPI and npm versions (`tests/test_recorded_seeds.py`): real OSV answers
+  recorded on 30 Oct 2026, run with no network, failing if any expected CVE stops being found.
+  `scripts/record_seeds.py` refreshes the recording.
+
 ## [0.10.0] - 2026-10-29
 
 Organisation scale: an osquery collector for laptops and servers, parallel lookups, a response cache, and how
