@@ -16,9 +16,6 @@ and are not primary sources (see "Not planned" below).
 - A local cache (`--cache-dir`, default under the user cache folder, `--no-cache`) for deps.dev release dates
   and OSV advisory details, with an age limit, so a weekly run does not repeat 100,000 lookups.
 - The new-release check's 400-lookup cap becomes configurable, and is applied after de-duplication.
-- osquery collector (`examples/osquery/`): a query over `deb_packages`, `rpm_packages`, `npm_packages`,
-  `python_packages`, `homebrew_packages` and `chocolatey_packages`, and a script that turns `osqueryi --json` or
-  a Fleet export into a CycloneDX file per host. Gives package-level visibility on laptops and servers for free.
 - A synthetic 100,000-row test to keep run time and memory in check.
 
 0.11.0, registry proxy gate:

@@ -238,6 +238,8 @@ reason, never counted as clean. The SBOM's subject becomes the `system` label an
 `supplier` label; `--label key=value` adds your own to every package. Recipes for Amazon Inspector, Syft, Trivy
 and the GitHub dependency graph are in
 [examples/sbom](https://github.com/ntavakol/OSS-Intake/tree/main/examples/sbom).
+For laptops and servers, [examples/osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
+turns osquery's package tables, from one machine or a whole fleet's result logs, into one SBOM per host.
 
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 

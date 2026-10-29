@@ -5,6 +5,19 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- osquery collector, `examples/osquery/osquery_sbom.py` (standard library only): turns osquery's package tables
+  into one CycloneDX SBOM per host, from a local `osqueryi` run (with `--dir` for venvs and project folders),
+  from osquery snapshot result logs (osqueryd, Fleet or any log pipeline; one SBOM per host, latest snapshot of
+  each query) or from a saved JSON object. deb and rpm packages carry the distro, epoch and source package
+  (including dpkg's `source (version)` form); Python packages the distro installed are left to its deb or rpm
+  package; home folders are shortened to `~`. Homebrew, Chocolatey, the operating system and Debian
+  derivatives are written without a purl and listed as not checked with the reason. `oss-intake-pack.conf`
+  holds the queries as a daily snapshot pack.
+- SBOM input reads two component properties: `oss-intake:not-checked` (the reason a component without a purl
+  cannot be checked) and `oss-intake:label:<key>` (a label such as `location`; names of columns oss-intake
+  fills in are refused).
+
 ## [0.9.0] - 2026-10-28
 
 SBOM input: CycloneDX and SPDX, including OS packages, wherever an inventory CSV worked.

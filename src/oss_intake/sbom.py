@@ -11,11 +11,16 @@ A component with no purl, a purl of a type OSV does not cover, a version range, 
 release cannot be told is listed as not checked with the reason; nothing is dropped silently. The subject
 becomes the `system` label and a component's supplier the `supplier` label, so packages.csv and the executive
 summary group by them. Structural problems (not JSON, not an SBOM, too large) stop the run before any lookup.
+
+Two CycloneDX component properties are read, so a collector (examples/osquery) can say more than a purl does:
+  oss-intake:not-checked     why a component without a purl cannot be checked (a Homebrew formula, the OS)
+  oss-intake:label:<key>     a label for the package, e.g. oss-intake:label:location = ~/app/.venv
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from . import os_packages
@@ -25,6 +30,9 @@ from .models import normalise_purl
 MAX_FILE_BYTES = 200 * 1024 * 1024
 MAX_FILES = 5000
 MAX_COMPONENTS = 500_000
+NOT_CHECKED_PROP = "oss-intake:not-checked"
+LABEL_PROP = "oss-intake:label:"
+_LABEL_KEY = re.compile(r"^[a-z][a-z0-9_ -]{0,39}$")
 _CDX_SPECS = ("1.2", "1.3", "1.4", "1.5", "1.6", "1.7")
 
 
@@ -224,6 +232,8 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
             if info["components"] > MAX_COMPONENTS:
                 raise InputError(f"more than {MAX_COMPONENTS} components; split the SBOMs into smaller sets")
             purl, why = _purl(raw_purl, props, os_queries)
+            if not raw_purl and props.get(NOT_CHECKED_PROP):
+                why = props[NOT_CHECKED_PROP][:300]
             if not purl:
                 info["not_checked"].append({"component": name or raw_purl, "system": system, "reason": why})
                 continue
@@ -231,6 +241,9 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
             labels.setdefault("system", set()).add(system)
             if supplier:
                 labels.setdefault("supplier", set()).add(supplier)
+            for key, value in props.items():
+                if key.startswith(LABEL_PROP) and value:
+                    labels.setdefault(_label_key(key[len(LABEL_PROP):], f.name), set()).add(value[:300])
     if errors:
         shown = "\n  ".join(errors[:20])
         raise InputError(f"{len(errors)} file(s) could not be read as SBOMs; nothing was looked up:\n  {shown}")
@@ -240,6 +253,17 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     entries = [{"purl": p, "labels": {k: "; ".join(sorted(v)) for k, v in sorted(lb.items())}}
                for p, lb in sorted(found.items())]
     return entries, os_queries, info
+
+
+def _label_key(key: str, file: str) -> str:
+    from .inputs import INVENTORY_KEYS
+    from .inventory_report import BASE_FIELDS
+
+    key = key.strip().lower()
+    if not _LABEL_KEY.match(key) or key in INVENTORY_KEYS or key in BASE_FIELDS or key in (
+            "labels", "system", "supplier", "compare_version", "upgrade_version"):
+        raise InputError(f"{file}: property {LABEL_PROP}{key} is not a usable label name")
+    return key
 
 
 def _purl(raw: str, props: dict, os_queries: dict) -> tuple[str | None, str]:

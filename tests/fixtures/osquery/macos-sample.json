@@ -1,0 +1,38 @@
+{"os":
+[
+  {"name":"macOS","platform":"darwin","version":"26.5.1"}
+]
+,"homebrew":
+[
+  {"name":"ca-certificates","version":"2026-10-20"},
+  {"name":"cosign","version":"3.1.4"},
+  {"name":"gmp","version":"6.3.0"},
+  {"name":"govulncheck","version":"1.9.0"},
+  {"name":"lz4","version":"1.10.0"},
+  {"name":"mpdecimal","version":"4.0.1"},
+  {"name":"openssl@4","version":"4.1.0"},
+  {"name":"pandoc","version":"3.12.1"},
+  {"name":"pipx","version":"1.18.4"},
+  {"name":"python@3.15","version":"3.15.1"},
+  {"name":"readline","version":"8.3.6"},
+  {"name":"sqlite","version":"3.54.1"},
+  {"name":"xz","version":"5.8.4"},
+  {"name":"zstd","version":"1.5.7_1"},
+  {"name":"osquery","version":"5.24.0"}
+]
+,"npm":
+[
+
+]
+,"python":
+[
+  {"name":"pip","version":"26.2.2"},
+  {"name":"altgraph","version":"0.17.2"},
+  {"name":"future","version":"0.18.2"},
+  {"name":"macholib","version":"1.15.2"},
+  {"name":"pip","version":"21.2.4"},
+  {"name":"setuptools","version":"58.0.4"},
+  {"name":"six","version":"1.15.0"},
+  {"name":"wheel","version":"0.37.0"}
+]
+}
