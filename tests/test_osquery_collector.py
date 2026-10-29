@@ -104,3 +104,104 @@ def test_sbom_label_property_must_not_shadow_columns(tmp_path):
     f.write_text(json.dumps(doc))
     with pytest.raises(InputError, match="not a usable label"):
         sbom.read(f)
+
+
+# --- review fixes (29 Oct) -----------------------------------------------------------------------------------
+
+def test_real_osqueryd_log_default_pack_delimiter(tmp_path):
+    """Written by osqueryd 5.24.0 with oss-intake-pack.conf loaded as pack 'oss-intake' and the default
+    --pack_delimiter '_': names are pack_oss-intake_oss_intake_deb_packages."""
+    out = _run(tmp_path, "--results", str(FIX / "osqueryd.snapshots.log"))
+    entries, os_queries, _ = sbom.read(out)
+    assert {p.name for p in out.iterdir()} == {"srv-01.cdx.json"}
+    assert sum(e["purl"].startswith("pkg:deb/") for e in entries) == 15 and os_queries
+    assert any(e["purl"].startswith("pkg:npm/") for e in entries)
+
+
+@pytest.mark.parametrize("name, table", [
+    ("pack_oss-intake_oss_intake_deb_packages", "deb_packages"),
+    ("pack_Global_python_packages_app", "python_packages"), ("pack_x_uptime", None)])
+def test_table_of_underscore_delimiter(name, table):
+    assert col.table_of(name) == table
+
+
+def test_snapshot_event_format(tmp_path):
+    """--logger_snapshot_event_type: one line per row, action 'snapshot', no 'snapshot' key."""
+    rows = [{"name": "curl", "version": "8.5.0-2ubuntu10.6", "source": "", "arch": "amd64",
+             "status": "install ok installed"}, {"name": "bash", "version": "5.2.21-2ubuntu4", "source": "",
+                                                 "arch": "amd64", "status": "install ok installed"}]
+    os_row = {"name": "Ubuntu", "major": "24", "minor": "4", "platform": "ubuntu"}
+    lines = [{"name": "pack_p_os_version", "hostIdentifier": "h1", "unixTime": 10, "action": "snapshot",
+              "columns": os_row}]
+    lines += [{"name": "pack_p_deb_packages", "hostIdentifier": "h1", "unixTime": 5, "action": "snapshot",
+               "columns": {"name": "old", "version": "1", "status": "install ok installed"}}]
+    lines += [{"name": "pack_p_deb_packages", "hostIdentifier": "h1", "unixTime": 10, "action": "snapshot",
+               "columns": r} for r in rows]
+    log = tmp_path / "events.log"
+    log.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    entries, _, _ = sbom.read(_run(tmp_path, "--results", str(log)))
+    assert sorted(e["purl"].split("@")[0] for e in entries) == ["pkg:deb/ubuntu/bash", "pkg:deb/ubuntu/curl"]
+
+
+def _host(tmp_path, raw, host="h"):
+    f = tmp_path / f"{host}.json"
+    f.write_text(json.dumps(raw))
+    out = tmp_path / f"out-{host}"
+    assert col.main(["--json", str(f), "--host", host, "--out", str(out)]) == 0
+    return sbom.read(out)
+
+
+def test_distro_python_kept_where_os_packages_cannot_be_checked(tmp_path):
+    py = [{"name": "requests", "version": "2.25.1", "directory": "/usr/lib/python3.9/site-packages/"}]
+    rpm = [{"name": "python3-requests", "version": "2.25.1", "release": "6.el9", "arch": "noarch",
+            "source": "python-requests-2.25.1-6.el9.src.rpm"}]
+    rhel = {"os_version": [{"name": "Red Hat", "platform": "rhel", "major": "9", "minor": "4"}],
+            "rpm_packages": rpm, "python_packages": py}
+    entries, _, _ = _host(tmp_path, rhel, "rhel")
+    assert "pkg:pypi/requests@2.25.1" in {e["purl"] for e in entries}
+    rocky = dict(rhel, os_version=[{"name": "Rocky", "platform": "rocky", "major": "9", "minor": "4"}])
+    entries, _, _ = _host(tmp_path, rocky, "rocky")
+    assert "pkg:pypi/requests@2.25.1" not in {e["purl"] for e in entries}
+
+
+def test_debian_testing_has_no_release(tmp_path):
+    raw = {"os_version": [{"name": "Debian GNU/Linux", "platform": "debian", "major": "", "minor": ""}],
+           "deb_packages": [{"name": "curl", "version": "8.11.1-1", "source": "", "arch": "amd64",
+                             "status": "install ok installed"}]}
+    entries, _, info = _host(tmp_path, raw, "sid")
+    assert entries == [] and any("testing or unstable" in n["reason"] for n in info["not_checked"])
+
+
+def test_half_configured_deb_kept_config_files_dropped(tmp_path):
+    base = {"source": "", "arch": "amd64"}
+    raw = {"os_version": [{"name": "Ubuntu", "platform": "ubuntu", "major": "24", "minor": "4"}],
+           "deb_packages": [dict(base, name="libssl3t64", version="3.0.13-0ubuntu3.4",
+                                 status="install ok half-configured"),
+                            dict(base, name="gone", version="1.0-1", status="deinstall ok config-files")]}
+    entries, _, _ = _host(tmp_path, raw, "half")
+    assert [e["purl"].split("@")[0] for e in entries] == ["pkg:deb/ubuntu/libssl3t64"]
+
+
+def test_host_file_names_never_collide(tmp_path):
+    lines = [{"name": "python_packages", "hostIdentifier": h, "unixTime": 1,
+              "snapshot": [{"name": f"pkg{i}", "version": "1.0", "directory": "/opt/x/"}]}
+             for i, h in enumerate(["web 01", "web_01", "Web_01"])]
+    log = tmp_path / "hosts.log"
+    log.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    out = _run(tmp_path, "--results", str(log))
+    assert len(list(out.iterdir())) == 3
+    assert len({p.name.casefold() for p in out.iterdir()}) == 3
+
+
+@pytest.mark.parametrize("path, masked", [
+    ("/var/home/ned/app", "~/app"), ("/export/home/ned", "~"), ("c:\\users\\ned\\x", "~\\x"),
+    ("C:/Users/ned/x", "~/x"), ("\\\\?\\C:\\Users\\ned\\x", "~\\x"), ("/root/.local", "~/.local"),
+    ("/rootfs/x", "/rootfs/x"), ("/usr/lib/python3", "/usr/lib/python3")])
+def test_mask_home(path, masked):
+    assert col.mask_home(path) == masked
+
+
+def test_dir_project_root_finds_its_venv(tmp_path):
+    site = tmp_path / "app" / ".venv" / "lib" / "python3.12" / "site-packages"
+    site.mkdir(parents=True)
+    assert col._site_packages(tmp_path / "app") == str(site.resolve())
