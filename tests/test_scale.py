@@ -46,7 +46,7 @@ def test_cache_round_trip_expiry_and_refusals(tmp_path):
     assert c.get(url) is None  # older than a day
     # a corrupt or foreign file is a miss, not a crash
     f = c._file(url)
-    f.write_text("{not json")
+    f.write_text("{not json", encoding="utf-8")
     assert c.get(url) is None
 
 
@@ -158,7 +158,7 @@ def test_release_age_limit_after_dedup():
 
 def test_cli_cache_options_validated(tmp_path):
     inv = tmp_path / "p.csv"
-    inv.write_text("ecosystem,name,version\nnpm,a,1.0.0\n")
+    inv.write_text("ecosystem,name,version\nnpm,a,1.0.0\n", encoding="utf-8")
     base = ["--path", str(inv), "--out", str(tmp_path / "o")]
     assert cli.main(base + ["--no-cache", "--cache-dir", str(tmp_path)], http=FakeHttp()) == cli.EXIT_USAGE
     assert cli.main(base + ["--release-age-max", "0"], http=FakeHttp()) == cli.EXIT_USAGE
@@ -254,7 +254,7 @@ def test_cache_ignores_untrustworthy_entries(tmp_path, record):
     f.parent.mkdir(parents=True)
     if isinstance(record, dict):
         record = {**record, "url": url}
-    f.write_text(json.dumps(record))
+    f.write_text(json.dumps(record), encoding="utf-8")
     assert c.get(url) is None
 
 
@@ -294,7 +294,7 @@ def test_text_downloads_are_counted(monkeypatch, tmp_path):
 def test_host_column_preferred_over_system(tmp_path):
     inv = tmp_path / "p.csv"
     lines = ["ecosystem,name,version,system,host"] + [f"npm,a,1.0.0,CRM,h{i}" for i in range(25)]
-    inv.write_text("\n".join(lines) + "\n")
+    inv.write_text("\n".join(lines) + "\n", encoding="utf-8")
     out = tmp_path / "o"
     assert cli.main(["--path", str(inv), "--out", str(out), "--no-latest", "--release-age-days", "0", "--no-cache",
                      "--no-epss", "--no-kev", "--no-exploits"], http=ScaleHttp()) == cli.EXIT_OK
@@ -306,7 +306,7 @@ def test_host_column_preferred_over_system(tmp_path):
 
 def test_inventory_column_named_like_a_report_column_refused(tmp_path, capsys):
     inv = tmp_path / "p.csv"
-    inv.write_text("purl,systems\npkg:npm/a@1.0.0,CRM\n")
+    inv.write_text("purl,systems\npkg:npm/a@1.0.0,CRM\n", encoding="utf-8")
     assert cli.main(["--path", str(inv), "--out", str(tmp_path / "o")], http=ScaleHttp()) == cli.EXIT_USAGE
     assert "systems" in capsys.readouterr().err
 
@@ -331,7 +331,8 @@ def test_every_prefetched_url_is_then_asked_for(tmp_path):
             return super().get_json(url, params)
 
     inv = tmp_path / "p.csv"
-    inv.write_text("ecosystem,name,version\n" + "".join(f"npm,pkg-{p},1.0.{p % 10}\n" for p in range(30)))
+    rows = "".join(f"npm,pkg-{p},1.0.{p % 10}\n" for p in range(30))
+    inv.write_text("ecosystem,name,version\n" + rows, encoding="utf-8")
     h = Checking()
     cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-cache", "--as-of", AS_OF], http=h)
     assert h.prefetched and h.prefetched <= h.asked

@@ -39,7 +39,7 @@ def test_macos_sample_as_received(tmp_path):
 
 def test_ubuntu_sample_source_packages_and_epochs(tmp_path):
     out = _run(tmp_path, "--json", str(FIX / "ubuntu-sample.json"))
-    doc = json.loads((out / "ubuntu-sample.cdx.json").read_text())
+    doc = json.loads((out / "ubuntu-sample.cdx.json").read_text(encoding="utf-8"))
     purls = {c["name"]: c.get("purl") for c in doc["components"]}
     # 'util-linux (2.39.3-9ubuntu6.6)': source name and source version; the binary's epoch kept as a qualifier
     assert purls["bsdutils"] == ("pkg:deb/ubuntu/bsdutils@2.39.3-9ubuntu6.6?arch=amd64&epoch=1&distro=ubuntu-24.04"
@@ -68,7 +68,7 @@ def test_fleet_snapshot_log_one_sbom_per_host_latest_snapshot(tmp_path):
 def test_differential_results_refused(tmp_path):
     log = tmp_path / "diff.log"
     log.write_text(json.dumps({"name": "pack/x/deb_packages", "hostIdentifier": "h", "action": "added",
-                               "columns": {"name": "curl", "version": "1"}}) + "\n")
+                               "columns": {"name": "curl", "version": "1"}}) + "\n", encoding="utf-8")
     assert col.main(["--results", str(log), "--out", str(tmp_path / "o")]) == 2
 
 
@@ -85,7 +85,7 @@ def test_derivative_distro_not_guessed(tmp_path):
            "deb_packages": [{"name": "curl", "version": "8.5.0-2ubuntu10.6", "source": "", "arch": "amd64",
                              "status": "install ok installed"}]}
     f = tmp_path / "mint.json"
-    f.write_text(json.dumps(raw))
+    f.write_text(json.dumps(raw), encoding="utf-8")
     out = _run(tmp_path, "--json", str(f), "--host", "mint")
     entries, _, info = sbom.read(out)
     assert entries == [] and any("derivative" in n["reason"] for n in info["not_checked"])
@@ -101,7 +101,7 @@ def test_sbom_label_property_must_not_shadow_columns(tmp_path):
         {"name": "x", "version": "1", "purl": "pkg:pypi/x@1",
          "properties": [{"name": "oss-intake:label:findings", "value": "low"}]}]}
     f = tmp_path / "s.cdx.json"
-    f.write_text(json.dumps(doc))
+    f.write_text(json.dumps(doc), encoding="utf-8")
     with pytest.raises(InputError, match="not a usable label"):
         sbom.read(f)
 
@@ -138,14 +138,14 @@ def test_snapshot_event_format(tmp_path):
     lines += [{"name": "pack_p_deb_packages", "hostIdentifier": "h1", "unixTime": 10, "action": "snapshot",
                "columns": r} for r in rows]
     log = tmp_path / "events.log"
-    log.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    log.write_text("".join(json.dumps(x) + "\n" for x in lines), encoding="utf-8")
     entries, _, _ = sbom.read(_run(tmp_path, "--results", str(log)))
     assert sorted(e["purl"].split("@")[0] for e in entries) == ["pkg:deb/ubuntu/bash", "pkg:deb/ubuntu/curl"]
 
 
 def _host(tmp_path, raw, host="h"):
     f = tmp_path / f"{host}.json"
-    f.write_text(json.dumps(raw))
+    f.write_text(json.dumps(raw), encoding="utf-8")
     out = tmp_path / f"out-{host}"
     assert col.main(["--json", str(f), "--host", host, "--out", str(out)]) == 0
     return sbom.read(out)
@@ -187,7 +187,7 @@ def test_host_file_names_never_collide(tmp_path):
               "snapshot": [{"name": f"pkg{i}", "version": "1.0", "directory": "/opt/x/"}]}
              for i, h in enumerate(["web 01", "web_01", "Web_01"])]
     log = tmp_path / "hosts.log"
-    log.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    log.write_text("".join(json.dumps(x) + "\n" for x in lines), encoding="utf-8")
     out = _run(tmp_path, "--results", str(log))
     assert len(list(out.iterdir())) == 3
     assert len({p.name.casefold() for p in out.iterdir()}) == 3
