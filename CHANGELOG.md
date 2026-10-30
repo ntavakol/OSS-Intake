@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-31
+
+### Changed
+- Neutral example names in the test data, code comments, validation guide and changelog.
+- A `NOTICE` file states the copyright holder; it is included in the wheel and sdist with the licence.
+
 ## [0.11.0] - 2026-10-30
 
 A Nexus collector and gate, `--fail-on unknown-age`, and download instructions for the collectors.
