@@ -166,7 +166,16 @@ echo "   accepts it knowingly, so the next step shows the gate on one new packag
 python3 "$HERE/nexus_sbom.py" --state nexus-state.json --accept
 
 echo "== a developer caches one more package; the gate checks only what is not yet accepted"
-fetch npm-proxy/axios/-/axios-0.21.0.tgz
+# One this Nexus has not cached yet, so a second run of this script still shows a new package.
+NEXT=""
+for candidate in axios:0.21.0 ms:2.0.0 debug:2.6.8 qs:6.5.1 node-fetch:2.6.0 ws:7.4.0; do
+    pkg=${candidate%%:*}; ver=${candidate##*:}
+    if ! grep -q "\"purl\": \"pkg:npm/$pkg@$ver\"" nexus-sboms/all/npm-proxy.cdx.json 2>/dev/null; then
+        NEXT="$pkg/-/$pkg-$ver.tgz"; break
+    fi
+done
+[ -n "$NEXT" ] || { echo "   every demo package is cached already: sh $0 --remove, then run again"; exit 0; }
+fetch "npm-proxy/$NEXT"
 collect
 gate
 echo "== done. Remove Nexus with: sh $0 --remove"
