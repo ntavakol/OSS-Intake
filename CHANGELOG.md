@@ -6,6 +6,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Nexus collector, `examples/nexus/nexus_sbom.py` (standard library only): lists what Nexus Repository proxies
+  have cached as one CycloneDX SBOM per repository (npm, PyPI, Maven, NuGet, RubyGems, Go, Cargo, CRAN), with
+  each file's checksums and the date it was cached; with `--state`, what is new since the last run goes to a
+  separate folder for a gate. Credentials come from the environment and never go over plain http except to
+  localhost; who pulled each package is not copied. `examples/nexus/README.md` has the gate recipe and
+  `try-nexus.sh` a throwaway Nexus in Docker to try it on. Tested against a real Nexus Community Edition.
 - A replay test of 53 known-vulnerable PyPI and npm versions (`tests/test_recorded_seeds.py`): real OSV answers
   recorded on 30 Oct 2026, run with no network, failing if any expected CVE stops being found.
   `scripts/record_seeds.py` refreshes the recording.

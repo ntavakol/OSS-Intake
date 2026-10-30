@@ -8,13 +8,9 @@ Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or 
 a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no
 vendor API keys, and a new source never touches the scanning code. Package-level sources (purls) come first;
 application-level consoles (CrowdStrike, Tenable, Defender) already do CVE matching for installed applications
-and are not primary sources (see "Not planned" below).
-
-0.11.0, registry proxy gate:
-- Collectors for Artifactory (AQL) and Nexus (REST components API) that list what the proxy has cached, as an
-  SBOM or CSV, with "new since the last run".
-- A gate recipe: run on new cache entries with `--fail-on malicious,recent` before they are released to
-  developers (an assessment the proxy calls, not a proxy).
+and are not primary sources (see "Not planned" below). Shipped: SBOM input (0.9.0), organisation scale and the
+osquery collector (0.10.0), the Nexus collector and gate recipe (`examples/nexus`). What comes next is to be
+agreed.
 
 Not planned: connectors for CrowdStrike Falcon, Tenable One or Microsoft Defender software inventories. They list
 installed applications by name, not packages, and already match CVEs for them. Use them to answer "which hosts
@@ -26,7 +22,9 @@ in `examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches).
 ## Organisation view
 Assess the open source an organisation already uses, not one artifact at a time, and re-run it on a schedule:
 a package that was clean when approved can later turn out vulnerable or compromised.
-- Package inventory as `.xlsx`, read directly as an optional extra (openpyxl). SBOM input is planned under Next.
+- Artifactory collector (AQL), the same as the Nexus one (`examples/nexus`). Later (30 Oct): to be built and
+  tested during a JFrog 14-day cloud trial, since there is no Artifactory instance to test against until then.
+- Package inventory as `.xlsx`, read directly as an optional extra (openpyxl).
 - Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
 - Upgrade comparison for image and lockfile reports (done for inventories in 0.4.0): per package, what is still
   known at the minimum fix and at the latest stable release, with major-version warnings.

@@ -253,6 +253,8 @@ and the GitHub dependency graph are in
 [examples/sbom](https://github.com/ntavakol/OSS-Intake/tree/main/examples/sbom).
 For laptops and servers, [examples/osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
 turns osquery's package tables, from one machine or a whole fleet's result logs, into one SBOM per host.
+[examples/nexus](https://github.com/ntavakol/OSS-Intake/tree/main/examples/nexus) does the same for what a Nexus
+Repository proxy has cached, with a gate recipe that checks only what is new since the last run.
 
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 
