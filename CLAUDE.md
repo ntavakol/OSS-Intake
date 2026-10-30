@@ -48,6 +48,20 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
 - **Network**: all HTTP goes through the `http.Http` interface (`RequestsHttp` in production, with `ResponseCache`
   and parallel `prefetch`). `cli.main(argv, http=...)` accepts an injected `Http`, which is how tests run offline.
 
+## How to work here
+
+- Plan before coding anything beyond a trivial fix: what changes, which files, the interface, how it is tested;
+  wait for approval. An approved plan may cover several commits. Stay in scope: suggest unrelated tidying
+  separately. Ask rather than guess; never invent options, endpoints or library features.
+- A bug fix comes with a test that fails without the fix; run it against the old code and say so.
+- Never change or delete an existing test to make it pass; flag it and wait for agreement.
+- No timing thresholds that depend on machine speed (the Windows runners are slow); compare with a baseline.
+- Dangerous patterns need approval: `eval`/`exec`, `shell=True`, commands built from strings, disabled TLS
+  verification, unsafe deserialisation, credentials sent anywhere but their own host (including redirects).
+- Commands for the maintainer to paste: zsh on macOS, no `<placeholders>`, steps chained with `&&`.
+- Finish with a summary: files changed, tests added, ruff and pytest results, what to check by hand.
+- Never rewrite published history or force-push (the `main` ruleset forbids it anyway).
+
 ## Rules from CONTRIBUTING.md
 
 - Every change ships with tests; a bug fix needs a test that fails without it.
@@ -71,6 +85,10 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
   case to `tests/test_units.py`.
 
 ## Releases
+
+Before a release, an independent review (a reviewer that did not write the change) looks for real bugs;
+fixes come with tests that fail without them. Tag and publish only after CI passes on that exact commit (find
+the run with `gh run list --workflow ci --commit $(git rev-parse HEAD)`).
 
 Publishing a GitHub release triggers `.github/workflows/release.yml` (PyPI trusted publishing plus Sigstore
 signatures). Version lives in both `pyproject.toml` and `src/oss_intake/__init__.py`. On release, also rebuild the live sample
