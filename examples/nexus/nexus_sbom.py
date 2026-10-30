@@ -4,9 +4,12 @@
   python3 nexus_sbom.py --url https://nexus.example.org --out nexus-sboms
   oss-intake --path nexus-sboms/all --out report
 
-  # the gate: only what was cached since the last run, failing on malicious or days-old releases
-  python3 nexus_sbom.py --url https://nexus.example.org --out nexus-sboms --state nexus-state.json
-  [ -n "$(ls nexus-sboms/new)" ] && oss-intake --path nexus-sboms/new --out gate --fail-on malicious,recent
+  # the gate: check what is new; accept it only once the check has passed (see README.md)
+  python3 nexus_sbom.py --url https://nexus.example.org --out nexus-sboms --state nexus-state.json || exit 1
+  if [ -n "$(ls nexus-sboms/new)" ]; then
+      oss-intake --path nexus-sboms/new --out gate --fail-on malicious,recent,kev || exit $?
+  fi
+  python3 nexus_sbom.py --state nexus-state.json --accept
 
 Every proxy repository of a format oss-intake checks is read (npm, PyPI, Maven, NuGet, RubyGems, Go, Cargo,
 CRAN), through the components REST API (/service/rest/v1/components), or only the ones named with --repository.
@@ -14,11 +17,15 @@ Hosted repositories hold your own packages, which no public advisory database kn
 --include-hosted if you want them listed anyway. Repositories of other formats (Docker, apt, yum, raw...) are
 named in the output as not checked.
 
-Credentials come from NEXUS_USERNAME and NEXUS_PASSWORD (or NEXUS_TOKEN, sent as a bearer token), are sent only
-to --url, never over plain http except to localhost, and are never printed. Each component's repository becomes
-its `system` label and the date Nexus first cached it a `cached` label. With --state, components not seen in an
-earlier run are also written to <out>/new/ (everything is in <out>/all/), and the state file is updated only
-after everything was read.
+Credentials come from NEXUS_USERNAME and NEXUS_PASSWORD (for a user token, its name code and pass code), are
+sent only to --url (redirects are refused, so they cannot follow one to a login page or another host), never
+over plain http except to localhost, and are never printed. Without them the collector reads as the anonymous
+user, which sees only what anonymous access allows. Each component's repository becomes its `system` label and
+the date Nexus first cached it a `cached` label.
+
+With --state, every component not yet accepted goes to <out>/new/ (everything is in <out>/all/). A run never
+accepts anything: `--accept` does, once the gate has passed, so a package that failed the gate, or a gate that
+could not run, shows up again next time. A component that leaves the cache and comes back is new again.
 
 Standard library only; Python 3.10 or later. Nexus pages the components API (often 10 per page), so a large
 proxy takes many requests; --max-pages stops a run that would never end.
@@ -44,10 +51,25 @@ TOOL_VERSION = "1"
 FORMATS = {"npm": "npm", "pypi": "pypi", "maven2": "maven", "nuget": "nuget", "rubygems": "gem", "go": "golang",
            "cargo": "cargo", "r": "cran"}
 DEFAULT_MAX_PAGES = 20_000
+# The file a version's checksums are taken from, per format. More than one candidate (wheels for several
+# platforms) means no single file stands for the version, so no checksum is given rather than a guess.
+PACKAGE_FILES = {"npm": (".tgz",), "pypi": (".whl", ".tar.gz", ".zip", ".tar.bz2", ".egg"),
+                 "nuget": (".nupkg",), "rubygems": (".gem",), "cargo": (".crate",), "go": (".zip",),
+                 "r": (".tar.gz", ".tgz")}
+MAVEN_PACKAGING = {"jar", "war", "ear", "aar", "rar", "zip", "hpi", "jpi"}
 
 
 class CollectorError(Exception):
     pass
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib copies the Authorization header onto a redirect, even to another host or from https to http. The
+    REST API does not redirect; one that does is a login page or a proxy in the way, so it is refused."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise CollectorError(f"Nexus answered {code} with a redirect to {urlparse(newurl).netloc or newurl}; "
+                             "refused, so credentials are not sent there. Is --url the Nexus address itself?")
 
 
 class Client:
@@ -59,14 +81,22 @@ class Client:
         self.host = u.hostname
         self.timeout = timeout
         self.requests = 0
-        user, pw, token = (os.environ.get(k) for k in ("NEXUS_USERNAME", "NEXUS_PASSWORD", "NEXUS_TOKEN"))
-        self._auth = (f"Bearer {token}" if token else
-                      "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode() if user and pw else None)
+        if os.environ.get("NEXUS_TOKEN"):
+            raise CollectorError("NEXUS_TOKEN is not used: give a user token's name code and pass code as "
+                                 "NEXUS_USERNAME and NEXUS_PASSWORD")
+        user, pw = os.environ.get("NEXUS_USERNAME"), os.environ.get("NEXUS_PASSWORD")
+        if bool(user) != bool(pw):
+            raise CollectorError("set both NEXUS_USERNAME and NEXUS_PASSWORD, or neither to read anonymously")
+        self._auth = "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode() if user else None
+        self.anonymous = self._auth is None
         local = u.hostname in ("localhost", "127.0.0.1", "::1")
         if self._auth and u.scheme == "http" and not local:
             raise CollectorError("refusing to send Nexus credentials over plain http; use https")
-        ctx = ssl.create_default_context(cafile=ca_file) if u.scheme == "https" else None
-        self._open = opener or (lambda req: urllib.request.urlopen(req, timeout=timeout, context=ctx))  # noqa: S310
+        handlers: list = [_NoRedirect()]
+        if u.scheme == "https":
+            handlers.append(urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=ca_file)))
+        built = urllib.request.build_opener(*handlers)
+        self._open = opener or (lambda req: built.open(req, timeout=timeout))
 
     def get(self, path: str, params: dict | None = None):
         url = f"{self.base}{path}" + (f"?{urlencode(params)}" if params else "")
@@ -101,6 +131,8 @@ def repositories(client: Client, names: list[str], include_hosted: bool) -> tupl
     for name in names or sorted(by_name):
         r = by_name[name]
         fmt, kind = str(r.get("format", "")), str(r.get("type", ""))
+        if kind == "group" and names:
+            raise CollectorError(f"{name} is a group repository, which only points at others; name its members")
         if fmt not in FORMATS:
             skipped.append({"repository": name, "reason": f"{fmt} repositories are not checked"})
         elif kind == "group":
@@ -113,7 +145,7 @@ def repositories(client: Client, names: list[str], include_hosted: bool) -> tupl
 
 
 def components(client: Client, repo: str, max_pages: int):
-    token = None
+    token, tokens = None, set()
     for _ in range(max_pages):
         page = client.get("/service/rest/v1/components",
                           {"repository": repo, **({"continuationToken": token} if token else {})})
@@ -123,6 +155,10 @@ def components(client: Client, repo: str, max_pages: int):
         token = page.get("continuationToken")
         if not token:
             return
+        if token in tokens:
+            raise CollectorError(f"{repo}: Nexus returned the same continuation token twice; stopped, since the "
+                                 "listing would never end")
+        tokens.add(token)
     raise CollectorError(f"{repo}: more than {max_pages} pages; raise --max-pages")
 
 
@@ -146,7 +182,13 @@ def purl(fmt: str, item: dict) -> str | None:
     if ptype == "pypi":
         return f"pkg:pypi/{_q(re.sub(r'[-_.]+', '-', name).lower())}@{_q(version)}"
     if ptype == "golang":
+        # Module paths may arrive case-encoded as the Go proxy stores them (!burnt!sushi = BurntSushi).
+        name = re.sub(r"!([a-z])", lambda m: m.group(1).upper(), name)
         return f"pkg:golang/{'/'.join(_q(p) for p in name.split('/'))}@{_q(version)}"
+    if ptype == "gem" and "-" in version:
+        # 1.13.10-x86_64-linux: a platform build of 1.13.10 (gem versions have no '-')
+        version, _, platform = version.partition("-")
+        return f"pkg:gem/{_q(name)}@{_q(version)}?platform={_q(platform)}"
     return f"pkg:{ptype}/{_q(name)}@{_q(version)}"
 
 
@@ -159,15 +201,19 @@ def cached_date(item: dict) -> str:
 _HASHES = (("sha512", "SHA-512"), ("sha256", "SHA-256"), ("sha1", "SHA-1"))
 
 
-def hashes(item: dict) -> list[dict]:
-    """Checksums of the package file itself (not PyPI's .metadata or a Maven .pom), so the SBOM can be checked
-    against the registry later. Nexus records who first pulled each file (`uploader`): never copied."""
-    files = [a for a in item.get("assets") or [] if isinstance(a, dict)
-             and not str(a.get("path", "")).endswith((".metadata", ".pom", ".sha1", ".md5", ".asc"))]
-    if not files:
+def hashes(fmt: str, item: dict) -> list[dict]:
+    """Checksums of the one package file that stands for this version (not PyPI's .metadata, a Maven .pom,
+    -sources or -javadoc), or none when there is no such single file. Nexus also records who first pulled each
+    file (`uploader`): never copied."""
+    assets = [a for a in item.get("assets") or [] if isinstance(a, dict)]
+    if fmt == "maven2":
+        files = [a for a in assets if isinstance(a.get("maven2"), dict) and not a["maven2"].get("classifier")
+                 and a["maven2"].get("extension") in MAVEN_PACKAGING]
+    else:
+        files = [a for a in assets if str(a.get("path", "")).endswith(PACKAGE_FILES.get(fmt, ()))]
+    if len(files) != 1:
         return []
-    main = max(files, key=lambda a: int(a.get("fileSize") or 0))
-    sums = main.get("checksum") or {}
+    sums = files[0].get("checksum") or {}
     return [{"alg": alg, "content": str(sums[k])} for k, alg in _HASHES if sums.get(k)]
 
 
@@ -194,7 +240,7 @@ def _component(fmt: str, item: dict) -> dict:
     props = [{"name": "oss-intake:label:cached", "value": cached_date(item)}] if cached_date(item) else []
     if p:
         c["purl"] = p
-        if h := hashes(item):
+        if h := hashes(fmt, item):
             c["hashes"] = h
     else:
         props.append({"name": "oss-intake:not-checked", "value": "Nexus gave no group, name or version to build a "
@@ -208,72 +254,143 @@ def _key(repo: str, item: dict) -> str:
     return f"{repo}|{item.get('group') or ''}|{item.get('name') or ''}|{item.get('version') or ''}"
 
 
-def _safe(name: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._") or "repository"
+def _file_name(name: str, used: set[str]) -> str:
+    """A file name per repository, unique even ignoring case: 'npm.' and 'npm_' must not overwrite each other."""
+    import hashlib
+
+    base = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._") or "repository"
+    if base.casefold() in used:
+        base = f"{base}-{hashlib.sha256(name.encode()).hexdigest()[:8]}"
+    used.add(base.casefold())
+    return base
+
+
+def _load_state(path: Path) -> dict:
+    if not path.exists():
+        return {"accepted": [], "pending": []}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise CollectorError(f"{path}: not a state file written by this collector")
+    accepted = data.get("accepted", data.get("seen", []))  # "seen" was the first version's name
+    pending = data.get("pending", [])
+    if not isinstance(accepted, list) or not isinstance(pending, list):
+        raise CollectorError(f"{path}: not a state file written by this collector")
+    return {"accepted": [str(k) for k in accepted], "pending": [str(k) for k in pending]}
+
+
+def _save_state(path: Path, state: dict) -> None:
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps({**state, "updated": datetime.now(timezone.utc).isoformat()}) + "\n",
+                   encoding="utf-8")
+    os.replace(tmp, path)
+
+
+class _Lock:
+    """One run at a time per state file: two at once would each empty new/ under the other's gate."""
+
+    def __init__(self, state: Path) -> None:
+        self.path = state.with_name(state.name + ".lock")
+
+    def __enter__(self):
+        try:
+            os.close(os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        except FileExistsError:
+            raise CollectorError(f"{self.path} exists: another run is using this state file (delete the lock "
+                                 "file if none is)") from None
+        return self
+
+    def __exit__(self, *exc):
+        self.path.unlink(missing_ok=True)
+
+
+def _run(a, opener) -> None:
+    client = Client(a.url, a.ca_file, opener=opener)
+    state = _load_state(a.state) if a.state else None
+    read, skipped = repositories(client, a.repository, a.include_hosted)
+    if not read:
+        raise CollectorError("no repository to read: " + "; ".join(f"{s['repository']}: {s['reason']}"
+                                                                    for s in skipped))
+    accepted = set(state["accepted"]) if state else set()
+    results, present = [], set()
+    for repo in read:
+        comps, new, new_keys = [], [], []
+        for item in components(client, repo["name"], a.max_pages):
+            c = _component(repo["format"], item)
+            comps.append(c)
+            key = _key(repo["name"], item)
+            present.add(key)
+            if state is not None and key not in accepted:
+                new.append(c)
+                new_keys.append(key)
+        results.append((repo, comps, new, new_keys))
+    # Nothing is written until every repository was read: a half-read proxy must not look like a full one.
+    for sub in ("all", "new") if state is not None else ("all",):
+        (a.out / sub).mkdir(parents=True, exist_ok=True)
+        for old in (a.out / sub).glob("*.cdx.json"):
+            old.unlink()  # this run's view only: no repository from an earlier run, read or not
+    used: set[str] = set()
+    for repo, comps, new, _ in results:
+        name = f"{_file_name(repo['name'], used)}.cdx.json"
+        (a.out / "all" / name).write_text(json.dumps(sbom(repo, comps, a.url), indent=1) + "\n", encoding="utf-8")
+        line = f"{a.out / 'all' / name}: {len(comps)} components"
+        if state is not None:
+            if new:
+                (a.out / "new" / name).write_text(json.dumps(sbom(repo, new, a.url), indent=1) + "\n",
+                                                  encoding="utf-8")
+            line += f", {len(new)} not yet accepted"
+        print(line)
+    for s in skipped:
+        print(f"  not read: {s['repository']}: {s['reason']}")
+    if client.anonymous:
+        print("  read anonymously: repositories and components anonymous access cannot see are not listed")
+    if state is not None:
+        read_names = {r["name"] for r in read}
+        # A component no longer cached is forgotten, so it is new again if it comes back.
+        kept = {k for k in accepted if k.split("|", 1)[0] not in read_names or k in present}
+        pending = sorted(k for *_, keys in results for k in keys)
+        _save_state(a.state, {"accepted": sorted(kept), "pending": pending})
+        print(f"  {len(pending)} not yet accepted; after the gate passes: --state {a.state} --accept"
+              if pending else "  nothing new to check")
+    print(f"  {client.requests} requests to {client.host}")
+
+
+def _accept(state_path: Path) -> None:
+    state = _load_state(state_path)
+    if not state_path.exists():
+        raise CollectorError(f"{state_path}: no state yet; run the collector first")
+    n = len(state["pending"])
+    _save_state(state_path, {"accepted": sorted(set(state["accepted"]) | set(state["pending"])), "pending": []})
+    print(f"accepted {n} component(s); they are no longer listed as new")
 
 
 def main(argv: list[str] | None = None, opener=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], allow_abbrev=False)
-    ap.add_argument("--url", required=True, help="Nexus address, e.g. https://nexus.example.org")
-    ap.add_argument("--out", type=Path, required=True, help="folder for the SBOM files")
+    ap.add_argument("--url", help="Nexus address, e.g. https://nexus.example.org")
+    ap.add_argument("--out", type=Path, help="folder for the SBOM files (OUT/all, and OUT/new with --state)")
     ap.add_argument("--repository", action="append", default=[], help="read only this repository (repeatable)")
     ap.add_argument("--include-hosted", action="store_true", help="also list hosted repositories")
-    ap.add_argument("--state", type=Path, help="remember what was seen; write components new since then to OUT/new")
+    ap.add_argument("--state", type=Path, help="state file: components not yet accepted go to OUT/new")
+    ap.add_argument("--accept", action="store_true",
+                    help="with --state only: accept what the last run listed as new, once the gate has passed")
     ap.add_argument("--ca-file", help="CA bundle for a Nexus with an internal certificate")
     ap.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES, help="per repository (default 20000)")
     a = ap.parse_args(argv)
     try:
+        if a.accept:
+            if not a.state or a.url or a.out:
+                raise CollectorError("--accept takes --state only")
+            with _Lock(a.state):
+                _accept(a.state)
+            return 0
+        if not a.url or not a.out:
+            raise CollectorError("--url and --out are needed")
         if a.max_pages < 1:
             raise CollectorError("--max-pages must be 1 or more")
-        seen: set[str] = set()
-        if a.state and a.state.exists():
-            data = json.loads(a.state.read_text(encoding="utf-8"))
-            if not isinstance(data, dict) or not isinstance(data.get("seen"), list):
-                raise CollectorError(f"{a.state}: not a state file written by this collector")
-            seen = {str(k) for k in data["seen"]}
-        client = Client(a.url, a.ca_file, opener=opener)
-        read, skipped = repositories(client, a.repository, a.include_hosted)
-        if not read:
-            raise CollectorError("no repository to read: " + "; ".join(f"{s['repository']}: {s['reason']}"
-                                                                        for s in skipped))
-        results = []
-        now_seen: set[str] = set()
-        for repo in read:
-            comps, new = [], []
-            for item in components(client, repo["name"], a.max_pages):
-                c = _component(repo["format"], item)
-                comps.append(c)
-                key = _key(repo["name"], item)
-                now_seen.add(key)
-                if a.state and key not in seen:
-                    new.append(c)
-            results.append((repo, comps, new))
-        # Nothing is written until every repository was read: a half-read proxy must not look like a full one.
-        (a.out / "all").mkdir(parents=True, exist_ok=True)
         if a.state:
-            (a.out / "new").mkdir(exist_ok=True)
-            for old in (a.out / "new").glob("*.cdx.json"):
-                old.unlink()  # new means new since the last run, not since some run
-        for repo, comps, new in results:
-            f = a.out / "all" / f"{_safe(repo['name'])}.cdx.json"
-            f.write_text(json.dumps(sbom(repo, comps, a.url), indent=1) + "\n", encoding="utf-8")
-            line = f"{f}: {len(comps)} components"
-            if a.state:
-                if new:
-                    (a.out / "new" / f.name).write_text(json.dumps(sbom(repo, new, a.url), indent=1) + "\n",
-                                                        encoding="utf-8")
-                line += f", {len(new)} new since the last run"
-            print(line)
-        for s in skipped:
-            print(f"  not read: {s['repository']}: {s['reason']}")
-        if a.state:
-            tmp = a.state.with_suffix(".tmp")
-            tmp.write_text(json.dumps({"seen": sorted(seen | now_seen),
-                                       "updated": datetime.now(timezone.utc).isoformat()}) + "\n", encoding="utf-8")
-            os.replace(tmp, a.state)
-            if not any(n for _, _, n in results):
-                print("  nothing new since the last run")
-        print(f"  {client.requests} requests to {client.host}")
+            with _Lock(a.state):
+                _run(a, opener)
+        else:
+            _run(a, opener)
     except (CollectorError, OSError, ValueError) as exc:
         print(f"nexus_sbom: {exc}", file=sys.stderr)
         return 2

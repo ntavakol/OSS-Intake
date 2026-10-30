@@ -11,7 +11,7 @@ Publication dates come from deps.dev, one request per package version (Maven, np
 from __future__ import annotations
 
 from datetime import datetime
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from .enrich.fixdates import API, _system_and_name
 from .http import Http, HttpError, prefetch
@@ -22,8 +22,10 @@ MAX_LOOKUPS = 400
 
 
 def _version(purl: str) -> str:
+    """The decoded version: pkg:golang/x@v2.0.0%2Bincompatible -> v2.0.0+incompatible (encoded again once, in
+    the URL; left encoded here it went out as %252B and deps.dev answered 404)."""
     body = purl.split("?", 1)[0].split("#", 1)[0]
-    return body.rpartition("@")[2] if "@" in body[4:] else ""
+    return unquote(body.rpartition("@")[2]) if "@" in body[4:] else ""
 
 
 def _url(sn: tuple[str, str], version: str) -> str:

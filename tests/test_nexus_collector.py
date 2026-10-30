@@ -82,18 +82,40 @@ def test_reads_proxies_pages_and_formats(tmp_path, capsys):
     assert "172.17.0.1" not in "".join(p.read_text(encoding="utf-8") for p in (out / "all").iterdir())
 
 
-def test_new_since_last_run(tmp_path, capsys):
+def test_new_until_accepted(tmp_path, capsys):
+    """A run never accepts anything. What failed the gate, or a gate that did not run, shows up again."""
     out, state = tmp_path / "s", tmp_path / "state.json"
     args = ["--url", "http://localhost:8081", "--out", str(out), "--state", str(state), "--repository", "npm-proxy"]
+
+    def new():
+        return sorted(e["purl"] for e in sbom.read(out / "new")[0]) if any((out / "new").iterdir()) else []
+
     assert col.main(args, opener=FakeNexus(ITEMS)) == 0
-    assert len(list((out / "new").iterdir())) == 1  # the first run: everything is new
+    assert len(new()) == 3  # the first run: everything is new
     assert col.main(args, opener=FakeNexus(ITEMS)) == 0
-    assert list((out / "new").iterdir()) == [] and "nothing new" in capsys.readouterr().out
+    assert len(new()) == 3  # not accepted (the gate failed or did not run): still new
+    assert col.main(["--state", str(state), "--accept"]) == 0
+    assert col.main(args, opener=FakeNexus(ITEMS)) == 0
+    assert new() == [] and "nothing new to check" in capsys.readouterr().out
     more = {"npm-proxy": ITEMS["npm-proxy"] + [{"repository": "npm-proxy", "format": "npm", "name": "axios",
                                                 "version": "0.21.0", "assets": _asset("2026-10-30T02:00:00Z")}]}
     assert col.main(args, opener=FakeNexus(more)) == 0
-    entries, _, _ = sbom.read(out / "new")
-    assert [e["purl"] for e in entries] == ["pkg:npm/axios@0.21.0"]
+    assert new() == ["pkg:npm/axios@0.21.0"]
+    # removed from the cache, then cached again: new again
+    gone = {"npm-proxy": [i for i in ITEMS["npm-proxy"] if i["name"] != "lodash"]}
+    assert col.main(args, opener=FakeNexus(gone)) == 0
+    assert col.main(["--state", str(state), "--accept"]) == 0
+    assert col.main(args, opener=FakeNexus(ITEMS)) == 0
+    assert new() == ["pkg:npm/lodash@4.17.15"]
+
+
+def test_first_version_state_file_still_read(tmp_path):
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({"seen": ["npm-proxy||lodash|4.17.15"]}), encoding="utf-8")
+    out = tmp_path / "s"
+    assert col.main(["--url", "http://localhost:8081", "--out", str(out), "--state", str(state),
+                     "--repository", "npm-proxy"], opener=FakeNexus(ITEMS)) == 0
+    assert "lodash" not in "".join(p.read_text(encoding="utf-8") for p in (out / "new").iterdir())
 
 
 def test_failure_midway_writes_nothing_and_keeps_state(tmp_path):
@@ -110,7 +132,114 @@ def test_failure_midway_writes_nothing_and_keeps_state(tmp_path):
     assert col.main(["--url", "http://localhost:8081", "--out", str(out), "--state", str(state)],
                     opener=Broken(ITEMS)) == 2
     assert not out.exists()
-    assert json.loads(state.read_text(encoding="utf-8"))["seen"] == ["npm-proxy||lodash|4.17.15"]
+    assert json.loads(state.read_text(encoding="utf-8")) == {"seen": ["npm-proxy||lodash|4.17.15"]}
+
+
+def test_redirect_refused_so_credentials_stay_put(tmp_path, monkeypatch, capsys):
+    """urllib copies Authorization onto a redirect, even to another host. Run real servers on localhost: the
+    'Nexus' answers 302 to another port; that one must receive nothing."""
+    import http.server
+    import threading
+
+    got = []
+
+    class Other(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            got.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"[]")
+
+        def log_message(self, *a):
+            pass
+
+    other = http.server.HTTPServer(("127.0.0.1", 0), Other)
+
+    class Nexus(Other):
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", f"http://localhost:{other.server_port}/login")
+            self.end_headers()
+
+    nexus = http.server.HTTPServer(("127.0.0.1", 0), Nexus)
+    for srv in (other, nexus):
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.setenv("NEXUS_USERNAME", "admin")
+    monkeypatch.setenv("NEXUS_PASSWORD", "s3cret")
+    try:
+        assert col.main(["--url", f"http://127.0.0.1:{nexus.server_port}", "--out", str(tmp_path / "s")]) == 2
+    finally:
+        nexus.shutdown()
+        other.shutdown()
+    assert got == [] and "redirect" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("env, message", [
+    ({"NEXUS_TOKEN": "x"}, "name code and pass code"), ({"NEXUS_USERNAME": "admin"}, "set both"),
+    ({"NEXUS_PASSWORD": "x"}, "set both")])
+def test_credential_settings_that_would_mislead(tmp_path, monkeypatch, capsys, env, message):
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    assert col.main(["--url", "http://localhost:8081", "--out", str(tmp_path / "s")], opener=FakeNexus(ITEMS)) == 2
+    assert message in capsys.readouterr().err
+
+
+def test_anonymous_run_says_so(tmp_path, capsys):
+    assert col.main(["--url", "http://localhost:8081", "--out", str(tmp_path / "s"), "--repository", "npm-proxy"],
+                    opener=FakeNexus(ITEMS)) == 0
+    assert "read anonymously" in capsys.readouterr().out
+
+
+def test_repeating_continuation_token_stops(tmp_path, capsys):
+    class Loop(FakeNexus):
+        def __call__(self, req):
+            if "components" in req.full_url:
+                self.seen.append(req.full_url)
+                return io.BytesIO(json.dumps({"items": [], "continuationToken": "same"}).encode())
+            return super().__call__(req)
+
+    loop = Loop(ITEMS)
+    assert col.main(["--url", "http://localhost:8081", "--out", str(tmp_path / "s"), "--repository", "npm-proxy"],
+                    opener=loop) == 2
+    assert len(loop.seen) <= 3 and "same continuation token" in capsys.readouterr().err
+
+
+def test_all_holds_only_this_run(tmp_path):
+    out = tmp_path / "s"
+    assert col.main(["--url", "http://localhost:8081", "--out", str(out)], opener=FakeNexus(ITEMS)) == 0
+    assert col.main(["--url", "http://localhost:8081", "--out", str(out), "--repository", "npm-proxy"],
+                    opener=FakeNexus(ITEMS)) == 0
+    assert [p.name for p in (out / "all").iterdir()] == ["npm-proxy.cdx.json"]
+
+
+def test_group_named_explicitly_refused(tmp_path, capsys):
+    assert col.main(["--url", "http://localhost:8081", "--out", str(tmp_path / "s"), "--repository",
+                     "maven-public"], opener=FakeNexus(ITEMS)) == 2
+    assert "name its members" in capsys.readouterr().err
+
+
+def test_lock_refuses_a_second_run(tmp_path, capsys):
+    state = tmp_path / "state.json"
+    (tmp_path / "state.json.lock").write_text("", encoding="utf-8")
+    assert col.main(["--url", "http://localhost:8081", "--out", str(tmp_path / "s"), "--state", str(state)],
+                    opener=FakeNexus(ITEMS)) == 2
+    assert "another run" in capsys.readouterr().err
+
+
+def test_checksums_only_from_the_one_package_file():
+    jar = {"path": "/g/a/1/a-1.jar", "fileSize": 10, "maven2": {"extension": "jar"}, "checksum": {"sha1": "a" * 40}}
+    javadoc = {"path": "/g/a/1/a-1-javadoc.jar", "fileSize": 99, "maven2": {"extension": "jar",
+                                                                            "classifier": "javadoc"},
+               "checksum": {"sha1": "b" * 40}}
+    assert col.hashes("maven2", {"assets": [javadoc, jar]}) == [{"alg": "SHA-1", "content": "a" * 40}]
+    wheels = [{"path": f"/packages/x/1/x-1-{p}.whl", "checksum": {"sha256": p * 8}} for p in ("cp311", "cp312")]
+    assert col.hashes("pypi", {"assets": wheels}) == []  # no single file stands for the version
+
+
+def test_repository_file_names_never_collide():
+    used = set()
+    names = [col._file_name(n, used) for n in ("npm.", "npm_", "npm", "NPM")]
+    assert len({n.casefold() for n in names}) == 4
 
 
 def test_credentials_sent_only_as_header_and_never_over_plain_http(tmp_path, monkeypatch, capsys):
@@ -149,7 +278,11 @@ def test_unknown_repository_and_page_cap(tmp_path, capsys):
     ("pypi", {"name": "PyYAML", "version": "5.3"}, "pkg:pypi/pyyaml@5.3"),
     ("maven2", {"group": None, "name": "x", "version": "1"}, None),
     ("go", {"name": "golang.org/x/net", "version": "v0.17.0"}, "pkg:golang/golang.org/x/net@v0.17.0"),
-    ("nuget", {"name": "Newtonsoft.Json", "version": "12.0.1"}, "pkg:nuget/Newtonsoft.Json@12.0.1")])
+    ("nuget", {"name": "Newtonsoft.Json", "version": "12.0.1"}, "pkg:nuget/Newtonsoft.Json@12.0.1"),
+    ("go", {"name": "github.com/!burnt!sushi/toml", "version": "v1.3.2"},
+     "pkg:golang/github.com/BurntSushi/toml@v1.3.2"),
+    ("rubygems", {"name": "nokogiri", "version": "1.13.10-x86_64-linux"},
+     "pkg:gem/nokogiri@1.13.10?platform=x86_64-linux")])
 def test_purls(fmt, item, expected):
     assert col.purl(fmt, item) == expected
 

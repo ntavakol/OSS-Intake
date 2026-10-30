@@ -336,3 +336,17 @@ def test_every_prefetched_url_is_then_asked_for(tmp_path):
     h = Checking()
     cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-cache", "--as-of", AS_OF], http=h)
     assert h.prefetched and h.prefetched <= h.asked
+
+
+def test_release_age_version_encoded_once():
+    """pkg:golang/x@v2.0.0%2Bincompatible was sent as v2.0.0%252Bincompatible, which deps.dev answers 404."""
+
+    class H(FakeHttp):
+        def get_json(self, url, params=None):
+            self.calls.append(url)
+            return 404, None
+
+    h = H()
+    release_age.check(h, ["pkg:golang/github.com/x/y@v2.0.0%2Bincompatible"],
+                      __import__("datetime").datetime(2026, 10, 1), 7)
+    assert h.calls == ["https://api.deps.dev/v3/systems/go/packages/github.com%2Fx%2Fy/versions/v2.0.0%2Bincompatible"]

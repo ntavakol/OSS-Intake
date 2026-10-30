@@ -17,13 +17,20 @@ URL=http://localhost:$PORT
 HERE=$(cd "$(dirname "$0")" && pwd)
 
 if [ "${1:-}" = "--remove" ]; then
-    docker rm -f "$NAME" >/dev/null 2>&1 && echo "removed $NAME" || echo "$NAME was not running"
+    docker rm -f -v "$NAME" >/dev/null 2>&1 && echo "removed $NAME and its data" || echo "$NAME was not running"
     exit 0
 fi
 
-if docker ps -a --format '{{.Names}}' | grep -qx "$NAME" \
-        && ! docker port "$NAME" 8081/tcp 2>/dev/null | grep -q ":$PORT\$"; then
-    docker rm -f "$NAME" >/dev/null  # left by a failed start, or made for another port
+# The host port the container was created with; read from its configuration, so it also works when stopped.
+CREATED_PORT=$(docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{range $b}}{{.HostPort}}{{end}}{{end}}' \
+    "$NAME" 2>/dev/null || true)
+if [ -n "$(docker ps -a -q -f "name=^${NAME}\$")" ] && [ "$CREATED_PORT" != "$PORT" ]; then
+    if [ "$(docker inspect -f '{{.State.Status}}' "$NAME")" = "created" ]; then
+        docker rm -f -v "$NAME" >/dev/null  # left by a start that failed (port taken): nothing in it yet
+    else
+        echo "$NAME already exists on port ${CREATED_PORT:-unknown}: run with NEXUS_PORT=$CREATED_PORT,"
+        echo "or remove it (and its data) with: sh $0 --remove"; exit 1
+    fi
 fi
 if ! docker ps -a --format '{{.Names}}' | grep -qx "$NAME"; then
     if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
@@ -90,11 +97,16 @@ fetch npm-proxy/lodash/-/lodash-4.17.15.tgz
 fetch npm-proxy/minimist/-/minimist-1.2.0.tgz
 fetch npm-proxy/@babel/traverse/-/traverse-7.22.0.tgz
 fetch maven-central/org/apache/logging/log4j/log4j-core/2.14.1/log4j-core-2.14.1.jar
+# pip reads the password from a netrc file, so it is not on pip's command line, where any process can see it.
+NETRC_FILE=$(mktemp)
+chmod 600 "$NETRC_FILE"
+printf 'machine localhost login admin password %s\n' "$PW" > "$NETRC_FILE"
 for pkg in django==2.2 urllib3==1.24.1; do
-    python3 -m pip download -q --no-deps -d "$(mktemp -d)" \
-        --index-url "http://admin:$PW@localhost:$PORT/repository/pypi-proxy/simple/" "$pkg" >/dev/null 2>&1 \
+    NETRC="$NETRC_FILE" python3 -m pip download -q --no-deps -d "$(mktemp -d)" \
+        --index-url "http://localhost:$PORT/repository/pypi-proxy/simple/" "$pkg" >/dev/null 2>&1 \
         && echo "   ok  pypi-proxy $pkg" || echo "   failed pypi-proxy $pkg"
 done
+rm -f "$NETRC_FILE"
 
 echo "== recording the API answers (for oss-intake's tests)"
 NEXUS_PASSWORD="$PW" python3 - "$URL" <<'PY'
@@ -124,18 +136,37 @@ print("   wrote nexus-recorded.json:", {r: sum(len(p.get("items") or []) for p i
                                        for r, ps in out["components"].items()})
 PY
 
+collect() {
+    NEXUS_USERNAME=admin NEXUS_PASSWORD="$PW" python3 "$HERE/nexus_sbom.py" --url "$URL" --out nexus-sboms \
+        --state nexus-state.json
+}
+gate() {  # the recipe from README.md: accept only what passed
+    if [ -n "$(ls nexus-sboms/new)" ]; then
+        if oss-intake --path nexus-sboms/new --out nexus-gate --quiet --fail-on malicious,recent,kev; then
+            echo "   gate: passed"
+        else
+            echo "   gate: exit $? (3 means it found something it is set to fail on); not accepted"; return 0
+        fi
+    fi
+    python3 "$HERE/nexus_sbom.py" --state nexus-state.json --accept
+}
+
 echo "== collector, first run"
-rm -rf nexus-sboms nexus-state.json
-NEXUS_USERNAME=admin NEXUS_PASSWORD="$PW" python3 "$HERE/nexus_sbom.py" --url "$URL" --out nexus-sboms --state nexus-state.json
+rm -rf nexus-sboms nexus-state.json nexus-state.json.lock
+collect
 
 echo "== oss-intake on everything cached"
 oss-intake --path nexus-sboms/all --out nexus-report --quiet --release-age-days 0 || true
 
-echo "== a developer caches one more package; the gate checks only that"
+echo "== the gate on everything not yet accepted (the first time, all of it: log4j-core 2.14.1 is known"
+echo "   exploited, so expect it to fail and nothing to be accepted)"
+gate
+echo "== a real team would now remove log4j-core 2.14.1 from the cache, or accept it knowingly; this script"
+echo "   accepts it knowingly, so the next step shows the gate on one new package alone"
+python3 "$HERE/nexus_sbom.py" --state nexus-state.json --accept
+
+echo "== a developer caches one more package; the gate checks only what is not yet accepted"
 fetch npm-proxy/axios/-/axios-0.21.0.tgz
-NEXUS_USERNAME=admin NEXUS_PASSWORD="$PW" python3 "$HERE/nexus_sbom.py" --url "$URL" --out nexus-sboms --state nexus-state.json
-if [ -n "$(ls nexus-sboms/new)" ]; then
-    oss-intake --path nexus-sboms/new --out nexus-gate --quiet --fail-on malicious,recent \
-        && echo "   gate: passed" || echo "   gate: exit $? (3 means it found something it is set to fail on)"
-fi
+collect
+gate
 echo "== done. Remove Nexus with: sh $0 --remove"
