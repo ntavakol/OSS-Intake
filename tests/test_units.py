@@ -2135,7 +2135,12 @@ def test_readme_collector_checksums_match_the_files():
     files = {"nexus_sbom.py": "examples/nexus/nexus_sbom.py", "osquery_sbom.py": "examples/osquery/osquery_sbom.py",
              "oss-intake-pack.conf": "examples/osquery/oss-intake-pack.conf"}
     assert set(listed) == set(files)
+    import os
+
     for name, rel in files.items():
-        data = (root / rel).read_bytes().replace(b"\r\n", b"\n")
+        raw = (root / rel).read_bytes()
+        if os.name != "nt":  # stored with CRLF, GitHub would serve CRLF and every user's check would fail
+            assert b"\r" not in raw, f"{rel} has CRLF line endings"
+        data = raw.replace(b"\r\n", b"\n")
         assert hashlib.sha256(data).hexdigest() == listed[name], f"update the README checksum for {name}"
     assert "/OSS-Intake/v$V/examples" in readme and "e.g. " + __version__ in readme

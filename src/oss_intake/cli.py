@@ -951,7 +951,12 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     age_info: dict = {"status": "skipped", "days": args.release_age_days,
                       "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
     purls = _language_purls(args, trivy_report) if net and args.release_age_days else []
-    if net and args.release_age_days and not purls:
+    if net and args.release_age_days and not purls and trivy_report is not None:
+        # The scan ran and found only distro packages: nothing a registry release date applies to.
+        age_info = {"status": "ok", "days": args.release_age_days, "recent": [], "checked": 0, "unknown": 0,
+                    "unsupported": 0, "errors": 0, "skipped_limit": 0, "published": {}, "unknown_purls": [],
+                    "unsupported_purls": [], "unchecked_purls": [], "reason": "no language packages"}
+    elif net and args.release_age_days and not purls:
         age_info = {"status": "not checked", "days": args.release_age_days, "recent": [],
                     "reason": "no package list to check (needs a Trivy scan or an inventory)"}
     elif net and args.release_age_days:
@@ -1094,6 +1099,14 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args)
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
+    # A gate that tripped can still have skipped some versions: name them, so accepting what tripped it does not
+    # also accept what was never looked at.
+    unchecked = age_info.get("unchecked_purls") or []
+    if unchecked and {"recent", "unknown-age"} & set(args.fail_on_set) and \
+            not any(t in ("recent", "unknown-age") for t, _ in unknown):
+        log(f"--fail-on: {len(unchecked)} version(s) were not looked up (lookup failed or over --release-age-max), "
+            "so they were not checked for being new: " + ", ".join(unchecked[:5])
+            + (f" and {len(unchecked) - 5} more" if len(unchecked) > 5 else ""), args.quiet, force=True)
     if unknown and not tripped:
         return EXIT_ERROR
     if lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood:

@@ -99,6 +99,9 @@ class ResponseCache:
     def put(self, url: str, status: int, data: Any) -> None:
         if status != 200 or self.max_age(url) is None:
             return
+        if "/versions/" in url and url.startswith("https://api.deps.dev/") and not (
+                isinstance(data, dict) and data.get("publishedAt")):
+            return  # a version deps.dev knows but has no date for yet: ask again next time
         f = self._file(url)
         try:
             self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)

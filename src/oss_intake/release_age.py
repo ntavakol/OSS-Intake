@@ -42,26 +42,30 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
     info: dict = {"status": "ok", "days": days, "checked": 0, "unknown": 0, "unsupported": 0, "errors": 0,
                   "skipped_limit": 0, "recent": [], "published": {},
                   # Language package versions with no release date, for --fail-on unknown-age (capped lists).
-                  "unknown_purls": [], "unsupported_purls": []}
+                  "unknown_purls": [], "unsupported_purls": [],
+                  # ... and those never looked up (a failed lookup, or over the limit), named in the gate's output
+                  "unchecked_purls": []}
     planned = []
     for purl in dict.fromkeys(purls):
         sn, version = _system_and_name(purl), _version(purl)
-        if sn and version and sn[1] != "stdlib" and len(planned) < limit:
+        if sn and version and sn != ("go", "stdlib") and len(planned) < limit:
             planned.append(_url(sn, version))
     prefetch(http, planned)
     for purl in dict.fromkeys(purls):
         sn = _system_and_name(purl)
         version = _version(purl)
-        if not sn or not version or sn[1] == "stdlib":
+        if not sn or not version or sn == ("go", "stdlib"):
             info["unsupported"] += 1
-            # A distro package (deb, rpm, apk) or a Go standard library is not a registry release that can be
+            # A distro package (deb, rpm, apk) or the Go standard library is not a registry release that can be
             # days old; a RubyGems or CRAN version is, but deps.dev has no dates for it.
             ptype = purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") else ""
-            if ptype not in OS_TYPES and (not sn or sn[1] != "stdlib") and len(info["unsupported_purls"]) < LISTED:
+            if ptype not in OS_TYPES and sn != ("go", "stdlib") and len(info["unsupported_purls"]) < LISTED:
                 info["unsupported_purls"].append(purl)
             continue
         if info["checked"] + info["unknown"] + info["errors"] >= limit:
             info["skipped_limit"] += 1
+            if len(info["unchecked_purls"]) < LISTED:
+                info["unchecked_purls"].append(purl)
             continue
         if sn[0] == "go" and not version.startswith("v"):
             version = f"v{version}"
@@ -69,9 +73,13 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
             status, data = http.get_json(_url(sn, version))
         except HttpError:
             info["errors"] += 1
+            if len(info["unchecked_purls"]) < LISTED:
+                info["unchecked_purls"].append(purl)
             continue
         if status not in (200, 404):  # rate limited or a server error: not checked, never "not new"
             info["errors"] += 1
+            if len(info["unchecked_purls"]) < LISTED:
+                info["unchecked_purls"].append(purl)
             continue
         published = parse_datetime(data.get("publishedAt")) if status == 200 and isinstance(data, dict) else None
         if not published:

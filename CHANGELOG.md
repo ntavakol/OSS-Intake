@@ -13,7 +13,8 @@ A Nexus collector and gate, `--fail-on unknown-age`, and download instructions f
 - `--fail-on unknown-age`: exit 3 when a language package version has no release date on deps.dev, so it
   could not be checked for being new: a version not indexed yet (likely when it is only hours old, when a
   compromised release does most harm) or one from a registry deps.dev does not cover (RubyGems, CRAN). Distro
-  packages and the Go standard library do not count. Opt-in; `recent` is unchanged.
+  packages and the Go standard library do not count. Opt-in; `recent` is unchanged. Versions that could not be
+  looked up (a failed lookup, or over `--release-age-max`) are named in the gate's output even when it trips.
 - README: how to download the collectors (not part of the PyPI package) for your version, with SHA-256 sums a
   test keeps in step with the files.
 - Nexus collector, `examples/nexus/nexus_sbom.py` (standard library only): lists what Nexus Repository proxies
@@ -28,6 +29,10 @@ A Nexus collector and gate, `--fail-on unknown-age`, and download instructions f
   `scripts/record_seeds.py` refreshes the recording.
 
 ### Fixed
+- The new-release check skipped any package named `stdlib` in every ecosystem, not only Go's standard library.
+- A scan that found only distro packages reported the new-release check as not run, failing `--fail-on recent`
+  with exit 1; there is nothing for it to check, so it passes.
+- A deps.dev answer for a version without a release date yet is no longer cached for 30 days.
 - The new-release check sent a version with `+` (Go's `+incompatible`) encoded twice, so deps.dev answered
   404 and the version was never checked for being new.
 

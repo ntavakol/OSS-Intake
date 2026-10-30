@@ -63,8 +63,20 @@ What `recent` cannot see: release dates come from deps.dev, which covers npm, Py
 but not RubyGems or CRAN, and which may not list a version published only hours ago, the window in which a
 compromised release usually does its harm. `recent` names such versions in a warning but passes them, and once
 accepted they are not listed again. `unknown-age` fails on them instead: a version only hours old stays on the
-list until deps.dev has a date for it (usually within a day), and is then checked properly. RubyGems and CRAN
-versions never get a date, so with `unknown-age` they always need someone to look and `--accept` them.
+list until deps.dev has a date for it (usually within a day), and is then checked properly.
+
+`--accept` accepts everything the last run listed, so accept only after reading the gate's report, which names
+every version that tripped it and every version it could not look up. RubyGems and CRAN versions never get a
+date, so with `unknown-age` they fail the gate every time. Give those repositories their own job and state file,
+without `unknown-age`, so accepting a gem by hand never also accepts an npm version that is still too new to
+judge:
+
+```sh
+python3 nexus_sbom.py --url "$NEXUS" --out sboms-lang --state state-lang.json --repository npm-proxy \
+    --repository pypi-proxy --repository maven-central                       # gate with unknown-age
+python3 nexus_sbom.py --url "$NEXUS" --out sboms-gems --state state-gems.json --repository rubygems-proxy
+                                                                             # gate with malicious,kev
+```
 
 This is an assessment that runs after a package is cached, not a block in front of it: Nexus has already served
 the first download. To stop a package before anyone gets it, use Nexus's own firewall features, or route new

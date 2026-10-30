@@ -409,3 +409,44 @@ def test_unknown_age_that_could_not_run_fails_with_exit_1(tmp_path, capsys):
 def test_unknown_age_refused_without_the_date_check(tmp_path, capsys):
     assert _age_run(tmp_path, ["npm,known,1.0.0"], AgeHttp(), ["--release-age-days", "0"]) == cli.EXIT_USAGE
     assert "--fail-on unknown-age needs the release date check" in capsys.readouterr().err
+
+
+def test_unknown_age_names_versions_never_looked_up_even_when_it_trips(tmp_path, capsys):
+    """A gem trips the gate; a deps.dev error on another version must still be named, or accepting the gem
+    after a look would accept a version nobody checked."""
+
+    class Mixed(AgeHttp):
+        def get_json(self, url, params=None):
+            if "brand-new" in url:
+                return 503, None
+            return super().get_json(url, params)
+
+    assert _age_run(tmp_path, ["npm,brand-new,1.0.0", "gem,rails,7.1.0"], Mixed(), ["--quiet"]) == cli.EXIT_THRESHOLD
+    err = capsys.readouterr().err
+    assert "pkg:gem/rails@7.1.0" in err and "not looked up" in err and "pkg:npm/brand-new@1.0.0" in err
+
+
+def test_stdlib_skipped_only_for_go(tmp_path, capsys):
+    assert _age_run(tmp_path, ["npm,stdlib,0.0.96"], AgeHttp()) == cli.EXIT_THRESHOLD  # 404: no date
+    assert "pkg:npm/stdlib@0.0.96" in capsys.readouterr().err
+
+
+def test_distro_only_image_passes_the_age_gates(tmp_path, fixtures):
+    """A scan that found only distro packages has nothing a registry release date applies to: not 'not checked'."""
+    report = json.loads((fixtures / "trivy.json").read_text(encoding="utf-8"))
+    report["Results"] = [r for r in report["Results"] if r.get("Class") == "os-pkgs"]
+    trivy = tmp_path / "trivy.json"
+    trivy.write_text(json.dumps(report), encoding="utf-8")
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--from-trivy-json",
+                     str(trivy), "--scanners", "trivy", "--no-scorecard", "--no-workflows", "--no-cache",
+                     "--as-of", AS_OF, "--fail-on", "unknown-age,recent"], http=AgeHttp())
+    assert code == cli.EXIT_OK
+
+
+def test_dateless_version_answer_not_cached(tmp_path):
+    c = ResponseCache(tmp_path)
+    url = "https://api.deps.dev/v3/systems/npm/packages/x/versions/1.0.0"
+    c.put(url, 200, {"versionKey": {}})  # known, but no publishedAt yet
+    assert c.writes == 0
+    c.put(url, 200, {"publishedAt": "2026-10-01T00:00:00Z"})
+    assert c.writes == 1
