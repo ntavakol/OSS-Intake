@@ -40,7 +40,8 @@ few minutes or hourly, never two jobs at once on the same state file (the collec
 ```sh
 python3 nexus_sbom.py --url https://nexus.example.org --out nexus-sboms --state nexus-state.json || exit 1
 if [ -n "$(ls nexus-sboms/new)" ]; then
-    oss-intake --path nexus-sboms/new --out gate-$(date +%Y%m%d-%H%M) --fail-on malicious,recent,kev || exit $?
+    oss-intake --path nexus-sboms/new --out gate-$(date +%Y%m%d-%H%M) \
+        --fail-on malicious,recent,unknown-age,kev || exit $?
 fi
 python3 nexus_sbom.py --state nexus-state.json --accept
 ```
@@ -54,13 +55,16 @@ list to use is a policy decision:
 |---|---|---|
 | `malicious` | Releases listed as malicious (OSV, CWE-506 advisories) | Always worth having |
 | `recent` | Versions published in the last `--release-age-days` (default 7) | See the limits below |
+| `unknown-age` | Versions with no release date on deps.dev | Closes the gap below; RubyGems and CRAN always trip it |
 | `kev` | Packages with a known exploited vulnerability | |
 | `critical` or `high` | Known critical (or high and critical) vulnerabilities | Old versions developers still need will trip this; expect exceptions |
 
 What `recent` cannot see: release dates come from deps.dev, which covers npm, PyPI, Maven, NuGet, Go and Cargo
-but not RubyGems or CRAN, and which may not list a version published only hours ago. Such versions are named in
-a warning as not checked for being new. They do not fail the gate, and once accepted they are not listed again,
-so read the gate's warnings before accepting, or accept only when the report has none.
+but not RubyGems or CRAN, and which may not list a version published only hours ago, the window in which a
+compromised release usually does its harm. `recent` names such versions in a warning but passes them, and once
+accepted they are not listed again. `unknown-age` fails on them instead: a version only hours old stays on the
+list until deps.dev has a date for it (usually within a day), and is then checked properly. RubyGems and CRAN
+versions never get a date, so with `unknown-age` they always need someone to look and `--accept` them.
 
 This is an assessment that runs after a package is cached, not a block in front of it: Nexus has already served
 the first download. To stop a package before anyone gets it, use Nexus's own firewall features, or route new

@@ -67,6 +67,8 @@ FAIL_ON = {
     "critical": "a critical finding",
     "high": "a high or critical finding",
     "recent": "a package version published within --release-age-days",
+    "unknown-age": "a package version whose release date could not be found (not on deps.dev, or not indexed "
+                   "yet, as for a release only hours old), so it could not be checked for being new",
     "mismatch": "an artifact that does not match its registry checksum",
 }
 
@@ -517,9 +519,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.timeout < 1:
         raise UsageError("--timeout must be at least 1 second")
     # A gate on a check that will not run would always pass, so it is refused up front.
-    if "recent" in args.fail_on_set and (args.offline or not args.release_age_days):
-        raise UsageError("--fail-on recent needs the release date check, which "
-                         + ("--offline" if args.offline else "--release-age-days 0") + " turns off")
+    for gate in ("recent", "unknown-age"):
+        if gate in args.fail_on_set and (args.offline or not args.release_age_days):
+            raise UsageError(f"--fail-on {gate} needs the release date check, which "
+                             + ("--offline" if args.offline else "--release-age-days 0") + " turns off")
     if "mismatch" in args.fail_on_set and (args.offline or args.no_registry_check):
         raise UsageError("--fail-on mismatch needs the registry checksum check, which "
                          + ("--offline" if args.offline else "--no-registry-check") + " turns off")
@@ -1084,6 +1087,10 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None))
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}", args.quiet, force=True)
+        if t == "unknown-age":
+            listed = (age_info.get("unknown_purls") or []) + (age_info.get("unsupported_purls") or [])
+            log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
+                args.quiet, force=True)
     unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args)
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
@@ -1110,9 +1117,16 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))
+    if "unknown-age" in wanted and age_info.get("status") != "ok" and not _unknown_age(age_info):
+        out.append(("unknown-age", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
+                                                              f"{age_info.get('skipped_limit', 0)} over the limit"))
     if "mismatch" in wanted and args.path_kind == "artifact" and (registry or {}).get("status") == "error":
         out.append(("mismatch", "the registry lookup failed"))
     return out
+
+
+def _unknown_age(age_info: dict) -> bool:
+    return bool(age_info.get("unknown_purls") or age_info.get("unsupported_purls"))
 
 
 def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None) -> list[str]:
@@ -1126,6 +1140,7 @@ def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | No
         "critical": any(f.severity == "CRITICAL" for f in live),
         "high": any(f.severity in ("CRITICAL", "HIGH") for f in live),
         "recent": bool(age_info.get("recent")),
+        "unknown-age": _unknown_age(age_info),
         "mismatch": bool(registry and registry.get("status") == "mismatch"),
     }
     return [w for w in wanted if met[w]]

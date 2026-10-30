@@ -2119,3 +2119,23 @@ def test_os_findings_compare_source_versions():
     (row,) = inventory_report.package_rows([{"purl": purl, "labels": {}}], [f])
     assert row["version"] == "4:13.2.0-7ubuntu1" and row["upgrade_to"] == "gcc-defaults 1.214ubuntu2"
     assert row["upgrade_version"] == "1.214ubuntu2"
+
+
+def test_readme_collector_checksums_match_the_files():
+    """The README tells PyPI users to download the collectors for their version and check these SHA-256 sums.
+    GitHub serves the files as stored (LF line endings), so CRLF from a Windows checkout is undone first."""
+    import hashlib
+    import re
+
+    from oss_intake import __version__
+
+    root = Path(__file__).resolve().parent.parent
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    listed = dict((name, digest) for digest, name in re.findall(r"^([0-9a-f]{64})  (\S+)$", readme, re.M))
+    files = {"nexus_sbom.py": "examples/nexus/nexus_sbom.py", "osquery_sbom.py": "examples/osquery/osquery_sbom.py",
+             "oss-intake-pack.conf": "examples/osquery/oss-intake-pack.conf"}
+    assert set(listed) == set(files)
+    for name, rel in files.items():
+        data = (root / rel).read_bytes().replace(b"\r\n", b"\n")
+        assert hashlib.sha256(data).hexdigest() == listed[name], f"update the README checksum for {name}"
+    assert "/OSS-Intake/v$V/examples" in readme and "e.g. " + __version__ in readme

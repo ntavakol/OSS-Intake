@@ -256,6 +256,33 @@ turns osquery's package tables, from one machine or a whole fleet's result logs,
 [examples/nexus](https://github.com/ntavakol/OSS-Intake/tree/main/examples/nexus) does the same for what a Nexus
 Repository proxy has cached, with a gate recipe that checks only what is new since the last run.
 
+### Collectors: in the repository, not the package
+
+The collectors are small standalone scripts (Python standard library only), kept in the repository rather than
+the PyPI package, so they can be copied to the machine that needs one (an osquery log server, a host that can
+reach Nexus) without installing anything. Get the ones matching your oss-intake version, and check them:
+
+```bash
+V=$(oss-intake --version | awk '{print $NF}')    # e.g. 0.11.0
+BASE=https://raw.githubusercontent.com/ntavakol/OSS-Intake/v$V/examples
+curl -fsSLO "$BASE/nexus/nexus_sbom.py"
+curl -fsSLO "$BASE/osquery/osquery_sbom.py"
+curl -fsSLO "$BASE/osquery/oss-intake-pack.conf"
+shasum -a 256 -c <<'SUMS'
+520a8480a2deaa061ed2d0f39bb46a6afcdd6629b48e289971a8c9f5fa6f8295  nexus_sbom.py
+75a11d6305e639106368f77668292f61662921571cf8390e52214d3cd84b4170  osquery_sbom.py
+b5dfa634d47e15ed06bed1118b40cef9ea02c78c8da2da7ed80c1546567e1a93  oss-intake-pack.conf
+SUMS
+```
+
+The checksums above are for this release (on Linux without `shasum`, use `sha256sum -c`). Each script's
+`--help`, and the README next to it on GitHub, says how to use it:
+[examples/nexus](https://github.com/ntavakol/OSS-Intake/tree/main/examples/nexus) (with the gate recipe),
+[examples/osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery),
+[examples/sbom](https://github.com/ntavakol/OSS-Intake/tree/main/examples/sbom) (recipes, no script) and
+[examples/scheduled-rescan](https://github.com/ntavakol/OSS-Intake/tree/main/examples/scheduled-rescan) (a
+GitHub Actions workflow).
+
 All inputs are validated before any scanner runs. The image must carry an explicit tag or digest.
 
 | Option | Purpose |
@@ -296,7 +323,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines |
-| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
+| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`), `unknown-age` (a language package version with no release date on deps.dev: not indexed yet, as for a release only hours old, or a registry deps.dev does not cover, such as RubyGems and CRAN), `mismatch` (registry checksum). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
 | `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to `--release-age-max` |
 | `--release-age-max N` | Release-date lookups for at most N package versions, counted after duplicates across hosts are merged (default 400); the rest are reported as not checked, never as old |
 | `--cache-dir DIR`, `--no-cache` | Where slowly changing lookups are kept between runs: OSV advisory details for a day, deps.dev release dates for 30 days, latest versions for a day, proof-of-concept lists for 7 days (default: the user cache folder, e.g. `~/.cache/oss-intake` or `~/Library/Caches/oss-intake`). Which advisories affect a version, KEV, EPSS and the exploit indexes are always fetched fresh, and "not found" is never kept (a release only hours old may not be indexed yet). A folder other users can write to is not used. `--no-cache` keeps nothing |

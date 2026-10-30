@@ -19,6 +19,8 @@ from .models import parse_datetime
 
 DEFAULT_DAYS = 7
 MAX_LOOKUPS = 400
+LISTED = 1000
+OS_TYPES = {"deb", "dpkg", "rpm", "apk"}
 
 
 def _version(purl: str) -> str:
@@ -38,7 +40,9 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
     """as_of is the end of the assessment period: a version published after it did not exist yet. Ages are
     counted in calendar days (published yesterday = 1 day old)."""
     info: dict = {"status": "ok", "days": days, "checked": 0, "unknown": 0, "unsupported": 0, "errors": 0,
-                  "skipped_limit": 0, "recent": [], "published": {}}
+                  "skipped_limit": 0, "recent": [], "published": {},
+                  # Language package versions with no release date, for --fail-on unknown-age (capped lists).
+                  "unknown_purls": [], "unsupported_purls": []}
     planned = []
     for purl in dict.fromkeys(purls):
         sn, version = _system_and_name(purl), _version(purl)
@@ -50,6 +54,11 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
         version = _version(purl)
         if not sn or not version or sn[1] == "stdlib":
             info["unsupported"] += 1
+            # A distro package (deb, rpm, apk) or a Go standard library is not a registry release that can be
+            # days old; a RubyGems or CRAN version is, but deps.dev has no dates for it.
+            ptype = purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") else ""
+            if ptype not in OS_TYPES and (not sn or sn[1] != "stdlib") and len(info["unsupported_purls"]) < LISTED:
+                info["unsupported_purls"].append(purl)
             continue
         if info["checked"] + info["unknown"] + info["errors"] >= limit:
             info["skipped_limit"] += 1
@@ -67,6 +76,8 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
         published = parse_datetime(data.get("publishedAt")) if status == 200 and isinstance(data, dict) else None
         if not published:
             info["unknown"] += 1
+            if len(info["unknown_purls"]) < LISTED:
+                info["unknown_purls"].append(purl)
             continue
         info["checked"] += 1
         info["published"][purl] = published.isoformat()[:10]

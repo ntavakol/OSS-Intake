@@ -5,7 +5,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-30
+
+A Nexus collector and gate, `--fail-on unknown-age`, and download instructions for the collectors.
+
 ### Added
+- `--fail-on unknown-age`: exit 3 when a language package version has no release date on deps.dev, so it
+  could not be checked for being new: a version not indexed yet (likely when it is only hours old, when a
+  compromised release does most harm) or one from a registry deps.dev does not cover (RubyGems, CRAN). Distro
+  packages and the Go standard library do not count. Opt-in; `recent` is unchanged.
+- README: how to download the collectors (not part of the PyPI package) for your version, with SHA-256 sums a
+  test keeps in step with the files.
 - Nexus collector, `examples/nexus/nexus_sbom.py` (standard library only): lists what Nexus Repository proxies
   have cached as one CycloneDX SBOM per repository (npm, PyPI, Maven, NuGet, RubyGems, Go, Cargo, CRAN), with
   each file's checksums and the date it was cached; with `--state`, what is new since the last run goes to a

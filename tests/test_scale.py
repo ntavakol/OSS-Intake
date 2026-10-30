@@ -350,3 +350,62 @@ def test_release_age_version_encoded_once():
     release_age.check(h, ["pkg:golang/github.com/x/y@v2.0.0%2Bincompatible"],
                       __import__("datetime").datetime(2026, 10, 1), 7)
     assert h.calls == ["https://api.deps.dev/v3/systems/go/packages/github.com%2Fx%2Fy/versions/v2.0.0%2Bincompatible"]
+
+
+# --- --fail-on unknown-age (30 Oct) ----------------------------------------------------------------------------
+
+class AgeHttp(ScaleHttp):
+    """deps.dev knows one npm version (published long ago); everything else is 404, or fails if asked to."""
+
+    def __init__(self, fail=False):
+        super().__init__()
+        self.fail = fail
+
+    def get_json(self, url, params=None):
+        if url.startswith("https://api.deps.dev/"):
+            if self.fail:
+                from oss_intake.http import HttpError as E
+                raise E("down")
+            if url.endswith("/npm/packages/known/versions/1.0.0"):
+                return 200, {"publishedAt": "2020-01-01T00:00:00Z"}
+            return 404, None
+        return super().get_json(url, params)
+
+
+def _age_run(tmp_path, rows, http, extra=()):
+    inv = tmp_path / "p.csv"
+    inv.write_text("ecosystem,name,version\n" + "".join(f"{r}\n" for r in rows), encoding="utf-8")
+    return cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-latest", "--no-cache", "--no-epss",
+                     "--no-kev", "--no-exploits", "--as-of", AS_OF, "--fail-on", "unknown-age", *extra], http=http)
+
+
+def test_unknown_age_fails_on_versions_without_a_date(tmp_path, capsys):
+    """A version deps.dev has not indexed (likely when it is hours old) and a gem deps.dev does not cover."""
+    assert _age_run(tmp_path, ["npm,known,1.0.0", "npm,brand-new,9.9.9", "gem,rails,7.1.0"], AgeHttp()) \
+        == cli.EXIT_THRESHOLD
+    err = capsys.readouterr().err
+    assert "--fail-on unknown-age" in err and "pkg:npm/brand-new@9.9.9" in err and "pkg:gem/rails@7.1.0" in err
+
+
+def test_unknown_age_passes_when_every_date_is_known(tmp_path):
+    assert _age_run(tmp_path, ["npm,known,1.0.0"], AgeHttp()) == cli.EXIT_OK
+
+
+def test_unknown_age_ignores_distro_packages(tmp_path):
+    """A deb or rpm is not a registry release that can be hours old: never counted."""
+    from oss_intake import release_age as ra
+
+    info = ra.check(AgeHttp(), ["pkg:deb/ubuntu/curl@8.5.0-2ubuntu10.6?distro=ubuntu-24.04",
+                                "pkg:npm/known@1.0.0"],
+                    __import__("datetime").datetime(2026, 10, 1, tzinfo=__import__("datetime").timezone.utc), 7)
+    assert info["unsupported"] == 1 and info["unsupported_purls"] == [] and info["unknown_purls"] == []
+
+
+def test_unknown_age_that_could_not_run_fails_with_exit_1(tmp_path, capsys):
+    assert _age_run(tmp_path, ["npm,known,1.0.0"], AgeHttp(fail=True)) == cli.EXIT_ERROR
+    assert "could not be evaluated" in capsys.readouterr().err
+
+
+def test_unknown_age_refused_without_the_date_check(tmp_path, capsys):
+    assert _age_run(tmp_path, ["npm,known,1.0.0"], AgeHttp(), ["--release-age-days", "0"]) == cli.EXIT_USAGE
+    assert "--fail-on unknown-age needs the release date check" in capsys.readouterr().err
