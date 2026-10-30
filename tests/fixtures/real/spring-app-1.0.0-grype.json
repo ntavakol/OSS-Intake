@@ -44,9 +44,9 @@
     "purl": "pkg:maven/org.postgresql/postgresql@42.7.10",
     "locations": [
      {
-      "path": "/opt/shinyproxy/shinyproxy.jar",
+      "path": "/opt/app/app.jar",
       "layerID": "sha256:4cc57aa63663a79aee15535d80e562ae9d8be2ce26ae309de28ce11580023664",
-      "accessPath": "/opt/shinyproxy/shinyproxy.jar:BOOT-INF/lib/postgresql-42.7.10.jar",
+      "accessPath": "/opt/app/app.jar:BOOT-INF/lib/postgresql-42.7.10.jar",
       "annotations": {
        "evidence": "primary"
       }
@@ -107,9 +107,9 @@
     "purl": "pkg:maven/commons-io/commons-io@2.8.0",
     "locations": [
      {
-      "path": "/opt/shinyproxy/shinyproxy.jar",
+      "path": "/opt/app/app.jar",
       "layerID": "sha256:4cc57aa63663a79aee15535d80e562ae9d8be2ce26ae309de28ce11580023664",
-      "accessPath": "/opt/shinyproxy/shinyproxy.jar:BOOT-INF/lib/velocity-engine-core-2.3.jar",
+      "accessPath": "/opt/app/app.jar:BOOT-INF/lib/velocity-engine-core-2.3.jar",
       "annotations": {
        "evidence": "primary"
       }
@@ -159,9 +159,9 @@
     "purl": "pkg:maven/org.postgresql/postgresql@42.7.10",
     "locations": [
      {
-      "path": "/opt/shinyproxy/shinyproxy.jar",
+      "path": "/opt/app/app.jar",
       "layerID": "sha256:4cc57aa63663a79aee15535d80e562ae9d8be2ce26ae309de28ce11580023664",
-      "accessPath": "/opt/shinyproxy/shinyproxy.jar:BOOT-INF/lib/postgresql-42.7.10.jar",
+      "accessPath": "/opt/app/app.jar:BOOT-INF/lib/postgresql-42.7.10.jar",
       "annotations": {
        "evidence": "primary"
       }

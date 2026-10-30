@@ -13,7 +13,7 @@ def _norm(path: str) -> str:
 
 
 def _inside(outer: str, inner: str) -> bool:
-    """True when inner is a path within outer, e.g. the JAR nested in shinyproxy.jar that Trivy reports
+    """True when inner is a path within outer, e.g. the JAR nested in app.jar that Trivy reports
     (opt/app.jar/BOOT-INF/lib/x.jar) versus the outer archive Grype reports (/opt/app.jar)."""
     o, i = _norm(outer), _norm(inner)
     return i.startswith(o) and len(i) > len(o) and i[len(o)] in "/:!"

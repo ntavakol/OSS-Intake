@@ -8,4 +8,5 @@ No test makes a live network call.
 
 `real/` holds trimmed scan output from public container images, produced with
 `scripts/extract_regression_fixture.py`. Each file keeps only the rows needed to pin a bug found
-on real data (see `tests/test_real_regressions.py`).
+on real data (see `tests/test_real_regressions.py`). Image names and install paths are replaced with neutral
+ones (`example/spring-app`, `/opt/app/app.jar`); the package data is as the scanner reported it.

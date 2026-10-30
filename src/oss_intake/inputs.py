@@ -34,7 +34,7 @@ _NAME_VERSION = re.compile(r"(?<![\d.])v?(\d+\.\d+(?:\.\d+){0,2})(?![\d])")
 
 
 def version_from_name(path: Path) -> str | None:
-    """'shinyproxy-3.2.4-exec.jar' -> '3.2.4', tried against the project's release tags like an image tag."""
+    """'app-3.2.4-exec.jar' -> '3.2.4', tried against the project's release tags like an image tag."""
     m = _NAME_VERSION.search(path.name)
     return m.group(1) if m else None
 

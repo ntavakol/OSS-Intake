@@ -100,7 +100,7 @@ def _check_maven(http: Http, path: Path) -> dict:
     base = f"{MAVEN}/{g.replace('.', '/')}/{a}/{v}/{a}-{v}"
     candidates = [f"{base}.{ext}"]
     m = re.match(re.escape(f"{a}-{v}") + r"-(?P<cls>[A-Za-z0-9_.-]+)\." + re.escape(ext) + "$", path.name)
-    if m:  # a classifier, e.g. shinyproxy-3.2.4-exec.jar
+    if m:  # a classifier, e.g. app-3.2.4-exec.jar
         candidates.insert(0, f"{base}-{m.group('cls')}.{ext}")
     coords = f"{g}:{a}:{v}"
     for url in candidates:

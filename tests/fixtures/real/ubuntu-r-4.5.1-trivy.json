@@ -1,6 +1,6 @@
 {
  "SchemaVersion": 2,
- "ArtifactName": "rocker/shiny:4.5.1",
+ "ArtifactName": "example/r-app:4.5.1",
  "Metadata": {
   "OS": {
    "Family": "ubuntu",
@@ -9,7 +9,7 @@
  },
  "Results": [
   {
-   "Target": "rocker/shiny:4.5.1 (ubuntu 24.04)",
+   "Target": "example/r-app:4.5.1 (ubuntu 24.04)",
    "Class": "os-pkgs",
    "Type": "ubuntu",
    "Packages": [

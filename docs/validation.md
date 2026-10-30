@@ -5,20 +5,16 @@ demonstrates the method; it is not an assessment of the project.
 
 ## Reference case
 
-`openanalytics/shinyproxy:3.2.4` (GitHub release `v3.2.4`, published 30 April 2026). A manual Trivy
-v0.76.1 scan on 22 October 2026 reported:
-
-- Ubuntu 24.04 base layer: 0 HIGH or CRITICAL
-- `/opt/shinyproxy/shinyproxy.jar`: 47 HIGH or CRITICAL findings (40 HIGH, 7 CRITICAL), all with upstream
-  fixes listed
-
-Counts will drift as vulnerability databases update.
+Pick a public image with GitHub releases, for example `jenkins/jenkins:2.528-jdk21` (repository
+`jenkinsci/jenkins`, release tag `jenkins-2.528`). Run Trivy on it yourself first and note the HIGH and
+CRITICAL counts per target, with the Trivy version and database date. Counts drift as vulnerability databases
+update, so compare runs made on the same day.
 
 ## Run
 
 ```bash
-oss-intake --image openanalytics/shinyproxy:3.2.4 --repo openanalytics/shinyproxy \
-  --out ./reports/shinyproxy-3.2.4 --image-src remote --min-severity HIGH \
+oss-intake --image jenkins/jenkins:2.528-jdk21 --repo jenkinsci/jenkins --release-tag jenkins-2.528 \
+  --out ./reports/jenkins-2.528 --image-src remote --min-severity HIGH \
   --trivy-version 0.76.1 --likelihood
 ```
 
@@ -26,9 +22,9 @@ oss-intake --image openanalytics/shinyproxy:3.2.4 --repo openanalytics/shinyprox
 
 1. With `--scanners trivy --offline`, the HIGH and CRITICAL totals in `summary.md` should equal the manual
    Trivy count for the same Trivy version and database date (shown in the Scope table).
-2. `assessment.json` should show `health.scanned_release.tag` as `v3.2.4` with `matched: true`.
+2. `assessment.json` should show `health.scanned_release.tag` as the release you passed, with `matched: true`.
 3. Rows in `findings.csv` with `fix_available_at_release = yes` should have a `fix_published` date
-   before 2026-04-30. Spot-check two against the package registry (Maven Central or deps.dev).
+   before the release date. Spot-check two against the package registry (Maven Central or deps.dev).
 4. Findings seen only by Grype or only by OSV are listed in the Source agreement table. Review a sample
    rather than dismissing them.
 

@@ -423,7 +423,7 @@ redis 7.4.1 (121 of 124 Go standard library findings not reachable).
 
 Public exploit availability and the advisory's own conditions for each finding. Checked against live
 Metasploit, Nuclei and GitHub proof-of-concept data (Log4Shell, Spring4Shell, PAN-OS and ActiveMQ come back
-weaponised) and on ShinyProxy 3.2.4.
+weaponised) and on a Spring Boot application image.
 
 ### Added
 - Public exploit availability per finding, as the strongest evidence found: known exploited (CISA KEV),
@@ -432,8 +432,8 @@ weaponised) and on ShinyProxy 3.2.4.
   source cannot be loaded the level is "not checked", never "none". `exploit_level` and `exploit_refs` columns
   in findings.csv, an Exploit column in the reports, and `--no-exploits` to skip it. About 25 MB is downloaded
   per scan; proof-of-concept files only for findings with no stronger evidence, capped at 300. Proof-of-concept
-  hits list the repositories (name and stars), because some are not exploits at all: on ShinyProxy the only
-  hit for CVE-2026-47884 was a rating-checker tool. Findings without a CVE ID are marked "no CVE ID".
+  hits list the repositories (name and stars), because some are not exploits at all: on one test image the
+  only hit for a CVE was a rating-checker tool. Findings without a CVE ID are marked "no CVE ID".
 - Two default likelihood rules: a ready-to-use exploit (Metasploit or Nuclei) on a finding with a fix gives
   level 4; an Exploit-DB entry gives level 3. Proofs of concept alone do not change the likelihood.
 - Advisory conditions: the advisory's own "affected only if" sentences, quoted verbatim in a `conditions`
@@ -443,9 +443,9 @@ weaponised) and on ShinyProxy 3.2.4.
 
 ## [0.1.8] - 2026-10-25
 
-CVSS version and source on every score, with v4 used only when no v3 score exists. Used for the
-ShinyProxy 3.2.4 assessment, where it showed the 9.8 scores on three Spring CVEs came from GHSA, while
-Spring itself rates them Medium or Low.
+CVSS version and source on every score, with v4 used only when no v3 score exists. On a Spring Boot
+application image it showed the 9.8 scores on three Spring CVEs came from GHSA, while Spring itself rates
+them Medium or Low.
 
 ### Added
 - CVSS provenance: findings.csv has `cvss_version` and `cvss_source` (nvd, ghsa, redhat, debian...), the Markdown
@@ -460,8 +460,8 @@ Spring itself rates them Medium or Low.
   lower than NVD, the severity column keeps the distro rating and the CVSS source shows where the score came from.
 
 ### Fixed
-- `target` listed both the outer archive (Grype: `/opt/shinyproxy/shinyproxy.jar`) and the JAR inside it
-  (Trivy: `opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/...`); only the more specific path is kept now.
+- `target` listed both the outer archive (Grype: `/opt/app/app.jar`) and the JAR inside it
+  (Trivy: `opt/app/app.jar/BOOT-INF/lib/...`); only the more specific path is kept now.
 
 ## [0.1.7] - 2026-10-25
 
@@ -590,7 +590,8 @@ Fix date coverage for Ubuntu and Debian images, EPSS, and a CI hygiene audit of 
 
 ## [0.1.0] - 2026-10-22
 
-First release. Validated against five public images on macOS (ShinyProxy, Grafana, Jenkins, nginx, rocker/shiny), and ShinyProxy also on Windows.
+First release. Validated against five public images on macOS (a Spring Boot application, Grafana, Jenkins,
+nginx and an R image on Ubuntu), and on Windows.
 
 ### Added
 - `scan` (default command): Trivy, optional Grype cross-check, and OSV queries for container images.

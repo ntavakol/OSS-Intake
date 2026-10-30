@@ -1,6 +1,6 @@
 {
  "SchemaVersion": 2,
- "ArtifactName": "openanalytics/shinyproxy:3.2.4",
+ "ArtifactName": "example/spring-app:1.0.0",
  "Metadata": {
   "OS": {
    "Family": "ubuntu",
@@ -62,7 +62,7 @@
       "PURL": "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@12.10.2",
       "UID": "94d72e3bcfe3d6bf"
      },
-     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/mssql-jdbc-12.10.2.jre11.jar",
+     "PkgPath": "opt/app/app.jar/BOOT-INF/lib/mssql-jdbc-12.10.2.jre11.jar",
      "InstalledVersion": "12.10.2",
      "FixedVersion": "10.2.4.jre11, 11.2.4.jre11, 12.2.1.jre11, 12.6.5.jre11, 12.8.2.jre11, 12.10.2.jre11, 13.2.1.jre11",
      "Status": "fixed",
@@ -90,7 +90,7 @@
       "PURL": "pkg:maven/commons-io/commons-io@2.8.0",
       "UID": "9bc9a5739e2fdcb6"
      },
-     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/velocity-engine-core-2.3.jar",
+     "PkgPath": "opt/app/app.jar/BOOT-INF/lib/velocity-engine-core-2.3.jar",
      "InstalledVersion": "2.8.0",
      "FixedVersion": "2.14.0",
      "Status": "fixed",
@@ -120,7 +120,7 @@
       "PURL": "pkg:maven/org.postgresql/postgresql@42.7.10",
       "UID": "7eef7ccdc5a269b8"
      },
-     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
+     "PkgPath": "opt/app/app.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
      "InstalledVersion": "42.7.10",
      "FixedVersion": "42.7.11",
      "Status": "fixed",
@@ -152,7 +152,7 @@
       "PURL": "pkg:maven/org.postgresql/postgresql@42.7.10",
       "UID": "7eef7ccdc5a269b8"
      },
-     "PkgPath": "opt/shinyproxy/shinyproxy.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
+     "PkgPath": "opt/app/app.jar/BOOT-INF/lib/postgresql-42.7.10.jar",
      "InstalledVersion": "42.7.10",
      "FixedVersion": "42.7.12",
      "Status": "fixed",

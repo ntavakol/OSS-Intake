@@ -1046,7 +1046,7 @@ def test_path_inputs(tmp_path, fixtures):
     from oss_intake import inputs
     from oss_intake.scanners import grype, trivy
 
-    jar = tmp_path / "shinyproxy-3.2.4-exec.jar"
+    jar = tmp_path / "app-3.2.4-exec.jar"
     jar.write_bytes(b"PK")
     assert inputs.classify(tmp_path) == "dir"
     assert inputs.classify(jar) == "artifact" and inputs.trivy_mode("artifact") == "rootfs"
@@ -1064,9 +1064,9 @@ def test_path_inputs(tmp_path, fixtures):
         import shutil
         shutil.rmtree(tmp)
 
-    # Not named renv.lock, so repository scanners (OpenSSF Scorecard) do not report its old shiny as ours.
+    # Not named renv.lock, so repository scanners (OpenSSF Scorecard) do not report its old packages as ours.
     purls, skipped = inputs.renv_purls(fixtures / "inputs" / "renv_fixture.json")
-    assert purls == ["pkg:cran/jsonlite@1.8.7", "pkg:cran/shiny@1.8.0"]
+    assert purls == ["pkg:cran/ggplot2@3.4.0", "pkg:cran/jsonlite@1.8.7"]
     assert skipped == ["Biobase (Bioconductor)", "mypkg (GitHub)"]
 
     seen = []

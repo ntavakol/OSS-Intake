@@ -23,9 +23,9 @@ def _load(name):
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def test_shinyproxy_mssql_label_false_positive():
-    t, _ = trivy.parse(_load("shinyproxy-3.2.4-trivy.json"))
-    g, _ = grype.parse(_load("shinyproxy-3.2.4-grype.json"))
+def test_spring_app_mssql_label_false_positive():
+    t, _ = trivy.parse(_load("spring-app-1.0.0-trivy.json"))
+    g, _ = grype.parse(_load("spring-app-1.0.0-grype.json"))
     findings = merge.merge(t, g)
     assert lag.flag_label_matches(findings) >= 1
     mssql = [f for f in findings if "mssql-jdbc" in f.package]
@@ -55,14 +55,14 @@ def test_grafana_go_pseudo_versions_and_incompatible():
 
 
 @pytest.mark.parametrize("name,eco", [("nginx-1.29.2-alpine-trivy.json", "alpine"),
-                                      ("rocker-shiny-4.5.1-trivy.json", "ubuntu")])
+                                      ("ubuntu-r-4.5.1-trivy.json", "ubuntu")])
 def test_os_ecosystem_detection(name, eco):
     t, _ = trivy.parse(_load(name))
     assert t and {coverage.ecosystem(f) for f in t} == {eco}
 
 
-def test_rocker_ubuntu_source_package_fields():
-    t, _ = trivy.parse(_load("rocker-shiny-4.5.1-trivy.json"))
+def test_ubuntu_source_package_fields():
+    t, _ = trivy.parse(_load("ubuntu-r-4.5.1-trivy.json"))
     assert t and all(f.src_name and "ubuntu" in f.src_version and f.os_release == "ubuntu 24.04" for f in t)
 
 
