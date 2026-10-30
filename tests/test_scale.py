@@ -85,17 +85,29 @@ def _client(monkeypatch, tmp_path, delay=0.05, cache=True):
 
 
 def test_prefetch_runs_in_parallel_and_serves_each_result_once(monkeypatch, tmp_path):
-    http, log = _client(monkeypatch, tmp_path)
+    """Parallel is measured against a sequential run in the same test, with no cache, so a slow runner (Windows
+    CI, where every new file is scanned) cannot fail it: only "no faster than one at a time" does."""
     urls = [f"https://api.osv.dev/v1/vulns/CVE-2099-{i}" for i in range(40)]
-    t = time.monotonic()
-    http.prefetch(urls + urls[:5])  # duplicates are fetched once
-    elapsed = time.monotonic() - t
-    assert len(log) == 40 and elapsed < 40 * 0.05 / 2  # sequential would take 2 seconds
+    timings = {}
+    for workers in (1, 8):
+        http, log = _client(monkeypatch, tmp_path, cache=False)
+        http._workers = workers
+        t = time.monotonic()
+        http.prefetch(urls + urls[:5])  # duplicates are fetched once
+        timings[workers] = time.monotonic() - t
+        assert len(log) == 40
+    assert timings[8] < timings[1] / 2, timings
     assert len({tid for tid, _ in log}) > 1
     assert http.get_json(urls[3]) == (200, {"url": urls[3]})
     assert len(log) == 40  # answered from the prefetch
-    # a second run in the same cache folder makes no requests at all
-    http2, log2 = _client(monkeypatch, tmp_path)
+
+
+def test_second_run_answered_from_cache(monkeypatch, tmp_path):
+    urls = [f"https://api.osv.dev/v1/vulns/CVE-2099-{i}" for i in range(40)]
+    http, log = _client(monkeypatch, tmp_path, delay=0)
+    http.prefetch(urls)
+    assert len(log) == 40 and http.cache.writes == 40
+    http2, log2 = _client(monkeypatch, tmp_path, delay=0)
     http2.prefetch(urls)
     assert log2 == [] and http2.cache.hits == 40
 
