@@ -1483,7 +1483,11 @@ def test_package_option_checks_single_packages(tmp_path, capsys):
     (["--package", "pkg:npm/@1.0.0"], "no package name"),
     (["--package", "npm:@scope//name@1.0.0"], "empty part"),
     (["--package", "pkg:npm/che lk@1.0.0"], "space"),
-    (["--package", "pkg:npm/@scope/name"], "has no version")])
+    (["--package", "pkg:npm/@scope/name"], "has no version"),
+    # Second review of 0.12.0.
+    (["--package", "pkg:npm/ab%20c@1.0.0"], "space"),
+    (["--package", "npm:ab%20c@1.0.0"], "space"),
+    (["--package", "pkg:npm/@scope@1.0.0"], "no package name")])
 def test_package_option_validated_before_any_lookup(tmp_path, capsys, args, message):
     from .conftest import FakeHttp
 
@@ -1565,7 +1569,8 @@ def test_package_not_found_is_not_reported_clean(tmp_path, capsys):
     """Review of 0.12.0: a misspelt name printed 'no known vulnerabilities'."""
     _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demoo@1.0.0")
     printed = capsys.readouterr().out
-    assert "demoo 1.0.0 (npm): not found on deps.dev; check the name and version" in printed
+    assert ("demoo 1.0.0 (npm): not on deps.dev (misspelt, or too new to be indexed); "
+            "no advisories match it") in printed
     assert "no known vulnerabilities" not in printed
 
 
@@ -1606,3 +1611,62 @@ def test_package_with_repo_names_the_repo_in_titles(tmp_path):
     _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", "--repo", "example/webapp")
     for name in ("report.html", "executive-summary.html", "summary.md"):
         assert "demo 1.0.0 (example/webapp)" in (tmp_path / "o" / name).read_text(encoding="utf-8"), name
+
+
+def _decide(src, dst, ids):
+    """Copy a findings.csv, marking the findings with these IDs not_affected."""
+    import csv
+
+    rows = list(csv.DictReader(src.open(encoding="utf-8")))
+    for r in rows:
+        if r["id"] in ids:
+            r["triage_status"], r["triage_notes"] = "not_affected", "the affected function is never called"
+    with dst.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    return dst
+
+
+@pytest.mark.parametrize("aside, expected", [
+    ("CVE-2099-0003", "demo 1.0.0 (npm): 1 known vulnerability (1 more set aside); no fixed version yet"),
+    ("GHSA-demo-nofix", "demo 1.0.0 (npm): 1 known vulnerability (1 more set aside), 1 critical, 1 known exploited; "
+                        "upgrade to at least 2.0.0 (1 still known in 2.0.0, counting those set aside)")])
+def test_package_verdict_upgrade_advice_follows_decisions(tmp_path, capsys, aside, expected):
+    """Second review of 0.12.0: the upgrade advice still counted findings set aside by a decision."""
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", name="one")
+    decided = _decide(tmp_path / "one" / "findings.csv", tmp_path / "decided.csv", {aside})
+    capsys.readouterr()
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", "--decisions", str(decided), name="two")
+    assert expected in capsys.readouterr().out
+
+
+def test_act_gate_fails_when_exploit_indexes_could_not_load(tmp_path, capsys):
+    """Second review of 0.12.0: 'Act now' also comes from Metasploit and Nuclei; with both failing, act passed."""
+    code, _ = _pkg_run(tmp_path, PkgHttp(fail_hosts=("modules_metadata_base", "cves.json")),
+                       "--package", "npm:demo@2.0.0", "--fail-on", "act")
+    assert code == cli.EXIT_ERROR
+    assert "--fail-on act: could not be evaluated (exploit indexes" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("extra, message", [
+    (["--scanners", "trivy,grype", "--fail-on", "malicious"], "--fail-on malicious needs OSV"),
+    (["--scanners", "trivy,grype", "--offline", "--fail-on", "act"], "--fail-on act needs the CISA KEV check"),
+    (["--scanners", "trivy,grype,osv", "--no-kev", "--fail-on", "kev"], "--fail-on kev needs the CISA KEV check")])
+def test_gates_on_a_check_turned_off_are_refused(tmp_path, fixtures, capsys, extra, message):
+    """Second review of 0.12.0: these ran a full scan and then exited 1; a gate whose check is turned off is
+    refused up front (exit 2), as recent, unknown-age and mismatch are."""
+    http = FakeHttp()
+    argv = ["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"),
+            "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json", str(fixtures / "grype.json"),
+            "--as-of", AS_OF, *extra]
+    assert cli.main(argv, http=http) == cli.EXIT_USAGE
+    assert message in capsys.readouterr().err and http.calls == []
+
+
+def test_gates_need_something_to_scan(tmp_path, capsys):
+    """Second review of 0.12.0: --repo alone with --fail-on malicious exited 1 with a reason about scanners."""
+    http = FakeHttp()
+    assert cli.main(["--repo", "example/webapp", "--out", str(tmp_path / "o"), "--fail-on", "malicious"],
+                    http=http) == cli.EXIT_USAGE
+    assert "--fail-on needs packages to check" in capsys.readouterr().err and http.calls == []

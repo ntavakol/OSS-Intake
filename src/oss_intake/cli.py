@@ -374,6 +374,22 @@ def _ineffective_options(args, chosen: list[str]) -> list[str]:
     return out
 
 
+def _refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]) -> None:
+    """A gate on a check that will not run would always pass (or always fail), so it is refused up front."""
+    wanted = set(args.fail_on_set)
+    if wanted and not (args.image or args.path or args.package):
+        raise UsageError("--fail-on needs packages to check: give --image, --path or --package")
+    kev_off = "--offline" if args.offline else "--no-kev" if args.no_kev else ""
+    for gate in ("kev", "act"):
+        if gate in wanted and kev_off:
+            raise UsageError(f"--fail-on {gate} needs the CISA KEV check, which {kev_off} turns off")
+    osv_off = args.path_kind not in ("renv", "inventory") and "osv" not in chosen
+    for gate in ("malicious", "act"):
+        if gate in wanted and osv_off:
+            raise UsageError(f"--fail-on {gate} needs OSV malicious package data: "
+                             + ("--offline turns it off" if args.offline else "add osv to --scanners"))
+
+
 def _resolve_scanners(args: argparse.Namespace) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     if args.scanners == "auto":
@@ -595,6 +611,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.label_list and args.path_kind != "inventory":
         raise UsageError("--label applies to a package inventory or SBOM, or to --package")
+    _refuse_gates_without_their_check(args, chosen)
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     warnings += _ineffective_options(args, chosen)
@@ -1146,8 +1163,8 @@ def _verdicts(rows: list[dict], findings: list, age_info: dict, shown: int = 20)
             out.append(what + "MALICIOUS release. Remove it.")
             continue
         if not r["findings"]:
-            out.append(what + ("not found on deps.dev; check the name and version" if r["purl"] in not_found
-                               else "no known vulnerabilities"))
+            out.append(what + ("not on deps.dev (misspelt, or too new to be indexed); no advisories match it"
+                               if r["purl"] in not_found else "no known vulnerabilities"))
             continue
         known = f"{r['findings']} known vulnerabilit{'y' if r['findings'] == 1 else 'ies'}"
         live = [f for f in by_purl.get(r["purl"], []) if f.triage_group != "aside"]
@@ -1163,12 +1180,14 @@ def _verdicts(rows: list[dict], findings: list, age_info: dict, shown: int = 20)
             parts.append(f"{critical} critical")
         if kev:
             parts.append(f"{kev} known exploited")
-        if r.get("upgrade_to"):
+        # The minimum fix and what it leaves are worked out from every finding, set aside or not: say so.
+        if r.get("upgrade_to") and any(f.fixed_versions for f in live):
             left = (r.get("upgrade_left") or {}).get("total")
+            counting = ", counting those set aside" if aside else ""
             fix = f"; upgrade to at least {r['upgrade_to']}" + (
-                f" ({left} still known in {r['upgrade_to']})" if left
+                f" ({left} still known in {r['upgrade_to']}{counting})" if left
                 else " (clears all known)" if left == 0
-                else f" ({r['no_fix']} with no fixed version yet)" if r["no_fix"] else "")
+                else f" ({r['no_fix']} with no fixed version yet{counting})" if r["no_fix"] else "")
         else:
             fix = "; no fixed version yet"
         out.append(what + ", ".join(parts) + fix)
@@ -1191,8 +1210,9 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
                   check_info: dict | None = None) -> list[tuple[str, str]]:
     """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
     out = []
-    # 'act' comes from CISA KEV and malicious package data too (and exploit indexes, which can be turned off).
-    for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", ("malicious", "kev"))):
+    # 'act' comes from malicious package data, CISA KEV and the exploit indexes (unless --no-exploits was chosen).
+    act_sources = ("malicious", "kev") if args.no_exploits else ("malicious", "kev", "exploits")
+    for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", act_sources)):
         missing = [n for n in sources if checks.state_of(check_info, n) != checks.CHECKED]
         if gate in wanted and missing:
             out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(check_info, n)}" for n in missing)))

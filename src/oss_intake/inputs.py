@@ -184,7 +184,9 @@ MAX_PACKAGES = 1000
 
 def _check_name(name: str) -> None:
     """A --package name that cannot exist is an error, not a lookup that comes back clean."""
-    if not name.strip("/@"):
+    if re.search(r"\s", unquote(name)):
+        raise ValueError("contains a space")
+    if not name.strip("/@") or (name.startswith("@") and "/" not in name):
         raise ValueError("no package name")
     if "@" in name[1:]:
         raise ValueError("'@' in the name; give one version, e.g. npm:chalk@5.6.1")

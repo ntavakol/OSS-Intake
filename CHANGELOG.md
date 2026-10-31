@@ -22,9 +22,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   removed, not patched.
 
 ### Fixed
-- `--fail-on kev`, `--fail-on malicious` and `--fail-on act` failed open: when the CISA KEV download failed, or
-  the malicious package check was partial (OSV failed or was not used), the gate passed. It now fails with exit
-  code 1 and says which check did not run, as `recent`, `unknown-age` and `mismatch` already did.
+- `--fail-on kev`, `--fail-on malicious` and `--fail-on act` failed open: when the CISA KEV download failed, the
+  OSV lookup failed, or (for `act`) the Metasploit and Nuclei indexes could not be loaded, the gate passed. It now
+  fails with exit code 1 and says which check did not run, as `recent`, `unknown-age` and `mismatch` already did.
+- A gate whose check is turned off is now refused before anything runs (exit 2), as for the other gates:
+  `kev` or `act` with `--offline` or `--no-kev`, `malicious` or `act` without OSV (`--offline`, or `--scanners`
+  without osv), and any `--fail-on` with nothing to scan (`--repo` alone). These used to pass.
 - A package URL for a scoped npm package with no version (`pkg:npm/@scope/name`) was accepted as if it had one.
 
 ## [0.11.1] - 2026-10-31
