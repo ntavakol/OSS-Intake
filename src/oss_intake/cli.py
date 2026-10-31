@@ -1101,7 +1101,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
           + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else "")
           + (f" not_checked={','.join(checks.gaps(check_info))}" if checks.gaps(check_info) else ""))
     if args.package and pkg_rows is not None:
-        for line in _verdicts(pkg_rows):
+        for line in _verdicts(pkg_rows, findings, age_info):
             print(line)
     for w in warnings:
         log(f"warning: {w}", args.quiet)
@@ -1113,7 +1113,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             listed = (age_info.get("unknown_purls") or []) + (age_info.get("unsupported_purls") or [])
             log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
                 args.quiet, force=True)
-    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args)
+    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info)
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
     # A gate that tripped can still have skipped some versions: name them, so accepting what tripped it does not
@@ -1131,8 +1131,14 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     return EXIT_THRESHOLD if tripped else EXIT_OK
 
 
-def _verdicts(rows: list[dict], shown: int = 20) -> list[str]:
-    """One plain line per package for --package runs: what it is, and what to do."""
+def _verdicts(rows: list[dict], findings: list, age_info: dict, shown: int = 20) -> list[str]:
+    """One plain line per package for --package runs: what it is, and what to do. Findings set aside (evidence
+    or an assessor decision) are not counted as open, as for --fail-on; a version deps.dev does not know is not
+    reported as clean, since it is most likely a misspelt name or version."""
+    by_purl: dict[str, list] = {}
+    for f in findings:
+        by_purl.setdefault(f.purl or "", []).append(f)
+    not_found = set(age_info.get("unknown_purls") or [])
     out = []
     for r in rows[:shown]:
         what = f"  {r['package']} {r['version']} ({r['ecosystem']}): "
@@ -1140,14 +1146,31 @@ def _verdicts(rows: list[dict], shown: int = 20) -> list[str]:
             out.append(what + "MALICIOUS release. Remove it.")
             continue
         if not r["findings"]:
-            out.append(what + "no known vulnerabilities")
+            out.append(what + ("not found on deps.dev; check the name and version" if r["purl"] in not_found
+                               else "no known vulnerabilities"))
             continue
-        parts = [f"{r['findings']} known vulnerabilit{'y' if r['findings'] == 1 else 'ies'}"]
-        if r["critical"]:
-            parts.append(f"{r['critical']} critical")
-        if r["kev"]:
-            parts.append(f"{r['kev']} known exploited")
-        fix = f"; upgrade to at least {r['upgrade_to']}" if r.get("upgrade_to") else "; no fixed version yet"
+        known = f"{r['findings']} known vulnerabilit{'y' if r['findings'] == 1 else 'ies'}"
+        live = [f for f in by_purl.get(r["purl"], []) if f.triage_group != "aside"]
+        aside = r["findings"] - len(live)
+        if not live:
+            out.append(what + known + ", all set aside (see findings.csv)")
+            continue
+        parts = [f"{len(live)} known vulnerabilit{'y' if len(live) == 1 else 'ies'}" + (
+            f" ({aside} more set aside)" if aside else "")]
+        critical = sum(1 for f in live if f.severity == "CRITICAL")
+        kev = sum(1 for f in live if f.kev)
+        if critical:
+            parts.append(f"{critical} critical")
+        if kev:
+            parts.append(f"{kev} known exploited")
+        if r.get("upgrade_to"):
+            left = (r.get("upgrade_left") or {}).get("total")
+            fix = f"; upgrade to at least {r['upgrade_to']}" + (
+                f" ({left} still known in {r['upgrade_to']})" if left
+                else " (clears all known)" if left == 0
+                else f" ({r['no_fix']} with no fixed version yet)" if r["no_fix"] else "")
+        else:
+            fix = "; no fixed version yet"
         out.append(what + ", ".join(parts) + fix)
     if len(rows) > shown:
         out.append(f"  ... and {len(rows) - shown} more in packages.csv")
@@ -1164,9 +1187,15 @@ def _language_purls(args, trivy_report: dict | None) -> list[str]:
     return []
 
 
-def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args) -> list[tuple[str, str]]:
+def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args,
+                  check_info: dict | None = None) -> list[tuple[str, str]]:
     """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
     out = []
+    # 'act' comes from CISA KEV and malicious package data too (and exploit indexes, which can be turned off).
+    for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", ("malicious", "kev"))):
+        missing = [n for n in sources if checks.state_of(check_info, n) != checks.CHECKED]
+        if gate in wanted and missing:
+            out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(check_info, n)}" for n in missing)))
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))

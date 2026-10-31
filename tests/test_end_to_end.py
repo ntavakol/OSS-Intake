@@ -1476,10 +1476,133 @@ def test_package_option_checks_single_packages(tmp_path, capsys):
     (["--package", "npm:chalk@^5.0.0"], "range"),
     (["--package", "brew:wget@1.0"], "ecosystem"),
     (["--package", "npm:chalk@5.6.1", "--path", "x.csv"], "on its own"),
-    (["--package", "npm:chalk@5.6.1", "--offline"], "needs the network")])
+    (["--package", "npm:chalk@5.6.1", "--offline"], "needs the network"),
+    # Review of 0.12.0: these were looked up and printed as clean.
+    (["--package", "npm: chalk@5.6.1"], "space"),
+    (["--package", "npm:chalk@1.0@2"], "'@'"),
+    (["--package", "pkg:npm/@1.0.0"], "no package name"),
+    (["--package", "npm:@scope//name@1.0.0"], "empty part"),
+    (["--package", "pkg:npm/che lk@1.0.0"], "space"),
+    (["--package", "pkg:npm/@scope/name"], "has no version")])
 def test_package_option_validated_before_any_lookup(tmp_path, capsys, args, message):
     from .conftest import FakeHttp
 
     http = FakeHttp()
     assert cli.main([*args, "--out", str(tmp_path / "o")], http=http) == cli.EXIT_USAGE
     assert message in capsys.readouterr().err and http.calls == []
+
+
+# demo 1.0.0 has a known exploited critical fixed in 2.0.0 and a medium with no fix; evil 1.0.0 is malware.
+_DEMO_KEV = {"id": "GHSA-demo-kev", "aliases": ["CVE-2099-0003"], "summary": "demo issue, exploited",
+             "database_specific": {"severity": "CRITICAL"},
+             "affected": [{"package": {"ecosystem": "npm", "name": "demo", "purl": "pkg:npm/demo"},
+                           "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "2.0.0"}]}]}]}
+_DEMO_NOFIX = {"id": "GHSA-demo-nofix", "summary": "demo issue, no fix", "database_specific": {"severity": "MODERATE"},
+               "affected": [{"package": {"ecosystem": "npm", "name": "demo", "purl": "pkg:npm/demo"},
+                             "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}]}]}]}
+_EVIL = {"id": "MAL-2099-8", "summary": "malicious release",
+         "affected": [{"package": {"ecosystem": "npm", "name": "evil", "purl": "pkg:npm/evil"}, "versions": ["1.0.0"]}]}
+
+
+class PkgHttp(FakeHttp):
+    """OSV and deps.dev for the demo and evil npm packages; any other package is unknown to both."""
+
+    def __init__(self, fail_hosts: tuple[str, ...] = ()):
+        super().__init__(fail_hosts=fail_hosts)
+        self.depsdev = {**self.depsdev, "npm/demo/1.0.0": "2025-01-01T00:00:00Z",
+                        "npm/demo/2.0.0": "2025-06-01T00:00:00Z", "npm/evil/1.0.0": "2025-01-01T00:00:00Z"}
+
+    def post_json(self, url, body):
+        self._check(url)
+        hits = {"pkg:npm/demo@1.0.0": [_DEMO_KEV, _DEMO_NOFIX], "pkg:npm/demo@2.0.0": [_DEMO_NOFIX],
+                "pkg:npm/evil@1.0.0": [_EVIL]}
+        return 200, {"results": [{"vulns": [{"id": a["id"]} for a in hits[q["package"]["purl"]]]}
+                                 if q.get("package", {}).get("purl") in hits else {} for q in body["queries"]]}
+
+    def get_json(self, url, params=None):
+        for adv in (_DEMO_KEV, _DEMO_NOFIX, _EVIL):
+            if url.endswith("/vulns/" + adv["id"]):
+                self._check(url)
+                return 200, adv
+        return super().get_json(url, params)
+
+
+def _pkg_run(tmp_path, http, *extra, name="o"):
+    out = tmp_path / name
+    code = cli.main(["--out", str(out), "--no-latest", "--no-cache", "--as-of", AS_OF, *extra], http=http)
+    return code, out
+
+
+def test_package_verdict_says_what_the_upgrade_leaves(tmp_path, capsys):
+    """Review of 0.12.0: 'upgrade to at least 2.0.0' hid a vulnerability that 2.0.0 does not fix."""
+    code, _ = _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0")
+    assert code == cli.EXIT_OK
+    assert ("demo 1.0.0 (npm): 2 known vulnerabilities, 1 critical, 1 known exploited; "
+            "upgrade to at least 2.0.0 (1 still known in 2.0.0)") in capsys.readouterr().out
+
+
+def test_package_verdict_respects_decisions(tmp_path, capsys):
+    """Review of 0.12.0: findings an assessor set aside were still printed as open, while --fail-on passed."""
+    import csv
+
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", name="one")
+    capsys.readouterr()
+    path = tmp_path / "one" / "findings.csv"
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
+    for r in rows:
+        r["triage_status"], r["triage_notes"] = "not_affected", "the affected function is never called"
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    code, _ = _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", "--decisions", str(path),
+                       "--fail-on", "critical,kev", name="two")
+    assert code == cli.EXIT_OK
+    assert "demo 1.0.0 (npm): 2 known vulnerabilities, all set aside (see findings.csv)" in capsys.readouterr().out
+
+
+def test_package_not_found_is_not_reported_clean(tmp_path, capsys):
+    """Review of 0.12.0: a misspelt name printed 'no known vulnerabilities'."""
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demoo@1.0.0")
+    printed = capsys.readouterr().out
+    assert "demoo 1.0.0 (npm): not found on deps.dev; check the name and version" in printed
+    assert "no known vulnerabilities" not in printed
+
+
+def test_malicious_packages_listed_first(tmp_path):
+    """Review of 0.12.0: a known exploited critical sorted above a malicious release in the same group."""
+    import csv
+
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", "--package", "npm:evil@1.0.0")
+    rows = list(csv.DictReader((tmp_path / "o" / "packages.csv").open(encoding="utf-8")))
+    assert [r["package"] for r in rows] == ["evil", "demo"]
+
+
+@pytest.mark.parametrize("gate", ["kev", "act"])
+def test_kev_gates_fail_when_kev_could_not_load(tmp_path, capsys, gate):
+    """Review of 0.12.0: with the CISA KEV download failing, --fail-on kev passed."""
+    code, _ = _pkg_run(tmp_path, PkgHttp(fail_hosts=("known_exploited",)), "--package", "npm:demo@1.0.0",
+                       "--no-exploits", "--fail-on", gate)
+    assert code == cli.EXIT_ERROR
+    assert f"--fail-on {gate}: could not be evaluated" in capsys.readouterr().err
+
+
+def test_malicious_gate_fails_when_osv_failed(tmp_path, fixtures, capsys):
+    """Review of 0.12.0: on an image run with OSV failing, --fail-on malicious passed."""
+    code, _ = run(tmp_path, fixtures, FakeHttp(fail_hosts=("api.osv.dev",)), "--fail-on", "malicious")
+    assert code == cli.EXIT_ERROR
+    assert "--fail-on malicious: could not be evaluated" in capsys.readouterr().err
+
+
+def test_package_accepts_upper_case_purl_prefix():
+    """Review of 0.12.0: PKG:npm/... was rejected as an unknown ecosystem 'PKG'."""
+    from oss_intake import inputs
+
+    assert inputs.packages(["PKG:npm/chalk@5.6.1"]) == [{"purl": "pkg:npm/chalk@5.6.1", "labels": {}}]
+
+
+def test_package_with_repo_names_the_repo_in_titles(tmp_path):
+    """Review of 0.12.0: with --package and --repo the titles dropped the repository, unlike --path."""
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", "--repo", "example/webapp")
+    for name in ("report.html", "executive-summary.html", "summary.md"):
+        assert "demo 1.0.0 (example/webapp)" in (tmp_path / "o" / name).read_text(encoding="utf-8"), name

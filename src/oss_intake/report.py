@@ -240,7 +240,7 @@ def packages_title(purls: list[str]) -> str:
 def report_title(a: dict) -> str:
     inp = a["inputs"]
     if inp.get("packages"):
-        return packages_title(inp["packages"])
+        return packages_title(inp["packages"]) + (f" ({inp['repo']})" if inp.get("repo") else "")
     if inp.get("path"):
         return Path(inp["path"]).name + (f" ({inp['repo']})" if inp.get("repo") else "")
     return inp.get("image") or inp.get("repo") or "assessment"

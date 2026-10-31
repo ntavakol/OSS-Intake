@@ -29,8 +29,8 @@ Among its progress and warning lines, it prints a verdict for each package:
 
 ```text
 findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
-  org.apache.logging.log4j:log4j-core 2.14.1 (maven): 8 known vulnerabilities, 2 critical, 2 known exploited; upgrade to at least 2.25.4
   chalk 5.6.1 (npm): MALICIOUS release. Remove it.
+  org.apache.logging.log4j:log4j-core 2.14.1 (maven): 8 known vulnerabilities, 2 critical, 2 known exploited; upgrade to at least 2.25.4 (clears all known)
   requests 2.34.2 (pypi): no known vulnerabilities
 ```
 
@@ -49,14 +49,15 @@ Questions a security or engineering manager gets asked, and what answering them 
 |---|---|---|
 | Are we running any of the compromised packages in the news? | Someone searches repositories by hand | One run over your package list or SBOMs; malicious releases come first, marked "remove, do not patch" |
 | Which of our thousands of findings are actually being exploited? | Scanner output sorted by CVSS | Findings ordered by CISA KEV, public exploits and EPSS; ones that apply only under stated conditions are set apart |
-| Is it still safe since we approved it? | Checked once, at approval | A ready-made weekly re-scan that opens an issue when something new needs action, with the assessor's decisions carried between runs |
+| Has anything changed since we approved it? | Checked once, at approval | A ready-made weekly re-scan that opens an issue when something new needs action, with the assessor's decisions carried between runs |
 | What does upgrading buy us, and who has to do it? | A spreadsheet and a lot of chasing | Known vulnerabilities now, after the minimum fix and after the latest release, with totals by owner or team |
 | Does this project or vendor actually ship fixes? | Gut feel | Release lag (how long fixes existed upstream before the project shipped them), release cadence and OpenSSF Scorecard |
 | Can we block it in the pipeline? | Custom scripts | `--fail-on malicious,kev` exits non-zero, and a check that could not run fails rather than passing |
 
 It is free and open source (Apache-2.0) and runs on Windows, macOS or Linux with Python. Your files are read
-where they are: only package names and versions, vulnerability IDs and, with `--repo`, the repository name are sent to
-public services (OSV, deps.dev, FIRST EPSS, GitHub). It does not prove a vulnerability is exploitable in your environment, and it says so in
+where they are: what leaves the machine is package names and versions, vulnerability IDs and, with `--repo`, the
+repository name, sent to public services such as OSV, deps.dev, the package registries, FIRST EPSS, OpenSSF
+Scorecard and GitHub (with your `GITHUB_TOKEN`, if set, sent only to api.github.com). It does not prove a vulnerability is exploitable in your environment, and it says so in
 every report; see [What it does not do](#what-it-does-not-do).
 
 ## What you can point it at
@@ -72,7 +73,7 @@ every report; see [What it does not do](#what-it-does-not-do).
 | A lockfile: npm, Python, Maven, Go, Rust, PHP, Ruby or .NET | `--path package-lock.json` | Trivy |
 | A JAR, WAR, EAR or binary, also checked against the registry's published checksum | `--path app.jar` | Trivy |
 | A container image | `--image owner/app:1.2.3` | Trivy (Grype optional) |
-| A GitHub project | `--repo owner/name`, alone or with any of the above, for project health and release lag | No |
+| A GitHub project | `--repo owner/name`: alone for project health; with an image, artifact or lockfile, also release lag | No |
 
 Six compromised npm releases, scanned for real: the
 [live sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html), and

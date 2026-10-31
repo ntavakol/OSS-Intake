@@ -149,7 +149,10 @@ def _row_purl(row: dict[str, str]) -> str:
             raise ValueError(f"purl '{purl}' is not a package URL (pkg:type/name@version)")
         ptype = purl[4:].split("/", 1)[0].lower()
         rest = purl.split("?", 1)[0].split("#", 1)[0]
-        version = unquote(rest.rpartition("@")[2]) if "@" in rest[4:].split("/", 1)[1] else ""  # %5E4.17 is ^4.17
+        tail = rest[4:].split("/", 1)[1]
+        # An npm scope's '@' is not a version separator: pkg:npm/@scope/name has no version.
+        has_version = "@" in (tail[1:] if tail.startswith("@") else tail)
+        version = unquote(rest.rpartition("@")[2]) if has_version else ""  # %5E4.17 is ^4.17
         if ptype not in set(ECOSYSTEMS.values()):
             raise ValueError(f"purl type '{ptype}' is not supported (supported: "
                              f"{', '.join(sorted(set(ECOSYSTEMS.values())))})")
@@ -179,6 +182,16 @@ def _row_purl(row: dict[str, str]) -> str:
 MAX_PACKAGES = 1000
 
 
+def _check_name(name: str) -> None:
+    """A --package name that cannot exist is an error, not a lookup that comes back clean."""
+    if not name.strip("/@"):
+        raise ValueError("no package name")
+    if "@" in name[1:]:
+        raise ValueError("'@' in the name; give one version, e.g. npm:chalk@5.6.1")
+    if "" in name.removeprefix("@").split("/"):
+        raise ValueError("an empty part in the name")
+
+
 def packages(specs: list[str]) -> list[dict]:
     """--package values -> inventory entries, validated like CSV rows. Each is 'ecosystem:name@version'
     (npm:chalk@5.6.1, pypi:django@2.2.0, maven:org.apache.logging.log4j:log4j-core@2.14.1, npm:@ctrl/tinycolor@4.1.1)
@@ -190,13 +203,20 @@ def packages(specs: list[str]) -> list[dict]:
     for spec in specs:
         spec = spec.strip()
         try:
-            if spec.startswith("pkg:"):
+            if re.search(r"\s", spec):
+                raise ValueError("contains a space")
+            if spec[:4].lower() == "pkg:":
+                spec = "pkg:" + spec[4:]
+                path = spec[4:].split("?", 1)[0].split("#", 1)[0].partition("/")[2]
+                scoped = path.startswith("@") and "/" in path  # pkg:npm/@scope/name with no version
+                _check_name(unquote(path.rpartition("@")[0] if path.count("@") > scoped else path))
                 purl = _row_purl({"purl": spec})
             else:
                 eco, sep, rest = spec.partition(":")
                 name, at, version = rest.rpartition("@")
                 if not sep or not at or not eco or not name or not version:
                     raise ValueError("use ecosystem:name@version, e.g. npm:chalk@5.6.1, or a package URL")
+                _check_name(name)
                 purl = _row_purl({"ecosystem": eco, "name": name, "version": version})
         except ValueError as exc:
             errors.append(f"--package {spec!r}: {exc}")

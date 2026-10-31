@@ -8,7 +8,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - `--package ECOSYSTEM:NAME@VERSION` (repeatable, or a package URL): check one or a few package versions with
   no file and no scanner, as an inventory of those packages, with a one-line verdict per package on the
-  console (malicious, known vulnerabilities, known exploited, the version to upgrade to).
+  console (malicious, known vulnerabilities, known exploited, the version to upgrade to and what it leaves).
+  Findings set aside by a decision are not counted as open, a version deps.dev does not know is reported as
+  "not found" rather than clean, and a name with a space, an empty part or a second `@` is refused.
 - Self-check: a weekly CI workflow (and on changes to the pins) runs oss-intake on its own installed
   dependencies, with `--fail-on malicious,kev,high`, and publishes the summary with the run.
   `scripts/self_inventory.py` turns `pip list --format=json` into the inventory.
@@ -16,6 +18,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Changed
 - README opening rewritten for both managers and engineers: a 30-second demo with `--package`, the
   executive summary, the gaps the tool closes, and a table of every input it accepts.
+- Malicious releases are listed first among the packages to act on, ahead of known exploited ones: they are
+  removed, not patched.
+
+### Fixed
+- `--fail-on kev`, `--fail-on malicious` and `--fail-on act` failed open: when the CISA KEV download failed, or
+  the malicious package check was partial (OSV failed or was not used), the gate passed. It now fails with exit
+  code 1 and says which check did not run, as `recent`, `unknown-age` and `mismatch` already did.
+- A package URL for a scoped npm package with no version (`pkg:npm/@scope/name`) was accepted as if it had one.
 
 ## [0.11.1] - 2026-10-31
 

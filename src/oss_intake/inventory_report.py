@@ -94,9 +94,10 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
             "purl": purl,
             "labels": dict(entry.get("labels") or {}),
         })
-    # Worst first; between equally bad packages, the one on more systems first.
+    # Worst first, malicious releases first of all (removed, not patched); between equally bad packages, the
+    # one on more systems first.
     rows.sort(key=lambda r: (GROUP_ORDER.index(r["group_key"]) if r["group_key"] else len(GROUP_ORDER),
-                             -r["critical"], -(r["systems"] or 0), -r["findings"], r["ecosystem"],
+                             not r["malicious"], -r["critical"], -(r["systems"] or 0), -r["findings"], r["ecosystem"],
                              r["package"].lower(), r["version"]))
     return rows
 

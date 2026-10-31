@@ -120,7 +120,8 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
     from .report import packages_title
 
     inp = a["inputs"]
-    title = packages_title(inp["packages"]) if inp.get("packages") else Path(inp.get("path") or "inventory").name
+    title = (packages_title(inp["packages"]) + (f" ({inp['repo']})" if inp.get("repo") else "")
+             if inp.get("packages") else Path(inp.get("path") or "inventory").name)
     lead = (f"{_n(s['packages'], 'open source package', 'open source packages')} checked. "
             + _n(s["act_now"], "needs", "need") + " action now"
             + (f" ({s['malicious']} malicious)" if s["malicious"] else "")
