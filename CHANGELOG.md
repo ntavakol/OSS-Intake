@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-31
+
+`--package` checks single package versions with no file and no scanner, the README opens for managers as
+well as engineers, and `--fail-on` gates no longer pass when their check did not run.
+
 ### Added
 - `--package ECOSYSTEM:NAME@VERSION` (repeatable, or a package URL): check one or a few package versions with
   no file and no scanner, as an inventory of those packages, with a one-line verdict per package on the
