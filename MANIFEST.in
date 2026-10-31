@@ -1,5 +1,5 @@
 # The sdist carries what the test suite needs, so `pytest` runs from an unpacked sdist.
 graft tests
-include scripts/readme_sync.py
+include scripts/readme_sync.py scripts/self_inventory.py
 include CHANGELOG.md BACKLOG.md CONTRIBUTING.md SECURITY.md
 global-exclude __pycache__ *.py[cod]

@@ -2144,3 +2144,35 @@ def test_readme_collector_checksums_match_the_files():
         data = raw.replace(b"\r\n", b"\n")
         assert hashlib.sha256(data).hexdigest() == listed[name], f"update the README checksum for {name}"
     assert "/OSS-Intake/v$V/examples" in readme and "e.g. " + __version__ in readme
+
+
+def test_self_inventory_script():
+    """scripts/self_inventory.py feeds the self-check workflow: pip's listing to pkg:pypi purls."""
+    import importlib.util
+
+    root = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("self_inventory", root / "scripts" / "self_inventory.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    listing = [{"name": "Requests", "version": "2.34.2"}, {"name": "charset_normalizer", "version": "3.5.2"},
+               {"name": "oss-intake", "version": "0.11.1"},
+               {"name": "local-thing", "version": "1.0", "editable_project_location": "/src"},
+               {"name": "requests", "version": "2.34.2"}]
+    assert mod.rows(listing) == ["pkg:pypi/charset-normalizer@3.5.2", "pkg:pypi/requests@2.34.2"]
+    for bad in ({"name": "x"}, [{"name": "x"}], ["x"]):
+        with pytest.raises(ValueError):
+            mod.rows(bad)
+
+
+def test_self_check_workflow_is_pinned_and_read_only():
+    from oss_intake.health import workflows as wf
+
+    root = Path(__file__).resolve().parent.parent
+    path = root / ".github" / "workflows" / "self-check.yml"
+    if not path.exists():
+        pytest.skip("workflows are not in the sdist")
+    text = path.read_text(encoding="utf-8")
+    res = wf.analyse("self-check.yml", text, integrity.load_known_bad()["actions"])
+    assert res["unpinned"] == [] and res["known_bad"] == [] and res["top_level_permissions"]
+    assert not res["write_all"] and not res["pull_request_target"]
+    assert "--fail-on malicious,kev,high" in text and "contents: read" in text

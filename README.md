@@ -68,6 +68,9 @@ CISA KEV membership).
   scanner output under `raw/` as evidence.
 - Applies integrity checks to the scanners it runs: version pinning, a known-bad version list, SHA-256
   verification and optional Sigstore (cosign) verification.
+- Checks itself: a weekly [self-check](https://github.com/ntavakol/OSS-Intake/blob/main/.github/workflows/self-check.yml)
+  job runs oss-intake on every package it installs (its runtime and its hash-pinned dev tools) and fails on a
+  malicious, known exploited or high severity finding.
 
 ## What it does not do
 

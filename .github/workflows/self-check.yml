@@ -1,0 +1,48 @@
+name: self-check
+
+# oss-intake checks its own dependencies: requests and what it pulls in, plus the hash-pinned dev tools.
+# Weekly, because an advisory can appear for a version that has not changed; and when the pins change.
+on:
+  schedule:
+    - cron: "17 21 * * 1"  # Mondays 21:17 UTC
+  push:
+    branches: [main]
+    paths: ["requirements/**", "pyproject.toml", ".github/workflows/self-check.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Pinned by full commit SHA, as in ci.yml.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install (hash-pinned)
+        run: |
+          python -m pip install --require-hashes -r requirements/dev.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: List what is installed
+        run: python -m pip list --format=json | python scripts/self_inventory.py > self-inventory.csv
+      - name: Check it
+        # Exit 3: something matched the gate. Exit 1: a source could not be checked fully, which also fails.
+        run: >-
+          oss-intake --path self-inventory.csv --out self-check --no-latest --release-age-days 0
+          --fail-on malicious,kev,high
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f self-check/summary.md ]; then cat self-check/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: self-check
+          path: self-check/
+          retention-days: 30

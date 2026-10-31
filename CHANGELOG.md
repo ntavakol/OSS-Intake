@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Self-check: a weekly CI workflow (and on changes to the pins) runs oss-intake on its own installed
+  dependencies, with `--fail-on malicious,kev,high`, and publishes the summary with the run.
+  `scripts/self_inventory.py` turns `pip list --format=json` into the inventory.
+
 ## [0.11.1] - 2026-10-31
 
 ### Changed
