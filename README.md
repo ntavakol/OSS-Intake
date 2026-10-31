@@ -6,33 +6,84 @@
 [![PyPI](https://img.shields.io/pypi/v/oss-intake)](https://pypi.org/project/oss-intake/)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15943/badge)](https://www.bestpractices.dev/projects/15943)
 
-**Evidence for deciding whether to adopt, keep or replace an open source component.** `oss-intake` runs
-Trivy and Grype, checks OSV, and turns the results into a reading order: malicious packages and exploited
-vulnerabilities first, findings that apply only under stated conditions separately, the rest as routine. It
-adds what a scanner alone does not: how long fixes have existed without being shipped, public exploit
-evidence, the advisory's own conditions, reachability for Go binaries, and project health.
+**Know which of your open source is malicious, exploited or going stale, and what to do about each one.**
+
+Most of every application is open source, and most organisations check a package once, when it is approved,
+and never again. A package that was clean on approval day can turn hostile later: in September 2025 attackers
+published malicious releases of chalk, debug and other npm packages downloaded billions of times a week. Log4Shell
+is still exploited years after its fix shipped. `oss-intake` checks what you run against public advisory and
+exploit data and gives one reading order: remove what is malicious, patch what is being exploited, schedule the
+rest.
+
+## Try it in 30 seconds
+
+No scanner, no account and no file needed:
+
+```bash
+pipx install oss-intake
+oss-intake --package npm:chalk@5.6.1 --package maven:org.apache.logging.log4j:log4j-core@2.14.1 \
+  --package pypi:requests@2.34.2 --out demo-report
+```
+
+Among its progress and warning lines, it prints a verdict for each package:
+
+```text
+findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
+  org.apache.logging.log4j:log4j-core 2.14.1 (maven): 8 known vulnerabilities, 2 critical, 2 known exploited; upgrade to at least 2.25.4
+  chalk 5.6.1 (npm): MALICIOUS release. Remove it.
+  requests 2.34.2 (pypi): no known vulnerabilities
+```
+
+`demo-report/executive-summary.html` is the page for someone who will not read a findings list:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/executive-summary-dark.png">
+  <img alt="oss-intake executive summary: 3 packages checked, 2 to act on now, chalk 5.6.1 malicious (remove, do not patch), log4j-core 2.14.1 known exploited (upgrade to 2.25.4)" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/executive-summary-light.png" width="800">
+</picture>
+
+## The gaps it closes
+
+Questions a security or engineering manager gets asked, and what answering them usually takes:
+
+| The question | Usually | With oss-intake |
+|---|---|---|
+| Are we running any of the compromised packages in the news? | Someone searches repositories by hand | One run over your package list or SBOMs; malicious releases come first, marked "remove, do not patch" |
+| Which of our thousands of findings are actually being exploited? | Scanner output sorted by CVSS | Findings ordered by CISA KEV, public exploits and EPSS; ones that apply only under stated conditions are set apart |
+| Is it still safe since we approved it? | Checked once, at approval | A ready-made weekly re-scan that opens an issue when something new needs action, with the assessor's decisions carried between runs |
+| What does upgrading buy us, and who has to do it? | A spreadsheet and a lot of chasing | Known vulnerabilities now, after the minimum fix and after the latest release, with totals by owner or team |
+| Does this project or vendor actually ship fixes? | Gut feel | Release lag (how long fixes existed upstream before the project shipped them), release cadence and OpenSSF Scorecard |
+| Can we block it in the pipeline? | Custom scripts | `--fail-on malicious,kev` exits non-zero, and a check that could not run fails rather than passing |
+
+It is free and open source (Apache-2.0) and runs on Windows, macOS or Linux with Python. Your files are read
+where they are: only package names and versions, vulnerability IDs and, with `--repo`, the repository name are sent to
+public services (OSV, deps.dev, FIRST EPSS, GitHub). It does not prove a vulnerability is exploitable in your environment, and it says so in
+every report; see [What it does not do](#what-it-does-not-do).
+
+## What you can point it at
+
+| You have | Run | Scanner needed |
+|---|---|---|
+| A package name and version | `--package npm:chalk@5.6.1` (repeat it, or give a `pkg:` purl) | No |
+| A list of packages, from Artifactory, Nexus or a spreadsheet | `--path packages.csv` | No |
+| SBOMs: CycloneDX, SPDX or GitHub's dependency-graph export, one file or a folder | `--path ./sboms` | No |
+| Laptops and servers | the [osquery collector](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery) makes one SBOM per host | No |
+| What a Nexus proxy has cached | the [Nexus collector](https://github.com/ntavakol/OSS-Intake/tree/main/examples/nexus) | No |
+| An R `renv.lock` | `--path renv.lock` | No |
+| A lockfile: npm, Python, Maven, Go, Rust, PHP, Ruby or .NET | `--path package-lock.json` | Trivy |
+| A JAR, WAR, EAR or binary, also checked against the registry's published checksum | `--path app.jar` | Trivy |
+| A container image | `--image owner/app:1.2.3` | Trivy (Grype optional) |
+| A GitHub project | `--repo owner/name`, alone or with any of the above, for project health and release lag | No |
+
+Six compromised npm releases, scanned for real: the
+[live sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html), and
+[why that is the case for scanning on a schedule](https://ntavakol.github.io/OSS-Intake/), not once at approval.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/report-dark.png">
   <img alt="oss-intake report on a lockfile with six compromised npm releases: six malicious packages flagged first" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/report-light.png" width="900">
 </picture>
 
-**[See the live sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html):**
-six trusted npm packages (chalk, debug, @ctrl/tinycolor, ua-parser-js, event-stream, flatmap-stream), one
-compromised release of each, all flagged as malicious. Read
-[why that is the case for scanning on a schedule](https://ntavakol.github.io/OSS-Intake/), not once at
-approval.
-
-## Quickstart
-
-```bash
-pipx install oss-intake
-# install Trivy and Grype, pinned and verified: see "Install the scanners yourself" below
-oss-intake scan --path package-lock.json --out report
-oss-intake scan --image <image:tag> --repo <owner/name> --out report
-```
-
-Open `report/report.html`. The full list, with triage columns for the assessor, is `report/findings.csv`.
+The rest of this page is reference for the engineers who run it.
 
 ## What it answers
 

@@ -13,6 +13,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   dependencies, with `--fail-on malicious,kev,high`, and publishes the summary with the run.
   `scripts/self_inventory.py` turns `pip list --format=json` into the inventory.
 
+### Changed
+- README opening rewritten for both managers and engineers: a 30-second demo with `--package`, the
+  executive summary, the gaps the tool closes, and a table of every input it accepts.
+
 ## [0.11.1] - 2026-10-31
 
 ### Changed
