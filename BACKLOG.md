@@ -3,6 +3,16 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
+## Next release (agreed 31 Oct)
+- OSV advisory details that fail to load must not read as complete. OSV is asked in two steps: which advisories
+  affect a version (IDs only), then each advisory's details (severity, fixed versions, CVE aliases). When the
+  second step fails for an advisory, the finding is kept with its ID alone: severity UNKNOWN, "no fixed version
+  yet", no warning, and the KEV check still reads "checked" although the CVE alias needed to match KEV is
+  missing, so `--fail-on kev`, `act` and `critical` can pass. Found by the 0.12.0 review, in code older than
+  0.12.0 (`scanners/osv.py`). Fix: warn when details fail, mark the affected checks partial so those gates exit 1,
+  and show "fix data unavailable" instead of "no fixed version yet". Start with a test that fails on the current
+  code.
+
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
 a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no
