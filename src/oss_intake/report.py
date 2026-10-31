@@ -229,8 +229,18 @@ def exploit_text(f: Finding) -> str:
     return EXPLOIT_LABEL.get(f.exploit_level, f.exploit_level)
 
 
+def packages_title(purls: list[str]) -> str:
+    """'chalk 5.6.1, django 2.2.0 and 3 more' for a --package run."""
+    from .inventory_report import split_purl
+
+    names = [" ".join(split_purl(p)[1:]) for p in purls]
+    return ", ".join(names[:3]) + (f" and {len(names) - 3} more" if len(names) > 3 else "")
+
+
 def report_title(a: dict) -> str:
     inp = a["inputs"]
+    if inp.get("packages"):
+        return packages_title(inp["packages"])
     if inp.get("path"):
         return Path(inp["path"]).name + (f" ({inp['repo']})" if inp.get("repo") else "")
     return inp.get("image") or inp.get("repo") or "assessment"

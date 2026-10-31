@@ -292,6 +292,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 |---|---|
 | `--out` | Output directory (required) |
 | `--image` | Image with explicit tag or digest |
+| `--package ECOSYSTEM:NAME@VERSION` | Check one package version, no scanner needed (repeatable): `npm:chalk@5.6.1`, `pypi:django@2.2.0`, `maven:org.apache.logging.log4j:log4j-core@2.14.1`, or a package URL; prints a one-line verdict per package |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory `.csv` instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--govulncheck-sha256`, `--govulncheck-version` | Pin govulncheck like the scanners: hash checked before it runs, version after. The Docker or crane executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json |

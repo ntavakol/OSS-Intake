@@ -6,6 +6,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `--package ECOSYSTEM:NAME@VERSION` (repeatable, or a package URL): check one or a few package versions with
+  no file and no scanner, as an inventory of those packages, with a one-line verdict per package on the
+  console (malicious, known vulnerabilities, known exploited, the version to upgrade to).
 - Self-check: a weekly CI workflow (and on changes to the pins) runs oss-intake on its own installed
   dependencies, with `--fail-on malicious,kev,high`, and publishes the summary with the run.
   `scripts/self_inventory.py` turns `pip list --format=json` into the inventory.

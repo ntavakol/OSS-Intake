@@ -166,6 +166,9 @@ def build_parser() -> argparse.ArgumentParser:
                                   "folder of built artifacts, a lockfile (requirements.txt, package-lock.json, "
                                   "pom.xml, ...), an R renv.lock, or a package inventory .csv (columns "
                                   "ecosystem,name,version or purl, plus any label columns such as owner)")
+    s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
+                   help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
+                        "no scanner needed: checked against OSV like an inventory")
     s.add_argument("--repo", help="GitHub repository owner/name for release cadence and Scorecard")
     s.add_argument("--out", required=True, help="output directory")
     s.add_argument("--scanners", default="auto",
@@ -476,10 +479,12 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
-    if not args.image and not args.repo and not args.path:
-        raise UsageError("give --image, --path or --repo")
+    if not args.image and not args.repo and not args.path and not args.package:
+        raise UsageError("give --image, --path, --package or --repo")
     if args.image and args.path:
         raise UsageError("give --image or --path, not both")
+    if args.package and (args.image or args.path):
+        raise UsageError("give --package on its own, not with --image or --path")
     if args.image:
         args.image = validate_image(args.image)
     args.path_kind, args.scan_target, tmp_dir = None, None, None
@@ -544,6 +549,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")
     args.os_queries, args.sbom_info, args.input_format = None, None, None
     args.label_list = _labels(args.label)
+    if args.package:
+        try:
+            args.inventory = inputs.packages(args.package)
+        except inputs.InputError as exc:
+            raise UsageError(str(exc)) from None
+        args.path_kind = "inventory"
+        args.input_format = f"{len(args.inventory)} package{'s' if len(args.inventory) != 1 else ''} (--package)"
     if args.path_kind == "sbom":
         # An SBOM is a package inventory in another format: read and validate it all, then treat it as one.
         args.inventory, args.os_queries, args.sbom_info = sbom.read(Path(args.path))
@@ -566,9 +578,9 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         if getattr(args, "sbom_warning", None):
             warnings.append(args.sbom_warning)
         if args.offline:
-            raise UsageError(f"{Path(args.path).name} is checked against OSV, which needs the network; "
-                             "drop --offline")
-        if args.path_kind == "inventory" and args.sbom_info is None:
+            raise UsageError(f"{Path(args.path).name if args.path else '--package'} is checked against OSV, "
+                             "which needs the network; drop --offline")
+        if args.path_kind == "inventory" and args.sbom_info is None and not args.package:
             args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
             args.input_format = "CSV inventory"
         unused = set(args.label_list)
@@ -582,8 +594,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     else:
         chosen, warnings = _resolve_scanners(args) if (args.image or args.path) else ([], [])
     if args.label_list and args.path_kind != "inventory":
-        raise UsageError("--label applies to a package inventory or SBOM (--path *.csv, *.json or a folder of "
-                         "SBOMs)")
+        raise UsageError("--label applies to a package inventory or SBOM, or to --package")
     if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     warnings += _ineffective_options(args, chosen)
@@ -613,7 +624,9 @@ def _network_info(net) -> dict:
 
 
 def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg) -> int:
-    log(f"plan: {'path=' + args.path + ' (' + args.path_kind + ')' if args.path else 'image=' + (args.image or '-')} "
+    target = ("path=" + args.path + " (" + args.path_kind + ")" if args.path
+              else f"packages={len(args.inventory)}" if args.package else "image=" + (args.image or "-"))
+    log(f"plan: {target} "
         f"repo={args.repo or '-'} sources={','.join(chosen) or '-'} "
         + (f"image-src={args.image_src or 'scanner default'} platform={args.platform or 'scanner default'} "
            if args.image else "")
@@ -1007,6 +1020,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
         "inputs": {"image": args.image, "path": args.path, "path_kind": args.path_kind, "repo": args.repo,
+                   "packages": [e["purl"] for e in args.inventory] if args.package else None,
                    "image_src": args.image_src, "platform": args.platform,
                    "release_tag": args.release_tag, "release_date": args.release_date,
                    "min_severity": args.min_severity, "format": args.input_format},
@@ -1086,6 +1100,9 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
           f"fix_date_unknown={lag_m['fix_date_unknown']}"
           + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else "")
           + (f" not_checked={','.join(checks.gaps(check_info))}" if checks.gaps(check_info) else ""))
+    if args.package and pkg_rows is not None:
+        for line in _verdicts(pkg_rows):
+            print(line)
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
@@ -1112,6 +1129,29 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     if lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood:
         return EXIT_THRESHOLD
     return EXIT_THRESHOLD if tripped else EXIT_OK
+
+
+def _verdicts(rows: list[dict], shown: int = 20) -> list[str]:
+    """One plain line per package for --package runs: what it is, and what to do."""
+    out = []
+    for r in rows[:shown]:
+        what = f"  {r['package']} {r['version']} ({r['ecosystem']}): "
+        if r["malicious"]:
+            out.append(what + "MALICIOUS release. Remove it.")
+            continue
+        if not r["findings"]:
+            out.append(what + "no known vulnerabilities")
+            continue
+        parts = [f"{r['findings']} known vulnerabilit{'y' if r['findings'] == 1 else 'ies'}"]
+        if r["critical"]:
+            parts.append(f"{r['critical']} critical")
+        if r["kev"]:
+            parts.append(f"{r['kev']} known exploited")
+        fix = f"; upgrade to at least {r['upgrade_to']}" if r.get("upgrade_to") else "; no fixed version yet"
+        out.append(what + ", ".join(parts) + fix)
+    if len(rows) > shown:
+        out.append(f"  ... and {len(rows) - shown} more in packages.csv")
+    return out
 
 
 def _language_purls(args, trivy_report: dict | None) -> list[str]:

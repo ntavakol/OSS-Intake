@@ -176,6 +176,37 @@ def _row_purl(row: dict[str, str]) -> str:
     return _purl_for(ptype, name, version)
 
 
+MAX_PACKAGES = 1000
+
+
+def packages(specs: list[str]) -> list[dict]:
+    """--package values -> inventory entries, validated like CSV rows. Each is 'ecosystem:name@version'
+    (npm:chalk@5.6.1, pypi:django@2.2.0, maven:org.apache.logging.log4j:log4j-core@2.14.1, npm:@ctrl/tinycolor@4.1.1)
+    or a package URL (pkg:npm/chalk@5.6.1)."""
+    if len(specs) > MAX_PACKAGES:
+        raise InputError(f"more than {MAX_PACKAGES} --package values; put them in a CSV inventory (--path)")
+    found: dict[str, None] = {}
+    errors = []
+    for spec in specs:
+        spec = spec.strip()
+        try:
+            if spec.startswith("pkg:"):
+                purl = _row_purl({"purl": spec})
+            else:
+                eco, sep, rest = spec.partition(":")
+                name, at, version = rest.rpartition("@")
+                if not sep or not at or not eco or not name or not version:
+                    raise ValueError("use ecosystem:name@version, e.g. npm:chalk@5.6.1, or a package URL")
+                purl = _row_purl({"ecosystem": eco, "name": name, "version": version})
+        except ValueError as exc:
+            errors.append(f"--package {spec!r}: {exc}")
+            continue
+        found.setdefault(purl, None)
+    if errors:
+        raise InputError("\n  ".join(["invalid --package value(s); nothing was looked up:", *errors]))
+    return [{"purl": p, "labels": {}} for p in found]
+
+
 def inventory(path: Path) -> list[dict]:
     """Read a package inventory CSV. Returns [{"purl", "labels"}], one per distinct package version.
 

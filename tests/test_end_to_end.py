@@ -1449,3 +1449,37 @@ def test_label_that_every_package_has_says_so(tmp_path, fixtures):
               "--release-age-days", "0", "--label", "system=prod"], http=SbomHttp())
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert "--label system has no effect: every package already has a system label (from the SBOM)" in a["warnings"]
+
+
+def test_package_option_checks_single_packages(tmp_path, capsys):
+    """--package: no scanner, no file. A malicious release says so in one line; the reports name the packages."""
+    out = tmp_path / "o"
+    code = cli.main(["--package", "npm:@ctrl/tinycolor@4.1.1", "--package", "pkg:npm/express@4.21.2",
+                     "--package", "npm:@ctrl/tinycolor@4.1.1", "--out", str(out), "--no-latest",
+                     "--release-age-days", "0", "--no-cache", "--as-of", AS_OF, "--fail-on", "malicious"],
+                    http=SbomHttp())
+    assert code == cli.EXIT_THRESHOLD
+    printed = capsys.readouterr().out
+    assert "@ctrl/tinycolor 4.1.1 (npm): MALICIOUS release. Remove it." in printed
+    assert "express 4.21.2 (npm): no known vulnerabilities" in printed
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["packages"] == ["pkg:npm/%40ctrl/tinycolor@4.1.1", "pkg:npm/express@4.21.2"]  # deduplicated
+    assert a["inputs"]["format"] == "2 packages (--package)"
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "@ctrl/tinycolor 4.1.1, express 4.21.2" in html
+    assert "@ctrl/tinycolor 4.1.1" in (out / "executive-summary.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("args, message", [
+    (["--package", "chalk@5.6.1"], "use ecosystem:name@version"),
+    (["--package", "npm:chalk"], "use ecosystem:name@version"),
+    (["--package", "npm:chalk@^5.0.0"], "range"),
+    (["--package", "brew:wget@1.0"], "ecosystem"),
+    (["--package", "npm:chalk@5.6.1", "--path", "x.csv"], "on its own"),
+    (["--package", "npm:chalk@5.6.1", "--offline"], "needs the network")])
+def test_package_option_validated_before_any_lookup(tmp_path, capsys, args, message):
+    from .conftest import FakeHttp
+
+    http = FakeHttp()
+    assert cli.main([*args, "--out", str(tmp_path / "o")], http=http) == cli.EXIT_USAGE
+    assert message in capsys.readouterr().err and http.calls == []

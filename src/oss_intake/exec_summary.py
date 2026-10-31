@@ -117,8 +117,10 @@ def _why(r: dict) -> str:
 
 def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
     from .inventory_report import label_text
+    from .report import packages_title
 
-    title = Path(a["inputs"].get("path") or "inventory").name
+    inp = a["inputs"]
+    title = packages_title(inp["packages"]) if inp.get("packages") else Path(inp.get("path") or "inventory").name
     lead = (f"{_n(s['packages'], 'open source package', 'open source packages')} checked. "
             + _n(s["act_now"], "needs", "need") + " action now"
             + (f" ({s['malicious']} malicious)" if s["malicious"] else "")
