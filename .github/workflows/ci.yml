@@ -57,8 +57,9 @@ jobs:
           python -m coverage report  # enforces fail_under from pyproject.toml
 
   release-sbom:
-    # The release workflow's build and SBOM steps on every push, so a broken SBOM shows up before a release.
-    name: release SBOM (dry run)
+    # The release workflow's build and SBOM steps on every push, so a broken SBOM shows up before a release, and
+    # the test suite run from the unpacked sdist, which MANIFEST.in promises.
+    name: release build and SBOM (dry run)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -82,6 +83,14 @@ jobs:
           "$env/bin/python" -I -c "from pathlib import Path; from oss_intake import sbom; \
           entries, _, _ = sbom.read(Path('sbom')); assert any(e['purl'].startswith('pkg:pypi/requests@') \
           for e in entries), entries; print(len(entries), 'packages read back by oss-intake')"
+      - name: Tests from the unpacked sdist
+        run: |
+          mkdir "$RUNNER_TEMP/sdist"
+          tar -xzf dist/*.tar.gz -C "$RUNNER_TEMP/sdist"
+          cd "$RUNNER_TEMP"/sdist/oss_intake-*
+          python -m pip install --require-hashes -r requirements/dev.txt
+          python -m pip install --no-deps --no-build-isolation .
+          python -m pytest
 
   secrets:
     name: secrets (gitleaks, full history)
