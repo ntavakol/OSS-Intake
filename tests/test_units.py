@@ -2200,6 +2200,7 @@ def test_ci_workflow_is_pinned_and_gates_quality():
     assert "python -m mypy" in text  # blocking type check; settings in pyproject.toml [tool.mypy]
     assert "scripts/release_sbom.py" in text and "requirements/runtime.txt" in text  # release SBOM dry run
     assert "Tests from the unpacked sdist" in text  # MANIFEST.in promises the suite runs from the sdist
+    assert "node --test tests/builder/*.test.mjs" in text  # the command builder's JavaScript tests
     floor = re.search(r"^fail_under = (\d+)", (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     assert floor and int(floor.group(1)) >= 90
 

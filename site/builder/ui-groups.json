@@ -1,0 +1,43 @@
+{
+ "about": "Layout of the command builder, maintained by hand: which group each option is in, which groups show without opening Advanced, and the presets. Every option in options.json must be in exactly one group (tests/test_builder.py checks). Draft of 4 Nov 2026 for Ned to edit.",
+ "commands": {
+  "scan": {
+   "label": "scan",
+   "help": "Assess an image, a file or folder, single packages, or a GitHub project.",
+   "groups": [
+    {"name": "What to check", "basic": true, "options": ["package", "path", "image", "repo", "label"]},
+    {"name": "Report", "basic": true, "options": ["out", "formats", "top", "quiet", "sbom", "as_of", "min_severity"]},
+    {"name": "Gates for CI", "basic": true, "options": ["fail_on", "release_age_days", "likelihood", "likelihood_config", "fail_on_likelihood"]},
+    {"name": "Scanners and image", "basic": false, "options": ["scanners", "image_src", "platform", "timeout", "trivy_path", "trivy_version", "trivy_sha256", "trivy_archive", "trivy_checksums", "trivy_cosign_bundle", "trivy_cosign_identity", "trivy_arg", "from_trivy_json", "grype_path", "grype_version", "grype_sha256", "grype_archive", "grype_checksums", "grype_cosign_bundle", "grype_cosign_identity", "grype_arg", "from_grype_json"]},
+    {"name": "Go reachability", "basic": false, "options": ["reachability", "govulncheck_path", "govulncheck_sha256", "govulncheck_version"]},
+    {"name": "Release lag", "basic": false, "options": ["release_tag", "release_date", "grace_days", "unshipped_days", "no_image_date", "include_kernel_headers"]},
+    {"name": "Evidence sources", "basic": false, "options": ["decisions", "offline", "no_fix_dates", "no_kev", "no_epss", "no_exploits", "no_registry_check", "no_latest", "no_workflows", "no_scorecard", "release_age_max"]},
+    {"name": "Network and cache", "basic": false, "options": ["cache_dir", "no_cache"]}
+   ]
+  },
+  "verify": {
+   "label": "verify",
+   "help": "Check a downloaded file against a checksums file or a SHA-256, and optionally a Sigstore bundle.",
+   "groups": [
+    {"name": "File", "basic": true, "options": ["file", "checksums", "sha256", "name"]},
+    {"name": "Signature", "basic": true, "options": ["cosign_bundle", "cosign_identity"]}
+   ]
+  },
+  "doctor": {
+   "label": "doctor",
+   "help": "Show the scanners oss-intake finds: paths, versions, hashes and known-bad status.",
+   "groups": [
+    {"name": "Scanner paths", "basic": true, "options": ["trivy_path", "grype_path"]}
+   ]
+  }
+ },
+ "presets": [
+  {"name": "Check single packages", "command": "scan", "values": {"package": ["npm:chalk@5.6.1", "pypi:requests@2.34.2"], "out": "report"}},
+  {"name": "Package inventory (CSV)", "command": "scan", "values": {"path": "packages.csv", "out": "report"}},
+  {"name": "Folder of SBOMs", "command": "scan", "values": {"path": "sboms", "out": "report"}},
+  {"name": "Lockfile", "command": "scan", "values": {"path": "package-lock.json", "out": "report"}},
+  {"name": "Container image, pinned Trivy", "command": "scan", "values": {"image": "owner/app:1.2.3", "trivy_version": "0.76.1", "out": "report"}},
+  {"name": "CI gate", "command": "scan", "values": {"path": "packages.csv", "out": "report", "fail_on": "malicious,kev,high", "quiet": true}},
+  {"name": "Verify a download", "command": "verify", "values": {"file": "trivy_0.76.1_Linux-64bit.tar.gz", "checksums": "trivy_0.76.1_checksums.txt"}}
+ ]
+}

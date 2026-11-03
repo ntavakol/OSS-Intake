@@ -1,0 +1,399 @@
+{
+ "about": "The contract between builder.js and the CLI: tests/builder/golden.test.mjs checks builder.js produces exactly these commands; tests/test_builder.py checks the CLI accepts them. Regenerate the expected strings only after checking the change by hand.",
+ "cases": [
+  {
+   "name": "defaults are left out",
+   "state": {
+    "command": "scan",
+    "values": {
+     "package": [
+      "npm:chalk@5.6.1"
+     ],
+     "out": "report",
+     "formats": "csv,md,json,html",
+     "top": "25",
+     "platform": "linux/amd64",
+     "scanners": "auto",
+     "quiet": false
+    }
+   },
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "report"
+   ],
+   "bash": "oss-intake --package npm:chalk@5.6.1 --out report",
+   "powershell": "oss-intake --package 'npm:chalk@5.6.1' --out report"
+  },
+  {
+   "name": "repeatable option",
+   "state": {
+    "command": "scan",
+    "values": {
+     "package": [
+      "npm:chalk@5.6.1",
+      "maven:org.apache.logging.log4j:log4j-core@2.14.1",
+      " "
+     ],
+     "out": "report"
+    }
+   },
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--package",
+    "maven:org.apache.logging.log4j:log4j-core@2.14.1",
+    "--out",
+    "report"
+   ],
+   "bash": "oss-intake --package npm:chalk@5.6.1 --package maven:org.apache.logging.log4j:log4j-core@2.14.1 --out report",
+   "powershell": "oss-intake --package 'npm:chalk@5.6.1' --package 'maven:org.apache.logging.log4j:log4j-core@2.14.1' --out report"
+  },
+  {
+   "name": "flags and integers",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "packages.csv",
+     "out": "report",
+     "no_latest": true,
+     "release_age_days": "0",
+     "top": "50",
+     "quiet": true
+    }
+   },
+   "args": [
+    "--path",
+    "packages.csv",
+    "--out",
+    "report",
+    "--no-latest",
+    "--release-age-days",
+    "0",
+    "--top",
+    "50",
+    "--quiet"
+   ],
+   "bash": "oss-intake --path packages.csv --out report --no-latest --release-age-days 0 --top 50 --quiet",
+   "powershell": "oss-intake --path packages.csv --out report --no-latest --release-age-days 0 --top 50 --quiet"
+  },
+  {
+   "name": "choice, upper-cased by the CLI",
+   "state": {
+    "command": "scan",
+    "values": {
+     "image": "owner/app:1.2.3",
+     "out": "r",
+     "min_severity": "high",
+     "image_src": "remote"
+    }
+   },
+   "args": [
+    "--image",
+    "owner/app:1.2.3",
+    "--out",
+    "r",
+    "--image-src",
+    "remote",
+    "--min-severity",
+    "high"
+   ],
+   "bash": "oss-intake --image owner/app:1.2.3 --out r --image-src remote --min-severity high",
+   "powershell": "oss-intake --image owner/app:1.2.3 --out r --image-src remote --min-severity high"
+  },
+  {
+   "name": "gate list with commas",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "packages.csv",
+     "out": "report",
+     "fail_on": "malicious,kev,high"
+    }
+   },
+   "args": [
+    "--path",
+    "packages.csv",
+    "--out",
+    "report",
+    "--fail-on",
+    "malicious,kev,high"
+   ],
+   "bash": "oss-intake --path packages.csv --out report --fail-on malicious,kev,high",
+   "powershell": "oss-intake --path packages.csv --out report --fail-on 'malicious,kev,high'"
+  },
+  {
+   "name": "space and apostrophe in a value",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "packages.csv",
+     "out": "My Reports",
+     "label": [
+      "owner=Ned's team"
+     ]
+    }
+   },
+   "args": [
+    "--path",
+    "packages.csv",
+    "--out",
+    "My Reports",
+    "--label",
+    "owner=Ned's team"
+   ],
+   "bash": "oss-intake --path packages.csv --out 'My Reports' --label 'owner=Ned'\\''s team'",
+   "powershell": "oss-intake --path packages.csv --out 'My Reports' --label 'owner=Ned''s team'"
+  },
+  {
+   "name": "dollar, backtick and double quote",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "a$b`c\"d.csv",
+     "out": "o"
+    }
+   },
+   "args": [
+    "--path",
+    "a$b`c\"d.csv",
+    "--out",
+    "o"
+   ],
+   "bash": "oss-intake --path 'a$b`c\"d.csv' --out o",
+   "powershell": "oss-intake --path 'a$b`c\"d.csv' --out o"
+  },
+  {
+   "name": "value that starts with a dash",
+   "state": {
+    "command": "scan",
+    "values": {
+     "image": "owner/app:1.0",
+     "out": "o",
+     "trivy_arg": [
+      "--db-repository=ghcr.io/mirror/trivy-db"
+     ]
+    }
+   },
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--out",
+    "o",
+    "--trivy-arg=--db-repository=ghcr.io/mirror/trivy-db"
+   ],
+   "bash": "oss-intake --image owner/app:1.0 --out o --trivy-arg=--db-repository=ghcr.io/mirror/trivy-db",
+   "powershell": "oss-intake --image owner/app:1.0 --out o '--trivy-arg=--db-repository=ghcr.io/mirror/trivy-db'"
+  },
+  {
+   "name": "home folder",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "~/Downloads/package-lock.json",
+     "out": "~/reports/run 1"
+    }
+   },
+   "args": [
+    "--path",
+    "~/Downloads/package-lock.json",
+    "--out",
+    "~/reports/run 1"
+   ],
+   "bash": "oss-intake --path ~/Downloads/package-lock.json --out ~/'reports/run 1'",
+   "powershell": "oss-intake --path \"$HOME/Downloads/package-lock.json\" --out \"$HOME/reports/run 1\""
+  },
+  {
+   "name": "Windows path",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "C:\\Users\\ned\\packages.csv",
+     "out": "C:\\reports"
+    }
+   },
+   "args": [
+    "--path",
+    "C:\\Users\\ned\\packages.csv",
+    "--out",
+    "C:\\reports"
+   ],
+   "bash": "oss-intake --path 'C:\\Users\\ned\\packages.csv' --out 'C:\\reports'",
+   "powershell": "oss-intake --path C:\\Users\\ned\\packages.csv --out C:\\reports"
+  },
+  {
+   "name": "verify with checksums",
+   "state": {
+    "command": "verify",
+    "values": {
+     "file": "trivy_0.76.1_Linux-64bit.tar.gz",
+     "checksums": "trivy_0.76.1_checksums.txt"
+    }
+   },
+   "args": [
+    "verify",
+    "--file",
+    "trivy_0.76.1_Linux-64bit.tar.gz",
+    "--checksums",
+    "trivy_0.76.1_checksums.txt"
+   ],
+   "bash": "oss-intake verify --file trivy_0.76.1_Linux-64bit.tar.gz --checksums trivy_0.76.1_checksums.txt",
+   "powershell": "oss-intake verify --file trivy_0.76.1_Linux-64bit.tar.gz --checksums trivy_0.76.1_checksums.txt"
+  },
+  {
+   "name": "verify with a hash and a bundle",
+   "state": {
+    "command": "verify",
+    "values": {
+     "file": "x.tgz",
+     "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "cosign_bundle": "x.tgz.sigstore.json",
+     "cosign_identity": "^https://github.com/aquasecurity/trivy/"
+    }
+   },
+   "args": [
+    "verify",
+    "--file",
+    "x.tgz",
+    "--sha256",
+    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--cosign-bundle",
+    "x.tgz.sigstore.json",
+    "--cosign-identity",
+    "^https://github.com/aquasecurity/trivy/"
+   ],
+   "bash": "oss-intake verify --file x.tgz --sha256 sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --cosign-bundle x.tgz.sigstore.json --cosign-identity '^https://github.com/aquasecurity/trivy/'",
+   "powershell": "oss-intake verify --file x.tgz --sha256 sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --cosign-bundle x.tgz.sigstore.json --cosign-identity '^https://github.com/aquasecurity/trivy/'"
+  },
+  {
+   "name": "doctor",
+   "state": {
+    "command": "doctor",
+    "values": {
+     "trivy_path": "/opt/trivy/trivy"
+    }
+   },
+   "args": [
+    "doctor",
+    "--trivy-path",
+    "/opt/trivy/trivy"
+   ],
+   "bash": "oss-intake doctor --trivy-path /opt/trivy/trivy",
+   "powershell": "oss-intake doctor --trivy-path /opt/trivy/trivy"
+  },
+  {
+   "name": "doctor with nothing set",
+   "state": {
+    "command": "doctor",
+    "values": {}
+   },
+   "args": [
+    "doctor"
+   ],
+   "bash": "oss-intake doctor",
+   "powershell": "oss-intake doctor"
+  },
+  {
+   "name": "no input",
+   "state": {
+    "command": "scan",
+    "values": {
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "input-required"
+   ]
+  },
+  {
+   "name": "image and path",
+   "state": {
+    "command": "scan",
+    "values": {
+     "image": "a/b:1",
+     "path": "x",
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "image-and-path"
+   ]
+  },
+  {
+   "name": "integer field with text",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "x.csv",
+     "out": "o",
+     "top": "ten"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "top"
+   ]
+  },
+  {
+   "name": "unknown gate",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "x.csv",
+     "out": "o",
+     "fail_on": "malware"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "fail_on"
+   ]
+  },
+  {
+   "name": "verify needs exactly one of checksums or sha256",
+   "state": {
+    "command": "verify",
+    "values": {
+     "file": "x",
+     "checksums": "s.txt",
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "exclusive"
+   ]
+  },
+  {
+   "name": "verify needs one of them",
+   "state": {
+    "command": "verify",
+    "values": {
+     "file": "x"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "exclusive"
+   ]
+  },
+  {
+   "name": "out is required",
+   "state": {
+    "command": "scan",
+    "values": {
+     "package": [
+      "npm:x@1.0.0"
+     ]
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "out"
+   ]
+  }
+ ]
+}

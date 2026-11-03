@@ -56,6 +56,22 @@ jobs:
           python -m coverage report --format=markdown --fail-under=0 >> "$GITHUB_STEP_SUMMARY"
           python -m coverage report  # enforces fail_under from pyproject.toml
 
+  builder:
+    # The command builder (site/builder/): builder.js turns each golden state into exactly the expected command,
+    # and bash, zsh (when present) and PowerShell (pwsh is on the Ubuntu runners) pass its arguments unchanged.
+    name: command builder (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: Builder tests (node --test, no packages)
+        run: node --test tests/builder/*.test.mjs
+
   release-sbom:
     # The release workflow's build and SBOM steps on every push, so a broken SBOM shows up before a release, and
     # the test suite run from the unpacked sdist, which MANIFEST.in promises.

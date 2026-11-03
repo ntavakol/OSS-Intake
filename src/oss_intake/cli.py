@@ -265,12 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--quiet", action="store_true", help="only print errors and the final summary")
 
     d = sub.add_parser("doctor", help="show scanner paths, versions, hashes and known-bad status", allow_abbrev=False)
-    d.add_argument("--trivy-path")
-    d.add_argument("--grype-path")
+    d.add_argument("--trivy-path", help="explicit path to the trivy executable")
+    d.add_argument("--grype-path", help="explicit path to the grype executable")
 
     v = sub.add_parser("verify", help="verify a downloaded file against a checksums file, hash or cosign bundle",
                        allow_abbrev=False)
-    v.add_argument("--file", required=True)
+    v.add_argument("--file", required=True, help="the downloaded file to check")
     g = v.add_mutually_exclusive_group(required=True)
     g.add_argument("--checksums", help="sha256sum-style checksums file (e.g. trivy_0.76.1_checksums.txt)")
     g.add_argument("--sha256", help="expected SHA-256")
