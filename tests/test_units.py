@@ -2355,3 +2355,19 @@ def test_cosign_timeout_is_a_clean_integrity_error(tmp_path, monkeypatch, capsys
                      "--cosign-identity", "x"])
     assert code == cli.EXIT_ERROR
     assert "cosign did not finish within 120 seconds" in capsys.readouterr().err
+
+
+def test_version_strings_agree():
+    """The version is written in several places by hand at each release: pyproject.toml (the release tag is
+    checked against it), oss_intake.__version__, and the README's release verification example."""
+    import re
+
+    from oss_intake import __version__
+
+    root = Path(__file__).resolve().parent.parent
+    pyproject = re.search(r'^version = "([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
+    assert pyproject and pyproject.group(1) == __version__
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    block = readme[readme.index("pip install sigstore"):]
+    block = block[:block.index("```")]
+    assert block.count(__version__) >= 3 and not re.search(r"\d+\.\d+\.\d+", block.replace(__version__, ""))

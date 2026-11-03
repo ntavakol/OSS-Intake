@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-04
+
+Quality release: each release now carries a signed SBOM of itself, known-bad scanners are refused before they
+run, and missing OSV advisory details no longer read as a clean result.
+
 ### Added
 - Each GitHub release carries a CycloneDX SBOM of itself (`oss-intake-<version>.cdx.json`): oss-intake with the
   wheel's SHA-256, and the runtime dependencies installed from the new hash-pinned `requirements/runtime.txt`,
@@ -28,6 +33,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   runs the test suite from the unpacked sdist.
 - A likelihood config file that is not UTF-8, or whose JSON is not an object, gave a Python traceback instead of
   a clear error.
+
+### Changed
+- Development: CI also scans the full history for secrets (gitleaks, pinned by SHA-256), fails below 90% test
+  coverage and runs mypy on every job. `docs/architecture.md` describes the pipeline, the modules and how to
+  extend them, and the functions modules share have docstrings.
 
 ## [0.12.0] - 2026-10-31
 

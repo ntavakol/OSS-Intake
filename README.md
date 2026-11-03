@@ -338,7 +338,7 @@ the PyPI package, so they can be copied to the machine that needs one (an osquer
 reach Nexus) without installing anything. Get the ones matching your oss-intake version, and check them:
 
 ```bash
-V=$(oss-intake --version | awk '{print $NF}')    # e.g. 0.12.0
+V=$(oss-intake --version | awk '{print $NF}')    # e.g. 0.12.1
 BASE=https://raw.githubusercontent.com/ntavakol/OSS-Intake/v$V/examples
 curl -fsSLO "$BASE/nexus/nexus_sbom.py"
 curl -fsSLO "$BASE/osquery/osquery_sbom.py"
