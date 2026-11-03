@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python -m pip install -e ".[dev]"          # dev install (CI uses: pip install --require-hashes -r requirements/dev.txt)
 python -m ruff check .                     # lint (line length 120, rules E,F,W,I,B,UP,S)
 python -m pytest                           # full suite; no network needed
+python -m coverage run -m pytest && python -m coverage report   # coverage, with the CI floor (fail_under)
 python -m pytest tests/test_units.py::test_readme_generated_sections_are_current   # one test
 python -m pytest -k osv                    # tests matching a name
 python scripts/readme_sync.py              # regenerate README sections derived from code (--check to verify)
@@ -17,7 +18,10 @@ To exercise the full pipeline without Trivy, Grype or network (the pattern `read
 tests use): call `cli.main([... "--from-trivy-json", "tests/fixtures/trivy.json", "--from-grype-json",
 "tests/fixtures/grype.json", "--as-of", "2026-10-22"], http=FakeHttp())` with `FakeHttp` from `tests/conftest.py`.
 
-CI runs ruff and pytest on Linux, macOS and Windows, Python 3.10 to 3.13. `requirements/dev.txt` is hash-pinned and
+CI runs ruff and pytest on Linux, macOS and Windows, Python 3.10 to 3.13; the Ubuntu 3.13 job also measures coverage
+and fails below the `fail_under` floor in `pyproject.toml`. A `secrets` job scans the full history with gitleaks
+(pinned by version and SHA-256 in `ci.yml`); accepted findings go in `.gitleaksignore` with a reason. Never weaken
+either to get a change through. `requirements/dev.txt` is hash-pinned and
 regenerated from `requirements/dev.in` with the `uv pip compile` command in its header.
 
 ## Architecture

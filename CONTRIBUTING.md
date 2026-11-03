@@ -12,13 +12,25 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 python -m ruff check .
 python -m pytest
+python -m coverage run -m pytest && python -m coverage report   # what CI checks: fails below the floor
+```
+
+Optional: scan what you are about to commit for secrets with [gitleaks](https://github.com/gitleaks/gitleaks)
+(CI scans the full history on every push and pull request). Install a pinned, verified release, then add it as a
+pre-commit hook:
+
+```bash
+printf '#!/bin/sh\nexec gitleaks git --pre-commit --staged --redact --no-banner\n' > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
 ```
 
 ## Rules
 
 - **Tests come with the change.** New functionality must add automated tests that cover it, and a bug fix must
-  add a test that fails without the fix. CI (`ruff` and `pytest` on Linux, macOS and Windows) must pass before
-  a change is merged or released.
+  add a test that fails without the fix. CI (`ruff` and `pytest` on Linux, macOS and Windows, a coverage floor,
+  and a gitleaks scan of the full history) must pass before a change is merged or released. If a test fixture
+  trips gitleaks (an advisory that quotes an example key, say), add its fingerprint to `.gitleaksignore` with
+  the reason; never commit a real secret, even one already revoked.
 - **No live network calls in tests.** Use fixtures in `tests/fixtures` and the `FakeHttp` helper. It fails
   the test if code reaches an unexpected URL.
 - **Fixtures are synthetic.** Use `CVE-2099-*` and `GHSA-test-*` identifiers and fictional projects so

@@ -2176,3 +2176,26 @@ def test_self_check_workflow_is_pinned_and_read_only():
     assert res["unpinned"] == [] and res["known_bad"] == [] and res["top_level_permissions"]
     assert not res["write_all"] and not res["pull_request_target"]
     assert "--fail-on malicious,kev,high" in text and "contents: read" in text
+
+
+def test_ci_workflow_is_pinned_and_gates_quality():
+    """CI measures coverage against a floor and scans the full history for secrets with a verified gitleaks."""
+    import re
+
+    from oss_intake import integrity
+    from oss_intake.health import workflows as wf
+
+    root = Path(__file__).resolve().parent.parent
+    path = root / ".github" / "workflows" / "ci.yml"
+    if not path.exists():
+        pytest.skip("workflows are not in the sdist")
+    text = path.read_text(encoding="utf-8")
+    res = wf.analyse("ci.yml", text, integrity.load_known_bad()["actions"])
+    assert res["unpinned"] == [] and res["known_bad"] == [] and res["top_level_permissions"]
+    assert not res["write_all"] and not res["pull_request_target"]
+    assert re.search(r'GITLEAKS_VERSION: "\d+\.\d+\.\d+"', text)
+    assert re.search(r'GITLEAKS_SHA256: "[0-9a-f]{64}"', text) and "sha256sum -c" in text
+    assert "fetch-depth: 0" in text and "--exit-code 1" in text
+    assert "coverage run -m pytest" in text
+    floor = re.search(r"^fail_under = (\d+)", (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
+    assert floor and int(floor.group(1)) >= 90

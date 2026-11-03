@@ -14,29 +14,21 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
   code.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. Secrets scanning. Turn on GitHub secret scanning and push protection (repository settings, free for public
-   repositories). Add a gitleaks job to CI on every push to main and every pull request, with the gitleaks
-   binary pinned by version and SHA-256 like the scanners, and document an optional local pre-commit hook in
-   CONTRIBUTING.md. The full history was scanned once on 3 Nov (gitleaks 8.28.0, 134 commits): two hits, both
-   the example private key quoted in a published PyJWT advisory inside `tests/fixtures/recorded-seeds.json`;
-   allowlist that fingerprint with a comment rather than editing the recorded data.
-2. An SBOM with every release: a CycloneDX SBOM of the built wheel's runtime dependencies, attached to the
+1. An SBOM with every release: a CycloneDX SBOM of the built wheel's runtime dependencies, attached to the
    GitHub release before the Sigstore signing step so it is signed with the other files, and a README section
    on verifying the release files and the SBOM.
-3. Coverage floor: run the tests under coverage in CI (coverage added to the hash-pinned dev requirements), fail
-   below 90% total (91% on 3 Nov), and show the report in the run summary.
-4. Type checking: mypy (not strict) in CI, blocking. On 3 Nov it reports 66 errors in 24 files, mostly
+2. Type checking: mypy (not strict) in CI, blocking. On 3 Nov it reports 66 errors in 24 files, mostly
    optional values used without a check and counters in dicts typed as `object`; fix each or justify it inline.
    Add the command to CONTRIBUTING.md and CLAUDE.md.
-5. `docs/architecture.md` for people: pipeline stages, module responsibilities, the `Finding` model and merge
+3. `docs/architecture.md` for people: pipeline stages, module responsibilities, the `Finding` model and merge
    keys, the network layer (cache, prefetch, retries), and how to add a scanner, an enricher or a collector, with
    a pipeline diagram. Write docstrings for the cross-module interfaces it describes at the same time (every
    module already has one; about a third of public functions do). No lint rule forcing docstrings on every
    public function.
-6. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
+4. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
    Linked from SECURITY.md.
-7. Split `cli.py` (1,275 lines) after 3 and 4 are in place: argument parsing and dispatch stay in `cli.py`,
+5. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 

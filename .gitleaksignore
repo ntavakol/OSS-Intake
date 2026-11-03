@@ -1,0 +1,7 @@
+# Findings reviewed and accepted. Format: commit:file:rule:line (gitleaks fingerprints).
+# Each needs a reason; anything else gitleaks finds fails CI.
+#
+# A published PyJWT advisory (GHSA-ffqj-6fqr-9h24) quotes an example EC private key in its text; the recorded
+# OSV responses in recorded-seeds.json contain that advisory verbatim. Not a secret of this project.
+d9f2cfc004a63b9d7f8008dd44062c10c5cdd089:tests/fixtures/recorded-seeds.json:generic-api-key:7294
+d9f2cfc004a63b9d7f8008dd44062c10c5cdd089:tests/fixtures/recorded-seeds.json:private-key:7294

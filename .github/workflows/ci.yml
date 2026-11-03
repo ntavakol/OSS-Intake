@@ -44,4 +44,36 @@ jobs:
       - name: Lint
         run: python -m ruff check .
       - name: Test
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python == '3.13') }}
         run: python -m pytest
+      # One job measures coverage: the same tests, with a floor (pyproject.toml, [tool.coverage.report]).
+      - name: Test with coverage
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python == '3.13' }}
+        run: |
+          python -m coverage run -m pytest
+          python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+          python -m coverage report
+
+  secrets:
+    name: secrets (gitleaks, full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Pinned by version and SHA-256 of the release archive, like the scanners oss-intake verifies.
+      GITLEAKS_VERSION: "8.30.1"
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # every commit, not just the latest
+          persist-credentials: false
+      - name: Install gitleaks (verified)
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan
+        # Accepted findings are listed, each with its reason, in .gitleaksignore; anything else fails the job.
+        run: '"$RUNNER_TEMP/gitleaks" git . --redact --no-banner --exit-code 1'

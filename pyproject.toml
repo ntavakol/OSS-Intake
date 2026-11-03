@@ -39,7 +39,7 @@ Issues = "https://github.com/ntavakol/OSS-Intake/issues"
 Changelog = "https://github.com/ntavakol/OSS-Intake/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "coverage>=7"]
 
 [project.scripts]
 oss-intake = "oss_intake.cli:main"
@@ -53,6 +53,16 @@ oss_intake = ["data/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.coverage.run]
+source = ["oss_intake"]
+
+[tool.coverage.report]
+# CI fails below this total (line coverage; 91% when the floor was set, Nov 2026). Raise it as coverage grows;
+# lower it only with a reason in the commit message.
+fail_under = 90
+show_missing = true
+skip_covered = true
 
 [tool.ruff]
 line-length = 120
