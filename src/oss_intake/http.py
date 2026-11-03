@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import threading
 import time
 from collections.abc import Iterable
@@ -51,9 +52,10 @@ class HttpError(Exception):
 def default_cache_dir() -> Path:
     """Per-user cache directory: LOCALAPPDATA/oss-intake/cache on Windows, ~/Library/Caches/oss-intake on macOS,
     otherwise XDG_CACHE_HOME/oss-intake (default ~/.cache/oss-intake)."""
-    if os.name == "nt":
+    # sys.platform rather than os.name / os.uname(): the same test, and type checkers understand it on every OS.
+    if sys.platform == "win32":
         return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "oss-intake" / "cache"
-    if os.uname().sysname == "Darwin":
+    if sys.platform == "darwin":
         return Path.home() / "Library" / "Caches" / "oss-intake"
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "oss-intake"
 

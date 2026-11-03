@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python -m pip install -e ".[dev]"          # dev install (CI uses: pip install --require-hashes -r requirements/dev.txt)
 python -m ruff check .                     # lint (line length 120, rules E,F,W,I,B,UP,S)
 python -m mypy                             # type check src/ (settings in pyproject.toml); CI blocks on errors
+python -m mypy --platform win32            # as the Windows CI job sees it (also: darwin, linux)
 python -m pytest                           # full suite; no network needed
 python -m coverage run -m pytest && python -m coverage report   # coverage, with the CI floor (fail_under)
 python -m pytest tests/test_units.py::test_readme_generated_sections_are_current   # one test
