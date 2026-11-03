@@ -2,7 +2,8 @@ name: release
 
 # Runs when a GitHub release is published. Builds the package with hash-pinned tools, publishes it to PyPI
 # through trusted publishing (no stored token; PyPI trusts this workflow in this repository and records
-# provenance attestations), and signs the files with Sigstore, attaching the signatures to the release.
+# provenance attestations), writes a CycloneDX SBOM of the release, and signs the files and the SBOM with Sigstore,
+# attaching them and their signatures to the release.
 on:
   release:
     types: [published]
@@ -32,10 +33,27 @@ jobs:
         run: python -m pip install --require-hashes -r requirements/build.txt
       - name: Build
         run: python -m build --no-isolation
+      - name: SBOM of the release
+        # The wheel and the hash-pinned runtime requirements in a fresh environment, described by
+        # scripts/release_sbom.py (standard library only). Kept out of dist/, which is uploaded to PyPI as is.
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          env="$RUNNER_TEMP/sbom-env"
+          python -m venv "$env"
+          "$env/bin/python" -m pip install --require-hashes -r requirements/runtime.txt
+          "$env/bin/python" -m pip install --no-deps dist/*.whl
+          "$env/bin/python" -I scripts/release_sbom.py --wheel dist/*.whl --out "sbom/oss-intake-${version}.cdx.json"
+          "$env/bin/python" -I -c "from pathlib import Path; from oss_intake import sbom; \
+          entries, _, _ = sbom.read(Path('sbom')); print(len(entries), 'packages read back by oss-intake')"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
           path: dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/
           retention-days: 7
 
   publish:
@@ -68,7 +86,11 @@ jobs:
         with:
           name: dist
           path: dist/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom
+          path: sbom/
       - uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
         with:
-          inputs: ./dist/*.tar.gz ./dist/*.whl
+          inputs: ./dist/*.tar.gz ./dist/*.whl ./sbom/*.cdx.json
           release-signing-artifacts: true

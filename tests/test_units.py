@@ -2198,8 +2198,23 @@ def test_ci_workflow_is_pinned_and_gates_quality():
     assert "fetch-depth: 0" in text and "--exit-code 1" in text
     assert "coverage run -m pytest" in text
     assert "python -m mypy" in text  # blocking type check; settings in pyproject.toml [tool.mypy]
+    assert "scripts/release_sbom.py" in text and "requirements/runtime.txt" in text  # release SBOM dry run
     floor = re.search(r"^fail_under = (\d+)", (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     assert floor and int(floor.group(1)) >= 90
+
+
+def test_release_workflow_signs_and_attaches_the_sbom():
+    from oss_intake import integrity
+    from oss_intake.health import workflows as wf
+
+    path = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "release.yml"
+    if not path.exists():
+        pytest.skip("workflows are not in the sdist")
+    text = path.read_text(encoding="utf-8")
+    res = wf.analyse("release.yml", text, integrity.load_known_bad()["actions"])
+    assert res["unpinned"] == [] and res["known_bad"] == [] and not res["write_all"]
+    assert "scripts/release_sbom.py" in text and "--require-hashes -r requirements/runtime.txt" in text
+    assert "./sbom/*.cdx.json" in text and "release-signing-artifacts: true" in text
 
 
 @pytest.mark.parametrize("content", [b"\xff\xfe{\x00}", b"[1, 2]", b'"rules"'])
@@ -2249,3 +2264,63 @@ def test_embedded_version_edge_cases(tmp_path):
     for cut in (5, len(marker) - 1, len(marker) + 3):  # the marker or the version split across a read
         p.write_bytes(b"\0" * ((1 << 20) - cut) + marker + b"v0.69.4\t\n")
         assert integrity.embedded_version("trivy", str(p)) == "0.69.4", cut
+
+
+def _release_sbom():
+    import importlib.util
+
+    root = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("release_sbom", root / "scripts" / "release_sbom.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_release_sbom_describes_oss_intake_and_its_runtime_dependencies(tmp_path):
+    """scripts/release_sbom.py, run here against the test environment: oss-intake is the subject (with the
+    wheel's SHA-256), requests and what it needs are components, dev tools are not, and oss-intake reads it."""
+    import hashlib
+    from datetime import datetime, timezone
+
+    from oss_intake import sbom
+
+    mod = _release_sbom()
+    wheel = tmp_path / "oss_intake-0-py3-none-any.whl"
+    wheel.write_bytes(b"stand-in wheel")
+    bom = mod.build(wheel, now=datetime(2026, 11, 3, tzinfo=timezone.utc))
+    assert bom["bomFormat"] == "CycloneDX" and bom["specVersion"] == "1.6"
+    subject = bom["metadata"]["component"]
+    assert subject["name"] == "oss-intake" and subject["licenses"] == [{"expression": "Apache-2.0"}]
+    assert subject["hashes"] == [{"alg": "SHA-256", "content": hashlib.sha256(b"stand-in wheel").hexdigest()}]
+    names = {c["name"] for c in bom["components"]}
+    assert {"requests", "urllib3", "idna", "certifi", "charset-normalizer"} <= names
+    assert not names & {"pytest", "ruff", "mypy", "coverage", "pip", "oss-intake"}
+    refs = {c["bom-ref"] for c in bom["components"]} | {subject["bom-ref"]}
+    assert all(d["ref"] in refs and set(d["dependsOn"]) <= refs for d in bom["dependencies"])
+    out = tmp_path / "sbom" / "oss-intake.cdx.json"
+    assert mod.main(["--wheel", str(wheel), "--out", str(out)]) == 0
+    entries, _, info = sbom.read(out.parent)
+    assert {e["purl"].split("@")[0] for e in entries} >= {"pkg:pypi/requests", "pkg:pypi/urllib3"}
+    assert info["not_checked"] == []
+
+
+def test_release_sbom_skips_optional_extras():
+    mod = _release_sbom()
+
+    class Dist:
+        requires = ["charset_normalizer<4,>=2", 'PySocks!=1.5.7,>=1.5.6; extra == "socks"',
+                    "tomli>=1.1; python_version < '3.11'", "Idna (>=2.5)"]
+
+    assert mod.requirement_names(Dist()) == ["charset-normalizer", "tomli", "idna"]
+
+
+def test_runtime_pins_match_the_dev_pins():
+    """requirements/runtime.txt (the release SBOM environment) pins the same versions the tests run with."""
+    import re
+
+    root = Path(__file__).resolve().parent.parent
+    pins = {}
+    for name in ("runtime", "dev"):
+        text = (root / "requirements" / f"{name}.txt").read_text(encoding="utf-8")
+        pins[name] = dict(re.findall(r"^([a-z0-9-]+)==([^\s;]+)", text, re.M))
+    assert pins["runtime"] and all(pins["dev"].get(k) == v for k, v in pins["runtime"].items()), pins["runtime"]

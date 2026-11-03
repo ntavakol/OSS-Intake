@@ -147,7 +147,24 @@ pipx install oss-intake
 
 Releases are published to PyPI from GitHub Actions through trusted publishing, so PyPI shows each file's
 provenance (which workflow in this repository built it). Each GitHub release also carries a Sigstore signature
-bundle (`.sigstore.json`) for every file, verifiable with [sigstore-python](https://github.com/sigstore/sigstore-python).
+bundle (`.sigstore.json`) for every file, verifiable with
+[sigstore-python](https://github.com/sigstore/sigstore-python). From 0.12.1 it also carries a CycloneDX SBOM of the
+release (`oss-intake-<version>.cdx.json`), signed like the other files: oss-intake with the wheel's SHA-256, and
+the runtime dependencies it was built and tested with. To check a download and the SBOM, then check the SBOM with
+oss-intake itself:
+
+```bash
+pip install sigstore
+for f in oss_intake-0.12.1-py3-none-any.whl oss-intake-0.12.1.cdx.json; do
+  python -m sigstore verify identity --bundle "$f.sigstore.json" \
+    --cert-oidc-issuer https://token.actions.githubusercontent.com \
+    --cert-identity https://github.com/ntavakol/OSS-Intake/.github/workflows/release.yml@refs/tags/v0.12.1 "$f"
+done
+oss-intake --path oss-intake-0.12.1.cdx.json --out sbom-check
+```
+
+The SBOM lists the versions resolved when the release was built; installing later may resolve newer ones within
+the declared ranges.
 
 Windows PowerShell without pipx:
 

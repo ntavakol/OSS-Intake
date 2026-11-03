@@ -10,16 +10,10 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
   in 120 s"), exit 1. Found 3 Nov while adding docstrings. Start with a test that fails on the current code.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. An SBOM with every release: a CycloneDX SBOM of the built wheel's runtime dependencies, attached to the
-   GitHub release before the Sigstore signing step so it is signed with the other files, and a README section
-   on verifying the release files and the SBOM.
-2. Type checking: mypy (not strict) in CI, blocking. On 3 Nov it reports 66 errors in 24 files, mostly
-   optional values used without a check and counters in dicts typed as `object`; fix each or justify it inline.
-   Add the command to CONTRIBUTING.md and CLAUDE.md.
-3. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
+1. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
    Linked from SECURITY.md.
-4. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
+2. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 

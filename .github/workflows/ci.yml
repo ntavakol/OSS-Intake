@@ -56,6 +56,33 @@ jobs:
           python -m coverage report --format=markdown --fail-under=0 >> "$GITHUB_STEP_SUMMARY"
           python -m coverage report  # enforces fail_under from pyproject.toml
 
+  release-sbom:
+    # The release workflow's build and SBOM steps on every push, so a broken SBOM shows up before a release.
+    name: release SBOM (dry run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Build (hash-pinned tools)
+        run: |
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m build --no-isolation
+      - name: SBOM, read back by oss-intake
+        run: |
+          env="$RUNNER_TEMP/sbom-env"
+          python -m venv "$env"
+          "$env/bin/python" -m pip install --require-hashes -r requirements/runtime.txt
+          "$env/bin/python" -m pip install --no-deps dist/*.whl
+          "$env/bin/python" -I scripts/release_sbom.py --wheel dist/*.whl --out sbom/oss-intake.cdx.json
+          "$env/bin/python" -I -c "from pathlib import Path; from oss_intake import sbom; \
+          entries, _, _ = sbom.read(Path('sbom')); assert any(e['purl'].startswith('pkg:pypi/requests@') \
+          for e in entries), entries; print(len(entries), 'packages read back by oss-intake')"
+
   secrets:
     name: secrets (gitleaks, full history)
     runs-on: ubuntu-latest

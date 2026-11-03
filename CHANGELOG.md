@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Each GitHub release carries a CycloneDX SBOM of itself (`oss-intake-<version>.cdx.json`): oss-intake with the
+  wheel's SHA-256, and the runtime dependencies installed from the new hash-pinned `requirements/runtime.txt`,
+  written by `scripts/release_sbom.py` (standard library only) and signed with Sigstore like the other files. CI
+  builds it on every push and reads it back with oss-intake. The README shows how to verify a release.
+
 ### Fixed
 - A known-bad scanner release ran once, for `--version`, before it was refused, unless its hash was pinned.
   oss-intake now reads the version from the binary's Go build information first (Trivy and Grype are Go
