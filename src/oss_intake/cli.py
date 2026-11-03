@@ -1031,11 +1031,14 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     check_info = checks.compute(len(findings), kev_info, epss_info, exploit_info,
                                 getattr(args, "malicious_check", None) or checks.state(checks.CHECKED), skipped_by)
     n_missing = sum(1 for f in findings if f.details_unavailable)
+    # Findings an assessor (or evidence) set aside do not count for KEV, EPSS and the severity gates, as in _gate;
+    # whether an advisory is malware still matters, since no decision sets a malicious package aside.
+    n_missing_live = sum(1 for f in findings if f.details_unavailable and triage.classify(f)[0] != "aside")
     if n_missing:
         # Their CVE aliases (KEV, EPSS) and CWEs (malware) are unknown, so those checks did not fully run.
-        for name in ("kev", "epss", "malicious"):
-            if check_info[name]["state"] == checks.CHECKED:
-                check_info[name] = checks.state(checks.PARTIAL, f"advisory details for {n_missing} finding(s) "
+        for name, n in (("kev", n_missing_live), ("epss", n_missing_live), ("malicious", n_missing)):
+            if n and check_info[name]["state"] == checks.CHECKED:
+                check_info[name] = checks.state(checks.PARTIAL, f"advisory details for {n} finding(s) "
                                                                 "could not be loaded")
         warnings.append(f"advisory details for {n_missing} finding(s) could not be loaded from OSV, so their "
                         "severity, fix and CVE aliases are unknown; re-run later")
@@ -1148,7 +1151,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
                 args.quiet, force=True)
     unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info,
-                            sum(1 for f in findings if f.details_unavailable))
+                            n_missing_live)
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
     # A gate that tripped can still have skipped some versions: name them, so accepting what tripped it does not

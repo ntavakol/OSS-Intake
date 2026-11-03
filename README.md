@@ -195,7 +195,8 @@ oss-intake --image owner/app:1.2.3 --out ./reports --trivy-version 0.76.1 \
 Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2026). `oss-intake` refuses to
 run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
 It reads the version from the binary's Go build information first, so a known-bad release is refused without
-being run, even with no pinned hash.
+being run, even with no pinned hash. A build with no version recorded (some source builds) is still run once
+with `--version` and checked then; pin the hash to avoid that.
 
 ## Usage
 

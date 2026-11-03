@@ -11,9 +11,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   programs), so a known-bad release is refused without being run. `oss-intake doctor` does the same.
 - When OSV listed an advisory but its details failed to load, the finding was kept with its ID alone and read as
   complete: severity UNKNOWN, "no fix", no warning, and the KEV, EPSS and malicious checks still "checked"
-  although the CVE aliases they match on were missing, so `--fail-on kev`, `act`, `critical` and `high` could
-  pass. Such findings are now marked ("advisory details could not be loaded from OSV", fix "unknown"), the run
-  warns, those checks are partial, and those gates fail with exit 1.
+  although the CVE aliases they match on were missing, so `--fail-on kev`, `act`, `critical`, `high` and
+  `malicious` could pass. Such findings are now marked ("advisory details could not be loaded from OSV", fix
+  "unknown", suggested group Review), the run warns, those checks are partial, and those gates fail with exit 1.
+  Findings an assessor set aside do not hold up the KEV and severity gates. A connection error on one advisory's
+  details now marks that advisory instead of abandoning the whole OSV lookup.
 - A likelihood config file that is not UTF-8, or whose JSON is not an object, gave a Python traceback instead of
   a clear error.
 

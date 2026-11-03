@@ -50,7 +50,9 @@ def merge(*groups: list[Finding]) -> list[Finding]:
                 merged[key] = f
                 continue
             cur.sources |= f.sources
-            cur.details_unavailable = cur.details_unavailable and f.details_unavailable
+            if cur.details_unavailable and not f.details_unavailable:
+                # The kept row is the one OSV could not describe: drop its placeholder text, take the other's.
+                cur.title, cur.note, cur.details_unavailable = "", "", False
             cur.source_severity.update(f.source_severity)
             cur.cwes |= f.cwes
             cur.aliases |= f.aliases | ({f.vuln_id} if f.vuln_id != cur.vuln_id else set())
@@ -77,7 +79,7 @@ def merge(*groups: list[Finding]) -> list[Finding]:
             cur.os_release = cur.os_release or f.os_release
             cur.purl = cur.purl or f.purl
             _add_target(cur, f.target)
-            cur.title = cur.title or f.title
+            cur.title = cur.title or ("" if f.details_unavailable else f.title)
             if len(f.description) > len(cur.description):
                 cur.description = f.description
             cur.url = cur.url or f.url

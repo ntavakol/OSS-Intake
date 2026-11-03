@@ -192,7 +192,10 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
         name, version = unquote(name), unquote(version)  # pkg:npm/%40ctrl/tinycolor -> @ctrl/tinycolor
         for vid in ids:
             if vid not in cache:
-                status, data = http.get_json(f"{API}/vulns/{vid}")
+                try:
+                    status, data = http.get_json(f"{API}/vulns/{vid}")
+                except HttpError:  # one advisory's details: mark it, as for a bad status, not the whole lookup
+                    status, data = 0, None
                 # Without its details an advisory has no severity, fix or CVE alias: keep it, marked, so the run
                 # says so rather than reading as complete.
                 cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid, "_unavailable": True}
@@ -233,6 +236,7 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
                 f.note = "advisory details could not be loaded from OSV: severity, fix and CVE aliases are unknown"
             if osq:
                 f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
-                f.source_installed, f.note = osq["version"], note
+                f.source_installed = osq["version"]
+                f.note = "; ".join(x for x in (f.note, note) if x)
             findings.append(f)
     return findings

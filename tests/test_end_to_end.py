@@ -1743,3 +1743,50 @@ def test_osv_details_that_fail_to_load_do_not_read_as_complete(tmp_path, capsys,
     assert "| unknown | unknown |" in line and "no fix" not in line
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert a["checks"]["kev"]["state"] == "partial"
+
+
+@pytest.mark.parametrize("gate, expected", [("critical", cli.EXIT_OK), ("kev", cli.EXIT_OK),
+                                            ("malicious", cli.EXIT_ERROR), ("act", cli.EXIT_ERROR)])
+def test_missing_details_of_set_aside_findings_do_not_fail_gates(tmp_path, capsys, gate, expected):
+    """Review of batch 2: findings an assessor set aside still failed critical and kev when their details were
+    missing. Whether the advisory is malware is still unknown, and no decision sets a malicious package aside, so
+    'malicious' (and 'act', which includes it) still fail closed."""
+    _pkg_run(tmp_path, PkgHttp(), "--package", "npm:demo@1.0.0", name="one")
+    decided = _decide(tmp_path / "one" / "findings.csv", tmp_path / "d.csv", {"CVE-2099-0003", "GHSA-demo-nofix"})
+    code, _ = _pkg_run(tmp_path, DetailsFailHttp(), "--package", "npm:demo@1.0.0", "--decisions", str(decided),
+                       "--fail-on", gate, name="two")
+    assert code == expected, capsys.readouterr().err
+
+
+class DetailsRaiseHttp(PkgHttp):
+    """Fetching GHSA-demo-kev's details fails with a connection error, not an HTTP status."""
+
+    def get_json(self, url, params=None):
+        if url.endswith("/vulns/GHSA-demo-kev"):
+            from oss_intake.http import HttpError
+
+            raise HttpError("simulated connection reset")
+        return super().get_json(url, params)
+
+
+def test_osv_details_connection_error_marks_only_that_advisory(tmp_path, capsys):
+    """Review of batch 2: a connection error on one advisory's details aborted the whole OSV lookup."""
+    import csv
+
+    code, out = _pkg_run(tmp_path, DetailsRaiseHttp(), "--package", "npm:demo@1.0.0", "--fail-on", "critical")
+    assert code == cli.EXIT_ERROR
+    rows = {r["id"]: r for r in csv.DictReader((out / "findings.csv").open(encoding="utf-8"))}
+    assert "could not be loaded" in rows["GHSA-demo-kev"]["note"] and rows["GHSA-demo-nofix"]["severity"] == "MEDIUM"
+
+
+def test_missing_details_are_not_counted_as_no_fix_or_routine(tmp_path):
+    """Review of batch 2: packages.csv counted a finding with missing details as 'no fix', and triage called it
+    Routine ('no exploit indexed'), though nothing about it is known."""
+    import csv
+
+    _pkg_run(tmp_path, DetailsFailHttp(), "--package", "npm:demo@1.0.0")
+    pkg = next(csv.DictReader((tmp_path / "o" / "packages.csv").open(encoding="utf-8")))
+    assert pkg["no_fix"] == "1"  # GHSA-demo-nofix only
+    f = {r["id"]: r for r in csv.DictReader((tmp_path / "o" / "findings.csv").open(encoding="utf-8"))}
+    assert f["GHSA-demo-kev"]["suggested_group"] == "Review"
+    assert "details could not be loaded" in f["GHSA-demo-kev"]["suggested_reason"]

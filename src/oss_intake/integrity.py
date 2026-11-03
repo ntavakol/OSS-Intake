@@ -263,13 +263,16 @@ def embedded_version(tool: str, path: str) -> str | None:
         with open(path, "rb") as fh:
             while chunk := fh.read(_CHUNK):
                 buf = tail + chunk
-                i = buf.find(marker)
-                if i >= 0:
+                start = 0
+                while (i := buf.find(marker, start)) >= 0:
                     rest = buf[i + len(marker):i + len(marker) + 64]
                     if b"\t" not in rest and len(rest) < 64:
-                        rest += fh.read(64)
-                    m = re.match(rb"v?(\d+\.\d+\.\d+[0-9A-Za-z.-]*)(?:\+[0-9A-Za-z.]+)?\t", rest)
-                    return m.group(1).decode() if m else None
+                        more = fh.read(64)
+                        rest, buf = rest + more, buf + more
+                    m = re.match(rb"v?(\d+\.\d+\.\d+[0-9A-Za-z.-]*)(?:\+[0-9A-Za-z.-]+)?\t", rest)
+                    if m:
+                        return m.group(1).decode()
+                    start = i + 1  # an unstamped record such as (devel): keep looking
                 tail = buf[-(len(marker) + 64):]
     except OSError:
         return None

@@ -76,6 +76,9 @@ def _classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
         return "aside", f.reachability_note + (" (note: listed in CISA KEV)" if f.kev else "")
     if f.kev:
         return "act", "listed in CISA KEV (exploited in the wild)"
+    if f.details_unavailable:
+        return "review", ("advisory details could not be loaded from OSV, so severity, fix, KEV and exploit "
+                          "evidence are unknown; re-run later")
     if f.exploit_level == "weaponised":
         ref = next((r for r in f.exploit_refs if r.startswith(("metasploit:", "nuclei:"))), "")
         return "act", "ready-to-use exploit" + (f" ({ref})" if ref else "")

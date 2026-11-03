@@ -2212,3 +2212,40 @@ def test_likelihood_config_errors_are_clear(tmp_path, content):
     p.write_bytes(content)
     with pytest.raises(likelihood.ConfigError):
         likelihood.load_config(str(p))
+
+
+def test_merge_prefers_the_source_with_advisory_details():
+    """Review of batch 2: merging a scanner finding with an OSV one whose details failed could keep the
+    'could not be loaded' title, or the flag."""
+    from oss_intake import merge
+    from oss_intake.models import Finding
+
+    def osv():
+        return Finding(vuln_id="GHSA-x", package="demo", installed="1.0.0", purl="pkg:npm/demo@1.0.0",
+                       sources={"osv"}, details_unavailable=True,
+                       title="advisory details could not be loaded from OSV", note="advisory details could not be "
+                       "loaded from OSV: severity, fix and CVE aliases are unknown")
+
+    def scanner():
+        return Finding(vuln_id="GHSA-x", package="demo", installed="1.0.0", purl="pkg:npm/demo@1.0.0",
+                       sources={"trivy"}, severity="HIGH", fixed_versions=["2.0.0"])
+
+    for order in ((scanner(), osv()), (osv(), scanner())):
+        (m,) = merge.merge([order[0]], [order[1]])
+        assert not m.details_unavailable and "could not be loaded" not in m.title + m.note, order
+
+
+def test_embedded_version_edge_cases(tmp_path):
+    """Review of batch 2: build metadata with a hyphen was not read, the first unparsable record stopped the
+    search, and the chunk-boundary test did not actually straddle a boundary."""
+    from oss_intake import integrity
+
+    p = tmp_path / "b"
+    marker = b"mod\tgithub.com/aquasecurity/trivy\t"
+    p.write_bytes(marker + b"v0.69.4+build-1\t\n")
+    assert integrity.embedded_version("trivy", str(p)) == "0.69.4"
+    p.write_bytes(marker + b"(devel)\t\n" + b"x" * 100 + marker + b"v0.69.4\t\n")
+    assert integrity.embedded_version("trivy", str(p)) == "0.69.4"
+    for cut in (5, len(marker) - 1, len(marker) + 3):  # the marker or the version split across a read
+        p.write_bytes(b"\0" * ((1 << 20) - cut) + marker + b"v0.69.4\t\n")
+        assert integrity.embedded_version("trivy", str(p)) == "0.69.4", cut

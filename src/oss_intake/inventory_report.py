@@ -63,7 +63,7 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
         groups = [f.triage_group for f in fs if f.triage_group]
         group = min(groups, key=GROUP_ORDER.index) if groups else ""
         malicious = any(f.malicious for f in fs)
-        no_fix = sum(1 for f in fs if not f.fixed_versions)
+        no_fix = sum(1 for f in fs if not f.fixed_versions and not f.details_unavailable)  # unknown is not "none"
         # An OS package's fixes are versions of its source package (cpp 4:13.2.0 is built from gcc-defaults
         # 1.214ubuntu1): compare those, not the binary's own version.
         base = next((f.source_installed for f in fs if f.source_installed), version)
