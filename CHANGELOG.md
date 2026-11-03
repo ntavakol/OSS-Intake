@@ -22,6 +22,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   "unknown", suggested group Review), the run warns, those checks are partial, and those gates fail with exit 1.
   Findings an assessor set aside do not hold up the KEV and severity gates. A connection error on one advisory's
   details now marks that advisory instead of abandoning the whole OSV lookup.
+- A cosign that did not finish within 120 seconds ended `oss-intake verify --cosign-bundle` (and a scan with a
+  cosign bundle) with a Python traceback; it is now a verification failure, exit 1.
 - The sdist left out `examples/`, so the collector tests could not run from it as `MANIFEST.in` promises. CI now
   runs the test suite from the unpacked sdist.
 - A likelihood config file that is not UTF-8, or whose JSON is not an object, gave a Python traceback instead of

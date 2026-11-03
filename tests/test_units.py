@@ -2334,3 +2334,24 @@ def test_runtime_pins_match_the_dev_pins():
         text = (root / "requirements" / f"{name}.txt").read_text(encoding="utf-8")
         pins[name] = dict(re.findall(r"^([a-z0-9-]+)==([^\s;]+)", text, re.M))
     assert pins["runtime"] and all(pins["dev"].get(k) == v for k, v in pins["runtime"].items()), pins["runtime"]
+
+
+def test_cosign_timeout_is_a_clean_integrity_error(tmp_path, monkeypatch, capsys):
+    """Backlog (3 Nov): a cosign that did not finish within 120 s ended `oss-intake verify` with a traceback
+    (subprocess.TimeoutExpired); it is now a verification failure, exit 1."""
+    import subprocess
+
+    from oss_intake import cli, integrity
+
+    def hang(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(integrity.subprocess, "run", hang)
+    f, bundle = tmp_path / "trivy.tar.gz", tmp_path / "trivy.tar.gz.sigstore.json"
+    f.write_bytes(b"x")
+    bundle.write_text("{}", encoding="utf-8")
+    code = cli.main(["verify", "--file", str(f), "--sha256", integrity.sha256_file(f), "--cosign-bundle", str(bundle),
+                     "--cosign-identity", "x"])
+    assert code == cli.EXIT_ERROR
+    assert "cosign did not finish within 120 seconds" in capsys.readouterr().err

@@ -127,18 +127,25 @@ def known_bad_entry(tool: str, version: str) -> dict | None:
     return None
 
 
+COSIGN_TIMEOUT = 120  # seconds
+
+
 def cosign_verify_blob(file_path: str | Path, bundle: str | Path, identity_regexp: str,
                        oidc_issuer: str = "https://token.actions.githubusercontent.com") -> None:
     """Verify a file against a Sigstore bundle by running cosign verify-blob with the certificate identity regexp and
-    OIDC issuer (default GitHub Actions), 120 second timeout. Returns None on success; raises IntegrityError if
-    cosign is not on PATH or verification fails."""
+    OIDC issuer (default GitHub Actions), COSIGN_TIMEOUT seconds at most. Returns None on success; raises
+    IntegrityError if cosign is not on PATH, does not finish in time, or verification fails."""
     cosign = shutil.which("cosign")
     if not cosign:
         raise IntegrityError("cosign was requested (--cosign-bundle) but is not on PATH")
     cmd = [cosign, "verify-blob", "--bundle", str(bundle),
            "--certificate-identity-regexp", identity_regexp,
            "--certificate-oidc-issuer", oidc_issuer, str(file_path)]
-    proc = subprocess.run(cmd, capture_output=True, timeout=120)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=COSIGN_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise IntegrityError(f"cosign did not finish within {COSIGN_TIMEOUT} seconds, so the signature was not "
+                             "verified") from None
     if proc.returncode != 0:
         msg = proc.stderr.decode("utf-8", errors="replace").strip().splitlines()
         raise IntegrityError("cosign verification failed: " + (msg[-1] if msg else "no output"))

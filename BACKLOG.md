@@ -3,12 +3,6 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Next release (agreed 31 Oct)
-- A cosign timeout ends `oss-intake verify --cosign-bundle` (and a scan with a cosign bundle) with a Python
-  traceback. `integrity.cosign_verify_blob` runs cosign with a 120-second timeout but does not catch
-  `subprocess.TimeoutExpired`, and `cli.main` does not either. Fix: raise IntegrityError ("cosign did not finish
-  in 120 s"), exit 1. Found 3 Nov while adding docstrings. Start with a test that fails on the current code.
-
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
 1. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
