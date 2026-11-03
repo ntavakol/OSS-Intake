@@ -20,15 +20,10 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 2. Type checking: mypy (not strict) in CI, blocking. On 3 Nov it reports 66 errors in 24 files, mostly
    optional values used without a check and counters in dicts typed as `object`; fix each or justify it inline.
    Add the command to CONTRIBUTING.md and CLAUDE.md.
-3. `docs/architecture.md` for people: pipeline stages, module responsibilities, the `Finding` model and merge
-   keys, the network layer (cache, prefetch, retries), and how to add a scanner, an enricher or a collector, with
-   a pipeline diagram. Write docstrings for the cross-module interfaces it describes at the same time (every
-   module already has one; about a third of public functions do). No lint rule forcing docstrings on every
-   public function.
-4. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
+3. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
    Linked from SECURITY.md.
-5. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
+4. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 

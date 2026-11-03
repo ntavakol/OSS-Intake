@@ -1,6 +1,7 @@
 # Contributing
 
-Thanks for helping. Issues and pull requests are welcome.
+Thanks for helping. Issues and pull requests are welcome. Start with [docs/architecture.md](docs/architecture.md):
+the pipeline, the modules, the data model and how to add a scanner, an enricher or a collector.
 
 ## Development setup
 

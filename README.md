@@ -587,7 +587,8 @@ The available metrics are `archived`, `critical_fix_at_release`, `critical_fix_u
 - Runtimes detected from binaries (`binary` in the coverage table) have no package registry to date fixes
   from, so they always show as "fix date unknown".
 
-Planned work is in [BACKLOG.md](https://github.com/ntavakol/OSS-Intake/blob/main/BACKLOG.md).
+Planned work is in [BACKLOG.md](https://github.com/ntavakol/OSS-Intake/blob/main/BACKLOG.md). How the code is put
+together, for anyone who wants to change it: [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
 
 ## Licence
 
