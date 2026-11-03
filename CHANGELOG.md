@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- A known-bad scanner release ran once, for `--version`, before it was refused, unless its hash was pinned.
+  oss-intake now reads the version from the binary's Go build information first (Trivy and Grype are Go
+  programs), so a known-bad release is refused without being run. `oss-intake doctor` does the same.
+- A likelihood config file that is not UTF-8, or whose JSON is not an object, gave a Python traceback instead of
+  a clear error.
+
 ## [0.12.0] - 2026-10-31
 
 `--package` checks single package versions with no file and no scanner, the README opens for managers as

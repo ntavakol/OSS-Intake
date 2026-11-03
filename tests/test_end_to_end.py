@@ -759,6 +759,47 @@ def test_right_scanner_hash_lets_it_run(tmp_path, monkeypatch):
     assert runs and "--version" in runs[0]  # it ran; the stand-in then fails the scan itself, which is fine here
 
 
+# Go build info as Trivy releases carry it (trivy 0.76.1 has "mod\tgithub.com/aquasecurity/trivy\tv0.76.1+dirty").
+_TRIVY_0694 = (b"\x7fELF stand-in" + b"\0" * 64 + b"\xff Go buildinf:\x08\x02" + b"\0" * 16 +
+               b"path\tgithub.com/aquasecurity/trivy/cmd/trivy\nmod\tgithub.com/aquasecurity/trivy\tv0.69.4+dirty\t\n"
+               b"dep\tcel.dev/expr\tv0.25.2\th1:x\n")
+
+
+def test_known_bad_scanner_is_refused_before_it_runs(tmp_path, capsys, monkeypatch):
+    """A known-bad release is recognised from the version in its Go build info, so it is refused without running,
+    even with no pinned hash (it used to run once, for --version, before being refused)."""
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
+    fake.write_bytes(_TRIVY_0694)
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--scanners", "trivy", "--trivy-path", str(fake)])
+    assert code == cli.EXIT_ERROR
+    assert runs == []
+    assert "trivy 0.69.4 is on the known-bad list" in capsys.readouterr().err
+
+
+def test_doctor_does_not_run_a_known_bad_scanner(tmp_path, capsys, monkeypatch):
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
+    fake.write_bytes(_TRIVY_0694)
+    monkeypatch.setattr(cli.grype_mod, "version_info", lambda p: {"version": "0.121.1"})
+    code = cli.main(["doctor", "--trivy-path", str(fake), "--grype-path", str(fake)])
+    assert code == cli.EXIT_ERROR and runs == []
+    row = json.loads(capsys.readouterr().out)["scanners"][0]
+    assert row["version"] == "0.69.4" and row["known_bad"] is True
+
+
+def test_embedded_version_reads_go_build_info(tmp_path):
+    from oss_intake import integrity
+
+    p = tmp_path / "b"
+    p.write_bytes(_TRIVY_0694)
+    assert integrity.embedded_version("trivy", str(p)) == "0.69.4"
+    p.write_bytes(b"no build info here")
+    assert integrity.embedded_version("trivy", str(p)) is None
+    big = b"\0" * (3 << 20) + b"mod\tgithub.com/anchore/grype\tv0.121.1\t\n"  # across a read-chunk boundary
+    p.write_bytes(big)
+    assert integrity.embedded_version("grype", str(p)) == "0.121.1"
+
+
 @pytest.mark.parametrize("value", ["2026-02-30", "2026-13-01", "2026-10-22T25:00:00Z"])
 def test_impossible_date_is_a_usage_error(tmp_path, fixtures, capsys, value):
     # B9: used to crash with "ValueError: day is out of range".

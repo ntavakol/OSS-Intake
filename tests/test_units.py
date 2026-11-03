@@ -2199,3 +2199,15 @@ def test_ci_workflow_is_pinned_and_gates_quality():
     assert "coverage run -m pytest" in text
     floor = re.search(r"^fail_under = (\d+)", (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     assert floor and int(floor.group(1)) >= 90
+
+
+@pytest.mark.parametrize("content", [b"\xff\xfe{\x00}", b"[1, 2]", b'"rules"'])
+def test_likelihood_config_errors_are_clear(tmp_path, content):
+    """Review of 3 Nov: a non-UTF-8 file or JSON that is not an object raised a raw exception (exit 1 with a
+    traceback) instead of ConfigError."""
+    from oss_intake import likelihood
+
+    p = tmp_path / "lk.json"
+    p.write_bytes(content)
+    with pytest.raises(likelihood.ConfigError):
+        likelihood.load_config(str(p))

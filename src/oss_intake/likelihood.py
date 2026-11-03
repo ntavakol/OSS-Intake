@@ -68,14 +68,16 @@ class ConfigError(Exception):
 
 def load_config(path: str | None) -> dict:
     """DEFAULT_CONFIG when path is empty, else the JSON config at path after validate(). Raises ConfigError for a
-    missing file, invalid JSON or a config that fails validation (a non-UTF-8 file or a JSON value that is not an
-    object is not caught yet)."""
+    file that cannot be read or is not UTF-8, invalid JSON, JSON that is not an object, or a config that fails
+    validation."""
     if not path:
         return DEFAULT_CONFIG
     try:
         cfg = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ConfigError(f"cannot read likelihood config: {exc}") from None
+    if not isinstance(cfg, dict):
+        raise ConfigError("likelihood config must be a JSON object with a 'rules' list")
     validate(cfg)
     return cfg
 

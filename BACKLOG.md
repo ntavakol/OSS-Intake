@@ -4,6 +4,10 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next release (agreed 31 Oct)
+- A cosign timeout ends `oss-intake verify --cosign-bundle` (and a scan with a cosign bundle) with a Python
+  traceback. `integrity.cosign_verify_blob` runs cosign with a 120-second timeout but does not catch
+  `subprocess.TimeoutExpired`, and `cli.main` does not either. Fix: raise IntegrityError ("cosign did not finish
+  in 120 s"), exit 1. Found 3 Nov while adding docstrings. Start with a test that fails on the current code.
 - OSV advisory details that fail to load must not read as complete. OSV is asked in two steps: which advisories
   affect a version (IDs only), then each advisory's details (severity, fixed versions, CVE aliases). When the
   second step fails for an advisory, the finding is kept with its ID alone: severity UNKNOWN, "no fixed version
@@ -84,3 +88,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
   the riskiest feature a supply-chain tool can have.
 - Fetch the known-bad list from a signed location instead of shipping it with each release.
 
+## Performance
+- GET requests with query parameters skip the response cache and prefetched results
+  (`http.RequestsHttp.get_json` builds the URL and goes straight to the network): GitHub releases, Launchpad and
+  Alpine aports lookups. EPSS is meant to be fetched fresh and stays that way. Speed only, not correctness; no rush
+  (agreed 3 Nov).

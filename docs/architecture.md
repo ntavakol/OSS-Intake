@@ -155,8 +155,10 @@ them current).
 - **Never report a check that did not run as a clean result.** `checks.py` tracks every source's state; a gate
   whose check did not run fails, and one whose check is turned off is refused.
 - **Verify before executing.** A scanner binary is checked against its pinned SHA-256 and cosign signature
-  before it runs at all (when those are given). Known-bad versions are refused after reading the binary's
-  `--version` and before any scan, so pin the hash to keep an unverified binary from running even once.
+  before it runs at all (when those are given). Known-bad versions are refused before it runs too: the version
+  is read from the Go build information in the file (`integrity.embedded_version`). The version the binary
+  reports with `--version` is checked again afterwards, for a binary that carries no build information. Pin the
+  hash so that a binary that is not what it claims to be never runs.
 - **One way to the network.** Everything goes through `Http`, which keeps tokens to their own host and makes
   every test offline.
 - **Cross-platform.** `pathlib` everywhere, subprocess arguments as lists, explicit file encodings. CI runs on

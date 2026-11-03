@@ -288,6 +288,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         try:
             path = find_executable(tool, getattr(args, f"{tool}_path"))
             digest = integrity.sha256_file(path)  # recorded before the binary is run
+            embedded = integrity.embedded_version(tool, path)
+            if embedded and integrity.known_bad_entry(tool, embedded):
+                bad = integrity.known_bad_entry(tool, embedded)
+                rows.append({"tool": tool, "path": path, "version": embedded, "sha256": digest, "known_bad": True,
+                             "known_bad_reference": bad.get("reference"),
+                             "note": "not run: the version was read from the binary's Go build information"})
+                continue
             info = mod.version_info(path)
             bad = integrity.known_bad_entry(tool, info["version"])
             rows.append({"tool": tool, "path": path, "version": info["version"], "sha256": digest,
@@ -459,6 +466,7 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
         tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
         getattr(args, f"{tool}_cosign_identity"), getattr(args, f"{tool}_archive"),
         getattr(args, f"{tool}_checksums"))
+    integrity.refuse_known_bad_before_run(tool, path)  # from the file's Go build info, before it runs
     info = mod.version_info(path)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),

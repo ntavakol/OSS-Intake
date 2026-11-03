@@ -244,6 +244,51 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
     return done
 
 
+# The Go module each scanner is built from. Go binaries record the main module and its version in their build
+# information ("mod\t<path>\t<version>"), so the version can be read from the file without running it.
+GO_MODULES = {"trivy": "github.com/aquasecurity/trivy", "grype": "github.com/anchore/grype"}
+_CHUNK = 1 << 20
+
+
+def embedded_version(tool: str, path: str) -> str | None:
+    """The version in the binary's Go build information (v0.76.1+dirty -> 0.76.1), read without executing it;
+    None when the tool is not a known Go module or the file carries no such record."""
+    module = GO_MODULES.get(tool)
+    if not module:
+        return None
+    marker = f"mod\t{module}\t".encode()
+    tail = b""
+    try:
+        with open(path, "rb") as fh:
+            while chunk := fh.read(_CHUNK):
+                buf = tail + chunk
+                i = buf.find(marker)
+                if i >= 0:
+                    rest = buf[i + len(marker):i + len(marker) + 64]
+                    if b"\t" not in rest and len(rest) < 64:
+                        rest += fh.read(64)
+                    m = re.match(rb"v?(\d+\.\d+\.\d+[0-9A-Za-z.-]*)(?:\+[0-9A-Za-z.]+)?\t", rest)
+                    return m.group(1).decode() if m else None
+                tail = buf[-(len(marker) + 64):]
+    except OSError:
+        return None
+    return None
+
+
+def refuse_known_bad_before_run(tool: str, path: str) -> str | None:
+    """Raise IntegrityError when the version recorded in the binary is on the known-bad list, so a known-bad
+    release never runs, even without a pinned hash. Returns the embedded version, or None if there is none."""
+    version = embedded_version(tool, path)
+    bad = known_bad_entry(tool, version) if version else None
+    if bad:
+        raise IntegrityError(
+            f"{tool} {version} is on the known-bad list ({bad.get('reference')}): {bad.get('note')} "
+            "It was not run (the version was read from the file). Do not use it. Install a known-good version and "
+            "verify its checksum."
+        )
+    return version
+
+
 def check_binary(tool: str, path: str, version: str, expected_version: str | None,
                  expected_sha256: str | None, cosign_bundle: str | None,
                  cosign_identity: str | None, verified: bool = False) -> BinaryCheck:
