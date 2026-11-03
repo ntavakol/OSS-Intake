@@ -76,11 +76,18 @@ function realDate(text) {
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
 }
 
-/** Problems with one field's value: argparse's own checks (int, choices) and rules.json "fields". */
+// Characters a value must not carry: control characters (a newline would end the command; the text box hides
+// it) and the bidirectional controls that can make text read differently from what runs.
+const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f]/;
+
+/** Problems with one field's value: hidden characters, argparse's own checks (int, choices) and rules.json
+ * "fields". */
 export function fieldErrors(option, value, rules, command) {
   if (!isSet(option, value)) return [];
   const out = [];
-  const values = option.kind === "repeatable" ? listOf(value) : [String(value).trim()];
+  const raw = option.kind === "repeatable" ? listOf(value).map(String) : [String(value)];
+  if (raw.some((v) => HIDDEN.test(v))) out.push(`${option.flag}: contains a control or text-direction character`);
+  const values = raw.map((v) => v.trim());
   for (const v of values) {
     if (option.kind === "int" && !/^-?\d+$/.test(v)) out.push(`${option.flag}: a whole number`);
     if (option.kind === "choice") {
@@ -96,8 +103,12 @@ export function fieldErrors(option, value, rules, command) {
       if (f.date) ok = realDate(v);
       if (f.list_of) {
         const xs = items(v);
-        ok = xs.length > 0 && xs.every((x) => f.list_of.includes(x)) &&
-          (!f.auto_alone || !xs.includes("auto") || xs.length === 1);
+        // "auto" is a word of its own to the CLI, compared exactly: not Auto, not "auto,".
+        ok = f.auto_alone && xs.includes("auto") ? v === "auto" : xs.length > 0 && xs.every((x) => f.list_of.includes(x));
+      }
+      if (ok && f.not_keys) {
+        const key = v.split("=")[0].trim().toLowerCase();
+        ok = !f.not_keys.includes(key);
       }
       if (!ok) out.push(`${option.flag}: ${f.message}`);
     }
@@ -153,13 +164,13 @@ export function buildArgs(data, state) {
   return args;
 }
 
-const BASH_SAFE = /^[A-Za-z0-9_@%+=:,./-]+$/;
+const BASH_SAFE = /^[A-Za-z0-9_@%+=:,./-]+$/;  // a leading = is quoted too: zsh would expand =name to a path
 const PS_SAFE = /^[A-Za-z0-9_%+=:./\\-]+$/;
 
 /** One argument for bash or zsh: as is when it has no special characters, otherwise in single quotes. A leading
  * ~/ is left outside the quotes so the shell still expands it to the home folder. */
 export function quoteBash(arg) {
-  if (arg !== "" && BASH_SAFE.test(arg)) return arg;
+  if (arg !== "" && BASH_SAFE.test(arg) && !arg.startsWith("=")) return arg;
   if (arg.startsWith("~/") && BASH_SAFE.test(arg.slice(2))) return arg;
   if (arg.startsWith("~/")) return `~/${quoteBash(arg.slice(2))}`;
   return `'${arg.replaceAll("'", "'\\''")}'`;
@@ -168,11 +179,16 @@ export function quoteBash(arg) {
 /** One argument for PowerShell: as is when safe, otherwise in single quotes with ' doubled. Commas, @, $,
  * backticks, braces, parentheses, semicolons, quotes and spaces all need quoting there. PowerShell does not
  * expand ~ for programs, so a leading ~/ becomes "$HOME/..." (double quotes, with ` " and $ escaped). */
+// PowerShell treats the typographic quotes as quotes too: ‘ ’ ‚ ‛ end a single-quoted string and “ ” „ a
+// double-quoted one, so they are escaped like ' and " (smart punctuation types them; a link could too).
+const PS_SINGLE = /['\u2018\u2019\u201a\u201b]/g;
+const PS_DOUBLE = /[`"$\u201c\u201d\u201e]/g;
+
 export function quotePowerShell(arg) {
   if (/^--[a-z0-9-]+$/.test(arg)) return arg;
-  if (/^~[/\\]/.test(arg)) return `"$HOME/${arg.slice(2).replace(/[`"$]/g, (m) => `\`${m}`)}"`;
+  if (/^~[/\\]/.test(arg)) return `"$HOME/${arg.slice(2).replace(PS_DOUBLE, (m) => `\`${m}`)}"`;
   if (arg !== "" && PS_SAFE.test(arg) && !arg.startsWith("-")) return arg;
-  return `'${arg.replaceAll("'", "''")}'`;
+  return `'${arg.replace(PS_SINGLE, (m) => m + m)}'`;
 }
 
 /** The full command line for "bash" (bash and zsh) or "powershell". */
@@ -181,9 +197,10 @@ export function buildCommand(data, state, shell = "bash") {
   return ["oss-intake", ...buildArgs(data, state).map(quote)].join(" ");
 }
 
-/** True when a value would not survive Windows PowerShell 5.1 (it mangles " inside arguments to programs). */
+/** True when a value may not survive Windows PowerShell 5.1, which mangles a " inside an argument to a program,
+ * and a value with a space that ends in a backslash. PowerShell 7.3 and later pass both correctly. */
 export function needsPowerShell7(data, state) {
-  return buildArgs(data, state).some((a) => a.includes('"'));
+  return buildArgs(data, state).some((a) => a.includes('"') || (/\s/.test(a) && a.endsWith("\\")));
 }
 
 // ---------------------------------------------------------------- URL fragment

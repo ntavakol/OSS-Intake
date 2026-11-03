@@ -1,46 +1,1246 @@
 {
- "about": "Checks the command builder makes before it lets a command be copied: the cross-option and value checks oss-intake makes before any work (cmd_scan's validation, and the gate checks after the scanners are chosen). argparse checks (types, choices, required options, the verify either-or pair) come from options.json. Checks that need the file system are left out. Every rule's example is run through the real CLI by tests/test_builder.py, which expects exit 2 and the rule's message; when the CLI changes, change this file to match.",
+ "about": "Checks the command builder makes before it lets a command be copied: the cross-option and value checks oss-intake makes before any work (cmd_scan's and cmd_verify's validation, and the gate checks after the scanners are chosen). argparse checks (types, choices, required options, the verify either-or pair) come from options.json. Checks that need the file system are left out. tests/test_builder.py runs every rule's args through the real CLI, expecting exit 2 and the rule's message, and its ok_args (the nearest command the CLI accepts), which must not get that message; field checks are tested the same way. When the CLI's checks change, change this file to match.",
  "fields": [
-  {"command": "scan", "dest": "image", "pattern": "^(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]{1,5})?/)?[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?(?:@sha256:[a-f0-9]{64})?$", "message": "not a valid image reference (e.g. owner/name:1.2.3)", "valid": ["owner/app:1.2.3", "nginx:1.27", "ghcr.io/owner/app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"], "invalid": ["Owner/App:1", "owner/app:-x"]},
-  {"command": "scan", "dest": "image", "pattern": "(?::[^/]*$|@)", "message": "must include an explicit tag or digest; 'latest' by omission is not assessed", "valid": ["owner/app:1.2.3", "registry:5000/app:1"], "invalid": ["owner/app", "registry:5000/app"]},
-  {"command": "scan", "dest": "repo", "pattern": "^(?:(?:https?://)?(?:www\\.)?github\\.com/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}?(?:\\.git)?/?$", "message": "must be a GitHub repository as owner/name", "valid": ["owner/name", "https://github.com/owner/name", "owner/name.git"], "invalid": ["owner", "owner/name/extra", "-owner/name"]},
-  {"command": "scan", "dest": "release_date", "date": true, "message": "must be a real date as YYYY-MM-DD", "valid": ["2026-01-31"], "invalid": ["2026-02-30", "31/01/2026", "2026-1-5"]},
-  {"command": "scan", "dest": "as_of", "date": true, "message": "must be a real date as YYYY-MM-DD", "valid": ["2026-11-04"], "invalid": ["2026-13-01", "today"]},
-  {"command": "scan", "dest": "fail_on", "list_of": ["act", "critical", "high", "kev", "malicious", "mismatch", "recent", "unknown-age"], "message": "unknown value", "valid": ["malicious,kev,high", "act"], "invalid": ["malware", "kev,,x"]},
-  {"command": "scan", "dest": "formats", "list_of": ["csv", "html", "json", "md"], "message": "unknown value", "valid": ["csv,html"], "invalid": ["pdf", ","]},
-  {"command": "scan", "dest": "scanners", "list_of": ["auto", "grype", "osv", "trivy"], "auto_alone": true, "message": "unknown value", "valid": ["trivy,osv", "auto"], "invalid": ["snyk", "auto,trivy"]},
-  {"command": "scan", "dest": "trivy_sha256", "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$", "message": "expected a 64 character hexadecimal SHA-256 value", "valid": ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"], "invalid": ["abc"]},
-  {"command": "scan", "dest": "grype_sha256", "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$", "message": "expected a 64 character hexadecimal SHA-256 value", "valid": ["cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"], "invalid": ["xyz"]},
-  {"command": "scan", "dest": "govulncheck_sha256", "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$", "message": "expected a 64 character hexadecimal SHA-256 value", "valid": ["dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"], "invalid": ["123"]},
-  {"command": "scan", "dest": "label", "pattern": "^\\s*[A-Za-z][A-Za-z0-9_ -]{0,39}\\s*=\\s*\\S.*$", "message": "use key=value, with a key of letters, digits, spaces, - or _", "valid": ["owner=Web team", "system=payments"], "invalid": ["owner", "=x", "1x=y"]}
+  {
+   "command": "scan",
+   "dest": "image",
+   "pattern": "^(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]{1,5})?/)?[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?(?:@sha256:[a-f0-9]{64})?$",
+   "message": "not a valid image reference (e.g. owner/name:1.2.3)",
+   "valid": [
+    "owner/app:1.2.3",
+    "nginx:1.27",
+    "ghcr.io/owner/app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   ],
+   "invalid": [
+    "Owner/App:1",
+    "owner/app:-x"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "image",
+   "pattern": "(?::[^/]*$|@)",
+   "message": "must include an explicit tag or digest; 'latest' by omission is not assessed",
+   "valid": [
+    "owner/app:1.2.3",
+    "registry:5000/app:1"
+   ],
+   "invalid": [
+    "owner/app",
+    "registry:5000/app"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "repo",
+   "pattern": "^(?:(?:https?://)?(?:www\\.)?github\\.com/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.git/?$)[A-Za-z0-9._-]{1,100}?(?:\\.git)?/?$",
+   "message": "must be a GitHub repository as owner/name",
+   "valid": [
+    "owner/name",
+    "https://github.com/owner/name",
+    "owner/name.git"
+   ],
+   "invalid": [
+    "owner",
+    "owner/name/extra",
+    "-owner/name",
+    "owner/.git"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "release_date",
+   "date": true,
+   "message": "must be a real date as YYYY-MM-DD",
+   "valid": [
+    "2026-01-31"
+   ],
+   "invalid": [
+    "2026-02-30",
+    "31/01/2026",
+    "2026-1-5"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "as_of",
+   "date": true,
+   "message": "must be a real date as YYYY-MM-DD",
+   "valid": [
+    "2026-11-04"
+   ],
+   "invalid": [
+    "2026-13-01",
+    "today"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "fail_on",
+   "list_of": [
+    "act",
+    "critical",
+    "high",
+    "kev",
+    "malicious",
+    "mismatch",
+    "recent",
+    "unknown-age"
+   ],
+   "message": "unknown value",
+   "valid": [
+    "malicious,kev,high",
+    "act"
+   ],
+   "invalid": [
+    "malware",
+    "kev,,x"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "formats",
+   "list_of": [
+    "csv",
+    "html",
+    "json",
+    "md"
+   ],
+   "message": "unknown value",
+   "valid": [
+    "csv,html"
+   ],
+   "invalid": [
+    "pdf",
+    ","
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "scanners",
+   "list_of": [
+    "auto",
+    "grype",
+    "osv",
+    "trivy"
+   ],
+   "auto_alone": true,
+   "message": "unknown value",
+   "valid": [
+    "trivy,osv",
+    "auto"
+   ],
+   "invalid": [
+    "snyk",
+    "auto,trivy",
+    "AUTO",
+    "auto,"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "trivy_sha256",
+   "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$",
+   "message": "expected a 64 character hexadecimal SHA-256 value",
+   "valid": [
+    "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   ],
+   "invalid": [
+    "abc"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "grype_sha256",
+   "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$",
+   "message": "expected a 64 character hexadecimal SHA-256 value",
+   "valid": [
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+   ],
+   "invalid": [
+    "xyz"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "govulncheck_sha256",
+   "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$",
+   "message": "expected a 64 character hexadecimal SHA-256 value",
+   "valid": [
+    "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+   ],
+   "invalid": [
+    "123"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "label",
+   "pattern": "^\\s*[A-Za-z][A-Za-z0-9_ -]{0,39}\\s*=\\s*\\S.*$",
+   "message": "use key=value, with a key of letters, digits, spaces, - or _",
+   "valid": [
+    "owner=Web team",
+    "system=payments"
+   ],
+   "invalid": [
+    "owner",
+    "=x",
+    "1x=y"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "label",
+   "not_keys": [
+    "compare_version",
+    "critical",
+    "ecosystem",
+    "findings",
+    "group",
+    "high",
+    "kev",
+    "labels",
+    "latest",
+    "latest_left",
+    "latest_major",
+    "malicious",
+    "name",
+    "new_release",
+    "no_fix",
+    "package",
+    "published",
+    "purl",
+    "systems",
+    "upgrade_left",
+    "upgrade_major",
+    "upgrade_to",
+    "upgrade_version",
+    "version"
+   ],
+   "message": "is a column oss-intake fills in (packages.csv); use another name",
+   "valid": [
+    "owner=Web",
+    "team=a"
+   ],
+   "invalid": [
+    "name=x",
+    "Version=1",
+    "purl=p"
+   ]
+  },
+  {
+   "command": "scan",
+   "dest": "package",
+   "pattern": "^\\s*(?:[Pp][Kk][Gg]:[A-Za-z]+/\\S+@\\S+|[A-Za-z][A-Za-z0-9.-]*:\\S+@\\S+)\\s*$",
+   "message": "invalid --package value",
+   "valid": [
+    "npm:chalk@5.6.1",
+    "pkg:pypi/django@2.2.0",
+    "npm:@ctrl/tinycolor@4.1.1",
+    "maven:org.a:b@1.0"
+   ],
+   "invalid": [
+    "chalk",
+    "npm:chalk",
+    "npm:chalk@5.6.1 x"
+   ]
+  },
+  {
+   "command": "verify",
+   "dest": "sha256",
+   "pattern": "^\\s*(?:[Ss][Hh][Aa]256:)?[0-9A-Fa-f]{64}\\s*$",
+   "message": "expected a 64 character hexadecimal SHA-256 value",
+   "valid": [
+    "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+   ],
+   "invalid": [
+    "abc"
+   ]
+  }
  ],
  "rules": [
-  {"id": "input-required", "command": "scan", "when": {"none": ["image", "path", "package", "repo"]}, "message": "give --image, --path, --package or --repo", "args": ["--out", "{out}"]},
-  {"id": "image-and-path", "command": "scan", "when": {"all": [{"set": "image"}, {"set": "path"}]}, "message": "give --image or --path, not both", "args": ["--image", "owner/app:1.0", "--path", "x.csv", "--out", "{out}"]},
-  {"id": "package-alone", "command": "scan", "when": {"all": [{"set": "package"}, {"any": [{"set": "image"}, {"set": "path"}]}]}, "message": "give --package on its own, not with --image or --path", "args": ["--package", "npm:chalk@5.6.1", "--image", "owner/app:1.0", "--out", "{out}"]},
-  {"id": "package-offline", "command": "scan", "when": {"all": [{"set": "package"}, {"set": "offline"}]}, "message": "is checked against OSV, which needs the network; drop --offline", "args": ["--package", "npm:chalk@5.6.1", "--offline", "--out", "{out}"]},
-  {"id": "release-age-max", "command": "scan", "when": {"lt": ["release_age_max", 1]}, "message": "--release-age-max must be 1 or more", "args": ["--image", "owner/app:1.0", "--release-age-max", "0", "--out", "{out}"]},
-  {"id": "cache-dir-and-no-cache", "command": "scan", "when": {"all": [{"set": "cache_dir"}, {"set": "no_cache"}]}, "message": "--cache-dir and --no-cache cannot be used together", "args": ["--image", "owner/app:1.0", "--cache-dir", "c", "--no-cache", "--out", "{out}"]},
-  {"id": "release-age-days", "command": "scan", "when": {"lt": ["release_age_days", 0]}, "message": "--release-age-days must be zero or more", "args": ["--image", "owner/app:1.0", "--release-age-days=-1", "--out", "{out}"]},
-  {"id": "grace-unshipped", "command": "scan", "when": {"any": [{"lt": ["grace_days", 0]}, {"lt": ["unshipped_days", 0]}]}, "message": "--grace-days and --unshipped-days must be zero or more", "args": ["--image", "owner/app:1.0", "--grace-days=-1", "--out", "{out}"]},
-  {"id": "top", "command": "scan", "when": {"lt": ["top", 1]}, "message": "--top must be 1 or more", "args": ["--image", "owner/app:1.0", "--top", "0", "--out", "{out}"]},
-  {"id": "timeout", "command": "scan", "when": {"lt": ["timeout", 1]}, "message": "--timeout must be at least 1 second", "args": ["--image", "owner/app:1.0", "--timeout", "0", "--out", "{out}"]},
-  {"id": "gate-release-age", "command": "scan", "when": {"all": [{"any": [{"has": ["fail_on", "recent"]}, {"has": ["fail_on", "unknown-age"]}]}, {"any": [{"set": "offline"}, {"eq": ["release_age_days", 0]}]}]}, "message": "needs the release date check, which", "args": ["--image", "owner/app:1.0", "--fail-on", "recent", "--release-age-days", "0", "--out", "{out}"]},
-  {"id": "gate-mismatch", "command": "scan", "when": {"all": [{"has": ["fail_on", "mismatch"]}, {"any": [{"set": "offline"}, {"set": "no_registry_check"}]}]}, "message": "--fail-on mismatch needs the registry checksum check, which", "args": ["--image", "owner/app:1.0", "--fail-on", "mismatch", "--no-registry-check", "--out", "{out}"]},
-  {"id": "trivy-checksums-archive", "command": "scan", "when": {"all": [{"set": "trivy_checksums"}, {"not": {"set": "trivy_archive"}}]}, "message": "--trivy-checksums needs --trivy-archive", "args": ["--image", "owner/app:1.0", "--trivy-checksums", "sums.txt", "--out", "{out}"]},
-  {"id": "trivy-bundle-archive", "command": "scan", "when": {"all": [{"set": "trivy_cosign_bundle"}, {"not": {"set": "trivy_archive"}}]}, "message": "--trivy-cosign-bundle needs --trivy-archive", "args": ["--image", "owner/app:1.0", "--trivy-cosign-bundle", "b.json", "--out", "{out}"]},
-  {"id": "grype-checksums-archive", "command": "scan", "when": {"all": [{"set": "grype_checksums"}, {"not": {"set": "grype_archive"}}]}, "message": "--grype-checksums needs --grype-archive", "args": ["--image", "owner/app:1.0", "--grype-checksums", "sums.txt", "--out", "{out}"]},
-  {"id": "grype-bundle-archive", "command": "scan", "when": {"all": [{"set": "grype_cosign_bundle"}, {"not": {"set": "grype_archive"}}]}, "message": "--grype-cosign-bundle needs --grype-archive", "args": ["--image", "owner/app:1.0", "--grype-cosign-bundle", "b.json", "--out", "{out}"]},
-  {"id": "label-needs-packages", "command": "scan", "when": {"all": [{"set": "label"}, {"none": ["path", "package"]}]}, "message": "--label applies to a package inventory or SBOM, or to --package", "args": ["--image", "owner/app:1.0", "--label", "owner=Web", "--offline", "--scanners", "trivy", "--out", "{out}"]},
-  {"id": "from-json-needs-input", "command": "scan", "when": {"all": [{"any": [{"set": "from_trivy_json"}, {"set": "from_grype_json"}]}, {"none": ["image", "path"]}]}, "message": "--from-*-json needs --image or --path to label the report", "args": ["--repo", "owner/name", "--from-trivy-json", "{file}", "--out", "{out}"]},
-  {"id": "osv-offline", "command": "scan", "when": {"all": [{"has": ["scanners", "osv"]}, {"set": "offline"}, {"any": [{"set": "image"}, {"set": "path"}]}]}, "message": "--scanners includes osv but --offline was given", "args": ["--image", "owner/app:1.0", "--scanners", "trivy,osv", "--offline", "--out", "{out}"]},
-  {"id": "osv-needs-trivy", "command": "scan", "when": {"all": [{"has": ["scanners", "osv"]}, {"not": {"has": ["scanners", "trivy"]}}, {"any": [{"set": "image"}, {"set": "path"}]}]}, "message": "osv needs the package list from trivy", "args": ["--image", "owner/app:1.0", "--scanners", "osv", "--out", "{out}"]},
-  {"id": "gate-needs-packages", "command": "scan", "when": {"all": [{"set": "fail_on"}, {"none": ["image", "path", "package"]}]}, "message": "--fail-on needs packages to check", "args": ["--repo", "owner/name", "--fail-on", "malicious", "--out", "{out}"]},
-  {"id": "gate-kev-off", "command": "scan", "when": {"all": [{"any": [{"has": ["fail_on", "kev"]}, {"has": ["fail_on", "act"]}]}, {"any": [{"set": "offline"}, {"set": "no_kev"}]}, {"any": [{"set": "image"}, {"set": "path"}, {"set": "package"}]}]}, "message": "needs the CISA KEV check, which", "args": ["--image", "owner/app:1.0", "--fail-on", "kev", "--no-kev", "--out", "{out}"]},
-  {"id": "gate-osv-off", "command": "scan", "when": {"all": [{"any": [{"has": ["fail_on", "malicious"]}, {"has": ["fail_on", "act"]}]}, {"set": "image"}, {"any": [{"set": "offline"}, {"all": [{"set": "scanners"}, {"not": {"has": ["scanners", "osv"]}}, {"not": {"has": ["scanners", "auto"]}}]}]}]}, "message": "needs OSV malicious package data", "args": ["--image", "owner/app:1.0", "--fail-on", "malicious", "--scanners", "trivy", "--out", "{out}"]}
+  {
+   "id": "input-required",
+   "command": "scan",
+   "when": {
+    "none": [
+     "image",
+     "path",
+     "package",
+     "repo"
+    ]
+   },
+   "message": "give --image, --path, --package or --repo",
+   "args": [
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--repo",
+    "owner/name",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "image-and-path",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "image"
+     },
+     {
+      "set": "path"
+     }
+    ]
+   },
+   "message": "give --image or --path, not both",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--path",
+    "x.csv",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--repo",
+    "owner/name",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "package-alone",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "package"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "give --package on its own, not with --image or --path",
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--image",
+    "owner/app:1.0",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--repo",
+    "owner/name",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "package-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "package"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "is checked against OSV, which needs the network; drop --offline",
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "release-age-max",
+   "command": "scan",
+   "when": {
+    "lt": [
+     "release_age_max",
+     1
+    ]
+   },
+   "message": "--release-age-max must be 1 or more",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--release-age-max",
+    "0",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--release-age-max",
+    "1",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "cache-dir-and-no-cache",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "cache_dir"
+     },
+     {
+      "set": "no_cache"
+     }
+    ]
+   },
+   "message": "--cache-dir and --no-cache cannot be used together",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--cache-dir",
+    "c",
+    "--no-cache",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--no-cache",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "release-age-days",
+   "command": "scan",
+   "when": {
+    "lt": [
+     "release_age_days",
+     0
+    ]
+   },
+   "message": "--release-age-days must be zero or more",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--release-age-days=-1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--release-age-days",
+    "0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grace-unshipped",
+   "command": "scan",
+   "when": {
+    "any": [
+     {
+      "lt": [
+       "grace_days",
+       0
+      ]
+     },
+     {
+      "lt": [
+       "unshipped_days",
+       0
+      ]
+     }
+    ]
+   },
+   "message": "--grace-days and --unshipped-days must be zero or more",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--grace-days=-1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--grace-days",
+    "0",
+    "--unshipped-days",
+    "0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "top",
+   "command": "scan",
+   "when": {
+    "lt": [
+     "top",
+     1
+    ]
+   },
+   "message": "--top must be 1 or more",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--top",
+    "0",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--top",
+    "1",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "timeout",
+   "command": "scan",
+   "when": {
+    "lt": [
+     "timeout",
+     1
+    ]
+   },
+   "message": "--timeout must be at least 1 second",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--timeout",
+    "0",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--timeout",
+    "1",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-release-age",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "any": [
+       {
+        "has": [
+         "fail_on",
+         "recent"
+        ]
+       },
+       {
+        "has": [
+         "fail_on",
+         "unknown-age"
+        ]
+       }
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "eq": [
+         "release_age_days",
+         0
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "message": "needs the release date check, which",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "recent",
+    "--release-age-days",
+    "0",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "recent",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-mismatch",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "mismatch"
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "set": "no_registry_check"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on mismatch needs the registry checksum check, which",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "mismatch",
+    "--no-registry-check",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "mismatch",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "trivy-checksums-archive",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trivy_checksums"
+     },
+     {
+      "not": {
+       "set": "trivy_archive"
+      }
+     }
+    ]
+   },
+   "message": "--trivy-checksums needs --trivy-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--trivy-checksums",
+    "sums.txt",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-archive",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "trivy-bundle-archive",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trivy_cosign_bundle"
+     },
+     {
+      "not": {
+       "set": "trivy_archive"
+      }
+     }
+    ]
+   },
+   "message": "--trivy-cosign-bundle needs --trivy-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--trivy-cosign-bundle",
+    "b.json",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--trivy-cosign-bundle",
+    "{file}",
+    "--trivy-archive",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-checksums-archive",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "grype_checksums"
+     },
+     {
+      "not": {
+       "set": "grype_archive"
+      }
+     }
+    ]
+   },
+   "message": "--grype-checksums needs --grype-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--grype-checksums",
+    "sums.txt",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--grype-checksums",
+    "{file}",
+    "--grype-archive",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-bundle-archive",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "grype_cosign_bundle"
+     },
+     {
+      "not": {
+       "set": "grype_archive"
+      }
+     }
+    ]
+   },
+   "message": "--grype-cosign-bundle needs --grype-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--grype-cosign-bundle",
+    "b.json",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--grype-cosign-bundle",
+    "{file}",
+    "--grype-archive",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "label-needs-packages",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "label"
+     },
+     {
+      "none": [
+       "path",
+       "package"
+      ]
+     }
+    ]
+   },
+   "message": "--label applies to a package inventory or SBOM, or to --package",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--label",
+    "owner=Web",
+    "--offline",
+    "--scanners",
+    "trivy",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--label",
+    "owner=Web",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "from-json-needs-input",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "any": [
+       {
+        "set": "from_trivy_json"
+       },
+       {
+        "set": "from_grype_json"
+       }
+      ]
+     },
+     {
+      "none": [
+       "image",
+       "path"
+      ]
+     }
+    ]
+   },
+   "message": "--from-*-json needs --image or --path to label the report",
+   "args": [
+    "--repo",
+    "owner/name",
+    "--from-trivy-json",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--from-trivy-json",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "osv-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "scanners",
+       "osv"
+      ]
+     },
+     {
+      "set": "offline"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--scanners includes osv but --offline was given",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy,osv",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--offline",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "osv-needs-trivy",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "scanners",
+       "osv"
+      ]
+     },
+     {
+      "not": {
+       "has": [
+        "scanners",
+        "trivy"
+       ]
+      }
+     },
+     {
+      "set": "image"
+     }
+    ]
+   },
+   "message": "osv needs the package list from trivy",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "osv",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy,osv",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-needs-packages",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "fail_on"
+     },
+     {
+      "none": [
+       "image",
+       "path",
+       "package"
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on needs packages to check",
+   "args": [
+    "--repo",
+    "owner/name",
+    "--fail-on",
+    "malicious",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--repo",
+    "owner/name",
+    "--fail-on",
+    "malicious",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-kev-off",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "any": [
+       {
+        "has": [
+         "fail_on",
+         "kev"
+        ]
+       },
+       {
+        "has": [
+         "fail_on",
+         "act"
+        ]
+       }
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "set": "no_kev"
+       }
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       },
+       {
+        "set": "package"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "needs the CISA KEV check, which",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "kev",
+    "--no-kev",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "kev",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-osv-off",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "any": [
+       {
+        "has": [
+         "fail_on",
+         "malicious"
+        ]
+       },
+       {
+        "has": [
+         "fail_on",
+         "act"
+        ]
+       }
+      ]
+     },
+     {
+      "set": "image"
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "all": [
+         {
+          "set": "scanners"
+         },
+         {
+          "not": {
+           "has": [
+            "scanners",
+            "osv"
+           ]
+          }
+         },
+         {
+          "not": {
+           "has": [
+            "scanners",
+            "auto"
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "message": "needs OSV malicious package data",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "malicious",
+    "--scanners",
+    "trivy",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "malicious",
+    "--scanners",
+    "trivy,osv",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "verify-bundle-identity",
+   "command": "verify",
+   "when": {
+    "all": [
+     {
+      "set": "cosign_bundle"
+     },
+     {
+      "not": {
+       "set": "cosign_identity"
+      }
+     }
+    ]
+   },
+   "message": "--cosign-identity is required with --cosign-bundle",
+   "args": [
+    "--file",
+    "{file}",
+    "--sha256",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--cosign-bundle",
+    "{file}"
+   ],
+   "ok_args": [
+    "--file",
+    "{file}",
+    "--sha256",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--cosign-bundle",
+    "{file}",
+    "--cosign-identity",
+    "x"
+   ]
+  },
+  {
+   "id": "verify-identity-bundle",
+   "command": "verify",
+   "when": {
+    "all": [
+     {
+      "set": "cosign_identity"
+     },
+     {
+      "not": {
+       "set": "cosign_bundle"
+      }
+     }
+    ]
+   },
+   "message": "--cosign-identity needs --cosign-bundle",
+   "args": [
+    "--file",
+    "{file}",
+    "--sha256",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--cosign-identity",
+    "x"
+   ],
+   "ok_args": [
+    "--file",
+    "{file}",
+    "--sha256",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   ]
+  }
  ],
  "notes": [
-  {"command": "scan", "when": {"any": [{"set": "likelihood_config"}, {"set": "fail_on_likelihood"}]}, "message": "--likelihood-config and --fail-on-likelihood switch on --likelihood; it does not need to be given as well."},
-  {"command": "scan", "when": {"all": [{"set": "path"}, {"any": [{"set": "offline"}, {"set": "scanners"}]}]}, "message": "With --path, some checks depend on the file: a package inventory or SBOM is checked against OSV and needs the network, while a lockfile or artifact uses the scanners. oss-intake reports any conflict before it starts work."}
+  {
+   "command": "scan",
+   "when": {
+    "any": [
+     {
+      "set": "likelihood_config"
+     },
+     {
+      "set": "fail_on_likelihood"
+     }
+    ]
+   },
+   "message": "--likelihood-config and --fail-on-likelihood switch on --likelihood; it does not need to be given as well."
+  },
+  {
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "path"
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "set": "scanners"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "With --path, some checks depend on the file: a package inventory or SBOM is checked against OSV and needs the network, while a lockfile or artifact uses the scanners. oss-intake reports any conflict before it starts work."
+  }
  ]
 }

@@ -25,6 +25,8 @@ jobs:
     name: publish site
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # A pre-release does not publish the site; the builder follows the release on PyPI.
+    if: ${{ !github.event.release.prerelease }}
     permissions:
       contents: read
       pages: write # deploy to GitHub Pages

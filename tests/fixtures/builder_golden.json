@@ -267,6 +267,70 @@
    "powershell": "oss-intake verify --file x.tgz --sha256 sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --cosign-bundle x.tgz.sigstore.json --cosign-identity '^https://github.com/aquasecurity/trivy/'"
   },
   {
+   "name": "typographic quotes, as smart punctuation types them",
+   "state": {
+    "command": "scan",
+    "values": {
+     "package": [
+      "npm:chalk@5.6.1"
+     ],
+     "out": "o",
+     "label": [
+      "owner=Ned’s team",
+      "note=“quoted”"
+     ]
+    }
+   },
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "o",
+    "--label",
+    "owner=Ned’s team",
+    "--label",
+    "note=“quoted”"
+   ],
+   "bash": "oss-intake --package npm:chalk@5.6.1 --out o --label 'owner=Ned’s team' --label 'note=“quoted”'",
+   "powershell": "oss-intake --package 'npm:chalk@5.6.1' --out o --label 'owner=Ned’’s team' --label 'note=“quoted”'"
+  },
+  {
+   "name": "a typographic quote cannot end PowerShell's quoting",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "x’; Write-Host INJECTED; #",
+     "out": "~/r”; Write-Host INJECTED; #"
+    }
+   },
+   "args": [
+    "--path",
+    "x’; Write-Host INJECTED; #",
+    "--out",
+    "~/r”; Write-Host INJECTED; #"
+   ],
+   "bash": "oss-intake --path 'x’; Write-Host INJECTED; #' --out ~/'r”; Write-Host INJECTED; #'",
+   "powershell": "oss-intake --path 'x’’; Write-Host INJECTED; #' --out \"$HOME/r`”; Write-Host INJECTED; #\""
+  },
+  {
+   "name": "a leading = (zsh would expand it)",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "=ls",
+     "out": "o"
+    }
+   },
+   "args": [
+    "--path",
+    "=ls",
+    "--out",
+    "o"
+   ],
+   "bash": "oss-intake --path '=ls' --out o",
+   "powershell": "oss-intake --path =ls --out o"
+  },
+  {
    "name": "doctor",
    "state": {
     "command": "doctor",
@@ -393,6 +457,97 @@
    "invalid": true,
    "problems": [
     "out"
+   ]
+  },
+  {
+   "name": "a newline hidden in a value",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "a\nb",
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "path"
+   ]
+  },
+  {
+   "name": "a text-direction override",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "x‮cod.exe",
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "path"
+   ]
+  },
+  {
+   "name": "scanners AUTO is not auto",
+   "state": {
+    "command": "scan",
+    "values": {
+     "image": "a/b:1",
+     "scanners": "AUTO",
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "scanners"
+   ]
+  },
+  {
+   "name": "a package without a version",
+   "state": {
+    "command": "scan",
+    "values": {
+     "package": [
+      "chalk"
+     ],
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "package"
+   ]
+  },
+  {
+   "name": "a label key oss-intake fills in",
+   "state": {
+    "command": "scan",
+    "values": {
+     "path": "x.csv",
+     "label": [
+      "name=x"
+     ],
+     "out": "o"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "label"
+   ]
+  },
+  {
+   "name": "verify bundle without identity",
+   "state": {
+    "command": "verify",
+    "values": {
+     "file": "x",
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "cosign_bundle": "b.json"
+    }
+   },
+   "invalid": true,
+   "problems": [
+    "verify-bundle-identity"
    ]
   }
  ]

@@ -109,7 +109,9 @@ in both `pyproject.toml` and `src/oss_intake/__init__.py` (a test checks they ag
 example). The release commit, before tagging, also: regenerates `site/builder/options.json`
 (`python scripts/export_options.py`; pages.yml refuses a tag it does not match), rebuilds the live sample
 (`sh examples/compromised-npm/build.sh`), and updates the pinned version in
-`examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches). `BACKLOG.md` holds agreed open work;
+`examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches). The `github-pages` environment must
+allow `v*` tags to deploy (repository settings, Environments); a site-only fix is published with a manual run of
+pages.yml for the current release tag. `BACKLOG.md` holds agreed open work;
 finished items are removed in the commit that ships them.
 
 `reports*/` folders in the repo root are local scan output and are gitignored.

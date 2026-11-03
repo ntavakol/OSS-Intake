@@ -75,6 +75,9 @@ function renderField(o) {
     const select = el("select", { id, "aria-describedby": describedby });
     select.append(el("option", { value: "", text: o.default !== null ? `(default: ${o.default})` : "(not set)" }));
     for (const c of o.choices) select.append(el("option", { value: String(c), text: String(c) }));
+    if (value !== undefined && value !== "" && !o.choices.map(String).includes(String(value))) {
+      select.append(el("option", { value: String(value), text: `${value} (not allowed)` }));  // from a link
+    }
     select.value = value === undefined ? "" : String(value);
     select.addEventListener("change", () => set(o.dest, select.value));
     return el("div", { class: "field", "data-field": o.dest }, label, select, help, err);
@@ -84,18 +87,20 @@ function renderField(o) {
     const rows = Array.isArray(value) && value.length ? value : [""];
     const list = el("div", { class: "rows" });
     rows.forEach((v, i) => {
+      const rowId = i === 0 ? id : `${id}-${i}`;
       const input = textInput(o, v, (text) => {
         const next = [...(state.values[o.dest] ?? [""])];
         next[i] = text;
         state.values[o.dest] = next;
         refresh();
-      }, { id: i === 0 ? id : `${id}-${i}`, describedby, label: i === 0 ? null : `${o.flag} ${i + 1}` });
+      }, { id: rowId, describedby, label: i === 0 ? null : `${o.flag} ${i + 1}` });
       const remove = el("button", { type: "button", class: "btn", "aria-label": `Remove ${o.flag} ${i + 1}`, text: "×" });
       remove.addEventListener("click", () => {
         const next = [...(state.values[o.dest] ?? [])];
         next.splice(i, 1);
         state.values[o.dest] = next;
-        render();
+        const previous = i > 1 ? `${id}-${i - 1}` : id;
+        render(`#${previous}`, id);
       });
       list.append(el("div", { class: "row" }, input, rows.length > 1 || v ? remove : null));
     });
@@ -175,19 +180,47 @@ function refresh() {
   }
 }
 
+// A radio group as buttons: one tab stop (the checked one), arrow keys move and pick, as WAI-ARIA describes.
 function radios(box, items, current, onPick) {
-  box.replaceChildren(...items.map(([value, label]) => {
-    const button = el("button", { type: "button", role: "radio", "aria-checked": value === current, text: label });
+  const buttons = items.map(([value, label]) => {
+    const on = value === current;
+    const button = el("button", { type: "button", role: "radio", "aria-checked": on, tabindex: on ? "0" : "-1",
+      text: label, "data-focus": `${box.id}:${value}` });
     button.addEventListener("click", () => onPick(value));
     return button;
-  }));
+  });
+  box.onkeydown = (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const i = items.findIndex(([v]) => v === current);
+    onPick(items[(i + step + items.length) % items.length][0]);
+  };
+  box.replaceChildren(...buttons);
 }
 
-function render() {
+// render() rebuilds the form, so it puts the keyboard focus back where it was (or on the nearest control).
+function focusKey(node) {
+  return node?.dataset?.focus ?? (node?.id ? `#${node.id}` : null);
+}
+
+function restoreFocus(key, fallback) {
+  if (!key) return;
+  const node = key.startsWith("#") ? document.getElementById(key.slice(1))
+    : document.querySelector(`[data-focus="${CSS.escape(key)}"]`);
+  (node ?? (fallback && document.getElementById(fallback)))?.focus();
+}
+
+function render(focus = focusKey(document.activeElement), fallback = null) {
+  renderAll();
+  restoreFocus(focus, fallback);
+}
+
+function renderAll() {
   radios($("commands"), Object.keys(layout.commands).map((c) => [c, layout.commands[c].label]), state.command,
-    (c) => { state = { command: c, values: {} }; render(); });
+    (c) => { state = { command: c, values: {} }; render(`commands:${c}`); });
   radios($("shells"), [["bash", "bash / zsh"], ["powershell", "PowerShell"]], shell,
-    (s) => { shell = s; render(); });
+    (s) => { shell = s; render(`shells:${s}`); });
   $("command-help").textContent = layout.commands[state.command].help;
   const preset = $("preset");
   preset.replaceChildren(el("option", { value: "", text: "(choose an example)" }),
@@ -222,10 +255,15 @@ async function main() {
     const p = layout.presets[Number(e.target.value)];
     if (!p) return;
     state = { command: p.command, values: structuredClone(p.values) };
-    render();
+    render("#preset");
     e.target.value = "";
   });
-  $("reset").addEventListener("click", () => { state = { command: state.command, values: {} }; render(); });
+  $("reset").addEventListener("click", () => { state = { command: state.command, values: {} }; render("#reset"); });
+  window.addEventListener("hashchange", () => {
+    if (location.hash.slice(1) === b.toFragment(data, state, shell)) return;  // our own update
+    ({ state, shell } = b.fromFragment(data, location.hash));
+    render();
+  });
   $("copy").addEventListener("click", () => copy(b.buildCommand(data, state, shell), "Command"));
   $("link").addEventListener("click", () => copy(location.href, "Link"));
   render();

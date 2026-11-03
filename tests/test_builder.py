@@ -119,13 +119,33 @@ def test_each_rule_is_what_the_cli_refuses(rule, tmp_path, capsys):
     assert http.calls == []
 
 
+@pytest.mark.parametrize("rule", _load("rules.json")["rules"] if BUILDER.is_dir() else [], ids=lambda r: r["id"])
+def test_each_rule_stays_quiet_where_the_cli_accepts(rule, tmp_path, capsys, monkeypatch):
+    """The nearest command the CLI accepts (ok_args) must not get the rule's message: a rule that fired there
+    would stop the builder from copying a valid command. The run may still fail later (no scanner installed, or
+    the stand-in network), which is not what this checks."""
+    from .conftest import FakeHttp
+
+    f = tmp_path / "exists.json"
+    f.write_text("{}", encoding="utf-8")
+    argv = [a.replace("{out}", str(tmp_path / "out")).replace("{file}", str(f)) for a in rule["ok_args"]]
+    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    try:
+        cli.main([rule["command"], *argv], http=FakeHttp())
+    except Exception:  # noqa: BLE001, S110 - anything after validation is past what this test is about
+        pass
+    assert rule["message"] not in capsys.readouterr().err
+
+
 def _fields():
     return _load("rules.json")["fields"] if BUILDER.is_dir() else []
 
 
 def _field_argv(field: dict, value: str) -> list[str]:
     flag = "--" + field["dest"].replace("_", "-")
-    base = [] if field["dest"] == "image" else ["--image", "owner/app:1.0"]
+    if field["command"] == "verify":
+        return ["verify", "--file", "{file}", f"{flag}={value}"]
+    base = [] if field["dest"] in ("image", "package") else ["--image", "owner/app:1.0"]
     return [field["command"], *base, f"{flag}={value}", "--out", "{out}"]
 
 
@@ -147,18 +167,28 @@ def test_field_checks_match_the_cli(field, tmp_path, capsys):
         elif "list_of" in field:
             if value != "auto":
                 cli.csv_set(value, set(field["list_of"]) - {"auto"}, dest)
-        elif dest.endswith("sha256"):
+        elif dest.endswith("sha256") or dest == "sha256":
             from oss_intake import integrity
 
             integrity.normalise_hash(value)
         elif dest == "label":
             cli._labels([value])
+        elif dest == "package":
+            from oss_intake import inputs
+
+            inputs.packages([value])
         else:
             pytest.fail(f"no validator for {dest}: add one here")
 
 
 def test_list_checks_match_the_cli_lists():
-    lists = {f["dest"]: set(f["list_of"]) for f in _load("rules.json")["fields"] if "list_of" in f}
+    from oss_intake import inputs, inventory_report
+
+    fields = _load("rules.json")["fields"]
+    reserved = next(f["not_keys"] for f in fields if "not_keys" in f)
+    assert set(reserved) == set(inputs.INVENTORY_KEYS) | set(inventory_report.BASE_FIELDS) | {
+        "labels", "compare_version", "upgrade_version"}  # as cli._labels refuses them
+    lists = {f["dest"]: set(f["list_of"]) for f in fields if "list_of" in f}
     assert lists["fail_on"] == set(cli.FAIL_ON)
     assert lists["formats"] == cli._FORMATS
     assert lists["scanners"] == cli._SCANNERS | {"auto"}
@@ -205,3 +235,14 @@ def test_page_loads_no_third_party_code():
         for bad in ("innerHTML", "outerHTML", "insertAdjacentHTML", "eval(", "new Function", "document.write"):
             assert bad not in code, f"{js.name}: {bad}"
         assert not re.search(r"""(?:import|fetch)\s*\(?\s*["']https?:""", code), js.name
+
+
+@pytest.mark.parametrize("kwargs", [{"nargs": 2}, {"action": "store_const", "const": 5}, {"action": "count"},
+                                    {"action": "append", "type": int}, {"type": float}])
+def test_export_refuses_an_option_kind_it_does_not_know(kwargs):
+    """A new kind of option must stop the export, not be offered as a plain text field."""
+    import argparse
+
+    action = argparse.ArgumentParser().add_argument("--x", **kwargs)
+    with pytest.raises(SystemExit, match="not supported"):
+        _export_module()._kind(action)

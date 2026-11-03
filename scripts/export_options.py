@@ -45,11 +45,13 @@ def _internals(parser: argparse.ArgumentParser) -> tuple[dict[str, argparse.Argu
 
 def _kind(action: argparse.Action) -> tuple[str, list | None]:
     """The builder's field kind for an argparse action, and its allowed values if it has a fixed list."""
-    if isinstance(action, argparse._StoreTrueAction):
+    if action.nargs not in (None, 0) or getattr(action, "const", None) not in (None, True):
+        pass  # fall through to the error below: the builder knows one value per flag only
+    elif isinstance(action, argparse._StoreTrueAction):
         return "flag", None
-    if isinstance(action, argparse._AppendAction):
+    elif type(action) is argparse._AppendAction and action.choices is None and action.type in (None, str):
         return "repeatable", None
-    if type(action) is argparse._StoreAction:
+    elif type(action) is argparse._StoreAction:
         if not action.option_strings:
             return "positional", None
         if action.choices is not None:

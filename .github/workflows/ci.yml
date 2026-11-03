@@ -58,7 +58,8 @@ jobs:
 
   builder:
     # The command builder (site/builder/): builder.js turns each golden state into exactly the expected command,
-    # and bash, zsh (when present) and PowerShell (pwsh is on the Ubuntu runners) pass its arguments unchanged.
+    # and bash, zsh and PowerShell (pwsh is on the Ubuntu runners; zsh is installed here) pass its arguments
+    # unchanged.
     name: command builder (Node)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -69,6 +70,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
+      - name: Install zsh, for the quoting test
+        run: sudo apt-get install -y --no-install-recommends zsh
       - name: Builder tests (node --test, no packages)
         run: node --test tests/builder/*.test.mjs
 
