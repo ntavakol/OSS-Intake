@@ -5,6 +5,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- A command builder on the project site (`site/builder/`): pick the options and copy the command, for bash, zsh
+  or PowerShell, with the checks oss-intake makes before it starts (conflicting options, values, required
+  options), presets, and a link that carries the command. Its option list is generated from the CLI's parser
+  (`scripts/export_options.py`), and its rules and golden commands are tested against the CLI. No third-party
+  code, no network requests, and a strict Content Security Policy.
+
+### Changed
+- The project site is published when a release is published, from the release tag, so the command builder
+  always matches the version on PyPI. The sample report is rebuilt in the release commit, before tagging.
+
 ## [0.12.1] - 2026-11-04
 
 Quality release: each release now carries a signed SBOM of itself, known-bad scanners are refused before they

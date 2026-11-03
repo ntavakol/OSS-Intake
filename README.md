@@ -41,6 +41,18 @@ findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
   <img alt="oss-intake executive summary: 3 packages checked, 2 to act on now, chalk 5.6.1 malicious (remove, do not patch), log4j-core 2.14.1 known exploited (upgrade to 2.25.4)" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/executive-summary-light.png" width="800">
 </picture>
 
+## Build the command
+
+oss-intake has 70 options. The [command builder](https://ntavakol.github.io/OSS-Intake/builder/) lets you pick
+what to check and the options you need, shows the matching command for bash, zsh or PowerShell, and checks it the
+way oss-intake would before you copy it. It runs in your browser and sends nothing anywhere; a link to the page
+carries the command, so it can be shared.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-dark.png">
+  <img alt="The oss-intake command builder: options grouped on the left, the command for bash or PowerShell on the right with a Copy button" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
+</picture>
+
 ## The gaps it closes
 
 Questions a security or engineering manager gets asked, and what answering them usually takes:

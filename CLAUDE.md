@@ -85,6 +85,12 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
 - No secrets, internal hostnames, employer or customer names anywhere, including commit messages.
 - Write plainly; no em dashes in docs or tool output.
 - User-visible changes get a `CHANGELOG.md` entry under "Unreleased".
+- The command builder (`site/builder/`): after changing a CLI option, run `python scripts/export_options.py`
+  (tests fail until you do) and place any new option in a group in `site/builder/ui-groups.json`. When
+  `cmd_scan`'s checks change, update `site/builder/rules.json`; each rule's example is run through the CLI.
+  Golden commands are in `tests/fixtures/builder_golden.json`; the JavaScript tests run with
+  `node --test tests/builder/*.test.mjs` (no packages). The page uses no third-party code: no CDN, no
+  `innerHTML`, a strict Content Security Policy.
 - README is partly generated (`<!-- generated:NAME -->` blocks: example output, likelihood rules and metrics).
   After changing report format or likelihood rules, run `python scripts/readme_sync.py`; tests fail until you do.
   Every `scan` and `verify` option must be mentioned in the README (a test checks this).
@@ -97,9 +103,12 @@ Before a release, an independent review (a reviewer that did not write the chang
 fixes come with tests that fail without them. Tag and publish only after CI passes on that exact commit (find
 the run with `gh run list --workflow ci --commit $(git rev-parse HEAD)`).
 
-Publishing a GitHub release triggers `.github/workflows/release.yml` (PyPI trusted publishing plus Sigstore
-signatures). Version lives in both `pyproject.toml` and `src/oss_intake/__init__.py`. On release, also rebuild the live sample
-(`sh examples/compromised-npm/build.sh`) and update the pinned version in
+Publishing a GitHub release triggers `.github/workflows/release.yml` (PyPI trusted publishing, a signed SBOM,
+Sigstore signatures) and `.github/workflows/pages.yml`, which publishes `site/` from the release tag. Version lives
+in both `pyproject.toml` and `src/oss_intake/__init__.py` (a test checks they agree, and the README's verify
+example). The release commit, before tagging, also: regenerates `site/builder/options.json`
+(`python scripts/export_options.py`; pages.yml refuses a tag it does not match), rebuilds the live sample
+(`sh examples/compromised-npm/build.sh`), and updates the pinned version in
 `examples/scheduled-rescan/oss-intake-rescan.yml` (a test checks it matches). `BACKLOG.md` holds agreed open work;
 finished items are removed in the commit that ships them.
 

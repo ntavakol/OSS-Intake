@@ -50,6 +50,11 @@ chmod +x .git/hooks/pre-commit
   with an explicit encoding.
 - Style: write plainly and avoid em dashes in documentation and output.
 - Add a `CHANGELOG.md` entry under "Unreleased" for user-visible changes.
+- The command builder (`site/builder/`) is generated from the CLI's own parser. After adding or changing an
+  option, run `python scripts/export_options.py` and add the option to a group in `site/builder/ui-groups.json`;
+  the tests fail until both are done. Cross-option checks the CLI makes are mirrored in
+  `site/builder/rules.json`, and each rule's example is run through the CLI. The JavaScript tests need only
+  Node 20 or later: `node --test tests/builder/*.test.mjs`.
 - Parts of the README are generated from the code (example output, likelihood rules and metrics). After changing
   the report format or the likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do.
   Every `scan` and `verify` option must also appear in the README.
