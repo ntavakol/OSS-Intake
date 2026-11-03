@@ -193,7 +193,9 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
         for vid in ids:
             if vid not in cache:
                 status, data = http.get_json(f"{API}/vulns/{vid}")
-                cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid}
+                # Without its details an advisory has no severity, fix or CVE alias: keep it, marked, so the run
+                # says so rather than reading as complete.
+                cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid, "_unavailable": True}
         osq = queries.get(purl)
         note = ""
         if osq:
@@ -225,6 +227,10 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
                 sources={NAME},
             )
             f.source_severity[NAME] = sev
+            if v.get("_unavailable"):
+                f.details_unavailable = True
+                f.title = "advisory details could not be loaded from OSV"
+                f.note = "advisory details could not be loaded from OSV: severity, fix and CVE aliases are unknown"
             if osq:
                 f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
                 f.source_installed, f.note = osq["version"], note

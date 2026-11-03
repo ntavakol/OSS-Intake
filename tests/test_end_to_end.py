@@ -1711,3 +1711,35 @@ def test_gates_need_something_to_scan(tmp_path, capsys):
     assert cli.main(["--repo", "example/webapp", "--out", str(tmp_path / "o"), "--fail-on", "malicious"],
                     http=http) == cli.EXIT_USAGE
     assert "--fail-on needs packages to check" in capsys.readouterr().err and http.calls == []
+
+
+class DetailsFailHttp(PkgHttp):
+    """OSV lists GHSA-demo-kev for demo 1.0.0, but fetching its details fails (HTTP 500)."""
+
+    def get_json(self, url, params=None):
+        if url.endswith("/vulns/GHSA-demo-kev"):
+            self._check(url)
+            return 500, None
+        return super().get_json(url, params)
+
+
+@pytest.mark.parametrize("gate", ["kev", "critical", "act", "malicious"])
+def test_osv_details_that_fail_to_load_do_not_read_as_complete(tmp_path, capsys, gate):
+    """Backlog (31 Oct): with an advisory's details missing, the finding had no severity, no fix and no CVE alias
+    to match KEV, no warning was given, and --fail-on kev/critical passed."""
+    import csv
+
+    code, out = _pkg_run(tmp_path, DetailsFailHttp(), "--package", "npm:demo@1.0.0", "--fail-on", gate)
+    captured = capsys.readouterr()
+    assert code == cli.EXIT_ERROR
+    assert "advisory details for 1 finding(s) could not be loaded from OSV" in captured.err
+    assert f"--fail-on {gate}: could not be evaluated" in captured.err
+    assert "fix data unavailable" in captured.out and "no fixed version yet" not in captured.out
+    rows = {r["id"]: r for r in csv.DictReader((out / "findings.csv").open(encoding="utf-8"))}
+    assert "could not be loaded" in rows["GHSA-demo-kev"]["title"]
+    assert "could not be loaded" in rows["GHSA-demo-kev"]["note"]
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    line = next(x for x in md.splitlines() if "GHSA-demo-kev" in x)
+    assert "| unknown | unknown |" in line and "no fix" not in line
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["checks"]["kev"]["state"] == "partial"

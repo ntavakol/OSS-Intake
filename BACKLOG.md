@@ -8,14 +8,6 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
   traceback. `integrity.cosign_verify_blob` runs cosign with a 120-second timeout but does not catch
   `subprocess.TimeoutExpired`, and `cli.main` does not either. Fix: raise IntegrityError ("cosign did not finish
   in 120 s"), exit 1. Found 3 Nov while adding docstrings. Start with a test that fails on the current code.
-- OSV advisory details that fail to load must not read as complete. OSV is asked in two steps: which advisories
-  affect a version (IDs only), then each advisory's details (severity, fixed versions, CVE aliases). When the
-  second step fails for an advisory, the finding is kept with its ID alone: severity UNKNOWN, "no fixed version
-  yet", no warning, and the KEV check still reads "checked" although the CVE alias needed to match KEV is
-  missing, so `--fail-on kev`, `act` and `critical` can pass. Found by the 0.12.0 review, in code older than
-  0.12.0 (`scanners/osv.py`). Fix: warn when details fail, mark the affected checks partial so those gates exit 1,
-  and show "fix data unavailable" instead of "no fixed version yet". Start with a test that fails on the current
-  code.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
 1. An SBOM with every release: a CycloneDX SBOM of the built wheel's runtime dependencies, attached to the

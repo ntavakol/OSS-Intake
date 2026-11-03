@@ -151,6 +151,7 @@ class Finding:
     src_version: str = ""
     os_release: str = ""  # e.g. "ubuntu 24.04", for OS package findings
     note: str = ""
+    details_unavailable: bool = False  # OSV listed the advisory but its details (severity, fix, aliases) failed
     # Release-lag (set by lag.compute)
     fix_available_at_release: bool | None = None
     days_fix_available: int | None = None

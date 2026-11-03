@@ -470,6 +470,8 @@ def _top(findings: list[Finding], top: int) -> str:
             before = ("likely fixed", "")
         elif f.excluded:
             before = ("excluded", "")
+        elif f.details_unavailable:
+            before = ("unknown", "")
         elif not f.has_fix:
             before = ("no fix", "")
         else:
@@ -487,10 +489,11 @@ def _top(findings: list[Finding], top: int) -> str:
         if f.decision_status:
             group = Raw(f'{group}<br><small class="v4" title="{_e(f.decision_notes)}">assessor: '
                         f'{_e(f.decision_status.replace("_", " "))}</small>')
+        fix = f.fix_version_used or ";".join(f.fixed_versions) or ("unknown" if f.details_unavailable else "none")
         rows.append([group, (vid, "mono nw"), (sev_cvss, cvss[1]),
                      _exploit_pill(f), (f.package, "mono"),
                      (f.installed, "mono"),
-                     (f.fix_version_used or ";".join(f.fixed_versions) or "none", "mono"), before,
+                     (fix, "mono"), before,
                      ("n/a" if days is None else days, tone_days(days))])
         rcls.append({"CRITICAL": "row-crit", "HIGH": "row-high", "MEDIUM": "row-med"}.get(f.severity, ""))
     legend = ('<div class="legend"><span>Days fix available:</span><span><span class="dot r"></span>90+ days</span>'

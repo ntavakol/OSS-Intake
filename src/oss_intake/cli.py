@@ -1030,6 +1030,15 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             else "not run"
     check_info = checks.compute(len(findings), kev_info, epss_info, exploit_info,
                                 getattr(args, "malicious_check", None) or checks.state(checks.CHECKED), skipped_by)
+    n_missing = sum(1 for f in findings if f.details_unavailable)
+    if n_missing:
+        # Their CVE aliases (KEV, EPSS) and CWEs (malware) are unknown, so those checks did not fully run.
+        for name in ("kev", "epss", "malicious"):
+            if check_info[name]["state"] == checks.CHECKED:
+                check_info[name] = checks.state(checks.PARTIAL, f"advisory details for {n_missing} finding(s) "
+                                                                "could not be loaded")
+        warnings.append(f"advisory details for {n_missing} finding(s) could not be loaded from OSV, so their "
+                        "severity, fix and CVE aliases are unknown; re-run later")
     gap_warning = checks.warning(check_info)
     if gap_warning:
         lead = sum(1 for _ in itertools.takewhile(
@@ -1138,7 +1147,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             listed = (age_info.get("unknown_purls") or []) + (age_info.get("unsupported_purls") or [])
             log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
                 args.quiet, force=True)
-    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info)
+    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info,
+                            sum(1 for f in findings if f.details_unavailable))
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
     # A gate that tripped can still have skipped some versions: name them, so accepting what tripped it does not
@@ -1196,6 +1206,8 @@ def _verdicts(rows: list[dict], findings: list, age_info: dict, shown: int = 20)
                 f" ({left} still known in {r['upgrade_to']}{counting})" if left
                 else " (clears all known)" if left == 0
                 else f" ({r['no_fix']} with no fixed version yet{counting})" if r["no_fix"] else "")
+        elif any(f.details_unavailable for f in live):
+            fix = "; fix data unavailable (advisory details could not be loaded from OSV)"
         else:
             fix = "; no fixed version yet"
         out.append(what + ", ".join(parts) + fix)
@@ -1215,9 +1227,13 @@ def _language_purls(args, trivy_report: dict | None) -> list[str]:
 
 
 def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args,
-                  check_info: dict | None = None) -> list[tuple[str, str]]:
+                  check_info: dict | None = None, details_missing: int = 0) -> list[tuple[str, str]]:
     """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
     out = []
+    for gate in ("critical", "high"):
+        if gate in wanted and details_missing:
+            out.append((gate, f"advisory details for {details_missing} finding(s) could not be loaded, so their "
+                              "severity is unknown"))
     # 'act' comes from malicious package data, CISA KEV and the exploit indexes (unless --no-exploits was chosen).
     act_sources = ("malicious", "kev") if args.no_exploits else ("malicious", "kev", "exploits")
     for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", act_sources)):

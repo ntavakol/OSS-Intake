@@ -467,11 +467,12 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     rows = []
     ranked = sorted(findings, key=rank_key)
     for f in ranked[:top]:
-        before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "no fix" if not f.has_fix
+        before = ("likely fixed" if f.likely_fixed else "excluded" if f.excluded else "unknown"
+                  if f.details_unavailable else "no fix" if not f.has_fix
                   else (_tri(f.fix_available_at_release) or "unknown"))
+        fix = f.fix_version_used or ";".join(f.fixed_versions) or ("unknown" if f.details_unavailable else "none")
         rows.append([triage_label(f.triage_group), f.vuln_id, f.severity, cvss_text(f), exploit_text(f), f.package,
-                     f.installed,
-                     f.fix_version_used or ";".join(f.fixed_versions) or "none", before, _v(f.days_fix_available)])
+                     f.installed, fix, before, _v(f.days_fix_available)])
     if rows:
         secs.append((f"Top {len(rows)} findings", [("table", ["Group", "ID", "Severity", "CVSS", "Exploit", "Package",
                                                                "Installed", "Fix", "Fix before release",

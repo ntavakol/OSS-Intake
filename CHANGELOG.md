@@ -9,6 +9,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - A known-bad scanner release ran once, for `--version`, before it was refused, unless its hash was pinned.
   oss-intake now reads the version from the binary's Go build information first (Trivy and Grype are Go
   programs), so a known-bad release is refused without being run. `oss-intake doctor` does the same.
+- When OSV listed an advisory but its details failed to load, the finding was kept with its ID alone and read as
+  complete: severity UNKNOWN, "no fix", no warning, and the KEV, EPSS and malicious checks still "checked"
+  although the CVE aliases they match on were missing, so `--fail-on kev`, `act`, `critical` and `high` could
+  pass. Such findings are now marked ("advisory details could not be loaded from OSV", fix "unknown"), the run
+  warns, those checks are partial, and those gates fail with exit 1.
 - A likelihood config file that is not UTF-8, or whose JSON is not an object, gave a Python traceback instead of
   a clear error.
 

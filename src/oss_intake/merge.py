@@ -50,6 +50,7 @@ def merge(*groups: list[Finding]) -> list[Finding]:
                 merged[key] = f
                 continue
             cur.sources |= f.sources
+            cur.details_unavailable = cur.details_unavailable and f.details_unavailable
             cur.source_severity.update(f.source_severity)
             cur.cwes |= f.cwes
             cur.aliases |= f.aliases | ({f.vuln_id} if f.vuln_id != cur.vuln_id else set())
