@@ -246,8 +246,8 @@ def packages_title(purls: list[str]) -> str:
 
 
 def report_title(a: dict) -> str:
-    """Report title: the package list, the input path's name or the image, with the repository in brackets where
-    given; otherwise the repository, or "assessment"."""
+    """Report title: the package list or the input path's name, with the repository in brackets where given; else
+    the image, the repository, or "assessment"."""
     inp = a["inputs"]
     if inp.get("packages"):
         return packages_title(inp["packages"]) + (f" ({inp['repo']})" if inp.get("repo") else "")

@@ -17,8 +17,10 @@ python -m coverage run -m pytest && python -m coverage report   # what CI checks
 ```
 
 Optional: scan what you are about to commit for secrets with [gitleaks](https://github.com/gitleaks/gitleaks)
-(CI scans the full history on every push and pull request). Install a pinned, verified release, then add it as a
-pre-commit hook:
+(CI scans the full history on every push and pull request). Install a release from
+[gitleaks releases](https://github.com/gitleaks/gitleaks/releases), check its SHA-256 against the release's
+checksums file (`oss-intake verify --file <archive> --checksums <checksums file>` does this), then add it as a
+pre-commit hook. This replaces any pre-commit hook you already have:
 
 ```bash
 printf '#!/bin/sh\nexec gitleaks git --pre-commit --staged --redact --no-banner\n' > .git/hooks/pre-commit

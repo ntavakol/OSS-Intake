@@ -67,8 +67,9 @@ class ConfigError(Exception):
 
 
 def load_config(path: str | None) -> dict:
-    """DEFAULT_CONFIG when path is empty, else the JSON config at path after validate(). Raises ConfigError if it
-    cannot be read, parsed or validated."""
+    """DEFAULT_CONFIG when path is empty, else the JSON config at path after validate(). Raises ConfigError for a
+    missing file, invalid JSON or a config that fails validation (a non-UTF-8 file or a JSON value that is not an
+    object is not caught yet)."""
     if not path:
         return DEFAULT_CONFIG
     try:

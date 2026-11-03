@@ -21,7 +21,7 @@ flowchart TD
     B["2. Plan and scan<br/>cli._plan_and_scan, cli._scan<br/>integrity checks, then scanners or OSV"] --> C
     C["Merge<br/>merge.merge<br/>one Finding per vulnerability, package and version"] --> D
     D["3. Project health<br/>health/: releases, Scorecard, workflow audit"] --> E
-    E["4. Enrichment<br/>enrich/: fix dates, KEV, EPSS, exploits, advisory text<br/>release_age, decisions"] --> F
+    E["4. Enrichment<br/>enrich/: fix dates, KEV, EPSS, exploits<br/>release_age, decisions"] --> F
     F["Analysis<br/>checks, triage, lag, likelihood,<br/>inventory_report, upgrade"] --> G
     G["5. Reports<br/>report, report_html, exec_summary"] --> H
     H["Exit code<br/>0 ok, 1 error, 2 usage, 3 --fail-on threshold"]
@@ -36,23 +36,30 @@ The numbers match the stage comments in `src/oss_intake/cli.py`.
 2. **Plan and scan** (`_plan_and_scan`, `_scan`). Sets up the response cache, checks an artifact's checksum
    against its registry (`registry_check`), then gets findings: by running Trivy and Grype (each binary checked
    first by `integrity`), by loading saved scanner JSON (`--from-trivy-json`, `--from-grype-json`), or, for
-   package lists, SBOMs, `renv.lock` and `--package`, by asking OSV directly. A scanner failure stops the run,
-   because a partial scan would read as a clean one.
-   - **Merge** (`merge.merge`). Findings from several sources become one row per vulnerability, package and
-     version, recording which sources saw it.
+   package lists, SBOMs, `renv.lock` and `--package`, by asking OSV directly. A Trivy or Grype failure stops the
+   run, because a partial scan would read as a clean one, and so does an OSV failure when OSV is the only
+   source (package lists, SBOMs, `renv.lock`, `--package`). When OSV only supplements Trivy, the run continues
+   and the malicious package check is marked partial.
+   - **Merge** (`merge.merge`, at the start of `_assess`). Findings from several sources become one row per
+     vulnerability, package and version, recording which sources saw it. Straight after the merge,
+     `reachability` applies govulncheck results, malicious releases mark every finding on their package
+     version, `--min-severity` is applied, and `conditions` extracts each advisory's own "applies only if"
+     sentences.
 3. **Project health** (`health/`). With `--repo`: release cadence and the release used for lag
    (`health.releases`), OpenSSF Scorecard (`health.scorecard`), and an audit of the project's GitHub Actions
    workflows (`health.workflows`).
-4. **Enrichment** (`enrich/`, `release_age`, `decisions`). Fix publication dates from deps.dev and the distro
-   sources, CISA KEV, EPSS, exploit evidence (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept), advisory
-   text and conditions, release dates of the package versions, and the assessor's decisions from an earlier run.
+4. **Enrichment** (`enrich/`, `release_age`, `decisions`). Fix publication dates from deps.dev, Packagist and
+   the distro sources (Debian, Ubuntu, Red Hat and Alpine trackers and security advisories), CISA KEV, EPSS,
+   exploit evidence (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept), release dates of the package
+   versions, and the assessor's decisions from an earlier run.
    - **Analysis**. `checks` records which sources actually ran, so a skipped check is shown as "not checked",
      never as a zero. `triage` gives each finding a suggested group, `lag` measures release lag, `likelihood`
      runs the optional 5x5 heuristic, and for package lists `inventory_report` and `upgrade` build the per-package
      rows and the upgrade comparison.
-5. **Reports** (`report`, `report_html`, `exec_summary`). `findings.csv`, `summary.md`, `assessment.json` and a
-   self-contained `report.html`; for package lists also `packages.csv` and `executive-summary.html`. Then the
-   `--fail-on` gates decide the exit code.
+5. **Reports** (`report`, `report_html`, `exec_summary`). `findings.csv` always, plus the formats chosen with
+   `--formats` (by default all of `summary.md`, `assessment.json` and a self-contained `report.html`); for package
+   lists also `packages.csv`, and `executive-summary.html` when HTML is among the formats. Then the `--fail-on`
+   gates decide the exit code.
 
 ## Modules
 
@@ -111,12 +118,20 @@ since its answers could have been planted.
 
 ## Extension points
 
-**A new scanner.** Add `scanners/<name>.py` with a function that turns the tool's output into
-`list[Finding]` (set `sources={"<name>"}` and a package URL where the tool gives one). Wire it into
-`cli._scan` and `_resolve_scanners`, add a `--from-<name>-json` option if the tool can save its output (tests
-depend on this), and add its version pins and known-bad entries to `integrity.py` and `data/known_bad.json` if it
-is an executable. For text fields such as the title and URL, the first source to report one keeps it, and
-`_scan` adds sources in the order Trivy, Grype, OSV.
+**A new scanner.** This touches several places, because Trivy, Grype and OSV are named explicitly:
+
+- `scanners/<name>.py` with `parse(report) -> (list[Finding], dict)`, like `scanners/trivy.py` and
+  `scanners/grype.py`: set `sources={"<name>"}` and a package URL where the tool gives one; the dict is scan
+  information for the reports.
+- `cli.py`: the `_SCANNERS` set and `_resolve_scanners`, `_scan`, the scanner metadata in `_plan_and_scan`,
+  and, for an executable, the per-tool options in `build_parser` (`--<name>-version`, `--<name>-sha256`,
+  `--<name>-path`, archive and cosign options) and the per-tool checks in `cmd_scan`. Add
+  `--from-<name>-json` if the tool can save its output; the tests depend on it.
+- `integrity.py`: a `DEFAULT_COSIGN_IDENTITY` entry (it is looked up for every tool), and known-bad versions
+  in `data/known_bad.json`.
+
+For text fields such as the title and URL, the first source to report one keeps it, and `_scan` adds sources in
+the order Trivy, Grype, OSV.
 
 **A new enricher.** Add `enrich/<name>.py` with `enrich(http, findings) -> dict`: prefetch the URLs it needs,
 fill fields on the findings in place, and return counts (looked up, found, errors) for `assessment.json`. Call
@@ -139,8 +154,9 @@ them current).
   seconds, not a scan.
 - **Never report a check that did not run as a clean result.** `checks.py` tracks every source's state; a gate
   whose check did not run fails, and one whose check is turned off is refused.
-- **Verify before executing.** A scanner binary is checked against its pinned hash, signature and the known-bad
-  list before it runs.
+- **Verify before executing.** A scanner binary is checked against its pinned SHA-256 and cosign signature
+  before it runs at all (when those are given). Known-bad versions are refused after reading the binary's
+  `--version` and before any scan, so pin the hash to keep an unverified binary from running even once.
 - **One way to the network.** Everything goes through `Http`, which keeps tokens to their own host and makes
   every test offline.
 - **Cross-platform.** `pathlib` everywhere, subprocess arguments as lists, explicit file encodings. CI runs on

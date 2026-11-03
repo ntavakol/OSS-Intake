@@ -39,8 +39,8 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
   `sbom.py`, `os_packages.py` and `inventory_report.py` handle the organisation-inventory paths.
 - **Scanners** (`scanners/`): `trivy`, `grype`, `osv`, `govulncheck`. Each turns its tool's JSON into
   `models.Finding` objects. `--from-trivy-json` / `--from-grype-json` load saved output instead of running a tool;
-  tests rely on this. `integrity.py` pins scanner versions, checks SHA-256 / cosign and refuses versions in
-  `data/known_bad.json` *before* a binary executes.
+  tests rely on this. `integrity.py` checks SHA-256 / cosign *before* a binary executes (when pins are given) and
+  refuses versions in `data/known_bad.json` after reading `--version`, before any scan.
 - **Merge** (`merge.py`): one row per vulnerability, package and version, keyed via `models.canonical_id` (aliases),
   recording which sources saw it.
 - **Enrichment** (`enrich/`): fix publish dates (deps.dev, distro trackers for Debian/Ubuntu/Alpine/Red Hat),

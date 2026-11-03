@@ -51,8 +51,8 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python == '3.13' }}
         run: |
           python -m coverage run -m pytest
-          python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
-          python -m coverage report
+          python -m coverage report --format=markdown --fail-under=0 >> "$GITHUB_STEP_SUMMARY"
+          python -m coverage report  # enforces fail_under from pyproject.toml
 
   secrets:
     name: secrets (gitleaks, full history)

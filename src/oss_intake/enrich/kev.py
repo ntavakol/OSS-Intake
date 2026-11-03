@@ -10,7 +10,7 @@ KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulner
 
 def load(http: Http) -> tuple[set[str], str | None]:
     """Fetch the CISA KEV catalogue (www.cisa.gov) and return (CVE IDs, catalogue version or release date); an empty
-    set and None if the response is unusable. HttpError propagates."""
+    set and None for a non-200 or non-object response. HttpError propagates."""
     status, data = http.get_json(KEV_URL)
     if status != 200 or not isinstance(data, dict):
         return set(), None
