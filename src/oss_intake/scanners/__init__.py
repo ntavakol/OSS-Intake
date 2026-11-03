@@ -14,6 +14,7 @@ LOCAL_IMAGE_ERROR = re.compile(r"unable to export the image|content digest sha25
 
 
 class ScannerError(Exception):
+    """Raised when a scanner cannot be run, fails or times out, or its output is not valid JSON."""
     pass
 
 
@@ -54,6 +55,8 @@ def run(cmd: list[str], timeout: int) -> bytes:
 
 
 def load_json_bytes(data: bytes, what: str) -> dict:
+    """Parse JSON bytes that may be UTF-16 with a BOM (PowerShell 5.1 redirection) or UTF-8 with or without a BOM.
+    Raises ScannerError naming what if it is not valid JSON."""
     # Windows PowerShell 5.1 redirection (trivy ... > out.json) writes UTF-16 with a byte order mark.
     encoding = "utf-16" if data[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
     try:
@@ -92,4 +95,5 @@ def check_report(data: object, tool: str, what: str) -> None:
 
 
 class ReportShapeError(ValueError):
+    """Raised when a JSON report is not the expected Trivy or Grype shape; the message says what it looks like."""
     pass

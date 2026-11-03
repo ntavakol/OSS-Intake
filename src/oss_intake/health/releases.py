@@ -40,6 +40,9 @@ def _version_core(tag: str) -> str:
 
 def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
           release_tag: str | None = None) -> dict:
+    """Repository and release data from api.github.com: archived, last push, licence, latest release, cadence, and
+    the release matching release_tag or image_tag. Returns a dict with status (ok, not_found, rate_limited or
+    no_releases) and warnings; raises HttpError if the repository lookup fails otherwise."""
     owner, name = repo.split("/", 1)
     out: dict = {"repo": repo, "status": "ok", "warnings": []}
 

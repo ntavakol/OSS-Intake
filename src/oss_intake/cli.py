@@ -1249,6 +1249,9 @@ def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | No
 
 
 def main(argv: list[str] | None = None, http: Http | None = None) -> int:
+    """Entry point: parse argv (scan is assumed when no subcommand is given) and run doctor, verify or scan.
+    Returns the exit code: EXIT_USAGE (2) with no command or on a usage or input error, EXIT_ERROR (1) on a scanner,
+    integrity, likelihood config, HTTP or OS error; each error is printed to stderr."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] not in _SUBCOMMANDS and argv[0] not in ("-h", "--help", "--version"):
         argv.insert(0, "scan")  # 'oss-intake --image ...' works without the subcommand

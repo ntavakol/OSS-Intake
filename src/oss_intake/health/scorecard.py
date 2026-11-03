@@ -12,6 +12,8 @@ API = "https://api.securityscorecards.dev/projects/github.com"
 
 
 def fetch(http: Http, repo: str) -> dict:
+    """OpenSSF Scorecard result for owner/name from api.securityscorecards.dev: status ok with score, date, checks
+    and low_checks (scored 0 to 3), not_scored (404) or error. HttpError propagates."""
     status, data = http.get_json(f"{API}/{repo}")
     if status == 404:
         return {"status": "not_scored",

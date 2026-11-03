@@ -31,11 +31,13 @@ PENDING = "proposed-updates"
 
 
 def no_epoch(v: str) -> str:
+    """A Debian version without its epoch ("1:2.3-4" gives "2.3-4"); other versions are returned unchanged."""
     head, sep, tail = v.partition(":")
     return tail if sep and head.isdigit() else v
 
 
 def codename_for(os_release: str) -> str | None:
+    """Debian codename for an os_release such as "debian 12.5" ("bookworm"), or None."""
     m = re.match(r"^debian (\d+)", (os_release or "").strip().lower())
     return CODENAMES.get(m.group(1)) if m else None
 
@@ -60,6 +62,9 @@ def _is_debian(f: Finding) -> bool:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Debian findings to the point release that shipped the nearest fix, from the suite
+    ChangeLog at deb.debian.org; a fix only in proposed-updates is added to note instead. Mutates findings in place;
+    returns stats: candidates, found, pending, suites_loaded, errors."""
     stats = {"candidates": 0, "found": 0, "pending": 0, "suites_loaded": [], "errors": 0}
     suites: dict[str, dict] = {}
     for f in findings:

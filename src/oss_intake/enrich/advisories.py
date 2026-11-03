@@ -19,6 +19,8 @@ _ADVISORY = re.compile(r"^(DSA|DLA|USN)-\d+(-\d+)?$")
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on findings with a DSA, DLA or USN advisory ID to the earliest advisory publish date from OSV
+    (api.osv.dev). Mutates findings in place; returns stats: candidates, found, errors."""
     cache: dict[str, str | None] = {}
     stats = {"candidates": 0, "found": 0, "errors": 0}
     prefetch(http, [f"{API}/{vid}" for f in findings

@@ -34,10 +34,12 @@ DEFAULT_COSIGN_IDENTITY = {
 
 
 class IntegrityError(Exception):
+    """Raised when a hash, checksum file or cosign check fails or cannot be carried out."""
     pass
 
 
 def sha256_file(path: str | Path) -> str:
+    """SHA-256 of the file's contents as lowercase hex, read in 1 MiB chunks."""
     h = hashlib.sha256()
     with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
@@ -46,6 +48,8 @@ def sha256_file(path: str | Path) -> str:
 
 
 def normalise_hash(value: str | bytes) -> str:
+    """A SHA-256 value (str or ASCII bytes, optional "sha256:" prefix) as 64 lowercase hex characters.
+    Raises IntegrityError if it is not a SHA-256 hex value (non-ASCII bytes raise UnicodeDecodeError)."""
     if isinstance(value, bytes):
         value = value.decode("ascii", errors="strict")
     v = value.strip().lower()
@@ -83,6 +87,8 @@ def parse_checksums(data: bytes) -> dict[str, str]:
 
 def verify_against_checksums(file_path: str | Path, checksums_path: str | Path,
                              name: str | None = None) -> str:
+    """Check a file against its line in a sha256sum-style checksums file, looked up by name (default: the file's name).
+    Returns the actual SHA-256; raises IntegrityError if the name is not listed or the hash differs."""
     file_path = Path(file_path)
     with open(checksums_path, "rb") as fh:
         table = parse_checksums(fh.read())
@@ -96,6 +102,8 @@ def verify_against_checksums(file_path: str | Path, checksums_path: str | Path,
 
 
 def verify_sha256(file_path: str | Path, expected: str) -> str:
+    """Check a file's SHA-256 against an expected value (normalised by normalise_hash). Returns the actual hash;
+    raises IntegrityError on a mismatch or a malformed expected value."""
     want = normalise_hash(expected)
     actual = sha256_file(file_path)
     if actual != want:
@@ -104,11 +112,13 @@ def verify_sha256(file_path: str | Path, expected: str) -> str:
 
 
 def load_known_bad() -> dict:
+    """The bundled data/known_bad.json (known compromised tool versions and GitHub Actions), parsed."""
     with resources.files("oss_intake").joinpath("data/known_bad.json").open("rb") as fh:
         return json.loads(fh.read().decode("utf-8"))
 
 
 def known_bad_entry(tool: str, version: str) -> dict | None:
+    """The known_bad.json entry that lists this version of the tool (a leading v is ignored), or None."""
     v = version.strip().lstrip("vV")
     for entry in load_known_bad().get("tools", {}).get(tool, []):
         if v in entry.get("versions", []):
@@ -118,6 +128,9 @@ def known_bad_entry(tool: str, version: str) -> dict | None:
 
 def cosign_verify_blob(file_path: str | Path, bundle: str | Path, identity_regexp: str,
                        oidc_issuer: str = "https://token.actions.githubusercontent.com") -> None:
+    """Verify a file against a Sigstore bundle by running cosign verify-blob with the certificate identity regexp and
+    OIDC issuer (default GitHub Actions), 120 second timeout. Returns None on success; raises IntegrityError if
+    cosign is not on PATH or verification fails."""
     cosign = shutil.which("cosign")
     if not cosign:
         raise IntegrityError("cosign was requested (--cosign-bundle) but is not on PATH")

@@ -46,6 +46,9 @@ NOT_LOOKED_UP = "fix dates were not looked up (--offline or --no-fix-dates)"
 
 
 def compute(findings: list[Finding], looked_up: bool = True) -> list[dict]:
+    """Fix-date coverage per ecosystem over findings with a fix (not likely fixed or excluded): rows of ecosystem,
+    with_fix, dated, percent, sources (count per date source) and gap (a reason, only under 50 percent), most
+    findings first. looked_up=False gives the "not looked up" reason for every gap."""
     rows: dict[str, dict] = defaultdict(lambda: {"with_fix": 0, "dated": 0, "sources": defaultdict(int)})
     for f in findings:
         if not f.fixed_versions or f.likely_fixed or f.excluded:

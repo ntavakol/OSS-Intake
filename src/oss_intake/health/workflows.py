@@ -76,6 +76,9 @@ def analyse(name: str, text: str, known_bad: list[dict]) -> dict:
 
 
 def fetch(http: Http, repo: str) -> dict:
+    """Analyse the repository's GitHub Actions workflows (up to 20 files) via the contents API at api.github.com:
+    action pinning, known bad actions, permissions and pull_request_target use. Returns a summary dict with status
+    ok, none (no .github/workflows) or error; HTTP errors are returned, not raised."""
     owner, name = repo.split("/", 1)
     try:
         status, listing = http.get_json(f"{API}/{owner}/{name}/contents/.github/workflows")

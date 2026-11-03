@@ -20,6 +20,8 @@ def _roundup(x: float) -> float:
 
 
 def base_score(vector: str) -> float | None:
+    """CVSS v3.x base score worked out from a vector ("CVSS:3.1/AV:N/..."), rounded up as the specification says.
+    Returns None for an empty, non-v3 or malformed vector."""
     if not vector or not vector.startswith("CVSS:3."):
         return None
     try:
@@ -62,6 +64,7 @@ def better(candidate: tuple[float, str, str] | None, current: tuple[float, str, 
 
 
 def severity_from_score(score: float | None) -> str:
+    """CVSS v3 severity band for a score: CRITICAL, HIGH, MEDIUM or LOW; None or 0 gives UNKNOWN."""
     if score is None:
         return "UNKNOWN"
     if score >= 9.0:

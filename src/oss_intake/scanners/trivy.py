@@ -44,6 +44,8 @@ def scan_path(binary: str, mode: str, target: str, extra: list[str], timeout: in
 
 def sbom(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
          platform: str | None = None) -> bytes:
+    """Run trivy image to make a CycloneDX SBOM of the image and return stdout. Raises ScannerError on failure or
+    timeout."""
     cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "cyclonedx", image]
     return run(cmd, timeout)
 

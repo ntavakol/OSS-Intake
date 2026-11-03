@@ -42,6 +42,7 @@ NO_OSV_REASON = {"Red Hat Enterprise Linux": "OSV files Red Hat advisories per p
 
 
 def is_os_purl(purl: str) -> bool:
+    """True if the purl's type is an OS package type (deb, dpkg, rpm or apk)."""
     return purl.startswith("pkg:") and purl[4:].split("/", 1)[0].lower() in OS_TYPES
 
 

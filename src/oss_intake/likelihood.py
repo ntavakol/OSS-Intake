@@ -62,10 +62,13 @@ DEFAULT_CONFIG = {
 
 
 class ConfigError(Exception):
+    """Raised when a likelihood config file cannot be read, parsed or validated."""
     pass
 
 
 def load_config(path: str | None) -> dict:
+    """DEFAULT_CONFIG when path is empty, else the JSON config at path after validate(). Raises ConfigError if it
+    cannot be read, parsed or validated."""
     if not path:
         return DEFAULT_CONFIG
     try:
@@ -89,6 +92,8 @@ def validate(cfg: dict) -> None:
 
 
 def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
+    """Flatten the lag, health and Scorecard results into the metrics the likelihood rules match on (fixes by
+    severity, KEV, exploits, EPSS, ages, archived, Scorecard score). Values that were not checked are None."""
     sev_at = lag.get("fix_available_at_release_by_severity", {})
     sev_fix = lag.get("with_fix_by_severity", {})
     sev_un = lag.get("unshipped_by_severity")
@@ -139,6 +144,9 @@ def confidence(m: dict) -> tuple[str, list[str]]:
 
 
 def evaluate(cfg: dict, m: dict) -> dict:
+    """The first rule in cfg whose "all" and "any" conditions match the metrics, as a dict with level, label, reason,
+    metrics, confidence and confidence_reasons (confidence is "normal" at the top level). With no match, level is
+    None."""
     conf, conf_reasons = confidence(m)
     top = max(r["level"] for r in cfg["rules"])
     for r in cfg["rules"]:

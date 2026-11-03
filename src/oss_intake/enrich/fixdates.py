@@ -46,6 +46,9 @@ def _first_url(f: Finding) -> str | None:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_version_used to the nearest fix and fix_published to its publish date from deps.dev (api.deps.dev),
+    for the package systems deps.dev covers (not Go stdlib). Mutates findings in place; returns stats: looked_up,
+    found, unsupported, errors."""
     cache: dict[tuple[str, str, str], str | None] = {}
     stats = {"looked_up": 0, "found": 0, "unsupported": 0, "errors": 0}
     prefetch(http, [u for u in map(_first_url, findings) if u])

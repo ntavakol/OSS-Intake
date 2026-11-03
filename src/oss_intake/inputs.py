@@ -40,10 +40,12 @@ def version_from_name(path: Path) -> str | None:
 
 
 class InputError(Exception):
+    """Raised for an input path or value that cannot be used; the CLI reports it as a usage error."""
     pass
 
 
 def classify(path: Path) -> str:
+    """Kind of input path: "sbom", "dir", "renv" (renv.lock), "inventory" (.csv), "lockfile" or "artifact"."""
     from . import sbom
 
     if sbom.is_sbom(path):  # by content: an SBOM file, or a folder that holds only SBOMs
@@ -60,6 +62,7 @@ def classify(path: Path) -> str:
 
 
 def trivy_mode(kind: str) -> str:
+    """Trivy subcommand for an input kind: "fs" for a lockfile, otherwise "rootfs"."""
     return "fs" if kind == "lockfile" else "rootfs"
 
 

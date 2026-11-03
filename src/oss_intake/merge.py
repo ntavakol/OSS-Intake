@@ -33,6 +33,9 @@ def _add_target(cur: Finding, target: str) -> None:
 
 
 def merge(*groups: list[Finding]) -> list[Finding]:
+    """Merge findings from all groups into one per merge_key, combining sources, aliases, CWEs, fix versions and
+    targets, and keeping the highest severity, best CVSS and earliest published date. The first finding of each
+    key is mutated and kept. Returns them sorted by severity, CVSS, package and ID."""
     merged: dict[tuple[str, str, str], Finding] = {}
     for group in groups:
         for f in group:

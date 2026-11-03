@@ -18,6 +18,9 @@ def _norm(path: str) -> str:
 
 
 def apply(findings: list[Finding], results: dict[str, dict[str, dict]]) -> dict:
+    """Apply govulncheck results (binary path -> vulnerability ID -> result) to findings in place: reachable if any
+    target binary contains the vulnerable function (level 3 or above), not reachable if every target has a result
+    and none does. Sets reachability and reachability_note; returns stats: binaries, reachable, not_reachable."""
     stats = {"binaries": len(results), "reachable": 0, "not_reachable": 0}
     by_path = {_norm(k): v for k, v in results.items()}
     for f in findings:

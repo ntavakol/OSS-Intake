@@ -102,11 +102,13 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
 
 
 def describe(r: dict) -> str:
+    """One-line text for a recent release: "pkg 1.2.3 (published 2026-01-02, 3 days ago)"."""
     when = "today" if r["age_days"] == 0 else f"{r['age_days']} day{'s' if r['age_days'] != 1 else ''} ago"
     return f"{r['package']} {r['version']} (published {r['published'][:10]}, {when})"
 
 
 def warning(info: dict | None) -> str | None:
+    """Warning naming the package versions published within the window (the first 8), or None if there are none."""
     if not info or not info.get("recent"):
         return None
     shown = "; ".join(describe(r) for r in info["recent"][:8])

@@ -47,6 +47,9 @@ def _query(http: Http, queries: list[dict]) -> list[list[str]]:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Ubuntu findings to the earliest Ubuntu Security Notice on OSV (api.osv.dev) whose fixed
+    version matches a listed fix. Mutates findings in place; returns stats: candidates, packages_queried,
+    notices_fetched, notices_total, found, errors, query_failed."""
     stats = {"candidates": 0, "packages_queried": 0, "notices_fetched": 0, "notices_total": 0, "found": 0,
              "errors": 0, "query_failed": False}
     todo = [f for f in findings if not f.fix_published and not f.likely_fixed and f.fixed_versions

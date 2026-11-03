@@ -198,6 +198,10 @@ def _is_sdist(path: Path) -> bool:
 
 
 def check(http: Http, path: Path) -> dict:
+    """Compare a local file's hash with the one its registry publishes: JAR/WAR/EAR with Maven Central
+    (repo1.maven.org), wheels and sdists with PyPI (pypi.org), .tgz with npm (registry.npmjs.org). Returns a dict
+    with status (match, mismatch, not_published, unknown, error or unsupported) and detail; HTTP and file read
+    errors are returned as a status, not raised."""
     name = path.name.lower()
     try:
         if name.endswith((".jar", ".war", ".ear")):
@@ -216,6 +220,8 @@ def check(http: Http, path: Path) -> dict:
 
 
 def summary(r: dict) -> str:
+    """One-line text for a check() result: match, mismatch (with both hash prefixes), not published, or the status
+    and its detail."""
     st = r.get("status")
     where = r.get("registry", "the registry")
     if st == "match":

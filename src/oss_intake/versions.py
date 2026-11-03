@@ -86,6 +86,8 @@ def _split_revision(v: str) -> tuple[str, str]:
 
 
 def compare(a: str, b: str) -> int:
+    """Compare two versions: -1, 0 or 1. Handles percent-encoded purl versions, the Debian tilde (sorts before
+    anything) and a trailing package revision (-1, -r2), which is compared only when the bases are equal."""
     a, b = unquote(a), unquote(b)  # versions read from purls may be encoded: 1%3A2.39 is 1:2.39
     # Debian's tilde sorts before anything, even the end of the version: 2.4.62-1~deb12u2 < 2.4.62-1.
     if "~" in a or "~" in b:

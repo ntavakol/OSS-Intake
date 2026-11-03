@@ -647,6 +647,8 @@ def _exploit_pill(f: Finding) -> object:
 
 def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str,
           lag_note: str) -> None:
+    """Write the full HTML report: header, tiles, warnings, then the packages, severity, triage, likelihood, lag,
+    health, CI, coverage, scope and top findings sections."""
     title = _title(a) or "assessment"
     lk = a.get("likelihood")
     mismatch = (a.get("registry_check") or {}).get("status") == "mismatch"

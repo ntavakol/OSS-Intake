@@ -48,6 +48,8 @@ class HttpError(Exception):
 
 
 def default_cache_dir() -> Path:
+    """Per-user cache directory: LOCALAPPDATA/oss-intake/cache on Windows, ~/Library/Caches/oss-intake on macOS,
+    otherwise XDG_CACHE_HOME/oss-intake (default ~/.cache/oss-intake)."""
     if os.name == "nt":
         return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "oss-intake" / "cache"
     if os.uname().sysname == "Darwin":
@@ -155,6 +157,9 @@ class Http:
 
 
 class RequestsHttp(Http):
+    """Http over requests: one session per thread, an optional ResponseCache and parallel prefetch for GETs without
+    params (GETs with params always go to the network). A GitHub token (argument or GITHUB_TOKEN) is sent only to
+    api.github.com. Connection failures raise HttpError; requests_made counts requests sent."""
     def __init__(self, timeout: int = DEFAULT_TIMEOUT, github_token: str | None = None,
                  cache: ResponseCache | None = None, workers: int = DEFAULT_WORKERS) -> None:
         import requests

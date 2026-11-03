@@ -20,6 +20,9 @@ _GH_MODULE = re.compile(r"^pkg:golang/github\.com/([A-Za-z0-9-]+)/([A-Za-z0-9._-
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Go modules on github.com to the publish date of the GitHub release tagged with the nearest
+    fix (api.github.com), at most MAX_LOOKUPS lookups. Mutates findings in place; returns stats: looked_up, found,
+    skipped_limit, errors."""
     cache: dict[tuple[str, str, str], str | None] = {}
     stats = {"looked_up": 0, "found": 0, "skipped_limit": 0, "errors": 0}
     for f in findings:

@@ -24,6 +24,8 @@ def _name(purl: str) -> str | None:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Composer findings to the nearest fix's release time from Packagist (repo.packagist.org).
+    Mutates findings in place; returns stats: packages, found, errors."""
     cache: dict[str, list[tuple[str, str]]] = {}
     stats = {"packages": 0, "found": 0, "errors": 0}
     for f in findings:

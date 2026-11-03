@@ -93,6 +93,8 @@ def _classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
 
 
 def apply(findings: list[Finding], checks: dict | None = None) -> dict:
+    """Set triage_group and triage_reason on each finding in place (see classify). Returns {"groups": {group: {"total":
+    n, "with_fix": n}}, "exploits_checked": bool}."""
     counts = {g: {"total": 0, "with_fix": 0} for g in ORDER}
     for f in findings:
         f.triage_group, f.triage_reason = classify(f, checks)

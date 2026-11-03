@@ -46,6 +46,9 @@ def earliest(entries: list[dict]) -> tuple[object, str] | None:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Ubuntu findings to the earliest Release, Security or Updates publication of the nearest
+    fix in Launchpad (api.launchpad.net), at most MAX_LOOKUPS lookups. Mutates findings in place; returns stats:
+    candidates, found, lookups, skipped_limit, errors."""
     stats = {"candidates": 0, "found": 0, "lookups": 0, "skipped_limit": 0, "errors": 0}
     todo = [f for f in findings if _is_ubuntu(f) and not f.fix_published and not f.likely_fixed
             and not f.excluded and f.fixed_versions and _REL.match((f.os_release or "").lower())]

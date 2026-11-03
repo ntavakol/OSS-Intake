@@ -18,6 +18,9 @@ _RH = re.compile(r"^RH[SBE]A-\d{4}:\d+$")
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on findings with a Red Hat advisory ID (RHSA, RHBA, RHEA) to the earliest advisory release
+    date, from the CSAF documents at access.redhat.com. Mutates findings in place; returns stats: candidates,
+    advisories_fetched, found, errors."""
     cache: dict[str, str | None] = {}
     stats = {"candidates": 0, "advisories_fetched": 0, "found": 0, "errors": 0}
     for f in findings:

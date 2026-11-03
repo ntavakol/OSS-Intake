@@ -66,6 +66,9 @@ def _is_debian(f: Finding) -> bool:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Debian findings from the security tracker DSA and DLA lists (salsa.debian.org): by the
+    finding's DSA/DLA ID, else by release and fixed version. Mutates findings in place; returns stats: candidates,
+    found, found_by_version, lists_loaded, errors."""
     stats = {"candidates": 0, "found": 0, "found_by_version": 0, "lists_loaded": [], "errors": 0}
     todo = [f for f in findings if not f.fix_published and not f.likely_fixed and f.fixed_versions
             and (any(v.startswith(("DSA-", "DLA-")) for v in f.vendor_ids) or (_is_debian(f) and not f.excluded))]

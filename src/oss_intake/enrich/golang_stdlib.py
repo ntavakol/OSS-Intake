@@ -49,6 +49,9 @@ def is_stdlib(f: Finding) -> bool:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Go standard library findings to the release date of the nearest fixed Go version, from
+    the release history at go.dev. Mutates findings in place; returns stats: candidates, found, releases_loaded,
+    errors."""
     stats = {"candidates": 0, "found": 0, "releases_loaded": 0, "errors": 0}
     todo = [f for f in findings if is_stdlib(f) and not f.fix_published and not f.likely_fixed and f.fixed_versions]
     if not todo:

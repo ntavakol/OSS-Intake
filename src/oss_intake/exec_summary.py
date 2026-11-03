@@ -28,6 +28,9 @@ def _ids(f: Finding) -> set[str]:
 
 def compute(rows: list[dict], findings: list[Finding], as_of: datetime,
             previous: set[tuple[str, str]] | None) -> dict:
+    """Executive summary figures from package rows and findings: counts, stale packages (latest release over a year
+    old), findings now and after upgrading to the fix or latest, new releases. previous ((ID, package) pairs) adds
+    new and resolved counts; an owner, team, system or application label adds per-owner counts."""
     stale = []
     for r in rows:
         published = parse_datetime(r.get("latest_published") or "")
@@ -116,6 +119,8 @@ def _why(r: dict) -> str:
 
 
 def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
+    """Write the one-page executive summary HTML (tiles, effect of upgrading, changes since the previous run, top
+    packages, per-owner table, new and stale releases) from the compute() result s."""
     from .inventory_report import label_text
     from .report import packages_title
 

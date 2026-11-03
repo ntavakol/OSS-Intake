@@ -42,6 +42,9 @@ def _matches(message: str, cve_ids: set[str], ver: str, rel: str) -> bool:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set fix_published on Alpine findings to the earliest aports commit on the release branch whose message names
+    the CVE or the fixed version (api.github.com), at most MAX_PACKAGES packages. Mutates findings in place;
+    returns stats: candidates, packages, found, skipped_limit, errors."""
     stats = {"candidates": 0, "packages": 0, "found": 0, "skipped_limit": 0, "errors": 0}
     cache: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
     for f in findings:

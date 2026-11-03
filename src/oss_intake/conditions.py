@@ -54,6 +54,8 @@ MAX_UNIT = 1024
 
 
 def extract(text: str) -> str:
+    """The advisory's own "affected only if" style sentences (with any list that follows one ending in a colon), from
+    the first 8 KB of text, de-duplicated, joined and cut to at most MAX_LEN characters. "" if none."""
     if not text:
         return ""
     text = text[:MAX_TEXT]

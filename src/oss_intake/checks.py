@@ -16,6 +16,7 @@ LABEL = {"kev": "CISA KEV", "exploits": "exploit indexes", "epss": "EPSS", "mali
 
 
 def state(value: str, reason: str = "") -> dict:
+    """A check state dict: {"state": value, "reason": reason}."""
     return {"state": value, "reason": reason}
 
 
@@ -45,6 +46,7 @@ def compute(n_findings: int, kev: dict, epss: dict, exploits: dict, malicious: d
 
 
 def state_of(checks: dict | None, name: str) -> str:
+    """State of the named source; a source not recorded (or no checks at all) counts as checked."""
     return (checks or {}).get(name, {}).get("state", CHECKED)
 
 
@@ -67,6 +69,7 @@ def describe(checks: dict, name: str) -> str:
 
 
 def warning(checks: dict | None) -> str | None:
+    """Warning naming each source not fully checked and why, or None if all were checked."""
     missing = gaps(checks)
     if not missing:
         return None

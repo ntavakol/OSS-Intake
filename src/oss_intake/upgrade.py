@@ -87,6 +87,9 @@ def latest_version(http: Http, purl: str) -> str | None:
 
 
 def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict | None = None) -> dict:
+    """Add upgrade fields to inventory rows in place: major-upgrade flags, the latest stable version from deps.dev
+    (api.deps.dev, if latest) and the findings left at the fix and latest versions from an OSV scan (api.osv.dev).
+    Returns info with status, latest_checked, latest_unknown, errors and latest (plus error if the scan failed)."""
     info: dict = {"status": "ok", "latest_checked": 0, "latest_unknown": 0, "errors": 0, "latest": latest}
     for r in rows:
         r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",

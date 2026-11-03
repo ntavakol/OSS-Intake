@@ -21,6 +21,8 @@ def _cve(f: Finding) -> str | None:
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:
+    """Set epss and epss_percentile on findings with a CVE from FIRST EPSS (api.first.org), 100 CVEs per request.
+    Mutates findings in place; returns stats: cves, scored, errors, model_date."""
     cves = sorted({c for f in findings if (c := _cve(f))})
     scores: dict[str, tuple[float, float]] = {}
     stats = {"cves": len(cves), "scored": 0, "errors": 0, "model_date": None}

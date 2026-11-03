@@ -50,6 +50,7 @@ def safe_date(year: int, month: int, day: int) -> datetime | None:
 
 
 def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None:
+    """Whole days from start to end (dates or datetimes, compared by date); None if either is None."""
     if start is None or end is None:
         return None
     s = start.date() if isinstance(start, datetime) else start
@@ -58,6 +59,7 @@ def days_between(start: datetime | date | None, end: datetime | date | None) -> 
 
 
 def normalise_severity(value: str | None) -> str:
+    """Upper-cased severity, with MODERATE as MEDIUM and NEGLIGIBLE as LOW; empty or unknown values give UNKNOWN."""
     if not value:
         return "UNKNOWN"
     v = value.strip().upper()
@@ -85,6 +87,7 @@ def normalise_purl(purl: str | None) -> str | None:
 
 
 def purl_without_version(purl: str | None) -> str | None:
+    """The normalised purl (no qualifiers or subpath) without its version, or None if it is not a valid purl."""
     n = normalise_purl(purl)
     if not n:
         return None
@@ -96,6 +99,8 @@ def purl_without_version(purl: str | None) -> str | None:
 
 @dataclass
 class Finding:
+    """One vulnerability on one package version, from a scanner or OSV, then merged and enriched. The enrichment
+    fields are filled by the enrich modules, the release-lag fields by lag.compute."""
     vuln_id: str
     package: str
     installed: str

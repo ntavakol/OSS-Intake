@@ -49,6 +49,9 @@ def _highest(vs: list[str]) -> str:
 
 
 def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
+    """One row per inventory package: its findings summarised (worst triage group, critical, high, KEV, no-fix
+    counts, malicious) and the minimum upgrade that fixes them all, or "remove" when malicious. Sorted worst
+    first."""
     by_purl: dict[str, list[Finding]] = {}
     for f in findings:
         by_purl.setdefault(f.purl or "", []).append(f)
@@ -103,6 +106,8 @@ def package_rows(inventory: list[dict], findings: list[Finding]) -> list[dict]:
 
 
 def summary(rows: list[dict]) -> dict:
+    """Headline counts over package rows: packages, with_findings, malicious, act_now, with_critical, without_fix,
+    fix_clears_all, behind_latest, and the sorted label_columns."""
     return {
         "packages": len(rows),
         "with_findings": sum(1 for r in rows if r["findings"]),
@@ -129,6 +134,7 @@ def abbreviate(value: str, shown: int = SHOWN, where: str = "") -> str:
 
 
 def label_text(labels: dict[str, str]) -> str:
+    """Labels as "key: value · key: value", with long multi-value lists abbreviated."""
     return " · ".join(f"{k}: {abbreviate(v)}" for k, v in labels.items())
 
 

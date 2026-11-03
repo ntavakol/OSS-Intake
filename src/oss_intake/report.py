@@ -98,6 +98,7 @@ def csv_safe(value: object) -> object:
 
 
 def write_csv(path: Path, findings: list[Finding]) -> None:
+    """Write one CSV row per finding with the CSV_FIELDS columns, each value passed through csv_safe."""
     with open(path, "w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
         w.writeheader()
@@ -113,12 +114,15 @@ def to_json(a: dict, findings: list[Finding]) -> dict:
 
 
 def write_json(path: Path, a: dict, findings: list[Finding]) -> None:
+    """Write the assessment and findings (to_json) to path as indented JSON."""
     path.write_text(json.dumps(to_json(a, findings), indent=2, default=str), encoding="utf-8")
 
 
 # ---------- Shared summary model used by Markdown and HTML ----------
 
 def release_used(lag: dict, health: dict) -> str:
+    """The release the lag figures were measured against, e.g. "v1.2.3 (2024-05-01), from <source>", or a note
+    that the image build date was used because no release matched."""
     date = (lag.get("release_date") or "")[:10]
     src = lag.get("release_date_source") or ""
     if src == "image build date":
@@ -176,6 +180,8 @@ def triage_section(a: dict) -> tuple[str, list] | None:
 
 
 def not_checked_section(a: dict) -> tuple[str, list] | None:
+    """Report section (heading, blocks) listing up to 100 SBOM components that could not be looked up, or None if
+    there are none."""
     nc = (a.get("sbom") or {}).get("not_checked") or []
     if not nc:
         return None
@@ -188,6 +194,8 @@ def not_checked_section(a: dict) -> tuple[str, list] | None:
 
 
 def release_age_section(a: dict) -> tuple[str, list] | None:
+    """Report section (heading, blocks) listing package versions published within the new-release window, or None
+    if there are none."""
     ra = a.get("release_age") or {}
     if not ra.get("recent"):
         return None
@@ -238,6 +246,8 @@ def packages_title(purls: list[str]) -> str:
 
 
 def report_title(a: dict) -> str:
+    """Report title: the package list, the input path's name or the image, with the repository in brackets where
+    given; otherwise the repository, or "assessment"."""
     inp = a["inputs"]
     if inp.get("packages"):
         return packages_title(inp["packages"]) + (f" ({inp['repo']})" if inp.get("repo") else "")
@@ -501,6 +511,8 @@ def _md_cell(x: object) -> str:
 
 
 def write_markdown(path: Path, a: dict, findings: list[Finding], top: int = 25) -> None:
+    """Write the summary report as Markdown: title and generation line, then each summary_sections section as
+    paragraphs, lists and tables (top caps the findings listed). Every data-derived line is escaped."""
     title = report_title(a) or "assessment"
     # Every line built from data is escaped, not only table cells: titles, paragraphs and list items can carry
     # package names, tags or advisory text (S5).
@@ -523,6 +535,7 @@ def write_markdown(path: Path, a: dict, findings: list[Finding], top: int = 25) 
 
 
 def write_html(path: Path, a: dict, findings: list[Finding], top: int = 50) -> None:
+    """Write the HTML report through report_html.write, with the caveat, heuristic note and release-lag note."""
     from . import report_html
 
     lag = a["lag"]
