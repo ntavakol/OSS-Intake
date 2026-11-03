@@ -175,3 +175,33 @@ def test_golden_commands_are_valid_cli_input():
         cmd = argv if argv[:1] and argv[0] in ("verify", "doctor") else ["scan", *argv]
         cli.build_parser().parse_args(cmd)
         assert shlex.split(case["bash"]) == ["oss-intake", *argv], case["name"]
+
+
+def test_site_is_published_from_release_tags():
+    """The builder's options must match what is on PyPI, so the site is published from a release tag, and
+    pages.yml refuses a tag that options.json was not generated for."""
+    from oss_intake import integrity
+    from oss_intake.health import workflows as wf
+
+    path = ROOT / ".github" / "workflows" / "pages.yml"
+    if not path.exists():
+        pytest.skip("workflows are not in the sdist")
+    text = path.read_text(encoding="utf-8")
+    res = wf.analyse("pages.yml", text, integrity.load_known_bad()["actions"])
+    assert res["unpinned"] == [] and res["known_bad"] == [] and not res["write_all"]
+    assert "release:" in text and "push:" not in text
+    assert "ref: ${{ github.event.release.tag_name || inputs.tag }}" in text
+    assert "site/builder/options.json is for" in text
+
+
+def test_page_loads_no_third_party_code():
+    """No CDN, no inline script or style, no innerHTML: the Content Security Policy and the code agree."""
+    html = (BUILDER / "index.html").read_text(encoding="utf-8")
+    assert "script-src 'self'" in html and "unsafe-inline" not in html and "unsafe-eval" not in html
+    assert not re.search(r"<script(?![^>]*\bsrc=)", html) and "<style" not in html and " style=" not in html
+    assert not re.search(r"https?://(?!github\.com/ntavakol/)", html.replace("http-equiv", ""))
+    for js in BUILDER.glob("*.js"):
+        code = js.read_text(encoding="utf-8")
+        for bad in ("innerHTML", "outerHTML", "insertAdjacentHTML", "eval(", "new Function", "document.write"):
+            assert bad not in code, f"{js.name}: {bad}"
+        assert not re.search(r"""(?:import|fetch)\s*\(?\s*["']https?:""", code), js.name

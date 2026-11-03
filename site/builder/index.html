@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>oss-intake command builder</title>
+<meta name="description" content="Pick the options and copy the oss-intake command. Runs in your browser; nothing is sent anywhere.">
+<link rel="stylesheet" href="builder.css">
+<script type="module" src="ui.js"></script>
+</head>
+<body>
+<div class="page">
+<header>
+  <h1>oss-intake command builder</h1>
+  <p class="lede">Pick what to check and the options you need; the command appears below, ready to copy.
+  It only builds text: nothing runs, and nothing you type leaves this page.</p>
+  <p class="meta" id="version">Loading the options...</p>
+</header>
+
+<div class="layout">
+<main id="form" aria-label="Options">
+  <section class="bar">
+    <div class="tabs" role="radiogroup" aria-label="Command" id="commands"></div>
+    <div class="controls">
+      <label for="preset">Start from</label>
+      <select id="preset"></select>
+      <button type="button" id="reset" class="btn">Reset</button>
+    </div>
+  </section>
+  <p class="help" id="command-help"></p>
+  <div id="groups"></div>
+  <noscript><p class="problem">The builder needs JavaScript. The full option list is in the
+  <a href="https://github.com/ntavakol/OSS-Intake#usage">README</a>.</p></noscript>
+</main>
+
+<aside class="panel" aria-label="Command">
+  <div class="panel-head">
+    <h2>Command</h2>
+    <div class="shells" role="radiogroup" aria-label="Shell" id="shells"></div>
+  </div>
+  <pre><code id="command"></code></pre>
+  <div class="panel-actions">
+    <button type="button" id="copy" class="btn primary">Copy</button>
+    <button type="button" id="link" class="btn">Copy link</button>
+    <span id="status" role="status" aria-live="polite"></span>
+  </div>
+  <ul id="problems" class="problems" aria-live="polite"></ul>
+  <ul id="notes" class="notes"></ul>
+</aside>
+</div>
+
+<footer>Options come from oss-intake's own parser, and the checks are the ones it makes before it starts.
+<a href="../">oss-intake</a> · <a href="https://github.com/ntavakol/OSS-Intake">source on GitHub</a></footer>
+</div>
+</body>
+</html>
