@@ -1790,3 +1790,49 @@ def test_missing_details_are_not_counted_as_no_fix_or_routine(tmp_path):
     f = {r["id"]: r for r in csv.DictReader((tmp_path / "o" / "findings.csv").open(encoding="utf-8"))}
     assert f["GHSA-demo-kev"]["suggested_group"] == "Review"
     assert "details could not be loaded" in f["GHSA-demo-kev"]["suggested_reason"]
+
+
+@pytest.mark.skipif(not hasattr(__import__("time"), "tzset"), reason="needs time.tzset to change the time zone")
+def test_default_assessment_date_is_the_local_date(tmp_path, fixtures, monkeypatch):
+    """Without --as-of the assessment date is today where the assessor is: early on 4 Nov in Sydney is still
+    3 Nov in UTC, and the report must not say 3 Nov."""
+    import time
+    from datetime import datetime, timezone
+
+    monkeypatch.setenv("TZ", "Australia/Sydney")
+    time.tzset()
+    try:
+        out = tmp_path / "r"
+        code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats", "json",
+                         "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy"])
+        assert code == 0
+        a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+        local = datetime.now().astimezone()
+        assert local.utcoffset() != datetime.now(timezone.utc).utcoffset()  # the test really is off UTC
+        assert datetime.fromisoformat(a["as_of"]).utcoffset() == local.utcoffset()
+        assert a["as_of"][:10] == local.date().isoformat()
+    finally:
+        monkeypatch.delenv("TZ")
+        time.tzset()
+
+
+@pytest.mark.parametrize("health,want", [
+    ({"status": "no_releases"}, "example/webapp has no GitHub releases: pass --release-date"),
+    ({"status": "ok", "scanned_release": None}, "no release of example/webapp matched: pass --release-tag or "
+                                                "--release-date"),
+    ({}, "the GitHub lookup for example/webapp was skipped or failed: pass --release-date"),
+    (None, "no release date: pass --repo or --release-date"),
+])
+def test_release_tile_says_why_there_is_no_release_date(tmp_path, fixtures, health, want):
+    """The tile told the assessor to pass --repo when --repo was given and the project has no releases."""
+    from oss_intake import report_html
+
+    out = tmp_path / "r"
+    cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats", "json",
+              "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--no-image-date",
+              "--as-of", AS_OF])
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert not a["lag"]["release_date"]
+    a["inputs"]["repo"] = "example/webapp" if health is not None else None
+    a["health"] = health or {}
+    assert want in report_html._tiles(a)

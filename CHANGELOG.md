@@ -15,6 +15,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Changed
 - The project site is published when a release is published, from the release tag, so the command builder
   always matches the version on PyPI. The sample report is rebuilt in the release commit, before tagging.
+- Without `--as-of`, the assessment date is the local date where oss-intake runs, not the UTC date: a run early
+  in the morning in Sydney said the day before. `as_of` in assessment.json now carries the local UTC offset.
+
+### Fixed
+- The HTML report's "Fix existed before release" tile said "pass --repo" when `--repo` was given. It now says
+  why there is no release date: the repository has no GitHub releases, no release matched, or the GitHub
+  lookup was skipped or failed.
 
 ## [0.12.1] - 2026-11-04
 

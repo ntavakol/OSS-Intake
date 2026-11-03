@@ -522,7 +522,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.repo = validate_repo(args.repo)
     # findings.csv is always written: the reports point to it and the assessor records decisions in it.
     formats = list(dict.fromkeys(["csv", *csv_set(args.formats, _FORMATS, "--formats")]))
-    as_of = validate_date(args.as_of, "--as-of") or datetime.now(timezone.utc)
+    # Without --as-of, today is the assessor's local date (the report shows as_of's date), not UTC's.
+    as_of = validate_date(args.as_of, "--as-of") or datetime.now(timezone.utc).astimezone()
     release_override = validate_date(args.release_date, "--release-date")
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True

@@ -130,6 +130,19 @@ def _plural(n: int, word: str) -> str:
 
 # ---------- sections ----------
 
+def _no_release_date(a: dict) -> str:
+    """Why the release lag has no release date, and what to pass: --repo only helps if it was not given."""
+    repo = (a.get("inputs") or {}).get("repo")
+    health = a.get("health") or {}
+    if not repo:
+        return "no release date: pass --repo or --release-date"
+    if health.get("status") == "no_releases":
+        return f"{repo} has no GitHub releases: pass --release-date"
+    if health.get("status") == "ok":
+        return f"no release of {repo} matched: pass --release-tag or --release-date"
+    return f"the GitHub lookup for {repo} was skipped or failed: pass --release-date"
+
+
 def _tiles(a: dict) -> str:
     lag, sc, lk = a["lag"], a["scorecard"], a.get("likelihood")
     bys, fixs = lag["by_severity"], lag["with_fix_by_severity"]
@@ -166,7 +179,7 @@ def _tiles(a: dict) -> str:
         tiles.append(("a" if inv["with_findings"] else "g", "Packages checked", str(inv["packages"]),
                       f"{inv['with_findings']} with known vulnerabilities or malware"))
     elif not lag.get("release_date"):
-        tiles.append(("n", "Fix existed before release", "n/a", "no release date: pass --repo or --release-date"))
+        tiles.append(("n", "Fix existed before release", "n/a", _no_release_date(a)))
     else:
         tiles.append(("a" if lag["fix_available_at_release"] else "g", "Fix existed before release",
                       str(lag["fix_available_at_release"]), "not shipped in the scanned release"))
