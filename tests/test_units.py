@@ -2215,6 +2215,7 @@ def test_release_workflow_signs_and_attaches_the_sbom():
     assert res["unpinned"] == [] and res["known_bad"] == [] and not res["write_all"]
     assert "scripts/release_sbom.py" in text and "--require-hashes -r requirements/runtime.txt" in text
     assert "./sbom/*.cdx.json" in text and "release-signing-artifacts: true" in text
+    assert text.count("startswith('pkg:pypi/requests@')") == 1  # the read-back check fails on an empty SBOM
 
 
 @pytest.mark.parametrize("content", [b"\xff\xfe{\x00}", b"[1, 2]", b'"rules"'])
@@ -2280,9 +2281,15 @@ def test_release_sbom_describes_oss_intake_and_its_runtime_dependencies(tmp_path
     """scripts/release_sbom.py, run here against the test environment: oss-intake is the subject (with the
     wheel's SHA-256), requests and what it needs are components, dev tools are not, and oss-intake reads it."""
     import hashlib
+    import importlib.metadata
     from datetime import datetime, timezone
 
     from oss_intake import sbom
+
+    try:
+        importlib.metadata.distribution("oss-intake")
+    except importlib.metadata.PackageNotFoundError:
+        pytest.skip("oss-intake is not installed (pip install -e .), so there is no environment to describe")
 
     mod = _release_sbom()
     wheel = tmp_path / "oss_intake-0-py3-none-any.whl"
@@ -2295,6 +2302,8 @@ def test_release_sbom_describes_oss_intake_and_its_runtime_dependencies(tmp_path
     names = {c["name"] for c in bom["components"]}
     assert {"requests", "urllib3", "idna", "certifi", "charset-normalizer"} <= names
     assert not names & {"pytest", "ruff", "mypy", "coverage", "pip", "oss-intake"}
+    requests = next(c for c in bom["components"] if c["name"] == "requests")
+    assert requests["licenses"] == [{"license": {"id": "Apache-2.0"}}]  # an SPDX ID, so tools can resolve it
     refs = {c["bom-ref"] for c in bom["components"]} | {subject["bom-ref"]}
     assert all(d["ref"] in refs and set(d["dependsOn"]) <= refs for d in bom["dependencies"])
     out = tmp_path / "sbom" / "oss-intake.cdx.json"

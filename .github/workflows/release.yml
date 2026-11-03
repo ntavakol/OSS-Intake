@@ -44,7 +44,8 @@ jobs:
           "$env/bin/python" -m pip install --no-deps dist/*.whl
           "$env/bin/python" -I scripts/release_sbom.py --wheel dist/*.whl --out "sbom/oss-intake-${version}.cdx.json"
           "$env/bin/python" -I -c "from pathlib import Path; from oss_intake import sbom; \
-          entries, _, _ = sbom.read(Path('sbom')); print(len(entries), 'packages read back by oss-intake')"
+          entries, _, _ = sbom.read(Path('sbom')); assert any(e['purl'].startswith('pkg:pypi/requests@') \
+          for e in entries), entries; print(len(entries), 'packages read back by oss-intake')"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist

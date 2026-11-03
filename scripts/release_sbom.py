@@ -10,7 +10,9 @@ environment, then runs this script with that environment's Python:
 The SBOM lists what the release was built and tested with: oss-intake (the subject, with the wheel's SHA-256)
 and every distribution its requirements reach in that environment, walked through each package's Requires-Dist.
 Optional extras (`extra == ...`) are left out, and so is any requirement that is not installed (one whose
-environment marker did not apply). Users who resolve the dependency ranges later may get newer versions.
+environment marker did not apply). Markers are not evaluated beyond that, and extras a parent asks for
+(`requests[socks]`) are not followed: enough for oss-intake, which has no extras, in an environment that holds only
+the pinned runtime requirements. Users who resolve the dependency ranges later may get newer versions.
 Standard library only, so it runs in the environment it describes without adding anything to it.
 """
 
@@ -29,6 +31,9 @@ from pathlib import Path
 SPEC = "1.6"
 ROOT = "oss-intake"
 _NAME = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+# Common SPDX licence IDs, written as `license.id` so tools resolve them; anything else stays free text (`name`).
+SPDX_IDS = {"0BSD", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "LGPL-2.1-or-later", "LGPL-3.0-or-later",
+            "MIT", "MPL-2.0", "PSF-2.0", "Python-2.0", "Unlicense"}
 
 
 def canonical(name: str) -> str:
@@ -68,6 +73,8 @@ def _licence(dist: md.Distribution) -> list[dict]:
     if expr:
         return [{"expression": expr}]
     text = _field(dist, "License").strip()
+    if text in SPDX_IDS:
+        return [{"license": {"id": text}}]
     if text and "\n" not in text and len(text) <= 100:
         return [{"license": {"name": text}}]
     classifiers = [c.split("::")[-1].strip() for c in dist.metadata.get_all("Classifier") or []
