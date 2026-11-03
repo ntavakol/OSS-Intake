@@ -39,7 +39,7 @@ Issues = "https://github.com/ntavakol/OSS-Intake/issues"
 Changelog = "https://github.com/ntavakol/OSS-Intake/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "coverage>=7"]
+dev = ["pytest>=8", "ruff>=0.6", "coverage>=7", "mypy>=2.4"]
 
 [project.scripts]
 oss-intake = "oss_intake.cli:main"
@@ -63,6 +63,14 @@ source = ["oss_intake"]
 fail_under = 90
 show_missing = true
 skip_covered = true
+
+[tool.mypy]
+# Default (not strict) checking of src/, blocking in CI. Python 3.10 is the oldest supported version.
+files = ["src/oss_intake"]
+python_version = "3.10"
+warn_unused_ignores = true
+# Bodies of functions without annotations are not checked (the default); this only hides the note saying so.
+disable_error_code = ["annotation-unchecked"]
 
 [tool.ruff]
 line-length = 120

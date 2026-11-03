@@ -2197,6 +2197,7 @@ def test_ci_workflow_is_pinned_and_gates_quality():
     assert re.search(r'GITLEAKS_SHA256: "[0-9a-f]{64}"', text) and "sha256sum -c" in text
     assert "fetch-depth: 0" in text and "--exit-code 1" in text
     assert "coverage run -m pytest" in text
+    assert "python -m mypy" in text  # blocking type check; settings in pyproject.toml [tool.mypy]
     floor = re.search(r"^fail_under = (\d+)", (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     assert floor and int(floor.group(1)) >= 90
 

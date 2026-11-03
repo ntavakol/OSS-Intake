@@ -1229,7 +1229,7 @@ def _language_purls(args, trivy_report: dict | None) -> list[str]:
 def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args,
                   check_info: dict | None = None, details_missing: int = 0) -> list[tuple[str, str]]:
     """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
-    out = []
+    out: list[tuple[str, str]] = []
     for gate in ("critical", "high"):
         if gate in wanted and details_missing:
             out.append((gate, f"advisory details for {details_missing} finding(s) could not be loaded, so their "

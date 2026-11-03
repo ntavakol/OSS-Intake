@@ -12,6 +12,7 @@ python -m venv .venv
 # Linux/macOS: source .venv/bin/activate    Windows: .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 python -m ruff check .
+python -m mypy
 python -m pytest
 python -m coverage run -m pytest && python -m coverage report   # what CI checks: fails below the floor
 ```
@@ -30,8 +31,8 @@ chmod +x .git/hooks/pre-commit
 ## Rules
 
 - **Tests come with the change.** New functionality must add automated tests that cover it, and a bug fix must
-  add a test that fails without the fix. CI (`ruff` and `pytest` on Linux, macOS and Windows, a coverage floor,
-  and a gitleaks scan of the full history) must pass before a change is merged or released. If a test fixture
+  add a test that fails without the fix. CI (`ruff`, `mypy` and `pytest` on Linux, macOS and Windows, a coverage
+  floor, and a gitleaks scan of the full history) must pass before a change is merged or released. If a test fixture
   trips gitleaks (an advisory that quotes an example key, say), add its fingerprint to `.gitleaksignore` with
   the reason; never commit a real secret, even one already revoked.
 - **No live network calls in tests.** Use fixtures in `tests/fixtures` and the `FakeHttp` helper. It fails
