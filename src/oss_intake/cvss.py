@@ -50,7 +50,8 @@ def version_of(vector: str | None, fallback: str = "") -> str:
     return fallback
 
 
-def better(candidate: tuple[float, str, str] | None, current: tuple[float, str, str] | None) -> bool:
+def better(candidate: tuple[float | None, str, str] | None,
+           current: tuple[float | None, str, str] | None) -> bool:
     """(score, version, source): any v3 score beats a v4 score (the two scales are not comparable, and v3
     is what most tooling and policy still use); within the same major version the higher score wins."""
     if candidate is None or candidate[0] is None:

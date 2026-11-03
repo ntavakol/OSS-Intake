@@ -289,8 +289,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             path = find_executable(tool, getattr(args, f"{tool}_path"))
             digest = integrity.sha256_file(path)  # recorded before the binary is run
             embedded = integrity.embedded_version(tool, path)
-            if embedded and integrity.known_bad_entry(tool, embedded):
-                bad = integrity.known_bad_entry(tool, embedded)
+            bad = integrity.known_bad_entry(tool, embedded) if embedded else None
+            if bad:
                 rows.append({"tool": tool, "path": path, "version": embedded, "sha256": digest, "known_bad": True,
                              "known_bad_reference": bad.get("reference"),
                              "note": "not run: the version was read from the binary's Go build information"})
@@ -1234,12 +1234,13 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
         if gate in wanted and details_missing:
             out.append((gate, f"advisory details for {details_missing} finding(s) could not be loaded, so their "
                               "severity is unknown"))
+    chk = check_info or {}  # state_of treats None and {} alike: every source counts as checked
     # 'act' comes from malicious package data, CISA KEV and the exploit indexes (unless --no-exploits was chosen).
     act_sources = ("malicious", "kev") if args.no_exploits else ("malicious", "kev", "exploits")
     for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", act_sources)):
-        missing = [n for n in sources if checks.state_of(check_info, n) != checks.CHECKED]
+        missing = [n for n in sources if checks.state_of(chk, n) != checks.CHECKED]
         if gate in wanted and missing:
-            out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(check_info, n)}" for n in missing)))
+            out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(chk, n)}" for n in missing)))
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))

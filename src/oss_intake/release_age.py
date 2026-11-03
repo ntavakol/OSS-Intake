@@ -45,7 +45,7 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
                   "unknown_purls": [], "unsupported_purls": [],
                   # ... and those never looked up (a failed lookup, or over the limit), named in the gate's output
                   "unchecked_purls": []}
-    planned = []
+    planned: list[str] = []
     for purl in dict.fromkeys(purls):
         sn, version = _system_and_name(purl), _version(purl)
         if sn and version and sn != ("go", "stdlib") and len(planned) < limit:

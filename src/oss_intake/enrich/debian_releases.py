@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Any
 
 from ..http import Http, HttpError
 from ..models import Finding, safe_date
@@ -65,7 +66,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     """Set fix_published on Debian findings to the point release that shipped the nearest fix, from the suite
     ChangeLog at deb.debian.org; a fix only in proposed-updates is added to note instead. Mutates findings in place;
     returns stats: candidates, found, pending, suites_loaded, errors."""
-    stats = {"candidates": 0, "found": 0, "pending": 0, "suites_loaded": [], "errors": 0}
+    stats: dict[str, Any] = {"candidates": 0, "found": 0, "pending": 0, "suites_loaded": [], "errors": 0}
     suites: dict[str, dict] = {}
     for f in findings:
         if f.fix_published or f.likely_fixed or f.excluded or not f.fixed_versions or not _is_debian(f):

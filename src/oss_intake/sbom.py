@@ -174,7 +174,7 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
                   if isinstance(r, dict) and r.get("relationshipType") == "DESCRIBES"
                   and r.get("spdxElementId") == "SPDXRef-DOCUMENT"}
     subject = str(data.get("name") or "")
-    out = []
+    out: list[tuple[str, str, str, dict]] = []
     for p in data.get("packages") or []:
         if not isinstance(p, dict):
             continue

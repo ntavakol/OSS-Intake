@@ -21,6 +21,7 @@ import re
 import tarfile
 import zipfile
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote
 
 from .http import Http, HttpError
@@ -222,7 +223,7 @@ def check(http: Http, path: Path) -> dict:
 def summary(r: dict) -> str:
     """One-line text for a check() result: match, mismatch (with both hash prefixes), not published, or the status
     and its detail."""
-    st = r.get("status")
+    st = cast(str, r.get("status"))  # every check() result has a status
     where = r.get("registry", "the registry")
     if st == "match":
         return f"matches {where} ({r['algorithm']}) for {r['identity']}"

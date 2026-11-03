@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .models import Finding, parse_datetime
 from .report_html import CSS, Raw, _e, _group_pill, _note, _section, _table
@@ -51,7 +52,7 @@ def compute(rows: list[dict], findings: list[Finding], as_of: datetime,
 
     upgrade_checked = any(r.get("upgrade_left") is not None for r in rows)
     latest_checked = any(r.get("latest") for r in rows)
-    out = {
+    out: dict[str, Any] = {
         "packages": len(rows),
         "with_findings": sum(1 for r in rows if r["findings"]),
         "act_now": sum(1 for r in rows if r["group_key"] == "act"),

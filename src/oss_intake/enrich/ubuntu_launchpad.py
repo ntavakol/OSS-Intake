@@ -12,6 +12,7 @@ Requests are anonymous (api.launchpad.net), one per source package and version, 
 from __future__ import annotations
 
 import re
+from typing import cast
 
 from ..http import Http, HttpError
 from ..models import Finding, parse_datetime
@@ -62,7 +63,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     cache: dict[tuple[str, str, str], tuple | None] = {}
     for f in todo:
         stats["candidates"] += 1
-        link = links.get(_REL.match(f.os_release.lower()).group(1))
+        link = links.get(cast(re.Match[str], _REL.match(f.os_release.lower())).group(1))  # todo matched it
         fix = nearest_fix(f.vs_fix, f.fixed_versions)
         if not link or not fix:
             continue

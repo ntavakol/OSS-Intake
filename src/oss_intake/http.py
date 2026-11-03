@@ -16,6 +16,7 @@ import os
 import re
 import threading
 import time
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -237,7 +238,7 @@ class RequestsHttp(Http):
         failures = [0]
         lock = threading.Lock()
 
-        def one(u: str):
+        def one(u: str) -> tuple[str, tuple[int, Any] | HttpError]:
             # After a few failures the service is down or unreachable: answer the rest at once instead of
             # waiting out a timeout for each, as the sequential code did by stopping at the first error.
             with lock:
@@ -250,6 +251,7 @@ class RequestsHttp(Http):
                     failures[0] += 1
                 return u, exc
 
+        results: Iterable[tuple[str, tuple[int, Any] | HttpError]]
         if len(todo) == 1 or self._workers == 1:
             results = map(one, todo)
         else:

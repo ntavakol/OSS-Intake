@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta
 from statistics import median
+from typing import cast
 
 from .models import SEVERITIES, Finding, days_between
 from .versions import label_only_match, nearest_fix
@@ -90,14 +91,16 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
     with_fix = [f for f in findings if f.has_fix and not f.likely_fixed and not f.excluded]
     likely_fixed = [f for f in findings if f.likely_fixed]
     dated = [f for f in with_fix if f.fix_published]
-    within_grace = [f for f in dated if release_date and cutoff <= f.fix_published < release_date]
+    # dated holds only findings with fix_published set; cutoff is set exactly when release_date is
+    within_grace = [f for f in dated
+                    if release_date and cutoff and cutoff <= cast(datetime, f.fix_published) < release_date]
     unshipped = None
     if scanned_is_latest:  # only defined for the project's latest release; None (n/a) otherwise
         unshipped = [f for f in dated if (f.days_fix_available or 0) >= unshipped_days]
     at_release = [f for f in dated if f.fix_available_at_release]
     days = [f.days_fix_available for f in dated if f.days_fix_available is not None]
-    oldest = min(dated, key=lambda f: f.fix_published) if dated else None
-    oldest_pub = min((f for f in with_fix if f.published), key=lambda f: f.published, default=None)
+    oldest = min(dated, key=lambda f: cast(datetime, f.fix_published)) if dated else None
+    oldest_pub = min((f for f in with_fix if f.published), key=lambda f: cast(datetime, f.published), default=None)
 
     def by_sev(items: list[Finding]) -> dict[str, int]:
         return {s: sum(1 for f in items if f.severity == s) for s in SEVERITIES}
@@ -128,11 +131,12 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
         "max_days_fix_available": max(days) if days else None,
         "oldest_available_fix": None if not oldest else {
             "id": oldest.vuln_id, "package": oldest.package, "fix_version": oldest.fix_version_used,
-            "fix_published": oldest.fix_published.date().isoformat(), "days": oldest.days_fix_available,
+            "fix_published": cast(datetime, oldest.fix_published).date().isoformat(),
+            "days": oldest.days_fix_available,
         },
         "oldest_published_with_fix": None if not oldest_pub else {
             "id": oldest_pub.vuln_id, "package": oldest_pub.package,
-            "published": oldest_pub.published.date().isoformat(),
+            "published": cast(datetime, oldest_pub.published).date().isoformat(),
             "days": days_between(oldest_pub.published, as_of),
         },
         "kev_with_fix": sum(1 for f in with_fix if f.kev),
@@ -141,7 +145,7 @@ def compute(findings: list[Finding], release_date: datetime | None, as_of: datet
         # Evidence behind the strongest signals, so a reader can see which component drives the likelihood.
         "kev_findings": [_brief(f) for f in with_fix if f.kev][:5],
         "top_epss_findings": [_brief(f) for f in sorted((f for f in with_fix if f.epss is not None),
-                                                        key=lambda f: -f.epss)[:3]],
+                                                        key=lambda f: -cast(float, f.epss))[:3]],
         "max_epss_with_fix": max((f.epss for f in with_fix if f.epss is not None), default=None),
         "epss_scored": sum(1 for f in findings if f.epss is not None),
         "exploits_checked": any(f.exploit_level for f in findings),

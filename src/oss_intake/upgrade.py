@@ -77,7 +77,11 @@ def latest_release(http: Http, purl: str) -> tuple[str, str] | None:
         return default
     if not stable:
         return None
-    best = max(stable, key=cmp_to_key(lambda x, y: versions_mod.compare(x[0], y[0])))
+
+    def by_version(x: tuple[str, bool, str], y: tuple[str, bool, str]) -> int:
+        return versions_mod.compare(x[0], y[0])
+
+    best = max(stable, key=cmp_to_key(by_version))
     return best[0], best[2]
 
 
@@ -121,12 +125,12 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
     if not targets:
         return info
     try:
-        found = osv_mod.scan(http, sorted(targets), os_queries)
+        osv_found = osv_mod.scan(http, sorted(targets), os_queries)
     except HttpError as exc:
         info.update(status="failed", error=str(exc))
         return info
     counts: dict[str, dict] = {}
-    for f in found:
+    for f in osv_found:
         c = counts.setdefault(f.purl or "", {"total": 0, "critical": 0, "malicious": False})
         c["total"] += 1
         c["critical"] += f.severity == "CRITICAL"

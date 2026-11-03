@@ -88,7 +88,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
                 stats["notices_fetched"] += 1
 
     # (ecosystem, source package, CVE) -> [(published, usn, fixed versions)]
-    index: dict[tuple[str, str, str], list] = {}
+    index: dict[tuple[str | None, str, str], list] = {}
     for usn, n in notices.items():
         published = parse_datetime(n.get("published"))
         refs = (n.get("upstream") or []) + (n.get("aliases") or [])

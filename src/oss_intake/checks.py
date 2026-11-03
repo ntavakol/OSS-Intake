@@ -71,7 +71,7 @@ def describe(checks: dict, name: str) -> str:
 def warning(checks: dict | None) -> str | None:
     """Warning naming each source not fully checked and why, or None if all were checked."""
     missing = gaps(checks)
-    if not missing:
+    if not checks or not missing:
         return None
     parts = [f"{LABEL[n]} {describe(checks, n)}" for n in missing]
     return ("Not every source was checked: " + "; ".join(parts)

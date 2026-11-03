@@ -6,6 +6,8 @@ signal for the likelihood heuristic, alongside CISA KEV (known exploitation).
 
 from __future__ import annotations
 
+from typing import Any
+
 from ..http import Http, HttpError
 from ..models import Finding
 
@@ -25,7 +27,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     Mutates findings in place; returns stats: cves, scored, errors, model_date."""
     cves = sorted({c for f in findings if (c := _cve(f))})
     scores: dict[str, tuple[float, float]] = {}
-    stats = {"cves": len(cves), "scored": 0, "errors": 0, "model_date": None}
+    stats: dict[str, Any] = {"cves": len(cves), "scored": 0, "errors": 0, "model_date": None}
     for i in range(0, len(cves), BATCH):
         chunk = cves[i:i + BATCH]
         try:

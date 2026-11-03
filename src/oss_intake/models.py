@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from typing import overload
 from urllib.parse import unquote
 
 SEVERITY_ORDER = {"UNKNOWN": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
@@ -47,6 +48,14 @@ def safe_date(year: int, month: int, day: int) -> datetime | None:
         return datetime(year, month, day, tzinfo=timezone.utc)
     except (ValueError, OverflowError):
         return None
+
+
+@overload
+def days_between(start: datetime | date, end: datetime | date) -> int: ...
+
+
+@overload
+def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None: ...
 
 
 def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None:
@@ -180,7 +189,7 @@ class Finding:
         pkg = unquote(purl_without_version(self.purl) or "") or f"{self.pkg_type}:{self.package}".lower()
         # An OS package from an SBOM (asked of OSV by distro): keep the release in its identity. Scanner purls
         # (Trivy, Grype) carry other qualifiers too and are merged without them, as before.
-        if self.sources == {"osv"} and self.os_release and "?distro=" in (self.purl or ""):
+        if self.sources == {"osv"} and self.os_release and self.purl and "?distro=" in self.purl:
             pkg += "?" + self.purl.split("?", 1)[1]
         return (canonical_id(self.vuln_id, self.aliases), pkg, self.installed)
 

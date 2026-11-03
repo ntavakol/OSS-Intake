@@ -174,7 +174,7 @@ def _row_purl(row: dict[str, str]) -> str:
     missing = [k for k, v in (("ecosystem", eco), ("name", name), ("version", version)) if not v]
     if missing:
         raise ValueError(f"missing {', '.join(missing)}")
-    ptype = ECOSYSTEMS.get(eco.lower())
+    ptype = ECOSYSTEMS.get(eco.lower(), "")
     if not ptype:
         raise ValueError(f"unknown ecosystem '{eco}' (use one of: {', '.join(sorted(ECOSYSTEMS))})")
     if _NOT_A_VERSION.search(version):

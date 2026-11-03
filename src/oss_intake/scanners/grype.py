@@ -116,7 +116,7 @@ def parse(report: dict) -> tuple[list[Finding], dict]:
         )
         if f.pkg_type in ("apk", "deb", "rpm"):
             f.os_release = os_release
-            upstreams = [u.get("name") for u in art.get("upstreams") or [] if isinstance(u, dict) and u.get("name")]
+            upstreams = [u["name"] for u in art.get("upstreams") or [] if isinstance(u, dict) and u.get("name")]
             f.src_name = upstreams[0] if upstreams else ""
         f.source_severity[NAME] = f.severity
         findings.append(f)

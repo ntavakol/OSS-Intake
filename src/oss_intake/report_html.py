@@ -59,7 +59,8 @@ def _attr(cls: str) -> str:
     return f' class="{cls}"' if cls else ""
 
 
-def _table(headers: list[str], rows: list[list], num: set[int] = frozenset(), row_cls: list[str] | None = None) -> str:
+def _table(headers: list[str], rows: list[list], num: set[int] | frozenset[int] = frozenset(),
+           row_cls: list[str] | None = None) -> str:
     out = ['<div class="wrap"><table><thead><tr>']
     out += [f"<th{_attr('num' if i in num else '')}>{_e(h)}</th>" for i, h in enumerate(headers)]
     out.append("</tr></thead><tbody>")
@@ -327,7 +328,8 @@ def _lag(a: dict, lag_note: str) -> str:
 
 
 def _yes_no(v: object) -> str:
-    return {True: "yes", False: "no"}.get(v, "n/a")
+    words: dict[object, str] = {True: "yes", False: "no"}
+    return words.get(v, "n/a")
 
 
 def _health(a: dict) -> str:
@@ -475,7 +477,8 @@ def _top(findings: list[Finding], top: int) -> str:
         elif not f.has_fix:
             before = ("no fix", "")
         else:
-            before = ({True: ("yes", "r"), False: ("no", "")}.get(f.fix_available_at_release, ("unknown", "")))
+            at_release: dict[bool | None, tuple[str, str]] = {True: ("yes", "r"), False: ("no", "")}
+            before = at_release.get(f.fix_available_at_release, ("unknown", ""))
         if f.cvss is None:
             cvss = ("n/a", "muted")
         else:

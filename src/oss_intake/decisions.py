@@ -22,6 +22,7 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 from .inputs import InputError
 from .models import Finding
@@ -64,7 +65,7 @@ def _status(value: str) -> str | None:
     return ALIASES.get(" ".join(value.strip().lower().replace("-", " ").split()))
 
 
-def _ids(*values: str) -> set[str]:
+def _ids(*values: str | None) -> set[str]:
     out: set[str] = set()
     for v in values:
         for part in str(v or "").replace(",", ";").split(";"):
@@ -288,7 +289,7 @@ def cyclonedx_vex(findings: list[Finding], tool_version: str, as_of: str) -> dic
     components: dict[str, dict] = {}
     vulns = []
     for f in decided:
-        purl = f.purl.split("?", 1)[0].split("#", 1)[0]
+        purl = cast(str, f.purl).split("?", 1)[0].split("#", 1)[0]  # decided holds findings with a purl
         if purl not in components:
             try:
                 _, name, version = split_purl(purl)

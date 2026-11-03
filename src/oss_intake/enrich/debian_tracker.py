@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Any
 
 from ..http import Http, HttpError
 from ..models import Finding, safe_date
@@ -69,7 +70,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     """Set fix_published on Debian findings from the security tracker DSA and DLA lists (salsa.debian.org): by the
     finding's DSA/DLA ID, else by release and fixed version. Mutates findings in place; returns stats: candidates,
     found, found_by_version, lists_loaded, errors."""
-    stats = {"candidates": 0, "found": 0, "found_by_version": 0, "lists_loaded": [], "errors": 0}
+    stats: dict[str, Any] = {"candidates": 0, "found": 0, "found_by_version": 0, "lists_loaded": [], "errors": 0}
     todo = [f for f in findings if not f.fix_published and not f.likely_fixed and f.fixed_versions
             and (any(v.startswith(("DSA-", "DLA-")) for v in f.vendor_ids) or (_is_debian(f) and not f.excluded))]
     if not todo:
@@ -106,7 +107,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
             continue
         codename = codename_for(f.os_release)
         fix = nearest_fix(f.vs_fix, f.fixed_versions) if codename else None
-        hit = by_version.get((codename, f.src_name or f.package, no_epoch(fix))) if fix else None
+        hit = by_version.get((codename, f.src_name or f.package, no_epoch(fix))) if codename and fix else None
         if hit:
             f.fix_published, vid = hit
             f.fix_version_used = fix

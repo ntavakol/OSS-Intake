@@ -92,9 +92,11 @@ def source_agreement(findings: list[Finding], enabled: list[str]) -> dict:
     Disagreement is expected (different databases, different package detection) and is
     reported so a reviewer can look at single-source findings rather than trust either tool blindly.
     """
-    stats = {"enabled": enabled, "by_source": {}, "only": {}, "all_enabled": 0}
+    by_source: dict[str, int] = {}
+    only: dict[str, int] = {}
+    stats: dict[str, object] = {"enabled": enabled, "by_source": by_source, "only": only, "all_enabled": 0}
     for s in enabled:
-        stats["by_source"][s] = sum(1 for f in findings if s in f.sources)
-        stats["only"][s] = sum(1 for f in findings if f.sources == {s})
+        by_source[s] = sum(1 for f in findings if s in f.sources)
+        only[s] = sum(1 for f in findings if f.sources == {s})
     stats["all_enabled"] = sum(1 for f in findings if set(enabled) <= f.sources)
     return stats

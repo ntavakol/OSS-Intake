@@ -23,6 +23,7 @@ import subprocess
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+from typing import IO, cast
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -187,7 +188,7 @@ def archive_member_sha256(archive: str | Path, names: tuple[str, ...]) -> tuple[
                     if m.isfile() and m.name.rsplit("/", 1)[-1] in names:
                         if m.size > MAX_MEMBER_BYTES:
                             raise IntegrityError(f"{m.name} in {archive.name} is implausibly large")
-                        fh = t.extractfile(m)
+                        fh = cast(IO[bytes], t.extractfile(m))  # m.isfile(): extractfile returns a file
                         for chunk in iter(partial(fh.read, 1 << 20), b""):
                             h.update(chunk)
                         return m.name, h.hexdigest()
