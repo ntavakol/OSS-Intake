@@ -654,6 +654,47 @@
    ]
   },
   {
+   "id": "gate-mismatch-input",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "mismatch"
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "package"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on mismatch needs a single file to compare with its registry",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "mismatch",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{file}",
+    "--fail-on",
+    "mismatch",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
    "id": "trivy-checksums-archive",
    "command": "scan",
    "when": {

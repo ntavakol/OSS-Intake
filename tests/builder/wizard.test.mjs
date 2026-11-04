@@ -290,8 +290,8 @@ const facts = [
   [F({ path: "a.jar", offline: true }, "artifact"), [], ["Maven Central", "A JAR, wheel, sdist or npm .tgz is also compared"]],
   // Fails.
   [F({ ...LOCK, fail_on: "unknown-age" }), ["with exit code 1, rather than passing"], []],
-  [F({ path: "a.jar", fail_on: "mismatch" }, "artifact"), ["a failed lookup), the gate exits 1", "with exit code 1, rather than passing"], ["never fails here"]],
-  [F({ image: "a/b:1", fail_on: "mismatch" }), ["never fails here"], ["with exit code 1, rather than passing", "The checksum gate compares"]],
+  [F({ path: "a.jar", fail_on: "mismatch" }, "artifact"), ["a failed lookup), the gate exits 1", "with exit code 1, rather than passing"], []],
+  [F({ image: "a/b:1", fail_on: "mismatch" }), [], ["with exit code 1, rather than passing", "The checksum gate compares"]],
   // Writes.
   [F({ image: "a/b:1", sbom: true, from_trivy_json: "t.json" }), [], ["CycloneDX SBOM"]],
   [F({ image: "a/b:1", sbom: true, scanners: "grype" }), [], ["CycloneDX SBOM"]],

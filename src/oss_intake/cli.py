@@ -390,10 +390,11 @@ def _refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str
     for gate in ("kev", "act"):
         if gate in wanted and kev_off:
             raise UsageError(f"--fail-on {gate} needs the CISA KEV check, which {kev_off} turns off")
-    if "mismatch" in wanted and args.path and args.path_kind != "artifact":
-        # A folder, lockfile, SBOM or package list has no single file to compare with a registry.
+    if "mismatch" in wanted and not (args.path and args.path_kind == "artifact"):
+        # An image, --package, a folder, lockfile, SBOM or package list has no single file to compare.
+        what = Path(args.path).name if args.path else ("an image" if args.image else "--package")
         raise UsageError(f"--fail-on mismatch needs a single file to compare with its registry (a JAR, WAR, wheel, "
-                         f"sdist or npm .tgz); {Path(args.path).name} is not one")
+                         f"sdist or npm .tgz); {what} is not one")
     osv_off = args.path_kind not in ("renv", "inventory") and "osv" not in chosen
     for gate in ("malicious", "act"):
         if gate in wanted and osv_off:

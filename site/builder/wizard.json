@@ -813,26 +813,6 @@
   {
    "head": "Fails",
    "when": {
-    "all": [
-     {
-      "has": [
-       "fail_on",
-       "mismatch"
-      ]
-     },
-     {
-      "what": [
-       "image",
-       "package"
-      ]
-     }
-    ]
-   },
-   "text": "The checksum gate never fails here: it compares only a single file given with --path."
-  },
-  {
-   "head": "Fails",
-   "when": {
     "none": [
      "fail_on",
      "fail_on_likelihood"

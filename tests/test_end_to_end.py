@@ -1023,7 +1023,8 @@ def test_new_release_is_flagged_and_can_fail_ci(tmp_path, capsys):
 def test_fail_on_gate(tmp_path, fixtures, fake_http, capsys):
     code, _ = run(tmp_path / "a", fixtures, fake_http, "--fail-on", "kev")
     assert code == cli.EXIT_THRESHOLD
-    code, _ = run(tmp_path / "b", fixtures, FakeHttp(), "--fail-on", "malicious,mismatch")
+    # The gate list was "malicious,mismatch" until 0.13.0; mismatch is now refused for an image (agreed by Ned).
+    code, _ = run(tmp_path / "b", fixtures, FakeHttp(), "--fail-on", "malicious")
     assert code == cli.EXIT_OK
     assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "c"), "--fail-on", "crtical"]) == cli.EXIT_USAGE
     assert "crtical" in capsys.readouterr().err
@@ -1927,3 +1928,11 @@ def test_fail_on_mismatch_passes_for_a_matching_file_and_names_why_not_compared(
     for target in (sbom, renv):
         assert _mismatch_run(tmp_path, fixtures, target) == cli.EXIT_USAGE, target.name
         assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, target.name
+
+
+def test_fail_on_mismatch_is_refused_for_an_image_or_packages(tmp_path, capsys):
+    """An image or --package has no single file to compare with a registry, so --fail-on mismatch could never
+    fail: refused before any work (exit 2), like the gate on a folder or lockfile. Agreed by Ned, 4 Nov."""
+    for argv in (["--image", "owner/app:1.0"], ["--package", "npm:chalk@5.6.1"]):
+        assert cli.main([*argv, "--out", str(tmp_path / "o"), "--fail-on", "malicious,mismatch"]) == cli.EXIT_USAGE
+        assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, argv

@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- `--fail-on mismatch` is refused (exit 2) for an image or `--package` run, as it already was for a folder,
+  lockfile, SBOM or package list: there is no single file to compare with a registry, so the gate could never
+  fail. Before, it passed silently.
+
 ## [0.13.0] - 2026-11-04
 
 The command builder: answer a few questions, copy the command, and read in plain words what it will check,
