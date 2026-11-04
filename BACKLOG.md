@@ -49,16 +49,9 @@ a package that was clean when approved can later turn out vulnerable or compromi
   browser, which conflicts with the minimal-dependency goal. Until then, print `report.html` to PDF from a
   browser; the page is self-contained and prints cleanly.
 - SARIF output for code-scanning dashboards.
-
-## Documentation
-- How-to guides for the common scan types, each with a short video (about 30 seconds): a dependency list (an
-  npm project or a VS Code extension), a container image, a downloaded file (a JAR or wheel, with the registry
-  checksum), an SBOM or package inventory, single packages, a project's health only, and a CI gate. Each guide
-  is one page in `docs/how-to/`: when to use it, the command (with a builder link that opens it), what the
-  report shows, and what it does not check. Videos are recorded by `scripts/record_demo.js`, extended to take a
-  scenario; a terminal scene shows a real run, captured on a machine with network access, never mock output.
-  Decide first where the videos live: each one added to git stays in its history, so release assets or the
-  Pages site may suit better than `docs/`.
+- Report date and time in UTC on request (for example `--utc`): the reports show local time by default (0.13.0);
+  a team in several time zones, or a pipeline comparing runs, may want UTC throughout. Day counts already use
+  UTC dates.
 
 ## Signals
 - Optional VirusTotal lookup for `--path` artifacts: hash only, never an upload (uploads are shared with
