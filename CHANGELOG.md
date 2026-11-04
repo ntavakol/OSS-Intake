@@ -28,6 +28,10 @@ contact and send, and when it fails. The project site now follows the releases o
   compromised npm releases (`scripts/record_demo.js` records it again).
 
 ### Changed
+- The README is a short introduction: what it finds, a 30-second try, the builder video, the inputs, how to
+  install and what it does not do. The reference (every option, inputs in detail, release lag, triage,
+  decisions, likelihood, limitations, verifying a release and pinning the scanners) moved, unchanged, to
+  [docs/guide.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/guide.md).
 - The project site is published when a release is published, from the release tag, so the command builder
   always matches the version on PyPI. The sample report is rebuilt in the release commit, before tagging.
 - Without `--as-of`, the assessment date is the local date where oss-intake runs, not the UTC date: a run early

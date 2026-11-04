@@ -61,9 +61,10 @@ chmod +x .git/hooks/pre-commit
   a test fails until it is. `tests/fixtures/wizard_summaries.json` holds the summary for a few hundred commands:
   after a deliberate change, regenerate it with `UPDATE_SUMMARIES=1 node --test tests/builder/summaries.test.mjs`
   and read its diff, since every changed line must be true of what the CLI does.
-- Parts of the README are generated from the code (example output, likelihood rules and metrics). After changing
-  the report format or the likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do.
-  Every `scan` and `verify` option must also appear in the README.
+- The README is a short introduction; reference material goes in `docs/guide.md`. Parts of the guide are
+  generated from the code (example output, likelihood rules and metrics). After changing the report format or the
+  likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do. Every `scan` and `verify`
+  option must also be documented in the guide.
 
 ## Validating against real images
 

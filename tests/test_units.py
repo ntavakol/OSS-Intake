@@ -1323,7 +1323,7 @@ def test_osv_go_fixes_carry_v():
 
 
 def test_readme_generated_sections_are_current():
-    """The README's example output and likelihood tables come from the code; regenerate with
+    """The guide's example output and likelihood tables come from the code; regenerate with
     python scripts/readme_sync.py when this fails."""
     import importlib.util
     from pathlib import Path
@@ -1332,8 +1332,8 @@ def test_readme_generated_sections_are_current():
     spec = importlib.util.spec_from_file_location("readme_sync", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    text = mod.README.read_text(encoding="utf-8")
-    assert mod.render(text) == text, "README.md is out of date: run python scripts/readme_sync.py"
+    text = mod.GUIDE.read_text(encoding="utf-8")
+    assert mod.render(text) == text, "docs/guide.md is out of date: run python scripts/readme_sync.py"
 
 
 def test_readme_documents_every_option():
@@ -1341,12 +1341,12 @@ def test_readme_documents_every_option():
 
     from oss_intake import cli
 
-    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    readme = (Path(__file__).resolve().parent.parent / "docs" / "guide.md").read_text(encoding="utf-8")
     sub = next(a for a in cli.build_parser()._actions if a.__class__.__name__ == "_SubParsersAction")
     missing = sorted({f"{name} {opt}" for name in ("scan", "verify") for a in sub.choices[name]._actions
                       for opt in a.option_strings if opt.startswith("--") and opt != "--help"
                       and f"`{opt}" not in readme})
-    assert missing == [], f"options missing from README.md: {missing}"
+    assert missing == [], f"options missing from docs/guide.md: {missing}"
 
 
 def test_decision_never_sets_aside_malicious():
@@ -2130,7 +2130,7 @@ def test_readme_collector_checksums_match_the_files():
     from oss_intake import __version__
 
     root = Path(__file__).resolve().parent.parent
-    readme = (root / "README.md").read_text(encoding="utf-8")
+    readme = (root / "docs" / "guide.md").read_text(encoding="utf-8")
     listed = dict((name, digest) for digest, name in re.findall(r"^([0-9a-f]{64})  (\S+)$", readme, re.M))
     files = {"nexus_sbom.py": "examples/nexus/nexus_sbom.py", "osquery_sbom.py": "examples/osquery/osquery_sbom.py",
              "oss-intake-pack.conf": "examples/osquery/oss-intake-pack.conf"}
@@ -2142,7 +2142,7 @@ def test_readme_collector_checksums_match_the_files():
         if os.name != "nt":  # stored with CRLF, GitHub would serve CRLF and every user's check would fail
             assert b"\r" not in raw, f"{rel} has CRLF line endings"
         data = raw.replace(b"\r\n", b"\n")
-        assert hashlib.sha256(data).hexdigest() == listed[name], f"update the README checksum for {name}"
+        assert hashlib.sha256(data).hexdigest() == listed[name], f"update the checksum in docs/guide.md for {name}"
     assert "/OSS-Intake/v$V/examples" in readme and "e.g. " + __version__ in readme
 
 
@@ -2360,7 +2360,7 @@ def test_cosign_timeout_is_a_clean_integrity_error(tmp_path, monkeypatch, capsys
 
 def test_version_strings_agree():
     """The version is written in several places by hand at each release: pyproject.toml (the release tag is
-    checked against it), oss_intake.__version__, and the README's release verification example."""
+    checked against it), oss_intake.__version__, and the guide's release verification example."""
     import re
 
     from oss_intake import __version__
@@ -2368,7 +2368,7 @@ def test_version_strings_agree():
     root = Path(__file__).resolve().parent.parent
     pyproject = re.search(r'^version = "([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
     assert pyproject and pyproject.group(1) == __version__
-    readme = (root / "README.md").read_text(encoding="utf-8")
+    readme = (root / "docs" / "guide.md").read_text(encoding="utf-8")
     block = readme[readme.index("pip install sigstore"):]
     block = block[:block.index("```")]
     assert block.count(__version__) >= 3 and not re.search(r"\d+\.\d+\.\d+", block.replace(__version__, ""))

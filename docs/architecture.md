@@ -141,11 +141,11 @@ make a result look clean, record it in `checks.py` so the reports say "not check
 **A new input source (collector).** Prefer a small standalone script in `examples/` that writes a CycloneDX
 SBOM or an inventory CSV, as `examples/osquery`, `examples/nexus` and the recipes in `examples/sbom` do. The
 core then reads it like any other SBOM, needs no vendor API keys, and the scanning code does not change.
-Collectors use the Python standard library only, and their SHA-256 sums are listed in the README (a test keeps
+Collectors use the Python standard library only, and their SHA-256 sums are listed in the guide (a test keeps
 them current).
 
 **A new report field.** Add the field to `Finding` or to the statistics dictionary that produces it, then to
-`report.py` (CSV, Markdown, JSON) and `report_html.py`. Parts of the README are generated from the reports: run
+`report.py` (CSV, Markdown, JSON) and `report_html.py`. Parts of the guide (`docs/guide.md`) are generated from the reports: run
 `python scripts/readme_sync.py` afterwards, or the tests fail.
 
 ## Design rules that shape the code

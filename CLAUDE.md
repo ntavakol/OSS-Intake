@@ -13,7 +13,7 @@ python -m pytest                           # full suite; no network needed
 python -m coverage run -m pytest && python -m coverage report   # coverage, with the CI floor (fail_under)
 python -m pytest tests/test_units.py::test_readme_generated_sections_are_current   # one test
 python -m pytest -k osv                    # tests matching a name
-python scripts/readme_sync.py              # regenerate README sections derived from code (--check to verify)
+python scripts/readme_sync.py              # regenerate docs/guide.md sections derived from code (--check to verify)
 ```
 
 To exercise the full pipeline without Trivy, Grype or network (the pattern `readme_sync.py` and the end-to-end
@@ -96,9 +96,10 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
   `tests/fixtures/wizard_summaries.json` is a reviewed snapshot of the summaries: regenerate it with
   `UPDATE_SUMMARIES=1 node --test tests/builder/summaries.test.mjs` only for a deliberate change, and check
   every changed line against the code.
-- README is partly generated (`<!-- generated:NAME -->` blocks: example output, likelihood rules and metrics).
-  After changing report format or likelihood rules, run `python scripts/readme_sync.py`; tests fail until you do.
-  Every `scan` and `verify` option must be mentioned in the README (a test checks this).
+- The README is the short introduction; the reference is `docs/guide.md`. Keep detail out of the README. The guide
+  is partly generated (`<!-- generated:NAME -->` blocks: example output, likelihood rules and metrics): after
+  changing report format or likelihood rules, run `python scripts/readme_sync.py`; tests fail until you do. Every
+  `scan` and `verify` option must be documented in the guide (a test checks this).
 - Adding a known-bad scanner version: edit `src/oss_intake/data/known_bad.json` with a public reference and add a
   case to `tests/test_units.py`.
 
@@ -110,7 +111,7 @@ the run with `gh run list --workflow ci --commit $(git rev-parse HEAD)`).
 
 Publishing a GitHub release triggers `.github/workflows/release.yml` (PyPI trusted publishing, a signed SBOM,
 Sigstore signatures) and `.github/workflows/pages.yml`, which publishes `site/` from the release tag. Version lives
-in both `pyproject.toml` and `src/oss_intake/__init__.py` (a test checks they agree, and the README's verify
+in both `pyproject.toml` and `src/oss_intake/__init__.py` (a test checks they agree, and the guide's verify
 example). The release commit, before tagging, also: regenerates `site/builder/options.json`
 (`python scripts/export_options.py`; pages.yml refuses a tag it does not match), rebuilds the live sample
 (`sh examples/compromised-npm/build.sh`), and updates the pinned version in

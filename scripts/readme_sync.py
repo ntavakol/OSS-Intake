@@ -1,7 +1,9 @@
-"""Regenerate the README sections that are derived from the code, so they cannot drift.
+"""Regenerate the guide's sections that are derived from the code, so they cannot drift.
 
-    python scripts/readme_sync.py          # rewrite README.md in place
-    python scripts/readme_sync.py --check  # exit 1 if README.md is out of date (the test suite does this too)
+    python scripts/readme_sync.py          # rewrite docs/guide.md in place
+    python scripts/readme_sync.py --check  # exit 1 if docs/guide.md is out of date (the test suite does this too)
+
+(The name is from when these sections were in the README; they moved to docs/guide.md in 0.13.0.)
 
 Each generated section sits between <!-- generated:NAME --> and <!-- /generated:NAME --> markers:
   example-output     the summary line and findings table from a run on the synthetic test fixtures
@@ -19,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-README = ROOT / "README.md"
+GUIDE = ROOT / "docs" / "guide.md"
 AS_OF = "2026-10-22"  # the same date the end-to-end tests use
 _BLOCK = re.compile(r"(<!-- generated:([\w-]+) -->\n)(.*?)(<!-- /generated:\2 -->)", re.S)
 
@@ -68,20 +70,20 @@ def render(text: str) -> str:
     found = {m.group(2) for m in _BLOCK.finditer(text)}
     missing = set(GENERATORS) - found
     if missing:
-        raise SystemExit(f"README.md lacks generated sections: {', '.join(sorted(missing))}")
+        raise SystemExit(f"docs/guide.md lacks generated sections: {', '.join(sorted(missing))}")
     return _BLOCK.sub(lambda m: m.group(1) + GENERATORS[m.group(2)]() + m.group(4), text)
 
 
 def main(argv: list[str]) -> int:
-    text = README.read_text(encoding="utf-8")
+    text = GUIDE.read_text(encoding="utf-8")
     new = render(text)
     if "--check" in argv:
         if new != text:
-            print("README.md is out of date: run python scripts/readme_sync.py", file=sys.stderr)
+            print("docs/guide.md is out of date: run python scripts/readme_sync.py", file=sys.stderr)
             return 1
         return 0
-    README.write_text(new, encoding="utf-8")
-    print("README.md updated" if new != text else "README.md already current")
+    GUIDE.write_text(new, encoding="utf-8", newline="\n")
+    print("docs/guide.md updated" if new != text else "docs/guide.md already current")
     return 0
 
 

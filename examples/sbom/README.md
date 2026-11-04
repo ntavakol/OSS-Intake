@@ -36,7 +36,7 @@ trivy image --format cyclonedx --output sboms/app-1.2.3.cdx.json ghcr.io/owner/a
 trivy rootfs --format cyclonedx --output sboms/$(hostname).cdx.json /
 ```
 
-Pin and verify the tool as for the scanners (see the main README). Both write the distro release and source
+Pin and verify the tool as for the scanners (see the [guide](https://github.com/ntavakol/OSS-Intake/blob/main/docs/guide.md#install-the-scanners-yourself-pinned-and-verified)). Both write the distro release and source
 package that oss-intake needs for OS packages. On a host, `syft scan dir:/` also finds root file systems nested
 inside it (container layers, chroots); a package whose type does not match the distro it is labelled with is
 listed as not checked. `trivy rootfs` downloads Trivy's Java database when the host has JAR files, so it needs
