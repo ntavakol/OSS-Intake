@@ -60,7 +60,9 @@ chmod +x .git/hooks/pre-commit
   module-level `https://` URL constant) must be added to its `services`, so the page can say what is contacted;
   a test fails until it is. `tests/fixtures/wizard_summaries.json` holds the summary for a few hundred commands:
   after a deliberate change, regenerate it with `UPDATE_SUMMARIES=1 node --test tests/builder/summaries.test.mjs`
-  and read its diff, since every changed line must be true of what the CLI does.
+  and read its diff, since every changed line must be true of what the CLI does. `docs/admin-guide.md` names the
+  builder's labels and links to filled-in examples; the tests fail if a label changes or a link stops giving the
+  command shown, so update the guide with the builder.
 - The README is a short introduction; reference material goes in `docs/guide.md`. Parts of the guide are
   generated from the code (example output, likelihood rules and metrics). After changing the report format or the
   likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do. Every `scan` and `verify`

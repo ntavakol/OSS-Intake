@@ -389,3 +389,15 @@ def test_each_kind_caution_is_a_gate_that_can_only_fail(rule, tmp_path, capsys):
     code = cli.main([names.get(a, a) for a in rule["args"]], http=FakeHttp())
     err = capsys.readouterr().err
     assert code == cli.EXIT_ERROR and rule["cli_says"] in err, err
+
+
+def test_admin_guide_commands_parse():
+    """Every command in docs/admin-guide.md is one the CLI's parser accepts (the Node tests check each one is
+    what the builder makes from the link above it)."""
+    path = ROOT / "docs" / "admin-guide.md"
+    if not path.exists():
+        pytest.skip("docs are not in the sdist")
+    commands = re.findall(r"^```bash\n(oss-intake [^\n]+)\n```", path.read_text(encoding="utf-8"), re.M)
+    assert len(commands) >= 8
+    for c in commands:
+        cli.build_parser().parse_args(["scan", *shlex.split(c)[1:]])

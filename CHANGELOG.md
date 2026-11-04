@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- An admin guide (`docs/admin-guide.md`): step by step with the command builder for each common check (a
+  container image, a lockfile, a downloaded file, an SBOM or package list, single packages, a project's health,
+  a CI gate, re-running with earlier decisions), with a link that opens each example in the builder and what to
+  read in the report. The tests check that every link gives the command shown and every label is the builder's.
+
 ### Changed
 - `--fail-on mismatch` is refused (exit 2) for an image or `--package` run, as it already was for a folder,
   lockfile, SBOM or package list: there is no single file to compare with a registry, so the gate could never

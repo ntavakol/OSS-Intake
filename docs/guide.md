@@ -2,8 +2,8 @@
 
 The reference for the engineers who run oss-intake: installing it and the scanners, every option, the inputs it
 reads, and how its numbers are worked out. The [README](https://github.com/ntavakol/OSS-Intake#readme) is the
-short introduction, and the [command builder](https://ntavakol.github.io/OSS-Intake/builder/) writes a command for
-you.
+short introduction, the [command builder](https://ntavakol.github.io/OSS-Intake/builder/) writes a command for
+you, and the [admin guide](admin-guide.md) walks through the common checks step by step.
 
 - [What it answers](#what-it-answers)
 - [What it does](#what-it-does)

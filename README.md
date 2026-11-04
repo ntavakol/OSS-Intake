@@ -118,6 +118,8 @@ shows how to install the scanners pinned and verified, and how to verify an oss-
 
 ## Learn more
 
+- [Admin guide](https://github.com/ntavakol/OSS-Intake/blob/main/docs/admin-guide.md): step by step with the command builder, for each common check (an
+  image, a lockfile, a downloaded file, an SBOM or package list, single packages, a project's health, a CI gate).
 - [The guide](https://github.com/ntavakol/OSS-Intake/blob/main/docs/guide.md): every option, package inventories and SBOMs,
   the collectors, how release lag and triage work, carrying decisions between runs, the likelihood heuristic and
   the limitations.
