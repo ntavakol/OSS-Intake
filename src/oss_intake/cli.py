@@ -1259,9 +1259,11 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
     # registry does not have, was not compared, and a gate must not pass on a comparison that did not happen.
     status = str((registry or {}).get("status") or "")
     if "mismatch" in wanted and args.path_kind == "artifact" and status not in ("match", "mismatch"):
-        why = {"error": "the registry lookup failed", "not_published": "the registry does not publish this version",
-               "unsupported": "the registry check does not cover this kind of file"}.get(
-            status, "the file's package and version could not be read" if status == "unknown" else "not compared")
+        # The registry check's own detail says why (no checksum published, file not in the release, HTTP status);
+        # the status alone can mislead, as a registry outage can look like "not published".
+        why = {"error": "the registry lookup failed", "not_published": "no matching published file was found",
+               "unsupported": "the registry check does not cover this kind of file",
+               "unknown": "the file was not compared"}.get(status, "the file was not compared")
         detail = (registry or {}).get("detail")
         out.append(("mismatch", f"{why}{f' ({detail})' if detail else ''}"))
     return out

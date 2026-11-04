@@ -71,7 +71,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install zsh, for the quoting test
-        run: sudo apt-get install -y --no-install-recommends zsh
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends zsh
       - name: Builder tests (node --test, no packages)
         run: node --test tests/builder/*.test.mjs
 

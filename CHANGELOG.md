@@ -26,13 +26,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - The project site is published when a release is published, from the release tag, so the command builder
   always matches the version on PyPI. The sample report is rebuilt in the release commit, before tagging.
 - Without `--as-of`, the assessment date is the local date where oss-intake runs, not the UTC date: a run early
-  in the morning in Sydney said the day before. `as_of` in assessment.json now carries the local UTC offset.
+  in the morning in Sydney said the day before. `as_of` in assessment.json, and the timestamps in the VEX files,
+  now carry the local UTC offset. Day counts (release age, days a fix has been available, days since a release)
+  still count by UTC date, so they do not change with the time zone.
+- `--fail-on mismatch` no longer passes when the file was not compared with its registry. A binary, a JAR without
+  its Maven details, or a file the registry does not publish now fails with exit 1, as other gates do when their
+  check could not run; before, it exited 0. For a folder, lockfile, SBOM, renv.lock or package list, which have
+  no single file to compare, the gate is refused before the run (exit 2). A pipeline that used this gate on such
+  inputs passed without any comparison: drop the gate there, or point `--path` at the file itself. Image and
+  `--package` runs are unchanged.
 
 ### Fixed
-- `--fail-on mismatch` passed (exit 0) when the file was not compared with its registry: a binary, a JAR without
-  its Maven details, or a version the registry does not publish. It now fails with exit 1, as other gates do when
-  their check could not run. For a folder, lockfile, SBOM or package list, which have no single file to compare,
-  the gate is refused before the run (exit 2). An image or `--package` run is unchanged.
 - The HTML report's "Fix existed before release" tile said "pass --repo" when `--repo` was given. It now says
   why there is no release date: the repository has no GitHub releases, no release matched, or the GitHub
   lookup was skipped or failed.

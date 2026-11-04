@@ -1889,3 +1889,41 @@ def test_fail_on_mismatch_is_refused_for_a_path_with_nothing_to_compare(tmp_path
     for target in (folder, lock, inv):
         assert _mismatch_run(tmp_path, fixtures, target) == cli.EXIT_USAGE, target.name
         assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, target.name
+
+
+def test_fail_on_mismatch_passes_for_a_matching_file_and_names_why_not_compared(tmp_path, fixtures, capsys):
+    """The gate's three answers for a JAR: a match passes (0), a mismatch fails (3), and no published checksum
+    fails (1) with the registry check's own reason. Also refused for an SBOM and an renv.lock."""
+    import hashlib
+    import zipfile
+
+    from .conftest import FakeHttp
+
+    jar = tmp_path / "webapp-2.0.0.jar"
+    with zipfile.ZipFile(jar, "w") as z:
+        z.writestr("META-INF/maven/org.example/webapp/pom.properties",
+                   "groupId=org.example\nartifactId=webapp\nversion=2.0.0\n")
+    good = hashlib.sha1(jar.read_bytes(), usedforsecurity=False).hexdigest()  # what Maven Central publishes
+
+    def maven(sha1):
+        class Http(FakeHttp):
+            def get_text(self, url):
+                if url.startswith("https://repo1.maven.org/"):
+                    self._check(url)
+                    return (200, sha1) if url.endswith(".jar.sha1") else (404, "")
+                return super().get_text(url)
+        return Http()
+
+    assert _mismatch_run(tmp_path, fixtures, jar, maven(good)) == cli.EXIT_OK
+    assert _mismatch_run(tmp_path, fixtures, jar, maven("0" * 40)) == cli.EXIT_THRESHOLD
+    capsys.readouterr()
+
+    sbom = tmp_path / "bom.cdx.json"
+    sbom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [
+        {"type": "library", "name": "chalk", "version": "5.6.1", "purl": "pkg:npm/chalk@5.6.1"}]}), encoding="utf-8")
+    renv = tmp_path / "renv.lock"
+    renv.write_text(json.dumps({"R": {"Version": "4.4.1"}, "Packages": {"jsonlite": {
+        "Package": "jsonlite", "Version": "1.8.0", "Source": "Repository", "Repository": "CRAN"}}}), encoding="utf-8")
+    for target in (sbom, renv):
+        assert _mismatch_run(tmp_path, fixtures, target) == cli.EXIT_USAGE, target.name
+        assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, target.name
