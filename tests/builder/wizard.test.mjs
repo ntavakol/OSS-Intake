@@ -316,3 +316,14 @@ test("each condition branch, both ways", () => {
     for (const p of no) assert.ok(!t.includes(p), `${JSON.stringify(s.values)} should not say "${p}"\n${t}`);
   }
 });
+
+test("every first answer has an icon, and the Contacts group carries the services it lists", async () => {
+  const { ICONS } = await import("../../site/builder/dom.js");
+  for (const t of wizard.targets) assert.ok(ICONS[t.icon], `${t.id}: icon ${t.icon}`);
+  const g = w.summary(data, wizard, { command: "scan", values: { path: "package-lock.json", repo: "o/n", out: "r" } })
+    .find((x) => x.head === "Contacts");
+  assert.deepEqual(g.services.map((s) => s.name), ["OSV", "deps.dev", "GitHub", "OpenSSF Scorecard", "CISA KEV", "FIRST EPSS",
+    "Exploit indexes", "Fix-date records"]);
+  for (const s of g.services) assert.ok(g.items.some((i) => i.includes(s.sends)), s.name);  // the text says the same
+  assert.deepEqual(g.notes, g.items.slice(g.services.length));
+});

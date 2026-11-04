@@ -16,6 +16,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   want a report or a pass or fail check for CI. "What this command will do" says in plain words what the
   command checks, which services it contacts and what it sends them, when it fails, and what it does not check;
   it describes commands built in "All options" (the full form) too.
+- The command builder has a new look: navy and blue, an icon for each choice and each part of the summary,
+  numbered steps, and a picture of what leaves your computer (each service, and what it is sent). Icons are
+  drawn by the page itself; it still loads nothing from anywhere else.
 
 ### Changed
 - The project site is published when a release is published, from the release tag, so the command builder

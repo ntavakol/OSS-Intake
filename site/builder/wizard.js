@@ -241,7 +241,12 @@ export function summary(data, wiz, state) {
   const at = order.indexOf("Doesn't check");
   order.splice(at < 0 ? order.length : at, 0, "Contacts");
   byHead.set("Contacts", contacts);
-  return order.map((head) => ({ head, items: byHead.get(head) }));
+  // The Contacts group also carries the services as data, for the page's picture of what leaves the computer;
+  // its sentences say the same, for anyone who does not see the picture.
+  const services = used.map((s) => ({ name: s.short, sends: s.sends, if_found: Boolean(s.if_found) }));
+  const notes = contacts.slice(used.length ? used.length : 1);
+  return order.map((head) => (head === "Contacts" ? { head, items: byHead.get(head), services, notes }
+    : { head, items: byHead.get(head) }));
 }
 
 /** One line per argument of the command, for the review step: the flag and what it does (its --help text). */

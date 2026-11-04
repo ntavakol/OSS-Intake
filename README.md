@@ -52,7 +52,7 @@ to the page carries the command, so it can be shared.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-dark.png">
-  <img alt="The oss-intake command builder: a step of the guided questions on the left; on the right, the command with a Copy button and what the command will do" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
+  <img alt="The oss-intake command builder: numbered steps and a guided question on the left; on the right, the command with a Copy button and what the command will do" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
 </picture>
 
 ## The gaps it closes

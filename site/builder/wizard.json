@@ -17,7 +17,8 @@
     "high",
     "recent",
     "unknown-age"
-   ]
+   ],
+   "icon": "doc"
   },
   {
    "id": "image",
@@ -36,7 +37,8 @@
     "high",
     "recent",
     "unknown-age"
-   ]
+   ],
+   "icon": "cube"
   },
   {
    "id": "artifact",
@@ -55,7 +57,8 @@
     "recent",
     "unknown-age",
     "mismatch"
-   ]
+   ],
+   "icon": "archive"
   },
   {
    "id": "inventory",
@@ -74,7 +77,8 @@
     "high",
     "recent",
     "unknown-age"
-   ]
+   ],
+   "icon": "list"
   },
   {
    "id": "package",
@@ -93,7 +97,8 @@
     "high",
     "recent",
     "unknown-age"
-   ]
+   ],
+   "icon": "tag"
   },
   {
    "id": "repo",
@@ -103,7 +108,8 @@
     "repo"
    ],
    "repo": false,
-   "gates": []
+   "gates": [],
+   "icon": "branch"
   }
  ],
  "fields": {
@@ -1135,7 +1141,8 @@
       ]
      }
     ]
-   }
+   },
+   "short": "OSV"
   },
   {
    "name": "deps.dev",
@@ -1220,7 +1227,8 @@
       ]
      }
     ]
-   }
+   },
+   "short": "deps.dev"
   },
   {
    "name": "GitHub",
@@ -1239,7 +1247,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "GitHub"
   },
   {
    "name": "OpenSSF Scorecard",
@@ -1265,7 +1274,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "OpenSSF Scorecard"
   },
   {
    "name": "Maven Central, PyPI or npm, for a JAR, wheel, sdist or npm .tgz",
@@ -1296,7 +1306,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "Maven Central, PyPI or npm"
   },
   {
    "name": "CISA KEV",
@@ -1327,7 +1338,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "CISA KEV"
   },
   {
    "name": "FIRST EPSS",
@@ -1358,7 +1370,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "FIRST EPSS"
   },
   {
    "name": "Exploit indexes on GitHub and GitLab",
@@ -1390,7 +1403,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "Exploit indexes"
   },
   {
    "name": "Fix-date records (Debian, Ubuntu, Red Hat, Alpine, Packagist and Go)",
@@ -1428,7 +1442,8 @@
       }
      }
     ]
-   }
+   },
+   "short": "Fix-date records"
   }
  ],
  "scanner_notes": [

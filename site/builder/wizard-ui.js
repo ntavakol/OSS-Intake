@@ -2,7 +2,7 @@
 // decides what each step offers and when it is complete, and the command panel shows the command throughout.
 import * as b from "./builder.js";
 import * as w from "./wizard.js";
-import { $, el, radios, summaryNodes } from "./dom.js";
+import { $, badge, el, icon, radios, summaryNodes } from "./dom.js";
 
 function option(app, dest) {
   return b.optionsFor(app.data, "scan").find((o) => o.dest === dest);
@@ -10,14 +10,17 @@ function option(app, dest) {
 
 function progress(app, hooks) {
   $("progress").replaceChildren(...w.STEPS.map((name, i) => {
-    const label = `${i + 1}. ${name}`;
+    const mark = el("span", { class: "dot", "aria-hidden": "true" }, i < app.step ? icon("check") : document.createTextNode(String(i + 1)));
+    const label = el("span", { class: "step-name", text: name });
+    const state = i < app.step ? "done" : i === app.step ? "current" : "";
     if (i < app.step) {
-      const go = el("button", { type: "button", class: "linkish", text: label, "data-focus": `progress:${i}` });
+      const go = el("button", { type: "button", class: "step-link", "data-focus": `progress:${i}`,
+        "aria-label": `Step ${i + 1}, ${name}, done: go back to it` }, mark, label);
       go.addEventListener("click", () => { app.step = i; hooks.render(null); $("step-title").focus(); });
-      return el("li", { class: "done" }, go);
+      return el("li", { class: state }, go);
     }
-    return el("li", { class: i === app.step ? "current" : "", "aria-current": i === app.step ? "step" : null,
-      text: label });
+    return el("li", { class: state, "aria-current": i === app.step ? "step" : null },
+      el("span", { class: "step-link" }, mark, el("span", { class: "visually-hidden", text: `Step ${i + 1}, ` }), label));
   }));
 }
 
@@ -52,7 +55,7 @@ function title(text) {
 
 function stepWhat(app, hooks) {
   const box = el("div", { class: "choices", role: "radiogroup", "aria-labelledby": "step-title", id: "targets" });
-  radios(box, app.wiz.targets.map((t) => [t.id, t.label, t.hint]), app.state.what ?? null, (id) => {
+  radios(box, app.wiz.targets.map((t, i) => [t.id, t.label, t.hint, badge(t.icon, (i % 5) + 1)]), app.state.what ?? null, (id) => {
     app.state = w.choose(app.wiz, app.state, id);
     hooks.render(`targets:${id}`);
   });
