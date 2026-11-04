@@ -2372,3 +2372,31 @@ def test_version_strings_agree():
     block = readme[readme.index("pip install sigstore"):]
     block = block[:block.index("```")]
     assert block.count(__version__) >= 3 and not re.search(r"\d+\.\d+\.\d+", block.replace(__version__, ""))
+
+
+def test_day_counts_do_not_depend_on_the_local_time_zone():
+    """as_of is local time when --as-of is not given (the report shows the local date), but day counts must not
+    move with the zone: at 08:00 on 4 Nov in Sydney it is still 3 Nov in UTC, where the published dates are."""
+    from datetime import date, datetime, timedelta, timezone
+
+    from oss_intake import release_age
+    from oss_intake.models import days_between
+
+    from .conftest import FakeHttp
+
+    sydney_morning = datetime(2026, 11, 4, 8, 0, tzinfo=timezone(timedelta(hours=11)))  # 2026-11-03T21:00Z
+    an_hour_before = datetime(2026, 11, 3, 20, 0, tzinfo=timezone.utc)
+    assert days_between(an_hour_before, sydney_morning) == 0
+    assert days_between(date(2026, 11, 3), sydney_morning) == 0
+    samoa_evening = datetime(2026, 11, 3, 13, 0, tzinfo=timezone(timedelta(hours=-11)))  # 2026-11-04T00:00Z
+    assert days_between(datetime(2026, 11, 3, 23, 30, tzinfo=timezone.utc), samoa_evening) == 1
+
+    class Http(FakeHttp):
+        def get_json(self, url, params=None):
+            if url.startswith("https://api.deps.dev/") and "/versions/" in url:
+                self._check(url)
+                return 200, {"publishedAt": "2026-11-03T20:00:00Z"}
+            return super().get_json(url, params)
+
+    info = release_age.check(Http(), ["pkg:npm/fresh@1.0.0"], sydney_morning, 1)
+    assert [r["age_days"] for r in info["recent"]] == [0], info

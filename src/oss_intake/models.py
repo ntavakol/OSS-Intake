@@ -59,12 +59,20 @@ def days_between(start: datetime | date | None, end: datetime | date | None) -> 
 
 
 def days_between(start: datetime | date | None, end: datetime | date | None) -> int | None:
-    """Whole days from start to end (dates or datetimes, compared by date); None if either is None."""
+    """Whole days from start to end (dates or datetimes, compared by their UTC date); None if either is None.
+
+    Published dates are UTC, while the assessment time may carry the local offset (the report shows the local
+    date), so a datetime is counted by its UTC date: a count must not change with the time zone it runs in."""
     if start is None or end is None:
         return None
-    s = start.date() if isinstance(start, datetime) else start
-    e = end.date() if isinstance(end, datetime) else end
-    return (e - s).days
+    return (utc_date(end) - utc_date(start)).days
+
+
+def utc_date(value: datetime | date) -> date:
+    """The calendar date of a datetime in UTC (naive datetimes are taken as UTC), or a date as it is."""
+    if isinstance(value, datetime):
+        return (value.astimezone(timezone.utc) if value.tzinfo else value).date()
+    return value
 
 
 def normalise_severity(value: str | None) -> str:

@@ -15,7 +15,7 @@ from urllib.parse import quote, unquote
 
 from .enrich.fixdates import API, _system_and_name
 from .http import Http, HttpError, prefetch
-from .models import parse_datetime
+from .models import days_between, parse_datetime
 
 DEFAULT_DAYS = 7
 MAX_LOOKUPS = 400
@@ -91,7 +91,7 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
         info["published"][purl] = published.isoformat()[:10]
         if published > as_of:
             continue  # did not exist yet on the assessment date
-        age = (as_of.date() - published.date()).days
+        age = days_between(published, as_of)  # by UTC date, whatever the local time zone
         if age < days:
             info["recent"].append({"purl": purl, "package": sn[1], "version": version,
                                    "published": published.isoformat(), "age_days": age})
