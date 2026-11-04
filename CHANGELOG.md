@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-04
+
+The command builder: answer a few questions, copy the command, and read in plain words what it will check,
+contact and send, and when it fails. The project site now follows the releases on PyPI.
+
 ### Added
 - A command builder on the project site (`site/builder/`): pick the options and copy the command, for bash, zsh
   or PowerShell, with the checks oss-intake makes before it starts (conflicting options, values, required
