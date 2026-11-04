@@ -390,6 +390,10 @@ def _refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str
     for gate in ("kev", "act"):
         if gate in wanted and kev_off:
             raise UsageError(f"--fail-on {gate} needs the CISA KEV check, which {kev_off} turns off")
+    if "mismatch" in wanted and args.path and args.path_kind != "artifact":
+        # A folder, lockfile, SBOM or package list has no single file to compare with a registry.
+        raise UsageError(f"--fail-on mismatch needs a single file to compare with its registry (a JAR, WAR, wheel, "
+                         f"sdist or npm .tgz); {Path(args.path).name} is not one")
     osv_off = args.path_kind not in ("renv", "inventory") and "osv" not in chosen
     for gate in ("malicious", "act"):
         if gate in wanted and osv_off:
@@ -1251,8 +1255,15 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
     if "unknown-age" in wanted and age_info.get("status") != "ok" and not _unknown_age(age_info):
         out.append(("unknown-age", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                               f"{age_info.get('skipped_limit', 0)} over the limit"))
-    if "mismatch" in wanted and args.path_kind == "artifact" and (registry or {}).get("status") == "error":
-        out.append(("mismatch", "the registry lookup failed"))
+    # Only a match or a mismatch is an answer: a file the registry check cannot read or place, or a version the
+    # registry does not have, was not compared, and a gate must not pass on a comparison that did not happen.
+    status = str((registry or {}).get("status") or "")
+    if "mismatch" in wanted and args.path_kind == "artifact" and status not in ("match", "mismatch"):
+        why = {"error": "the registry lookup failed", "not_published": "the registry does not publish this version",
+               "unsupported": "the registry check does not cover this kind of file"}.get(
+            status, "the file's package and version could not be read" if status == "unknown" else "not compared")
+        detail = (registry or {}).get("detail")
+        out.append(("mismatch", f"{why}{f' ({detail})' if detail else ''}"))
     return out
 
 

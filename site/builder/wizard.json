@@ -769,6 +769,22 @@
        "fail_on",
        "unknown-age"
       ]
+     },
+     {
+      "all": [
+       {
+        "has": [
+         "fail_on",
+         "mismatch"
+        ]
+       },
+       {
+        "what": [
+         "artifact",
+         "path"
+        ]
+       }
+      ]
      }
     ]
    },
@@ -777,12 +793,42 @@
   {
    "head": "Fails",
    "when": {
-    "has": [
-     "fail_on",
-     "mismatch"
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "mismatch"
+      ]
+     },
+     {
+      "what": [
+       "artifact",
+       "path"
+      ]
+     }
     ]
    },
-   "text": "The checksum gate compares only a JAR, wheel, sdist or npm .tgz whose registry publishes a checksum for that version. For anything else (a binary, a folder, a JAR without its Maven details) it does not fail; if the registry lookup itself fails, it exits 1 rather than passing."
+   "text": "The checksum gate compares a JAR, wheel, sdist or npm .tgz with the checksum its registry publishes for that version. When it cannot (a binary, a JAR without its Maven details, a version the registry does not have, or a failed lookup), the gate exits 1 rather than passing. A folder, lockfile or package list is refused before the run starts."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "mismatch"
+      ]
+     },
+     {
+      "what": [
+       "image",
+       "package"
+      ]
+     }
+    ]
+   },
+   "text": "The checksum gate never fails here: it compares only a single file given with --path."
   },
   {
    "head": "Fails",
@@ -1885,6 +1931,62 @@
      "{out}"
     ]
    ]
+  },
+  {
+   "id": "kind-mismatch",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "inventory",
+       "renv"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "mismatch"
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on mismatch needs a single file to compare with its registry",
+   "args": [
+    "--path",
+    "{lockfile}",
+    "--fail-on",
+    "mismatch",
+    "--out",
+    "{out}"
+   ],
+   "more_args": [
+    [
+     "--path",
+     "{csv}",
+     "--fail-on",
+     "mismatch",
+     "--out",
+     "{out}"
+    ],
+    [
+     "--path",
+     "{renv}",
+     "--fail-on",
+     "mismatch",
+     "--out",
+     "{out}"
+    ]
+   ],
+   "ok_args": [
+    "--path",
+    "{jar}",
+    "--fail-on",
+    "mismatch",
+    "--out",
+    "{out}"
+   ],
+   "more_ok_args": []
   }
  ],
  "kind_cautions": [

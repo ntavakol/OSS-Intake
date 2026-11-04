@@ -1836,3 +1836,56 @@ def test_release_tile_says_why_there_is_no_release_date(tmp_path, fixtures, heal
     a["inputs"]["repo"] = "example/webapp" if health is not None else None
     a["health"] = health or {}
     assert want in report_html._tiles(a)
+
+
+def _mismatch_run(tmp_path, fixtures, target, http=None):
+    from .conftest import FakeHttp
+
+    return cli.main(["--path", str(target), "--out", str(tmp_path / f"o-{target.name}"),
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy", "--as-of", AS_OF,
+                     "--no-scorecard", "--no-workflows", "--no-exploits", "--no-epss", "--no-kev", "--no-fix-dates",
+                     "--release-age-days", "0", "--fail-on", "mismatch"], http=http or FakeHttp())
+
+
+def test_fail_on_mismatch_fails_when_the_file_could_not_be_compared(tmp_path, fixtures, capsys):
+    """--fail-on mismatch passed (exit 0) when nothing was compared: a binary, a JAR without its Maven details, a
+    version the registry does not have. A CI gate must not pass on a check that did not happen: exit 1."""
+    import zipfile
+
+    binary = tmp_path / "tool"
+    binary.write_bytes(b"\x7fELF" + b"\x00" * 60)
+    bare_jar = tmp_path / "plain-1.0.jar"
+    with zipfile.ZipFile(bare_jar, "w") as z:
+        z.writestr("Main.class", "x")
+    published_nowhere = tmp_path / "webapp-2.0.0.jar"
+    with zipfile.ZipFile(published_nowhere, "w") as z:
+        z.writestr("META-INF/maven/org.example/webapp/pom.properties",
+                   "groupId=org.example\nartifactId=webapp\nversion=2.0.0\n")
+
+    from .conftest import FakeHttp
+
+    class NotThere(FakeHttp):
+        def get_text(self, url):
+            if url.startswith("https://repo1.maven.org/"):
+                self._check(url)
+                return 404, ""
+            return super().get_text(url)
+
+    for target, http in ((binary, None), (bare_jar, None), (published_nowhere, NotThere())):
+        assert _mismatch_run(tmp_path, fixtures, target, http) == cli.EXIT_ERROR, target.name
+        assert "--fail-on mismatch: could not be evaluated" in capsys.readouterr().err, target.name
+
+
+def test_fail_on_mismatch_is_refused_for_a_path_with_nothing_to_compare(tmp_path, fixtures, capsys):
+    """A folder, a lockfile, an SBOM or a package list has no single file to compare with a registry, so the
+    gate could never be evaluated: refused before any work, as other gates on a check that will not run are."""
+    folder = tmp_path / "build"
+    folder.mkdir()
+    (folder / "a.txt").write_text("x", encoding="utf-8")
+    lock = tmp_path / "package-lock.json"
+    lock.write_text('{"lockfileVersion": 3, "packages": {"": {"name": "x"}}}', encoding="utf-8")
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\nnpm,chalk,5.6.1\n", encoding="utf-8")
+    for target in (folder, lock, inv):
+        assert _mismatch_run(tmp_path, fixtures, target) == cli.EXIT_USAGE, target.name
+        assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, target.name

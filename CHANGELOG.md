@@ -29,6 +29,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   in the morning in Sydney said the day before. `as_of` in assessment.json now carries the local UTC offset.
 
 ### Fixed
+- `--fail-on mismatch` passed (exit 0) when the file was not compared with its registry: a binary, a JAR without
+  its Maven details, or a version the registry does not publish. It now fails with exit 1, as other gates do when
+  their check could not run. For a folder, lockfile, SBOM or package list, which have no single file to compare,
+  the gate is refused before the run (exit 2). An image or `--package` run is unchanged.
 - The HTML report's "Fix existed before release" tile said "pass --repo" when `--repo` was given. It now says
   why there is no release date: the repository has no GitHub releases, no release matched, or the GitHub
   lookup was skipped or failed.
