@@ -11,3 +11,6 @@ reports*/
 .coverage
 .coverage.*
 htmlcov/
+# scripts/record_demo.js: its tools and the raw recording
+/node_modules/
+/raw/

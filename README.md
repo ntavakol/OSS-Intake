@@ -55,6 +55,12 @@ to the page carries the command, so it can be shared.
   <img alt="The oss-intake command builder: numbered steps and a guided question on the left; on the right, the command with a Copy button and what the command will do" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
 </picture>
 
+A 45-second walk through: the guided questions, copying the command, and the report for a lockfile of six
+compromised npm releases (the [sample report](https://ntavakol.github.io/OSS-Intake/samples/compromised-npm/report.html),
+from a real run of the same command). [Full-quality video](https://github.com/ntavakol/OSS-Intake/blob/main/docs/videos/builder-demo.mp4).
+
+<img alt="Using the command builder: pick a dependency list, give the lockfile, ask to fail on malware, review what the command will do and copy it; then the report shows six malicious packages" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/builder-demo.gif" width="800">
+
 ## The gaps it closes
 
 Questions a security or engineering manager gets asked, and what answering them usually takes:

@@ -19,6 +19,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - The command builder has a new look: navy and blue, an icon for each choice and each part of the summary,
   numbered steps, and a picture of what leaves your computer (each service, and what it is sent). Icons are
   drawn by the page itself; it still loads nothing from anywhere else.
+- The README has a short video of the builder: the guided questions, copying the command, and the report for six
+  compromised npm releases (`scripts/record_demo.js` records it again).
 
 ### Changed
 - The project site is published when a release is published, from the release tag, so the command builder
