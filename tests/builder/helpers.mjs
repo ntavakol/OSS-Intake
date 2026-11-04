@@ -8,3 +8,5 @@ export const data = json("site", "builder", "options.json");
 export const rules = json("site", "builder", "rules.json");
 export const groups = json("site", "builder", "ui-groups.json");
 export const golden = json("tests", "fixtures", "builder_golden.json").cases;
+export const wizard = json("site", "builder", "wizard.json");
+export const wizardGolden = json("tests", "fixtures", "wizard_golden.json").cases;

@@ -52,13 +52,15 @@ function intOf(options, values, dest) {
 }
 
 /** Evaluate a rules.json condition against the state. Only the listed operators exist; anything else throws,
- * so a typo in rules.json fails the tests instead of silently never matching. */
-export function holds(cond, options, values) {
+ * so a typo in rules.json fails the tests instead of silently never matching. "what" is the wizard's answer to
+ * its first question (wizard.json); rules.json does not use it. */
+export function holds(cond, options, values, ctx = {}) {
   const [op, arg] = Object.entries(cond)[0] ?? [];
   switch (op) {
-    case "all": return arg.every((c) => holds(c, options, values));
-    case "any": return arg.some((c) => holds(c, options, values));
-    case "not": return !holds(arg, options, values);
+    case "all": return arg.every((c) => holds(c, options, values, ctx));
+    case "any": return arg.some((c) => holds(c, options, values, ctx));
+    case "not": return !holds(arg, options, values, ctx);
+    case "what": return arg.includes(ctx.what);
     case "set": return setValue(options, values, arg);
     case "none": return arg.every((d) => !setValue(options, values, d));
     case "has": return has(values, arg[0], arg[1]);
@@ -205,9 +207,13 @@ export function needsPowerShell7(data, state) {
 
 // ---------------------------------------------------------------- URL fragment
 
+// Page settings a link may carry besides the options (which view, the wizard's first answer), each a short word.
+const EXTRA = ["view", "what"];
+
 /** The state as a URL fragment (without "#"): only options that are set, so a link stays short. */
-export function toFragment(data, state, shell = "bash") {
+export function toFragment(data, state, shell = "bash", extra = {}) {
   const p = new URLSearchParams();
+  for (const k of EXTRA) if (extra[k]) p.set(k, extra[k]);
   p.set("cmd", state.command);
   if (shell !== "bash") p.set("shell", shell);
   for (const o of optionsFor(data, state.command)) {
@@ -233,7 +239,9 @@ export function fromFragment(data, fragment) {
     else if (o.kind === "repeatable") values[o.dest] = p.getAll(o.dest).slice(0, 1000).map((x) => x.slice(0, 2000));
     else values[o.dest] = (p.get(o.dest) ?? "").slice(0, 2000);
   }
-  return { state: { command, values }, shell };
+  const extra = {};
+  for (const k of EXTRA) if (/^[a-z-]{1,20}$/.test(p.get(k) ?? "")) extra[k] = p.get(k);
+  return { state: { command, values }, shell, extra };
 }
 
 /** An argument list back into a state (for tests, and the reverse of buildArgs). Throws on an unknown option. */

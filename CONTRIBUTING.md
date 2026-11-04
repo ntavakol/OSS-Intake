@@ -55,6 +55,12 @@ chmod +x .git/hooks/pre-commit
   the tests fail until both are done. Cross-option checks the CLI makes are mirrored in
   `site/builder/rules.json`, and each rule's example is run through the CLI. The JavaScript tests need only
   Node 22 or later (no packages): `node --test tests/builder/*.test.mjs`.
+- The builder's guided questions and "What this command will do" are in `site/builder/wizard.json`. When an
+  option the questions offer changes meaning, change its sentence there. A new service the code calls (a
+  module-level `https://` URL constant) must be added to its `services`, so the page can say what is contacted;
+  a test fails until it is. `tests/fixtures/wizard_summaries.json` holds the summary for a few hundred commands:
+  after a deliberate change, regenerate it with `UPDATE_SUMMARIES=1 node --test tests/builder/summaries.test.mjs`
+  and read its diff, since every changed line must be true of what the CLI does.
 - Parts of the README are generated from the code (example output, likelihood rules and metrics). After changing
   the report format or the likelihood rules, run `python scripts/readme_sync.py`; the tests fail until you do.
   Every `scan` and `verify` option must also appear in the README.

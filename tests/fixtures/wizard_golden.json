@@ -1,0 +1,26 @@
+{
+ "about": "Answers to the wizard and the command it must build. tests/builder/wizard.test.mjs walks each through the wizard's steps; tests/test_builder.py runs each command through the CLI, which must accept it.",
+ "cases": [
+  {"name": "extension lockfile, likelihood gate", "what": "lockfile", "outcome": "gate",
+   "values": {"path": "~/Downloads/vscode-extension/package-lock.json", "repo": "owner/vscode-extension", "out": "extension-report", "fail_on_likelihood": "4"},
+   "bash": "oss-intake --path ~/Downloads/vscode-extension/package-lock.json --repo owner/vscode-extension --out extension-report --fail-on-likelihood 4"},
+  {"name": "image, report", "what": "image", "outcome": "report",
+   "values": {"image": "owner/app:1.2.3", "out": "report"},
+   "bash": "oss-intake --image owner/app:1.2.3 --out report"},
+  {"name": "image from the registry, CI gate", "what": "image", "outcome": "gate",
+   "values": {"image": "ghcr.io/owner/app:1.2.3", "image_src": "remote", "repo": "owner/app", "out": "report"}, "gates": ["high", "malicious", "kev"],
+   "bash": "oss-intake --image ghcr.io/owner/app:1.2.3 --repo owner/app --out report --image-src remote --fail-on malicious,kev,high"},
+  {"name": "JAR with the registry checksum gate", "what": "artifact", "outcome": "gate",
+   "values": {"path": "app 1.2.3.jar", "out": "report"}, "gates": ["mismatch", "malicious"],
+   "bash": "oss-intake --path 'app 1.2.3.jar' --out report --fail-on malicious,mismatch"},
+  {"name": "SBOM with labels", "what": "inventory", "outcome": "report",
+   "values": {"path": "sbom.cdx.json", "label": ["owner=Web team"], "out": "report"},
+   "bash": "oss-intake --path sbom.cdx.json --out report --label 'owner=Web team'"},
+  {"name": "two packages, new-release gate", "what": "package", "outcome": "gate",
+   "values": {"package": ["npm:chalk@5.6.1", "pypi:requests@2.34.2"], "out": "report"}, "gates": ["recent", "malicious"],
+   "bash": "oss-intake --package npm:chalk@5.6.1 --package pypi:requests@2.34.2 --out report --fail-on malicious,recent"},
+  {"name": "project health only", "what": "repo", "outcome": "report",
+   "values": {"repo": "owner/name", "out": "report"},
+   "bash": "oss-intake --repo owner/name --out report"}
+ ]
+}

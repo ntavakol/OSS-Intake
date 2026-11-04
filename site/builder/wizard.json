@@ -1,0 +1,1916 @@
+{
+ "about": "The command builder's wizard, maintained by hand: the questions it asks, the options each answer offers, the sentences of 'What this command will do', and the checks that depend on the kind of file (kind_rules: refused by the CLI; kind_cautions: gates the CLI accepts but can only ever fail with exit 1). Every option it offers must exist in options.json and have a summary line that refers to it; the gates must be the CLI's --fail-on values; the services must be every host the code calls; lockfile_names must be inputs.LOCKFILES; each kind rule's args must be refused by the CLI with its message and its ok_args must not be (tests/test_builder.py checks all of these). Conditions use the rules.json operators, plus {\"what\": [...]}, true when the kind of input is one of those: the wizard's first answer, corrected by the file name (wizard.js kindOf), so also \"renv\". Text puts an option's value where {dest} is written; {malware} reads ' and malware' when OSV is used.",
+ "targets": [
+  {
+   "id": "lockfile",
+   "label": "A project's dependency list",
+   "hint": "A lockfile such as package-lock.json, requirements.txt, pom.xml, go.sum or Cargo.lock: for example an npm project, or a VS Code extension's source.",
+   "fields": [
+    "path"
+   ],
+   "repo": true,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age"
+   ]
+  },
+  {
+   "id": "image",
+   "label": "A container image",
+   "hint": "An image with a tag or digest, such as nginx:1.27. The scanners read it from Docker or another local runtime, or pull it from the registry.",
+   "fields": [
+    "image",
+    "image_src"
+   ],
+   "repo": true,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age"
+   ]
+  },
+  {
+   "id": "artifact",
+   "label": "A file or folder you downloaded or built",
+   "hint": "A JAR or WAR, a wheel, an npm .tgz, a binary, or a folder of built files.",
+   "fields": [
+    "path"
+   ],
+   "repo": true,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age",
+    "mismatch"
+   ]
+  },
+  {
+   "id": "inventory",
+   "label": "An SBOM or a package list",
+   "hint": "A CycloneDX or SPDX SBOM, a folder of them, or a .csv with ecosystem,name,version (or purl) columns.",
+   "fields": [
+    "path",
+    "label"
+   ],
+   "repo": true,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age"
+   ]
+  },
+  {
+   "id": "package",
+   "label": "Specific packages",
+   "hint": "One or more packages by name and version, such as npm:chalk@5.6.1. Nothing to download first.",
+   "fields": [
+    "package",
+    "label"
+   ],
+   "repo": false,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age"
+   ]
+  },
+  {
+   "id": "repo",
+   "label": "Just a GitHub project's health",
+   "hint": "Releases, OpenSSF Scorecard and GitHub Actions workflows, without checking any packages.",
+   "fields": [
+    "repo"
+   ],
+   "repo": false,
+   "gates": []
+  }
+ ],
+ "fields": {
+  "path": {
+   "label": "Where is it?",
+   "hint": "The path on your computer. ~/ means your home folder.",
+   "placeholder": {
+    "lockfile": "~/Downloads/project/package-lock.json",
+    "artifact": "~/Downloads/app-1.2.3.jar",
+    "inventory": "~/Downloads/sbom.cdx.json"
+   }
+  },
+  "image": {
+   "label": "Which image?",
+   "hint": "Name and an explicit tag or digest, such as owner/app:1.2.3.",
+   "placeholder": "owner/app:1.2.3"
+  },
+  "image_src": {
+   "label": "Where should the scanners read it from?",
+   "hint": "Leave it to the scanners unless you know: 'remote' pulls from the registry without Docker.",
+   "default_label": "Let the scanners choose"
+  },
+  "package": {
+   "label": "Which packages?",
+   "hint": "ecosystem:name@version, or a purl such as pkg:pypi/django@2.2.0. One per row.",
+   "placeholder": "npm:chalk@5.6.1"
+  },
+  "label": {
+   "label": "Labels (optional)",
+   "hint": "Group the results, such as owner=Web team. One per row.",
+   "placeholder": "owner=Web team"
+  },
+  "repo": {
+   "label": "Where is the source on GitHub?",
+   "hint": "owner/name. Optional for everything but a project check: it adds release cadence, Scorecard and the workflow audit.",
+   "placeholder": "owner/name"
+  },
+  "out": {
+   "label": "Folder for the report",
+   "hint": "Created if it does not exist.",
+   "placeholder": "report"
+  },
+  "fail_on_likelihood": {
+   "label": "Also fail if the suggested likelihood is at least",
+   "hint": "A 1 to 5 heuristic from the findings and the project's signals. Leave it unset for no likelihood gate.",
+   "default_label": "No likelihood gate"
+  }
+ },
+ "outcomes": [
+  {
+   "id": "report",
+   "label": "A report to read",
+   "hint": "Exits 0 whenever the run completes, whatever it finds."
+  },
+  {
+   "id": "gate",
+   "label": "A pass or fail check, for CI",
+   "hint": "Exits 3 when something you pick below is found, and 1 if a check it needs could not run."
+  }
+ ],
+ "gates": [
+  {
+   "id": "malicious",
+   "label": "A package is known malware",
+   "summary": "a package known to be malware",
+   "recommended": true
+  },
+  {
+   "id": "kev",
+   "label": "A vulnerability is known to be exploited (CISA KEV)",
+   "summary": "a vulnerability in CISA's known-exploited list",
+   "recommended": true
+  },
+  {
+   "id": "act",
+   "label": "Anything in Act now: malware, exploited, or a ready-made exploit",
+   "summary": "a finding in the Act now group (malware, exploited, or a ready-made exploit)"
+  },
+  {
+   "id": "critical",
+   "label": "A critical vulnerability",
+   "summary": "a critical vulnerability"
+  },
+  {
+   "id": "high",
+   "label": "A high or critical vulnerability",
+   "summary": "a high or critical vulnerability",
+   "recommended": true
+  },
+  {
+   "id": "recent",
+   "label": "A package version published in the last few days",
+   "summary": "a package version published in the last {release_age_days} days"
+  },
+  {
+   "id": "unknown-age",
+   "label": "A package version whose release date can't be found",
+   "summary": "a package version whose release date could not be found"
+  },
+  {
+   "id": "mismatch",
+   "label": "The file doesn't match the checksum its registry publishes (JAR, wheel, sdist or npm .tgz)",
+   "summary": "a file that does not match its registry checksum"
+  }
+ ],
+ "summary": [
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "lockfile"
+    ]
+   },
+   "text": "the dependency list {path} for known vulnerabilities{malware}, with {scanners}. It reads the file; nothing is installed or run."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "image"
+    ]
+   },
+   "text": "the container image {image} for known vulnerabilities{malware}, with {scanners}."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "image"
+      ]
+     },
+     {
+      "has": [
+       "image_src",
+       "remote"
+      ]
+     }
+    ]
+   },
+   "text": "The image is pulled from the registry, without Docker."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "image"
+      ]
+     },
+     {
+      "set": "image_src"
+     },
+     {
+      "not": {
+       "has": [
+        "image_src",
+        "remote"
+       ]
+      }
+     }
+    ]
+   },
+   "text": "The scanners read the image from {image_src}."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "artifact"
+    ]
+   },
+   "text": "{path} for known vulnerabilities{malware}, with {scanners}."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "artifact"
+      ]
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_registry_check"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "A JAR, wheel, sdist or npm .tgz is also compared with the checksum its registry (Maven Central, PyPI or npm) publishes for that version."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "inventory"
+    ]
+   },
+   "text": "every package listed in {path} against OSV, for known vulnerabilities and malware. No scanner is needed."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "renv"
+    ]
+   },
+   "text": "the CRAN packages in the R renv.lock {path} against OSV, for known vulnerabilities and malware; packages from Bioconductor, GitHub or local sources are not checked. No scanner is needed."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "path"
+    ]
+   },
+   "text": "{path}: a lockfile, file or folder with {scanners}, or an SBOM or .csv package list against OSV."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "package"
+    ]
+   },
+   "text": "{package} against OSV, for known vulnerabilities and malware. No scanner is needed."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
+     "repo"
+    ]
+   },
+   "text": "only the GitHub project {repo}: no packages are checked."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "not": {
+       "all": [
+        {
+         "not": {
+          "set": "offline"
+         }
+        },
+        {
+         "any": [
+          {
+           "not": {
+            "set": "scanners"
+           }
+          },
+          {
+           "has": [
+            "scanners",
+            "osv"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "Malware is seen only in advisories Trivy or Grype class as malicious, since OSV's malware data is not queried."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "set": "from_trivy_json"
+     }
+    ]
+   },
+   "text": "Uses the Trivy report in {from_trivy_json} instead of running Trivy."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "set": "from_grype_json"
+     }
+    ]
+   },
+   "text": "Uses the Grype report in {from_grype_json} instead of running Grype."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "set": "label"
+   },
+   "text": "Labels each package with {label}, where it has no such label yet."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "set": "min_severity"
+   },
+   "text": "Leaves out findings below {min_severity}."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   },
+   "text": "{repo} on GitHub: its releases and how often it makes them."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     },
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     }
+    ]
+   },
+   "text": "its release dates, to tell whether fixes were out before the release."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_scorecard"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "its OpenSSF Scorecard."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_workflows"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "its GitHub Actions workflows, for unpinned and known-bad actions."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo"
+       ]
+      }
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     },
+     {
+      "not": {
+       "all": [
+        {
+         "set": "no_kev"
+        },
+        {
+         "set": "no_epss"
+        },
+        {
+         "set": "no_exploits"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "each vulnerability it finds for signs of exploitation (CISA KEV, FIRST EPSS and public exploit indexes), to suggest what to fix first."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo",
+        "renv"
+       ]
+      }
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_fix_dates"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "when each fix was published, to measure how long fixes have been available."
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "all": [
+     {
+      "set": "reachability"
+     },
+     {
+      "what": [
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "any": [
+       {
+        "not": {
+         "set": "scanners"
+        }
+       },
+       {
+        "has": [
+         "scanners",
+         "trivy"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "text": "Go binaries with govulncheck: is the vulnerable function in the binary?"
+  },
+  {
+   "head": "Also checks",
+   "when": {
+    "set": "decisions"
+   },
+   "text": "Carries your earlier decisions forward from {decisions}."
+  },
+  {
+   "head": "Flags",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo",
+        "renv"
+       ]
+      }
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     },
+     {
+      "not": {
+       "eq": [
+        "release_age_days",
+        0
+       ]
+      }
+     },
+     {
+      "any": [
+       {
+        "what": [
+         "inventory",
+         "package"
+        ]
+       },
+       {
+        "any": [
+         {
+          "not": {
+           "set": "scanners"
+          }
+         },
+         {
+          "has": [
+           "scanners",
+           "trivy"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "text": "any language package version (npm, PyPI, Maven, Go and the others deps.dev covers) published in the last {release_age_days} days; OS packages are not checked. New releases are when compromised versions are live, before advisories catch up."
+  },
+  {
+   "head": "Flags",
+   "when": {
+    "any": [
+     {
+      "set": "likelihood"
+     },
+     {
+      "set": "likelihood_config"
+     },
+     {
+      "set": "fail_on_likelihood"
+     }
+    ]
+   },
+   "text": "a suggested likelihood from 1 to 5, built from the findings and the project's signals. It is a starting point for an assessor, not a risk rating."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "set": "fail_on"
+   },
+   "text": "with exit code 3 if it finds {fail_on}."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "set": "fail_on_likelihood"
+   },
+   "text": "with exit code 3 if the suggested likelihood is {fail_on_likelihood} or higher."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "any": [
+     {
+      "has": [
+       "fail_on",
+       "malicious"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "kev"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "act"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "critical"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "high"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "recent"
+      ]
+     },
+     {
+      "has": [
+       "fail_on",
+       "unknown-age"
+      ]
+     }
+    ]
+   },
+   "text": "with exit code 1, rather than passing, if a check one of these gates needs could not run and no gate was tripped."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "has": [
+     "fail_on",
+     "mismatch"
+    ]
+   },
+   "text": "The checksum gate compares only a JAR, wheel, sdist or npm .tgz whose registry publishes a checksum for that version. For anything else (a binary, a folder, a JAR without its Maven details) it does not fail; if the registry lookup itself fails, it exits 1 rather than passing."
+  },
+  {
+   "head": "Fails",
+   "when": {
+    "none": [
+     "fail_on",
+     "fail_on_likelihood"
+    ]
+   },
+   "text": "never on what it finds: it exits 0 when the run completes. For CI, add a pass or fail check."
+  },
+  {
+   "head": "Writes",
+   "when": {
+    "set": "out"
+   },
+   "text": "{formats} to {out}."
+  },
+  {
+   "head": "Writes",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "not": {
+       "all": [
+        {
+         "set": "from_trivy_json"
+        },
+        {
+         "set": "from_grype_json"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "The scanners' own output goes in {out}/raw."
+  },
+  {
+   "head": "Writes",
+   "when": {
+    "what": [
+     "package",
+     "inventory"
+    ]
+   },
+   "text": "packages.csv too, one row per package."
+  },
+  {
+   "head": "Writes",
+   "when": {
+    "all": [
+     {
+      "set": "sbom"
+     },
+     {
+      "what": [
+       "image"
+      ]
+     },
+     {
+      "any": [
+       {
+        "not": {
+         "set": "scanners"
+        }
+       },
+       {
+        "has": [
+         "scanners",
+         "trivy"
+        ]
+       }
+      ]
+     },
+     {
+      "not": {
+       "set": "from_trivy_json"
+      }
+     }
+    ]
+   },
+   "text": "a CycloneDX SBOM from Trivy, in {out}/raw."
+  },
+  {
+   "head": "Writes",
+   "when": {
+    "set": "quiet"
+   },
+   "text": "Prints only errors and the final summary."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "offline"
+   },
+   "text": "anything that needs the network (offline): OSV, release dates, exploitation signals and the GitHub project. A zero for these means not checked, not clean."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "text": "{repo}: offline skips GitHub."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "set": "repo"
+      }
+     },
+     {
+      "not": {
+       "what": [
+        "package"
+       ]
+      }
+     }
+    ]
+   },
+   "text": "the project's health: add where its source is on GitHub."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "what": [
+     "lockfile",
+     "renv"
+    ]
+   },
+   "text": "the project's own code, or whether what you install (for example a .vsix from the VS Code Marketplace) was built from this source: only the listed dependencies are checked."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "renv"
+      ]
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   },
+   "text": "how new each package version is, or when fixes were published: R packages are not looked up on deps.dev."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "what": [
+     "inventory"
+    ]
+   },
+   "text": "anything the SBOM or package list leaves out: only the packages it names are checked."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "none": [
+       "trivy_version",
+       "trivy_sha256",
+       "trivy_archive",
+       "from_trivy_json"
+      ]
+     }
+    ]
+   },
+   "text": "that the scanners on your computer are the genuine releases: pin their versions and hashes under All options."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "not": {
+     "any": [
+      {
+       "what": [
+        "repo"
+       ]
+      },
+      {
+       "all": [
+        {
+         "set": "reachability"
+        },
+        {
+         "what": [
+          "image",
+          "artifact",
+          "path"
+         ]
+        },
+        {
+         "any": [
+          {
+           "not": {
+            "set": "scanners"
+           }
+          },
+          {
+           "has": [
+            "scanners",
+            "trivy"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "text": "whether the vulnerable code is reachable where you run it: a finding is a version match, not proof of exposure."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_kev"
+   },
+   "text": "CISA KEV (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_epss"
+   },
+   "text": "FIRST EPSS (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_exploits"
+   },
+   "text": "public exploit indexes (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_scorecard"
+   },
+   "text": "the OpenSSF Scorecard (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_workflows"
+   },
+   "text": "the project's GitHub Actions workflows (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_fix_dates"
+   },
+   "text": "when fixes were published (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "set": "no_registry_check"
+   },
+   "text": "the registry checksum (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "eq": [
+     "release_age_days",
+     0
+    ]
+   },
+   "text": "how new each package version is (turned off)."
+  }
+ ],
+ "services": [
+  {
+   "name": "OSV",
+   "hosts": [
+    "api.osv.dev"
+   ],
+   "sends": "package names and versions, and advisory IDs",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo"
+       ]
+      }
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     },
+     {
+      "any": [
+       {
+        "what": [
+         "inventory",
+         "package",
+         "renv"
+        ]
+       },
+       {
+        "any": [
+         {
+          "not": {
+           "set": "scanners"
+          }
+         },
+         {
+          "has": [
+           "scanners",
+           "osv"
+          ]
+         }
+        ]
+       },
+       {
+        "not": {
+         "set": "no_fix_dates"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "deps.dev",
+   "hosts": [
+    "api.deps.dev"
+   ],
+   "sends": "package names and versions",
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo",
+        "renv"
+       ]
+      }
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     },
+     {
+      "any": [
+       {
+        "not": {
+         "set": "no_fix_dates"
+        }
+       },
+       {
+        "all": [
+         {
+          "not": {
+           "eq": [
+            "release_age_days",
+            0
+           ]
+          }
+         },
+         {
+          "any": [
+           {
+            "what": [
+             "inventory",
+             "package"
+            ]
+           },
+           {
+            "any": [
+             {
+              "not": {
+               "set": "scanners"
+              }
+             },
+             {
+              "has": [
+               "scanners",
+               "trivy"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "all": [
+         {
+          "what": [
+           "inventory",
+           "package"
+          ]
+         },
+         {
+          "not": {
+           "set": "no_latest"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "GitHub",
+   "hosts": [
+    "api.github.com"
+   ],
+   "sends": "the repository name, and your GITHUB_TOKEN if it is set",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "OpenSSF Scorecard",
+   "hosts": [
+    "api.securityscorecards.dev"
+   ],
+   "sends": "the repository name",
+   "when": {
+    "all": [
+     {
+      "set": "repo"
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_scorecard"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "Maven Central, PyPI or npm, for a JAR, wheel, sdist or npm .tgz",
+   "hosts": [
+    "repo1.maven.org",
+    "pypi.org",
+    "registry.npmjs.org"
+   ],
+   "sends": "the file's package name and version",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_registry_check"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "CISA KEV",
+   "hosts": [
+    "www.cisa.gov"
+   ],
+   "sends": "nothing (it downloads the whole list)",
+   "if_found": true,
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo"
+       ]
+      }
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_kev"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "FIRST EPSS",
+   "hosts": [
+    "api.first.org"
+   ],
+   "sends": "CVE IDs",
+   "if_found": true,
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo"
+       ]
+      }
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_epss"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "Exploit indexes on GitHub and GitLab",
+   "hosts": [
+    "raw.githubusercontent.com",
+    "gitlab.com"
+   ],
+   "sends": "CVE IDs",
+   "if_found": true,
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo"
+       ]
+      }
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_exploits"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "Fix-date records (Debian, Ubuntu, Red Hat, Alpine, Packagist and Go)",
+   "hosts": [
+    "deb.debian.org",
+    "salsa.debian.org",
+    "api.launchpad.net",
+    "access.redhat.com",
+    "repo.packagist.org",
+    "go.dev",
+    "api.github.com"
+   ],
+   "sends": "package names, fixed versions and advisory IDs, and your GITHUB_TOKEN to GitHub if it is set",
+   "if_found": true,
+   "when": {
+    "all": [
+     {
+      "not": {
+       "what": [
+        "repo",
+        "renv"
+       ]
+      }
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_fix_dates"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "scanner_notes": [
+  {
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "not": {
+       "all": [
+        {
+         "set": "from_trivy_json"
+        },
+        {
+         "set": "from_grype_json"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "Trivy and Grype download their vulnerability databases from their own servers, unless their copy is fresh."
+  },
+  {
+   "when": {
+    "all": [
+     {
+      "what": [
+       "image"
+      ]
+     },
+     {
+      "not": {
+       "all": [
+        {
+         "set": "from_trivy_json"
+        },
+        {
+         "set": "from_grype_json"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "text": "The scanners pull the image from its registry if it is not on your computer (always, with remote), with your registry login if Docker has one."
+  },
+  {
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "path"
+      ]
+     },
+     {
+      "any": [
+       {
+        "not": {
+         "set": "scanners"
+        }
+       },
+       {
+        "has": [
+         "scanners",
+         "trivy"
+        ]
+       }
+      ]
+     },
+     {
+      "not": {
+       "set": "from_trivy_json"
+      }
+     }
+    ]
+   },
+   "text": "For a pom.xml, Trivy fetches the parent and dependency POMs from Maven Central and from any repository the pom.xml or your Maven settings name."
+  },
+  {
+   "when": {
+    "all": [
+     {
+      "set": "reachability"
+     },
+     {
+      "what": [
+       "image",
+       "artifact",
+       "path"
+      ]
+     },
+     {
+      "any": [
+       {
+        "not": {
+         "set": "scanners"
+        }
+       },
+       {
+        "has": [
+         "scanners",
+         "trivy"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "text": "govulncheck downloads the Go vulnerability database from vuln.go.dev; for an image, Docker or crane pulls the image to copy its binaries out."
+  }
+ ],
+ "privacy_notes": [
+  {
+   "when": {
+    "what": [
+     "lockfile",
+     "artifact",
+     "path"
+    ]
+   },
+   "text": "Your files are read on your computer. Apart from what the scanners fetch, only the names and IDs listed are sent."
+  },
+  {
+   "when": {
+    "what": [
+     "inventory",
+     "renv"
+    ]
+   },
+   "text": "The file is read on your computer: only the names and IDs listed are sent."
+  }
+ ],
+ "lockfile_names": "^(requirements[\\w.-]*\\.txt|poetry\\.lock|Pipfile\\.lock|uv\\.lock|pdm\\.lock|package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|pom\\.xml|gradle\\.lockfile|go\\.mod|go\\.sum|Cargo\\.lock|composer\\.lock|Gemfile\\.lock|packages\\.lock\\.json|\\w[\\w.-]*\\.deps\\.json)$",
+ "kind_rules": [
+  {
+   "id": "kind-osv-needs-trivy",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "artifact"
+      ]
+     },
+     {
+      "has": [
+       "scanners",
+       "osv"
+      ]
+     },
+     {
+      "not": {
+       "has": [
+        "scanners",
+        "trivy"
+       ]
+      }
+     }
+    ]
+   },
+   "message": "osv needs the package list from trivy",
+   "args": [
+    "--path",
+    "{lockfile}",
+    "--scanners",
+    "osv",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{lockfile}",
+    "--scanners",
+    "trivy,osv",
+    "--out",
+    "{out}"
+   ],
+   "more_args": [
+    [
+     "--path",
+     "{jar}",
+     "--scanners",
+     "osv",
+     "--out",
+     "{out}"
+    ]
+   ],
+   "more_ok_args": [
+    [
+     "--path",
+     "{csv}",
+     "--scanners",
+     "osv",
+     "--out",
+     "{out}"
+    ]
+   ]
+  },
+  {
+   "id": "kind-gate-osv-off",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "lockfile",
+       "artifact"
+      ]
+     },
+     {
+      "any": [
+       {
+        "has": [
+         "fail_on",
+         "malicious"
+        ]
+       },
+       {
+        "has": [
+         "fail_on",
+         "act"
+        ]
+       }
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "offline"
+       },
+       {
+        "all": [
+         {
+          "set": "scanners"
+         },
+         {
+          "not": {
+           "has": [
+            "scanners",
+            "osv"
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "message": "needs OSV malicious package data",
+   "args": [
+    "--path",
+    "{lockfile}",
+    "--scanners",
+    "trivy",
+    "--fail-on",
+    "malicious",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{lockfile}",
+    "--scanners",
+    "trivy,osv",
+    "--fail-on",
+    "malicious",
+    "--out",
+    "{out}"
+   ],
+   "more_args": [
+    [
+     "--path",
+     "{lockfile}",
+     "--offline",
+     "--fail-on",
+     "malicious",
+     "--out",
+     "{out}"
+    ],
+    [
+     "--path",
+     "{jar}",
+     "--scanners",
+     "grype",
+     "--fail-on",
+     "malicious",
+     "--out",
+     "{out}"
+    ],
+    [
+     "--path",
+     "{lockfile}",
+     "--scanners",
+     "trivy",
+     "--fail-on",
+     "act",
+     "--out",
+     "{out}"
+    ]
+   ],
+   "more_ok_args": [
+    [
+     "--path",
+     "{csv}",
+     "--scanners",
+     "trivy",
+     "--fail-on",
+     "malicious",
+     "--out",
+     "{out}"
+    ],
+    [
+     "--image",
+     "owner/app:1.0",
+     "--scanners",
+     "trivy,osv",
+     "--fail-on",
+     "act",
+     "--out",
+     "{out}"
+    ]
+   ]
+  },
+  {
+   "id": "kind-offline",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "inventory",
+       "renv"
+      ]
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "which needs the network; drop --offline",
+   "args": [
+    "--path",
+    "{csv}",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{csv}",
+    "--out",
+    "{out}"
+   ],
+   "more_args": [
+    [
+     "--path",
+     "{renv}",
+     "--offline",
+     "--out",
+     "{out}"
+    ]
+   ],
+   "more_ok_args": [
+    [
+     "--path",
+     "{lockfile}",
+     "--offline",
+     "--out",
+     "{out}"
+    ]
+   ]
+  },
+  {
+   "id": "kind-label",
+   "when": {
+    "all": [
+     {
+      "set": "label"
+     },
+     {
+      "what": [
+       "lockfile",
+       "artifact",
+       "renv"
+      ]
+     }
+    ]
+   },
+   "message": "--label applies to a package inventory or SBOM, or to --package",
+   "args": [
+    "--path",
+    "{lockfile}",
+    "--label",
+    "owner=x",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{csv}",
+    "--label",
+    "owner=x",
+    "--out",
+    "{out}"
+   ],
+   "more_args": [
+    [
+     "--path",
+     "{renv}",
+     "--label",
+     "owner=x",
+     "--out",
+     "{out}"
+    ],
+    [
+     "--path",
+     "{jar}",
+     "--label",
+     "owner=x",
+     "--out",
+     "{out}"
+    ]
+   ],
+   "more_ok_args": [
+    [
+     "--package",
+     "npm:chalk@5.6.1",
+     "--label",
+     "owner=x",
+     "--out",
+     "{out}"
+    ]
+   ]
+  }
+ ],
+ "kind_cautions": [
+  {
+   "id": "caution-renv-age",
+   "dest": "fail_on",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "renv"
+      ]
+     },
+     {
+      "any": [
+       {
+        "has": [
+         "fail_on",
+         "recent"
+        ]
+       },
+       {
+        "has": [
+         "fail_on",
+         "unknown-age"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on recent and unknown-age cannot be checked for renv.lock (R packages' release dates are not looked up), so the run would always exit 1",
+   "args": [
+    "--path",
+    "{renv}",
+    "--fail-on",
+    "recent",
+    "--out",
+    "{out}"
+   ],
+   "cli_says": "could not be evaluated"
+  }
+ ]
+}

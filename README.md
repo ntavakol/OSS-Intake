@@ -43,14 +43,16 @@ findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
 
 ## Build the command
 
-oss-intake has 70 options. The [command builder](https://ntavakol.github.io/OSS-Intake/builder/) lets you pick
-what to check and the options you need, shows the matching command for bash, zsh or PowerShell, and checks it the
-way oss-intake would before you copy it. It runs in your browser and sends nothing anywhere; a link to the page
-carries the command, so it can be shared.
+oss-intake has 70 options. The [command builder](https://ntavakol.github.io/OSS-Intake/builder/) asks what you
+are checking and what you want back, then shows the command for bash, zsh or PowerShell, checked the way
+oss-intake would check it. Beside it, "What this command will do" says in plain words what the command checks,
+which services it contacts and what it sends them, when it fails, and what it does not check. "All options" shows
+every option for anything the questions do not cover. It runs in your browser and sends nothing anywhere; a link
+to the page carries the command, so it can be shared.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-dark.png">
-  <img alt="The oss-intake command builder: options grouped on the left, the command for bash or PowerShell on the right with a Copy button" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
+  <img alt="The oss-intake command builder: a step of the guided questions on the left; on the right, the command with a Copy button and what the command will do" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/command-builder-light.png" width="800">
 </picture>
 
 ## The gaps it closes

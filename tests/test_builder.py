@@ -246,3 +246,146 @@ def test_export_refuses_an_option_kind_it_does_not_know(kwargs):
     action = argparse.ArgumentParser().add_argument("--x", **kwargs)
     with pytest.raises(SystemExit, match="not supported"):
         _export_module()._kind(action)
+
+
+# ---------------------------------------------------------------- the guided wizard (wizard.json)
+
+def _wizard_offers(wiz: dict, target: dict) -> list[str]:
+    """As wizard.js offered(): the target's fields, its GitHub project, the output folder and the gates."""
+    out = [*target["fields"], *(["repo"] if target["repo"] else []), "out"]
+    return out + (["fail_on"] if target["gates"] else []) + ["fail_on_likelihood"]
+
+
+def test_wizard_offers_real_options_and_the_clis_gates():
+    wiz, scan = _load("wizard.json"), _load("options.json")["commands"]["scan"]
+    dests = {o["dest"] for o in scan["options"]}
+    assert set(wiz["fields"]) <= dests
+    for t in wiz["targets"]:
+        assert set(_wizard_offers(wiz, t)) <= dests, t["id"]
+        assert set(_wizard_offers(wiz, t)) - {"fail_on"} <= set(wiz["fields"]), f"{t['id']}: give it a wizard label"
+        assert set(t["gates"]) <= set(cli.FAIL_ON), t["id"]
+    assert [g["id"] for g in wiz["gates"]] == list(cli.FAIL_ON), "one wizard gate per --fail-on value, in order"
+
+
+def _refers(cond) -> set[str]:
+    """The options a condition looks at (not the "what" answer)."""
+    op, arg = next(iter(cond.items()))
+    if op in ("all", "any"):
+        return set().union(*(_refers(c) for c in arg))
+    if op == "not":
+        return _refers(arg)
+    if op == "set":
+        return {arg}
+    if op == "none":
+        return set(arg)
+    return set() if op == "what" else {arg[0]}
+
+
+def test_every_option_the_wizard_offers_has_a_summary_line():
+    """'What this command will do' must say something for each option the wizard offers, so it cannot fall
+    behind what the wizard sets: a summary line looks at the option or shows its value."""
+    wiz = _load("wizard.json")
+    offered = {d for t in wiz["targets"] for d in _wizard_offers(wiz, t)}
+    for dest in sorted(offered):
+        said = (dest in _refers(line["when"]) or "{" + dest + "}" in line["text"] for line in wiz["summary"])
+        assert any(said), dest
+
+
+def test_wizard_knows_the_lockfile_names():
+    """kindOf reads a file name as the CLI does (inputs.classify)."""
+    from oss_intake import inputs
+
+    assert _load("wizard.json")["lockfile_names"] == inputs.LOCKFILES.pattern
+
+
+def _wizard(key: str) -> list:
+    return _load("wizard.json")[key] if BUILDER.is_dir() else []
+
+
+def _kind_files(tmp_path: Path) -> dict[str, str]:
+    lock = tmp_path / "package-lock.json"
+    lock.write_text(FILES["package-lock.json"], encoding="utf-8")
+    csv_ = tmp_path / "packages.csv"
+    csv_.write_text("ecosystem,name,version\nnpm,chalk,5.6.1\n", encoding="utf-8")
+    renv = tmp_path / "renv.lock"
+    renv.write_text(json.dumps({"R": {"Version": "4.4.1"}, "Packages": {"jsonlite": {
+        "Package": "jsonlite", "Version": "1.8.0", "Source": "Repository", "Repository": "CRAN"}}}), encoding="utf-8")
+    jar = tmp_path / "app.jar"
+    jar.write_bytes(b"PK\x05\x06" + b"\x00" * 18)  # an empty zip
+    return {"{lockfile}": str(lock), "{csv}": str(csv_), "{renv}": str(renv), "{jar}": str(jar),
+            "{out}": str(tmp_path / "out")}
+
+
+@pytest.mark.parametrize("rule", _wizard("kind_rules"), ids=lambda r: r["id"])
+def test_each_kind_rule_is_what_the_cli_refuses(rule, tmp_path, capsys, monkeypatch):
+    """The checks the wizard makes from the kind of file: its example is refused by the CLI (exit 2, with the
+    message), and its ok_args are not refused with that message."""
+    from .conftest import FakeHttp
+
+    names = _kind_files(tmp_path)
+    for args in [rule["args"], *rule.get("more_args", [])]:
+        http = FakeHttp()
+        code = cli.main([names.get(a, a) for a in args], http=http)
+        err = capsys.readouterr().err
+        assert code == cli.EXIT_USAGE and rule["message"] in err, (args, err)
+        assert http.calls == []
+    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    for args in [rule["ok_args"], *rule.get("more_ok_args", [])]:
+        cli.main([names.get(a, a) for a in args], http=FakeHttp())
+        assert rule["message"] not in capsys.readouterr().err, args
+
+
+def test_wizard_services_are_every_host_the_code_calls():
+    """The summary's 'Contacts' list names every service oss-intake calls: each host in a module-level URL
+    constant in src/ must be in wizard.json's services, and each listed host must be one the code calls."""
+    hosts = set()
+    for py in (ROOT / "src" / "oss_intake").rglob("*.py"):
+        for m in re.finditer(r'^[A-Z_]+ = f?"https://([^/"{]+)', py.read_text(encoding="utf-8"), re.M):
+            hosts.add(m.group(1))
+    listed = {h for s in _load("wizard.json")["services"] for h in s["hosts"]}
+    assert hosts == listed
+
+
+# Files the wizard's golden commands name, created in tmp_path for the run.
+FILES = {
+    "package-lock.json": '{"lockfileVersion": 3, "packages": {"": {"name": "x"}}}',
+    "sbom.cdx.json": json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [
+        {"type": "library", "name": "chalk", "version": "5.6.1", "purl": "pkg:npm/chalk@5.6.1"}]}),
+}
+
+
+def _wizard_cases():
+    path = ROOT / "tests" / "fixtures" / "wizard_golden.json"
+    return json.loads(path.read_text(encoding="utf-8"))["cases"] if path.exists() else []
+
+
+@pytest.mark.parametrize("case", _wizard_cases(), ids=lambda c: c["name"])
+def test_wizard_commands_are_accepted_by_the_cli(case, tmp_path, capsys, monkeypatch):
+    """Each command the wizard builds (checked under Node) gets past the CLI's own checks: it parses, and the
+    run does not stop with a usage error. The file it names is created first; no scanner is run."""
+    from .conftest import FakeHttp
+
+    argv = shlex.split(case["bash"])[1:]
+    cli.build_parser().parse_args(["scan", *argv])
+    monkeypatch.chdir(tmp_path)
+    path = case["values"].get("path")
+    if path:  # the shell would expand ~; here the file is in tmp_path
+        p = tmp_path / Path(path).name
+        p.write_text(FILES.get(p.name, "x"), encoding="utf-8")
+        argv = [str(p) if a == path else a for a in argv]
+    # No scanner is run: finding one stops the run with a runtime error (exit 1), after every usage check.
+    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    code = cli.main(argv, http=FakeHttp())
+    assert code in (cli.EXIT_OK, cli.EXIT_ERROR, cli.EXIT_THRESHOLD), capsys.readouterr().err
+
+
+@pytest.mark.parametrize("rule", _wizard("kind_cautions"), ids=lambda r: r["id"])
+def test_each_kind_caution_is_a_gate_that_can_only_fail(rule, tmp_path, capsys):
+    """A gate the wizard refuses for a kind of file: the CLI accepts it, but its check never runs for that kind,
+    so the run always ends with exit 1."""
+    from .conftest import FakeHttp
+
+    names = _kind_files(tmp_path)
+    code = cli.main([names.get(a, a) for a in rule["args"]], http=FakeHttp())
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_ERROR and rule["cli_says"] in err, err

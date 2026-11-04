@@ -11,6 +11,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   options), presets, and a link that carries the command. Its option list is generated from the CLI's parser
   (`scripts/export_options.py`), and its rules and golden commands are tested against the CLI. No third-party
   code, no network requests, and a strict Content Security Policy.
+- The command builder opens on guided questions: what you are checking (a dependency list, an image, a file or
+  folder, an SBOM or package list, single packages, or a GitHub project), the details for that, and whether you
+  want a report or a pass or fail check for CI. "What this command will do" says in plain words what the
+  command checks, which services it contacts and what it sends them, when it fails, and what it does not check;
+  it describes commands built in "All options" (the full form) too.
 
 ### Changed
 - The project site is published when a release is published, from the release tag, so the command builder

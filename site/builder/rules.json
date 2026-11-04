@@ -1210,12 +1210,19 @@
   {
    "command": "scan",
    "when": {
-    "any": [
+    "all": [
      {
-      "set": "likelihood_config"
+      "set": "likelihood"
      },
      {
-      "set": "fail_on_likelihood"
+      "any": [
+       {
+        "set": "likelihood_config"
+       },
+       {
+        "set": "fail_on_likelihood"
+       }
+      ]
      }
     ]
    },

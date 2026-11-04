@@ -90,7 +90,12 @@ Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
   `cmd_scan`'s checks change, update `site/builder/rules.json`; each rule's example is run through the CLI.
   Golden commands are in `tests/fixtures/builder_golden.json`; the JavaScript tests run with
   `node --test tests/builder/*.test.mjs` (no packages). The page uses no third-party code: no CDN, no
-  `innerHTML`, a strict Content Security Policy.
+  `innerHTML`, a strict Content Security Policy. The guided questions and the "What this command will do"
+  sentences are in `site/builder/wizard.json`: keep the sentences true when behaviour changes, and add any new
+  service host the code calls to its `services` (a test compares them with the URL constants in `src/`).
+  `tests/fixtures/wizard_summaries.json` is a reviewed snapshot of the summaries: regenerate it with
+  `UPDATE_SUMMARIES=1 node --test tests/builder/summaries.test.mjs` only for a deliberate change, and check
+  every changed line against the code.
 - README is partly generated (`<!-- generated:NAME -->` blocks: example output, likelihood rules and metrics).
   After changing report format or likelihood rules, run `python scripts/readme_sync.py`; tests fail until you do.
   Every `scan` and `verify` option must be mentioned in the README (a test checks this).

@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>oss-intake command builder</title>
-<meta name="description" content="Pick the options and copy the oss-intake command. Runs in your browser; nothing is sent anywhere.">
+<meta name="description" content="Answer a few questions and copy the oss-intake command, with a plain summary of what it will do. Runs in your browser; nothing is sent anywhere.">
 <link rel="stylesheet" href="builder.css">
 <script type="module" src="ui.js"></script>
 </head>
@@ -14,13 +14,24 @@
 <div class="page">
 <header>
   <h1>oss-intake command builder</h1>
-  <p class="lede">Pick what to check and the options you need; the command appears below, ready to copy.
-  It only builds text: nothing runs, and nothing you type leaves this page.</p>
+  <p class="lede">Answer a few questions and copy the command. The summary says what it will check, what it will
+  contact, and what it will not check. It only builds text: nothing runs, and nothing you type leaves this page.</p>
   <p class="meta" id="version">Loading the options...</p>
+  <div class="views" role="radiogroup" aria-label="View" id="views"></div>
 </header>
 
 <div class="layout">
-<main id="form" aria-label="Options">
+<main id="wizard" aria-label="Guided">
+  <ol class="progress" id="progress"></ol>
+  <section class="step" id="step" aria-labelledby="step-title"></section>
+  <div class="nav">
+    <button type="button" id="back" class="btn">Back</button>
+    <span class="nav-why" id="next-why" role="status"></span>
+    <button type="button" id="next" class="btn primary">Next</button>
+  </div>
+</main>
+
+<main id="form" aria-label="All options" class="hidden">
   <section class="bar">
     <div class="tabs" role="radiogroup" aria-label="Command" id="commands"></div>
     <div class="controls">
@@ -31,9 +42,9 @@
   </section>
   <p class="help" id="command-help"></p>
   <div id="groups"></div>
-  <noscript><p class="problem">The builder needs JavaScript. The full option list is in the
-  <a href="https://github.com/ntavakol/OSS-Intake#usage">README</a>.</p></noscript>
 </main>
+<noscript><p class="problem">The builder needs JavaScript. The full option list is in the
+<a href="https://github.com/ntavakol/OSS-Intake#usage">README</a>.</p></noscript>
 
 <aside class="panel" aria-label="Command">
   <div class="panel-head">
@@ -48,6 +59,10 @@
   </div>
   <ul id="problems" class="problems"></ul>
   <ul id="notes" class="notes"></ul>
+  <section id="summary-box" class="summary" aria-labelledby="summary-title">
+    <h2 id="summary-title">What this command will do</h2>
+    <div id="summary"></div>
+  </section>
 </aside>
 </div>
 
