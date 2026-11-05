@@ -189,8 +189,10 @@ function renderPanel() {
 }
 
 function fragment() {
-  return b.toFragment(app.data, app.state, app.shell,
+  const f = b.toFragment(app.data, app.state, app.shell,
     { view: app.view === "form" ? "form" : null, what: app.view === "wizard" ? app.state.what : null });
+  // toFragment leaves out bash, the default elsewhere; on Windows, where PowerShell is the default, keep the choice.
+  return app.shell === "bash" && windowsDefault() ? [f, "shell=bash"].filter(Boolean).join("&") : f;
 }
 
 /** After a value changes: the panel, and what depends on it, without rebuilding the fields being typed in. */
@@ -229,12 +231,15 @@ const hooks = { refresh, render, set, textInput, repeatableRows, choiceSelect };
 
 // ---------------------------------------------------------------- start
 
+function windowsDefault() {
+  return /Windows/i.test(navigator.userAgentData?.platform ?? navigator.userAgent ?? "");
+}
+
 function fromLink() {
   const got = b.fromFragment(app.data, location.hash);
   app.state = got.state;
   // No shell in the link: PowerShell on Windows, bash or zsh elsewhere (read from the browser, nothing sent).
-  const windows = /Windows/i.test(navigator.userAgentData?.platform ?? navigator.userAgent ?? "");
-  app.shell = /(^|[#&])shell=/.test(location.hash) ? got.shell : (windows ? "powershell" : "bash");
+  app.shell = /(^|[#&])shell=/.test(location.hash) ? got.shell : (windowsDefault() ? "powershell" : "bash");
   app.pasted = null;
   app.view = got.extra.view === "form" || app.state.command !== "scan" ? "form" : "wizard";  // the wizard: scan only
   if (app.view === "wizard") {

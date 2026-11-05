@@ -73,6 +73,16 @@ test("docker never reads past the image into the container's command", () => {
   assert.equal(detect("docker run --rm nginx echo a:b", ctx).status, "no");
 });
 
+test("a ready package always names one version number, never a tag such as next or latest", () => {
+  for (const c of cases) {
+    for (const r of [detect(c.input, ctx), ...(detect(c.input, ctx).choices ?? [])]) {
+      for (const p of r.status === "ok" ? r.values.package ?? [] : []) {
+        assert.match(decodeURIComponent(p.slice(p.lastIndexOf("@") + 1)), /^v?\d/, `${c.input}: ${p}`);
+      }
+    }
+  }
+});
+
 test("folder names are short and safe", () => {
   assert.equal(slug({ package: ["npm:@ctrl/tinycolor@4.1.1"] }), "ctrl-tinycolor-4.1.1");
   assert.equal(slug({ image: "ghcr.io/owner/app@sha256:" + "a".repeat(64) }), "owner-app");

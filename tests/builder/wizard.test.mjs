@@ -352,6 +352,15 @@ test("before and after the run, for each kind of check", () => {
   assert.doesNotMatch(list({ path: "a.jar", offline: true, from_trivy_json: "t" }, "artifact").before, /Internet|Trivy installed/);
   assert.doesNotMatch(list({ path: "packages.csv", offline: true }, "inventory").before, /Internet/);
   assert.match(list({ image: "a/b:1", from_trivy_json: "t" }, "image").before, /Docker/);
+  assert.match(list({ image: "a/b:1", from_trivy_json: "t" }, "image").before, /^If Grype is installed .*: Docker/m);
+  assert.doesNotMatch(list({ image: "a/b:1", from_trivy_json: "t", from_grype_json: "g" }, "image").before, /Docker/);
+  assert.doesNotMatch(list({ image: "a/b:1", from_trivy_json: "t", scanners: "trivy" }, "image").before, /Docker/);
+  const grypeOnly = list({ path: "a.jar", scanners: "grype" }, "artifact");
+  assert.match(grypeOnly.before, /^Grype installed, the scanner you chose/m);
+  assert.doesNotMatch(grypeOnly.before, /Trivy/);
+  assert.ok(grypeOnly.code.includes("grype version"));
+  assert.match(list({ path: "a.jar", scanners: "trivy,grype" }, "artifact").before, /Trivy and Grype installed, the scanners you chose/);
+  assert.match(list({ image: "a/b:1", image_src: "podman" }, "image").before, /podman running with the image: the scanners read it from podman only/);
   const noHtml = list({ package: ["npm:chalk@5.6.1"], formats: "csv,md" }, "package");
   assert.doesNotMatch(noHtml.after, /\.html/);
   assert.match(noHtml.after, /summary\.md first/);

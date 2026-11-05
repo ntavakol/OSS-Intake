@@ -97,12 +97,7 @@
   },
   {
    "input": "https://hub.docker.com/r/bitnami/redis/tags?name=7.4.1",
-   "status": "ok",
-   "what": "image",
-   "values": {
-    "image": "bitnami/redis:7.4.1",
-    "out": "report-bitnami-redis-7.4.1"
-   }
+   "status": "no"
   },
   {
    "input": "https://marketplace.visualstudio.com/items?itemName=ms-python.python",
@@ -678,12 +673,7 @@
   },
   {
    "input": "thing.weird",
-   "status": "ok",
-   "what": "artifact",
-   "values": {
-    "path": "thing.weird",
-    "out": "report-thing"
-   }
+   "status": "no"
   },
   {
    "input": "npm install chalk@5.6.1 debug@4.4.2",
@@ -892,6 +882,429 @@
     "image": "nginx:1.27",
     "out": "report-nginx-1.27"
    }
+  },
+  {
+   "input": "npm install chalk@next",
+   "status": "no",
+   "says": "a tag, not a version"
+  },
+  {
+   "input": "pkg:npm/chalk@next",
+   "status": "no",
+   "says": "a tag, not a version"
+  },
+  {
+   "input": "https://www.npmjs.com/package/chalk/v/next",
+   "status": "no",
+   "says": "a tag, not a version"
+  },
+  {
+   "input": "pip install -r requirements/base.txt",
+   "status": "no",
+   "says": "requirements-base.txt"
+  },
+  {
+   "input": "pip install -r reqs.txt",
+   "status": "no",
+   "says": "requirements-reqs.txt"
+  },
+  {
+   "input": "pip install -r https://x/requirements.txt",
+   "status": "no",
+   "says": "Download the file"
+  },
+  {
+   "input": "Newtonsoft.Json",
+   "status": "no",
+   "says": "not a file oss-intake reads"
+  },
+  {
+   "input": "chart.js",
+   "status": "no",
+   "says": "not a file oss-intake reads"
+  },
+  {
+   "input": "setup.py",
+   "status": "no",
+   "says": "not a file oss-intake reads"
+  },
+  {
+   "input": "notes.txt",
+   "status": "no",
+   "says": "not a file oss-intake reads"
+  },
+  {
+   "input": "pubspec.lock",
+   "status": "no",
+   "says": "not a lockfile oss-intake reads"
+  },
+  {
+   "input": "app.spdx",
+   "status": "no",
+   "says": "as JSON"
+  },
+  {
+   "input": "bom.xml",
+   "status": "no",
+   "says": "as JSON"
+  },
+  {
+   "input": "pkg:npm/lodash@%5E4.17.21",
+   "status": "no",
+   "says": "range"
+  },
+  {
+   "input": "npm:chalk%20x@1.0",
+   "status": "no",
+   "says": "not valid"
+  },
+  {
+   "input": "https://github.com/-owner/repo",
+   "status": "no",
+   "says": "not a GitHub project name"
+  },
+  {
+   "input": "https://github.com/owner/re%20po",
+   "status": "no",
+   "says": "not a GitHub project name"
+  },
+  {
+   "input": "file://server/share/app.jar",
+   "status": "no",
+   "says": "another computer"
+  },
+  {
+   "input": "https://quay.io/repository/org/app",
+   "status": "no",
+   "says": "quay.io/org/app:1.2.3"
+  },
+  {
+   "input": "https://hub.docker.com/_/nginx/tags?name=1.27",
+   "status": "no",
+   "says": "tag search"
+  },
+  {
+   "input": "pip install x-1.0-py3-none-any.whl",
+   "status": "no",
+   "says": "downloaded package file"
+  },
+  {
+   "input": "ghcr.io/owner/app",
+   "status": "no",
+   "says": "no tag"
+  },
+  {
+   "input": "localhost:5000/app",
+   "status": "no",
+   "says": "no tag"
+  },
+  {
+   "input": "C:",
+   "status": "no",
+   "says": "whole drive"
+  },
+  {
+   "input": "npm install chalk@5.6.1 --registry https://r.example/",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   },
+   "says": "its own registry"
+  },
+  {
+   "input": "pip install -i https://pypi.example/simple requests==2.32.3",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3"
+    ],
+    "out": "report-requests-2.32.3"
+   },
+   "says": "its own registry"
+  },
+  {
+   "input": "npm:chalk",
+   "status": "ask",
+   "choices": [
+    {
+     "label": "A container image",
+     "status": "ok",
+     "values": {
+      "image": "npm:chalk",
+      "out": "report-npm-chalk"
+     }
+    },
+    {
+     "label": "A package",
+     "status": "no"
+    }
+   ]
+  },
+  {
+   "input": "node:lts",
+   "status": "ask",
+   "choices": [
+    {
+     "label": "A container image",
+     "status": "ok",
+     "values": {
+      "image": "node:lts",
+      "out": "report-node-lts"
+     }
+    },
+    {
+     "label": "A package",
+     "status": "no"
+    }
+   ]
+  },
+  {
+   "input": "node:20",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "node:20",
+    "out": "report-node-20"
+   }
+  },
+  {
+   "input": "python:3.12",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "python:3.12",
+    "out": "report-python-3.12"
+   }
+  },
+  {
+   "input": "git clone https://github.com/owner/repo.git",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/repo",
+    "out": "report-owner-repo"
+   }
+  },
+  {
+   "input": "git clone --depth 1 git@github.com:owner/repo.git",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/repo",
+    "out": "report-owner-repo"
+   }
+  },
+  {
+   "input": "git@github.com:owner/repo.git",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/repo",
+    "out": "report-owner-repo"
+   }
+  },
+  {
+   "input": "owner/repo.git",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/repo",
+    "out": "report-owner-repo"
+   }
+  },
+  {
+   "input": "$HOME/Downloads/app.jar",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "~/Downloads/app.jar",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": "%USERPROFILE%\\\\Downloads\\\\app.jar",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "~/\\Downloads\\\\app.jar",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": "npm install chalk@\"5.6.1\"",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "pip install requests==\"2.32.3\"",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3"
+    ],
+    "out": "report-requests-2.32.3"
+   }
+  },
+  {
+   "input": "pkg:npm/@ctrl/tinycolor@4.1.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pkg:npm/@ctrl/tinycolor@4.1.1"
+    ],
+    "out": "report-ctrl-tinycolor-4.1.1"
+   }
+  },
+  {
+   "input": "junit:junit:4.13.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "maven:junit:junit@4.13.2"
+    ],
+    "out": "report-junit-junit-4.13.2"
+   }
+  },
+  {
+   "input": "npm install chalk@5.6.1 && npm test",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "npm i chalk@5.6.1 | tee log",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "npm i chalk@5.6.1 chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "dist/",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "dist/",
+    "out": "report-dist"
+   }
+  },
+  {
+   "input": ".",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": ".",
+    "out": "report-check"
+   }
+  },
+  {
+   "input": "go:golang.org/x/text@0.14.0",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "golang:golang.org/x/text@v0.14.0"
+    ],
+    "out": "report-golang.org-x-text-v0.14.0"
+   }
+  },
+  {
+   "input": "docker run --cpuset-cpus 0 nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "npm install --omit dev chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "mytool.exe",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "mytool.exe",
+    "out": "report-mytool"
+   }
+  },
+  {
+   "input": "./bin/tool",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "./bin/tool",
+    "out": "report-tool"
+   }
+  },
+  {
+   "input": "pip install -r requirements-dev.txt",
+   "status": "ok",
+   "what": "lockfile",
+   "values": {
+    "path": "requirements-dev.txt",
+    "out": "report-requirements-dev"
+   }
+  },
+  {
+   "input": "app.war",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "app.war",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": "app.zip",
+   "status": "no",
+   "says": "an archive"
+  },
+  {
+   "input": "app-1.0.tar.gz",
+   "status": "no"
   }
  ]
 }

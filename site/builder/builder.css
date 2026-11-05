@@ -167,7 +167,7 @@ footer{color:var(--muted);font-size:.85rem;margin-top:28px;text-align:center}
 .chip-btn{font:inherit;font-size:.82rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:3px 10px;
 border-radius:999px;border:1px solid var(--tint-line);background:var(--card);color:var(--blue);cursor:pointer}
 #w-paste-result{margin-top:10px}
-#w-paste-result:empty{display:none}
+
 .found{margin:0 0 8px;color:var(--fg)}
 .cannot{margin:0;color:var(--fg);border-left:3px solid #b26a00;padding-left:10px}
 .pick{display:flex;flex-wrap:wrap;gap:6px}

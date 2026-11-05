@@ -53,14 +53,14 @@ below.
 | `https://pypi.org/project/requests/2.34.2/` or `pip install requests==2.34.2` | the PyPI package requests 2.34.2 |
 | `npm install chalk@5.6.1 debug@4.4.2` | both packages, in one check |
 | A Maven Central or mvnrepository link to a version | that Maven package |
-| `docker pull nginx:1.27`, `nginx:1.27`, or a Docker Hub tag link | the container image nginx:1.27 |
+| `docker pull nginx:1.27`, `nginx:1.27`, or a Docker Hub link to that tag's layers | the container image nginx:1.27 |
 | `https://github.com/owner/name` | the GitHub project's health |
 | `package-lock.json`, `requirements.txt`, `app-2.4.1.jar`, `packages.csv`, `sbom.cdx.json` | the matching file check |
 
 When it needs one more thing, it asks with buttons: "Which kind of package is chalk 5.6.1?" or "Is owner/app a
 GitHub project or a container image?". When it cannot help, it says why and what to do instead, for example:
 
-- a link or command with no version, or with a range such as `^5.0.0` or `latest`: oss-intake checks one exact
+- a link or command with no version, a range such as `^5.0.0`, or a tag such as `latest` or `next`: oss-intake checks one exact
   version, and the page looks nothing up, so it cannot find one for you;
 - an image with no tag;
 - `package.json` or `build.gradle`: these list ranges, so it tells you which lockfile to check instead;

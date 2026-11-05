@@ -268,17 +268,34 @@ export function checklist(data, wiz, state, shell = "bash") {
   if (!what || state.command !== SCAN) return { before: [], after: [] };
   const before = [{ text: "oss-intake installed. The first command checks; if it says \"not found\", install it with the second.",
     code: ["oss-intake --version", "pipx install oss-intake"] }];
-  // Trivy runs unless its report is imported; Grype is optional either way.
-  const scans = ["lockfile", "image", "artifact", "path"].includes(what) && !v.from_trivy_json;
-  if (scans) {
-    before.push({ text: "Trivy installed, the scanner this check runs (Grype is optional). Install a pinned version and "
-      + "check it, as the guide shows.", code: ["trivy --version"],
-    link: { text: "Install the scanners", href: `${GUIDE}#install-the-scanners-yourself-pinned-and-verified` } });
+  // Which scanners run (cli._resolve_scanners): auto is Trivy, plus Grype when it is installed; a scanner whose
+  // report is imported does not run.
+  const kindScans = ["lockfile", "image", "artifact", "path"].includes(what);
+  const list = String(v.scanners ?? "auto").split(",").map((x) => x.trim().toLowerCase());
+  const auto = list.includes("auto") || !String(v.scanners ?? "").trim();
+  const runs = (tool, imported) => kindScans && !imported && (auto ? tool === "trivy" || "maybe" : list.includes(tool));
+  const trivy = runs("trivy", v.from_trivy_json);
+  const grype = runs("grype", v.from_grype_json);
+  const scans = Boolean(trivy || grype);
+  const link = { text: "Install the scanners", href: `${GUIDE}#install-the-scanners-yourself-pinned-and-verified` };
+  if (auto && trivy) {
+    before.push({ text: `Trivy installed, the scanner this check runs${grype ? " (Grype is optional: it is used when it is "
+      + "installed)" : ""}. Install a pinned version and check it, as the guide shows.`, code: ["trivy --version"], link });
+  } else if (!auto && (trivy || grype)) {
+    const names = [trivy && "Trivy", grype && "Grype"].filter(Boolean);
+    before.push({ text: `${names.join(" and ")} installed, the scanner${names.length > 1 ? "s" : ""} you chose. Install a `
+      + "pinned version and check it, as the guide shows.", code: [trivy && "trivy --version", grype && "grype version"].filter(Boolean), link });
   }
-  if (what === "image" && String(v.image_src ?? "") !== "remote") {
-    before.push({ text: "Docker (or another container runtime) running. The scanners read the image from it if it "
-      + "has the image, and otherwise pull it from the registry. To always pull it, pick remote under \"Where should "
-      + "the scanners read it from?\"." });
+  const src = String(v.image_src ?? "");
+  if (what === "image" && scans && src !== "remote") {
+    // With Trivy's report imported, only Grype reads the image, and on auto only when it is installed.
+    const onlyIf = !trivy && grype === "maybe" ? "If Grype is installed (it scans the image when it is): " : "";
+    const runtime = src
+      ? `${src} running with the image: the scanners read it from ${src} only.`
+      : "Docker (or another container runtime) running. The scanners read the image from it if it has the image, "
+        + "and otherwise pull it from the registry. To always pull it, pick remote under \"Where should the scanners "
+        + "read it from?\".";
+    before.push({ text: onlyIf + runtime });
   }
   if (["lockfile", "artifact", "inventory", "renv", "path"].includes(what) && v.path) {
     before.push({ text: `The file ${v.path} on the computer where you run the command. A path that is not a full `
@@ -286,9 +303,13 @@ export function checklist(data, wiz, state, shell = "bash") {
   }
   if (v.repo) before.push({ text: "Optional: a GITHUB_TOKEN set, to raise the GitHub rate limit. It is sent only to api.github.com." });
   if (!v.offline) before.push({ text: "Internet access to the services listed under \"What leaves your computer\"." });
-  else if (scans) {
-    before.push({ text: "Internet access for Trivy, unless it already has a current copy of its vulnerability database: "
-      + "offline turns off oss-intake's own lookups, not the scanner's database download." });
+  else if (trivy || grype === true) {
+    // Grype on auto is left out: it runs only when it is installed.
+    const who = [trivy && "Trivy", grype === true && "Grype"].filter(Boolean);
+    const named = who.length > 1 ? `${who[0]} (and ${who[1]})` : who[0];
+    before.push({ text: `Internet access for ${named}, unless ${who.length > 1 ? "they already have current copies of their "
+      + "vulnerability databases" : "it already has a current copy of its vulnerability database"}: offline turns off `
+      + "oss-intake's own lookups, not the scanners' database downloads." });
   }
 
   const out = String(v.out ?? "report");

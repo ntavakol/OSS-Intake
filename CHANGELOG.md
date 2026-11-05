@@ -9,11 +9,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - The command builder starts with "Paste what you were given": a GitHub, npm, PyPI, Maven or Docker Hub link, an
   `npm install`, `pip install` or `docker pull` command, a package, an image or a file name. It says what it
   recognised, fills in the details and a report folder name, and asks one question when it needs to (which kind of
-  package, a GitHub project or an image). Several packages in one install command become one check. It refuses
-  what the CLI would refuse, with the reason and what to do instead: a version range or "latest", an image with no
-  tag, a purl type or Maven name the CLI does not take, `package.json` (check the lockfile), a GitHub page that is
-  not a project, or an extension store link. Nothing is guessed: the page looks nothing up. Review starts with what the computer needs before the run
-  (with commands to copy) and what to read after it. The shell starts on PowerShell on Windows.
+  package, a GitHub project or an image). Several packages in one install command become one check. When it
+  cannot set up a check, it says why and what to do instead: a version range or a tag such as `latest` or `next`,
+  an image with no tag, a purl type or Maven name the CLI does not take, `package.json` (check the lockfile), a
+  file the CLI does not read, a GitHub page that is not a project, or an extension store link. The page looks
+  nothing up. Review starts with what the computer needs before the run (with commands to copy) and what to read
+  after it. The shell starts on PowerShell on Windows.
 - An admin guide (`docs/admin-guide.md`): step by step with the command builder for each common check (a
   container image, a lockfile, a downloaded file, an SBOM or package list, single packages, a project's health,
   a CI gate, re-running with earlier decisions), with a link that opens each example in the builder and what to
