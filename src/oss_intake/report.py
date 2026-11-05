@@ -230,7 +230,10 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         if e.get("packages_seen"):
             found += f" (in {e['packages_seen']} npm package{'s' if e['packages_seen'] != 1 else ''} it ships)"
         if e["bundled"]:
-            found = (found + "; " if found and found != "none" else "") + "bundled: dependencies not visible"
+            # The bundle hides the dependencies of the extension's own JavaScript; findings above come from
+            # packages or SBOMs it ships besides that bundle.
+            found = (found + "; " if found and found != "none" else "") + \
+                "its own JavaScript is bundled: those dependencies are not visible"
         version = e["version"] if e.get("in_use", True) else f"{e['version']} (old version, not in use)"
         rows.append([e["id"], version, removed, ", ".join(i["id"] for i in e["indicators"]) or "none",
                      found or "visible to the scanners", e["repository"] or "none given"])

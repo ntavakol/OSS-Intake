@@ -262,8 +262,10 @@ function fromUrl(url, ctx) {
   if (host === "marketplace.visualstudio.com" || host === "open-vsx.org") {
     const item = url.searchParams.get("itemName") || (host === "open-vsx.org" && parts[0] === "extension"
       ? `${parts[1]}.${parts[2]}` : "");
-    return no(`a VS Code extension${item ? `, ${item}` : ""}. This page does not download anything: check the copy you `
-      + "have instead. Paste ~/.vscode/extensions to check every installed extension, or the path of a .vsix file.");
+    return no(`a VS Code extension${item ? `, ${item}` : ""}. This page does not download anything. To check it before `
+      + "you install it: in VS Code, open its page in the Extensions view, click the gear icon next to Install and "
+      + "choose Download VSIX, then paste the path of the .vsix file. To check what is installed already, paste "
+      + "~/.vscode/extensions.");
   }
   if (["chromewebstore.google.com", "chrome.google.com", "addons.mozilla.org", "microsoftedge.microsoft.com"].includes(host)) {
     return no("a browser extension. oss-intake does not check browser extensions.");

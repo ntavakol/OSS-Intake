@@ -65,8 +65,8 @@ GitHub project or a container image?". When it cannot help, it says why and what
   version, and the page looks nothing up, so it cannot find one for you;
 - an image with no tag;
 - `package.json` or `build.gradle`: these list ranges, so it tells you which lockfile to check instead;
-- a VS Code Marketplace link: the page downloads nothing, so it asks for the copy you have (a `.vsix`, or
-  `~/.vscode/extensions` for everything installed);
+- a VS Code Marketplace link: the page downloads nothing, so it says how to get the `.vsix` without installing
+  (Download VSIX in VS Code), or to paste `~/.vscode/extensions` for everything installed;
 - a browser extension: oss-intake does not check browser extensions.
 
 ## Check a container image
@@ -163,8 +163,17 @@ whole extensions folder (`~/.vscode/extensions`; Cursor uses `~/.cursor/extensio
 `~/.vscode-oss/extensions`). Nothing in an extension is installed or run. A `.vsix` is unpacked into a temporary
 folder with limits, and one that tries to write outside it is refused.
 
+To check an extension before you install it, get its `.vsix` without installing it: in VS Code, open the
+Extensions view, search for the extension and click its name to open its page (not Install), then click the
+gear icon next to Install and choose Download VSIX, and save it in your Downloads folder. A `.vsix` is a
+zip: downloading it runs nothing. The Marketplace website itself no longer offers the download. Extensions on
+[open-vsx.org](https://open-vsx.org) (the registry Cursor and VSCodium use) have a download link on their page;
+that copy is published separately from the Marketplace one (by the author or by Open VSX's own publishing
+project), so check the publisher is the one you expect.
+
 1. Pick **A VS Code extension**, then **Next**.
-2. In **Where is it?**, type the path, such as `~/.vscode/extensions`.
+2. In **Where is it?**, type the path: the `.vsix` you downloaded, or `~/.vscode/extensions` for everything
+   installed.
 3. **Next**. To fail when an extension was removed from the Marketplace as malware, pick **A pass or fail check,
    for CI** and tick **A package is known malware**.
 4. Set **Folder for the report**, **Next**, review and **Copy**.

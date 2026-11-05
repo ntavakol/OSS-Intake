@@ -24,6 +24,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `publisher` and `engines.vscode`), is now checked as extensions instead of as a folder of built files: the
   report has the extensions section, and `--fail-on mismatch` is refused for it as for any folder.
 
+### Fixed
+- A folder with no language packages was reported as "No language packages in the image"; the warning now names
+  the folder.
+
 ## [0.14.0] - 2026-11-05
 
 The command builder is easier for people who do not know the options: paste a link, an install command, a

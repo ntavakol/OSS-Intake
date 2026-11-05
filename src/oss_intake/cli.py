@@ -769,9 +769,12 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
             if any(r.get("Class") == "lang-pkgs" for r in trivy_report.get("Results") or []):
                 warnings.append("Trivy found language packages but listed none in the report, so OSV had "
                                 "nothing to query (was the report generated with --list-all-pkgs=false?)")
-            else:
+            elif args.image:
                 warnings.append("No language packages in the image (OS packages only), so OSV was not queried; "
                                 "Trivy and Grype cover OS packages")
+            else:
+                warnings.append(f"No language packages found in {Path(args.path).name or args.path}, so OSV was "
+                                "not queried")
     return trivy_report, groups, scan_info
 
 

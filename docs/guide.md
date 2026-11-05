@@ -176,6 +176,9 @@ oss-intake --path ./extension.vsix --out ./reports
 oss-intake --path ~/.vscode/extensions --out ./reports --fail-on malicious   # everything installed
 ```
 
+To check an extension before installing it, download its `.vsix` from VS Code (open its page in the Extensions
+view, click the gear icon next to Install, Download VSIX); downloading runs nothing.
+
 A `.vsix` (recognised by its content: a zip with `extension/package.json`), an installed extension's folder, or a
 folder of them (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf) is checked as
 extensions. There is no vulnerability database for extensions, so oss-intake reports what can be known:

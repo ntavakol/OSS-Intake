@@ -554,3 +554,19 @@ def test_documentation_mentioning_child_process_runs_nothing(tmp_path):
                                      ".github/notes.md": "Use require('child_process') and eval(x) here.",
                                      "docs/hidden.md": f"text {HIDDEN}"})
     assert [i["id"] for i in vscode.analyse(d)["indicators"]] == ["invisible"]
+
+
+def test_a_folder_with_no_packages_is_not_called_an_image(tmp_path, fixtures):
+    """The OSV warning named "the image" for any input with no language packages, folders included."""
+    folder = tmp_path / "reports"
+    folder.mkdir()
+    (folder / "report.html").write_text("<html></html>", encoding="utf-8")
+    trivy, grype = tmp_path / "t.json", tmp_path / "g.json"
+    trivy.write_text('{"SchemaVersion": 2, "ArtifactName": "reports", "Results": []}', encoding="utf-8")
+    grype.write_text('{"matches": [], "source": {"type": "directory"}}', encoding="utf-8")
+    out = tmp_path / "out"
+    cli.main(["--path", str(folder), "--out", str(out), "--from-trivy-json", str(trivy), "--from-grype-json",
+              str(grype), "--as-of", AS_OF], http=FakeHttp())
+    warnings = json.loads((out / "assessment.json").read_text(encoding="utf-8"))["warnings"]
+    assert "No language packages found in reports, so OSV was not queried" in warnings
+    assert not any("in the image" in w for w in warnings)
