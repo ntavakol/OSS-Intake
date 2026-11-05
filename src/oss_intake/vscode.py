@@ -316,12 +316,7 @@ def _note_package(path: Path, packages: set[tuple[str, str]]) -> None:
         packages.add((data["name"], data["version"]))
 
 
-def _has_dependencies(folder: Path) -> bool:
-    """A real node_modules folder with at least one package in it (an empty or linked one shows nothing)."""
-    nm = folder / "node_modules"
-    if not nm.is_dir() or nm.is_symlink():
-        return False
-    return any(nm.glob("*/package.json")) or any(nm.glob("@*/*/package.json"))
+_PACKAGE_JSON = re.compile(r"(?:^|/)node_modules/(?:@[^/]+/)?[^/@][^/]*/package\.json$")
 
 
 def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None = None) -> dict:
@@ -385,7 +380,9 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         # and reading their code for these signals would mostly find ordinary libraries doing ordinary things.
         # A node_modules folder anywhere else is the extension's own code.
         in_deps = rel.startswith("node_modules/") and not is_main
-        if in_deps and p.name == "package.json" and len(packages) < MAX_PACKAGES:
+        # A package the scanners can see: a package.json directly in a node_modules package folder, at any depth
+        # (Trivy reads them all, so a bundled extension can still ship some packages it sees).
+        if _PACKAGE_JSON.search(rel) and len(packages) < MAX_PACKAGES:
             _note_package(p, packages)
         try:
             with open(p, "rb") as fh:
@@ -416,8 +413,9 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         if len(hosts) < MAX_HOSTS:
             hosts.update(h.lower() for h in _URL.findall(text)[:MAX_HOSTS])
 
-    bundled = bool(main_files) and not _has_dependencies(folder) and \
-        max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
+    # Bundled: a large main file and no package the scanners can see (an empty node_modules, or one behind a
+    # link, which is not followed, shows none).
+    bundled = bool(main_files) and not packages and max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
     return {**ident, "folder": folder.name, "ids_checked": list(dict.fromkeys(ids)),
             "indicators": [{"id": k, "title": INDICATORS[k], "seen": v} for k, v in hits.items()],
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
@@ -511,6 +509,7 @@ def attribute(info: dict, findings: list) -> None:
     by_package: dict[tuple[str, str], list[dict]] = {}
     for e in info["extensions"]:
         e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
+        e["packages_seen"] = len(e.get("packages", []))
         for pkg in e.pop("packages", []):
             by_package.setdefault(tuple(pkg), []).append(e)
     by_folder = {e["folder"].casefold(): e for e in info["extensions"]}

@@ -509,6 +509,23 @@ def test_findings_are_matched_to_the_extension_that_ships_them(tmp_path):
     assert a["findings"] == {"total": 1, "critical": 1, "high": 0, "malicious": 0}
     assert b["findings"]["total"] == 1 and info["unmatched"] == 1
     assert "packages" not in a  # the package list is only for matching, not for the report
+    assert a["packages_seen"] == 1
+
+
+def test_packages_in_nested_node_modules_are_matched_and_not_bundled(tmp_path):
+    """Trivy reads a node_modules folder at any depth, so a bundled extension can still ship packages it sees."""
+    from oss_intake.models import Finding
+
+    make_folder(tmp_path, files={"out/extension.js": "x" * vscode.BUNDLE_BYTES,
+                                 "dist/node_modules/@azure/msal-node/package.json":
+                                 '{"name": "@azure/msal-node", "version": "5.3.1"}',
+                                 "dist/node_modules/@azure/msal-node/lib/x/package.json": '{"name": "no"}'})
+    info = vscode.assess(tmp_path, None)
+    (e,) = info["extensions"]
+    assert not e["bundled"]
+    vscode.attribute(info, [Finding("CVE-2099-1", "@azure/msal-node", "5.3.1", "HIGH",
+                                    purl="pkg:npm/%40azure/msal-node@5.3.1")])
+    assert e["findings"]["high"] == 1 and e["packages_seen"] == 1 and info["unmatched"] == 0
 
 
 def test_documentation_mentioning_child_process_runs_nothing(tmp_path):

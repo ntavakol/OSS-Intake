@@ -225,6 +225,8 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         n = e.get("findings")
         found = ("" if n is None else "none" if not n["total"] else
                  f"{n['total']}" + "".join(f", {n[k]} {k}" for k in ("malicious", "critical", "high") if n[k]))
+        if e.get("packages_seen"):
+            found += f" (in {e['packages_seen']} npm package{'s' if e['packages_seen'] != 1 else ''} it ships)"
         if e["bundled"]:
             found = (found + "; " if found and found != "none" else "") + "bundled: dependencies not visible"
         version = e["version"] if e.get("in_use", True) else f"{e['version']} (old version, not in use)"
