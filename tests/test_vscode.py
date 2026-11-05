@@ -512,7 +512,7 @@ def test_findings_are_matched_to_the_extension_that_ships_them(tmp_path):
     assert a["packages_seen"] == 1
 
 
-def test_packages_in_nested_node_modules_are_matched_and_not_bundled(tmp_path):
+def test_packages_in_nested_node_modules_are_matched(tmp_path):
     """Trivy reads a node_modules folder at any depth, so a bundled extension can still ship packages it sees."""
     from oss_intake.models import Finding
 
@@ -522,7 +522,7 @@ def test_packages_in_nested_node_modules_are_matched_and_not_bundled(tmp_path):
                                  "dist/node_modules/@azure/msal-node/lib/x/package.json": '{"name": "no"}'})
     info = vscode.assess(tmp_path, None)
     (e,) = info["extensions"]
-    assert not e["bundled"]
+    assert e["bundled"]  # a large main file stays bundled whatever else it ships (changed with Ned's OK)
     vscode.attribute(info, [Finding("CVE-2099-1", "@azure/msal-node", "5.3.1", "HIGH",
                                     purl="pkg:npm/%40azure/msal-node@5.3.1")])
     assert e["findings"]["high"] == 1 and e["packages_seen"] == 1 and info["unmatched"] == 0
@@ -549,11 +549,15 @@ def test_findings_from_an_sbom_an_extension_ships_are_matched_to_it(tmp_path):
     assert "root" not in lsp and "listings" not in lsp
 
 
-def test_documentation_mentioning_child_process_runs_nothing(tmp_path):
-    d = make_folder(tmp_path, files={"out/extension.js": "1",
-                                     ".github/notes.md": "Use require('child_process') and eval(x) here.",
+def test_documentation_mentioning_child_process_is_labelled(tmp_path):
+    """Node loads a required .md or .txt as JavaScript, so documentation files are checked too, with the hit
+    labelled (changed with Ned's OK after the 0.15.0 review)."""
+    d = make_folder(tmp_path, files={"out/extension.js": "require('./payload.txt')",
+                                     "out/payload.txt": "require('child_process').execSync(x); eval(y);",
                                      "docs/hidden.md": f"text {HIDDEN}"})
-    assert [i["id"] for i in vscode.analyse(d)["indicators"]] == ["invisible"]
+    got = {i["id"]: i["seen"] for i in vscode.analyse(d)["indicators"]}
+    assert set(got) == {"process", "eval", "invisible"}
+    assert got["process"][0]["detail"] == "child_process, in a documentation file"
 
 
 def test_a_folder_with_no_packages_is_not_called_an_image(tmp_path, fixtures):

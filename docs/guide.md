@@ -192,8 +192,8 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
   is matched to the extensions that ship that package version (oss-intake reads every `node_modules` in them, since
   the scanners do not say where in the folder a package is), or to the extension whose shipped SBOM or lockfile
   lists it (Pylance, for one, ships SPDX SBOMs of its bundled tools), and the report counts them per extension. An
-  extension whose code is bundled into one file (a large main file and no npm package the scanners can see) hides
-  them; the report says so.
+  extension whose code is bundled into one file (a large main file) hides its own dependencies; the report says
+  so, even when it also ships packages the scanners see.
 - **Old versions** that VS Code has replaced but not yet deleted (listed in the extensions folder's `.obsolete`
   file, which is read only there, never inside an extension) are marked as not in use: checked against the removal
   list, left out of the indicator tables and warnings.

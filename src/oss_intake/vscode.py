@@ -44,8 +44,8 @@ MAX_HITS = 20  # occurrences kept per indicator
 # Every file of the extension's own is read as text unless it is binary (a NUL in its first 8 KB) or a source map
 # (which carries its dependencies' sources). Node loads a file of any name as JavaScript, so the suffix is not used.
 NOT_READ_SUFFIXES = {".map"}
-# Documentation and markup: mentioning child_process or eval there runs nothing, so those two are not looked for
-# in them. Hidden characters and encoded strings are looked for in every file.
+# Documentation and markup. Every check still runs on them (Node loads a required file of any name as JavaScript),
+# but a hit there is labelled, since a mention in prose usually runs nothing.
 DOC_SUFFIXES = {".md", ".markdown", ".rst", ".adoc", ".html", ".htm", ".css", ".scss", ".svg", ".yml", ".yaml",
                 ".xml", ".toml", ".ini", ".cfg", ".txt", ".lock"}
 NATIVE_SUFFIXES = {".node", ".exe", ".dll", ".so", ".dylib", ".wasm"}
@@ -411,12 +411,11 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             unread.append(rel)
             continue
         where = _Lines(text)
-        checks = ((("process", _PROCESS), ("eval", _EVAL)) if is_main or p.suffix.lower() not in DOC_SUFFIXES
-                  else ()) + (("invisible", _INVISIBLE), ("bidi", _BIDI))
-        for kind, rx in checks:
+        doc = "" if is_main or p.suffix.lower() not in DOC_SUFFIXES else ", in a documentation file"
+        for kind, rx in (("process", _PROCESS), ("eval", _EVAL), ("invisible", _INVISIBLE), ("bidi", _BIDI)):
             for hit in rx.finditer(text):
                 detail = f"{len(hit.group(0))} hidden character(s)" if kind in ("invisible", "bidi") else hit.group(0)
-                if not add(kind, rel, where(hit.start()), detail):
+                if not add(kind, rel, where(hit.start()), detail + doc):
                     break
         for hit in _RUN.finditer(text):
             run = hit.group(0)
@@ -441,9 +440,10 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             for hit in rx.finditer(text):
                 if not add(kind, rel, where(hit.start()), f"{len(hit.group(0))} hidden character(s), in a dependency"):
                     break
-    # Bundled: a large main file and no package the scanners can see (an empty node_modules, or one behind a
-    # link, which is not followed, shows none).
-    bundled = bool(main_files) and not packages and max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
+    # Bundled: a large main file. That hides the dependencies of the extension's own code whatever else it ships,
+    # so packages the scanners do see are counted separately and do not change it (a stray package.json could
+    # otherwise turn the warning off).
+    bundled = bool(main_files) and max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
     return {**ident, "folder": folder.name, "ids_checked": list(dict.fromkeys(ids)),
             "indicators": [{"id": k, "title": INDICATORS[k], "seen": v} for k, v in hits.items()],
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
