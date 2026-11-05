@@ -231,13 +231,14 @@
   {
    "command": "scan",
    "dest": "package",
-   "pattern": "^\\s*(?:[Pp][Kk][Gg]:[A-Za-z]+/\\S+@\\S+|[A-Za-z][A-Za-z0-9.-]*:\\S+@\\S+)\\s*$",
+   "pattern": "^\\s*(?:[Pp][Kk][Gg]:[A-Za-z]+/\\S+@\\S+|\\.?[A-Za-z][A-Za-z0-9.-]*:\\S+@\\S+)\\s*$",
    "message": "invalid --package value",
    "valid": [
     "npm:chalk@5.6.1",
     "pkg:pypi/django@2.2.0",
     "npm:@ctrl/tinycolor@4.1.1",
-    "maven:org.a:b@1.0"
+    "maven:org.a:b@1.0",
+    ".net:Newtonsoft.Json@13.0.1"
    ],
    "invalid": [
     "chalk",

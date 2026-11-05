@@ -24,6 +24,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   lockfile, SBOM or package list: there is no single file to compare with a registry, so the gate could never
   fail. Before, it passed silently.
 
+### Fixed
+- The command builder refused a `--package` value that starts with `.net:` (such as `.net:Newtonsoft.Json@13.0.1`),
+  which the CLI accepts.
+
 ## [0.13.0] - 2026-11-04
 
 The command builder: answer a few questions, copy the command, and read in plain words what it will check,
