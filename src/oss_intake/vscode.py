@@ -316,6 +316,10 @@ def _note_package(path: Path, packages: set[tuple[str, str]]) -> None:
         packages.add((data["name"], data["version"]))
 
 
+# Files that list packages rather than install them: an SBOM or a lockfile shipped inside the extension. Trivy
+# reports what they list (Pylance ships SPDX SBOMs of its bundled tools), sometimes with no path.
+_LISTING = re.compile(r"(?:\.spdx\.json|\.cdx\.json|(?:^|/)bom\.json|(?:^|/)package-lock\.json|"
+                      r"(?:^|/)npm-shrinkwrap\.json|(?:^|/)yarn\.lock|(?:^|/)pnpm-lock\.yaml)$", re.I)
 _PACKAGE_JSON = re.compile(r"(?:^|/)node_modules/(?:@[^/]+/)?[^/@][^/]*/package\.json$")
 
 
@@ -366,6 +370,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
+    listings: list[str] = []
     files = 0
     for p in _files(folder):
         files += 1
@@ -384,6 +389,8 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         # (Trivy reads them all, so a bundled extension can still ship some packages it sees).
         if _PACKAGE_JSON.search(rel) and len(packages) < MAX_PACKAGES:
             _note_package(p, packages)
+        if _LISTING.search(rel) and len(listings) < 100:
+            listings.append(rel)
         try:
             with open(p, "rb") as fh:
                 head = fh.read(8192)
@@ -421,7 +428,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
             "bundled": bundled, "dependencies_visible": not bundled,
             "not_read": unread[:20], "not_read_total": len(unread),
-            "packages": sorted(packages)}
+            "packages": sorted(packages), "listings": listings, "root": str(folder)}
 
 
 # --------------------------------------------------------------------------------------------- removal list
@@ -509,10 +516,14 @@ def attribute(info: dict, findings: list) -> None:
     by_package: dict[tuple[str, str], list[dict]] = {}
     for e in info["extensions"]:
         e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
+        e["findings_listed"] = 0  # of those, found only in an SBOM or lockfile it ships
         e["packages_seen"] = len(e.get("packages", []))
         for pkg in e.pop("packages", []):
             by_package.setdefault(tuple(pkg), []).append(e)
     by_folder = {e["folder"].casefold(): e for e in info["extensions"]}
+    budget = [READ_TOTAL_BYTES]
+    texts: dict[str, str] = {}
+    lists = [(e, Path(e.pop("root", "")) / rel) for e in info["extensions"] for rel in e.pop("listings", [])]
     unmatched = 0
     for f in findings:
         owners = list(by_package.get((f.package, f.installed), [])) if (f.purl or "").startswith("pkg:npm/") \
@@ -521,15 +532,40 @@ def attribute(info: dict, findings: list) -> None:
             e = by_folder.get(t.replace("\\", "/").split("/")[0].casefold())
             if e is not None and e not in owners:
                 owners.append(e)
+        listed = False
+        if not owners:
+            # Not installed anywhere on disk: an SBOM or lockfile the extension ships may list it.
+            for e, path in lists:
+                if e not in owners and _lists(texts, path, budget, f.package, f.installed):
+                    owners.append(e)
+                    listed = True
         if not owners:
             unmatched += 1
         for e in owners:
+            e["findings_listed"] += listed
             n = e["findings"]
             n["total"] += 1
             n["critical"] += f.severity == "CRITICAL"
             n["high"] += f.severity == "HIGH"
             n["malicious"] += bool(f.malicious)
     info["unmatched"] = unmatched
+
+
+def _lists(texts: dict[str, str], path: Path, budget: list[int], name: str, version: str) -> bool:
+    """Whether a shipped SBOM or lockfile names this package version: the quoted name (or a key ending in it,
+    as in package-lock.json) with the quoted version within a few hundred characters."""
+    key = str(path)
+    if key not in texts:
+        texts[key] = _text(path, budget) or ""
+    text, needle, ver = texts[key], f'{name}"', f'"{version}"'
+    if not name or not version or needle not in text:
+        return False
+    i = text.find(needle)
+    while i >= 0:
+        if ver in text[max(0, i - 400): i + 400]:
+            return True
+        i = text.find(needle, i + 1)
+    return False
 
 
 def warnings(info: dict) -> tuple[list[str], list[str]]:

@@ -224,7 +224,9 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
                    else "not on the list" if rl["status"] == "checked" else "not checked")
         n = e.get("findings")
         found = ("" if n is None else "none" if not n["total"] else
-                 f"{n['total']}" + "".join(f", {n[k]} {k}" for k in ("malicious", "critical", "high") if n[k]))
+                 f"{n['total']}" + "".join(f", {n[k]} {k}" for k in ("malicious", "critical", "high") if n[k])
+                 + (f" ({e['findings_listed']} listed in an SBOM or lockfile it ships)"
+                    if e.get("findings_listed") else ""))
         if e.get("packages_seen"):
             found += f" (in {e['packages_seen']} npm package{'s' if e['packages_seen'] != 1 else ''} it ships)"
         if e["bundled"]:

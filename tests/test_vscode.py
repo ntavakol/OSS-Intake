@@ -528,6 +528,27 @@ def test_packages_in_nested_node_modules_are_matched_and_not_bundled(tmp_path):
     assert e["findings"]["high"] == 1 and e["packages_seen"] == 1 and info["unmatched"] == 0
 
 
+def test_findings_from_an_sbom_an_extension_ships_are_matched_to_it(tmp_path):
+    """Pylance ships SPDX SBOMs of its bundled tools; Trivy reports what they list as "Node.js", with no path."""
+    from oss_intake.models import Finding
+
+    root = tmp_path / "exts"
+    spdx = json.dumps({"@graph": [{"type": "software_Package", "name": "@azure/msal-node",
+                                   "software_packageVersion": "5.3.1"}]}, indent=2)
+    make_folder(root, "example.lsp-1.0.0", manifest(name="lsp", version="1.0.0"),
+                files={"out/extension.js": "1", "dist/bin/_manifest/spdx_3.0/manifest.spdx.json": spdx})
+    make_folder(root, "example.other-1.0.0", manifest(name="other", version="1.0.0"))
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [Finding("CVE-2099-1", "@azure/msal-node", "5.3.1", "HIGH", pkg_type="node-pkg",
+                                    target="Node.js"),
+                            Finding("CVE-2099-2", "@azure/msal-node", "9.9.9", "HIGH", pkg_type="node-pkg",
+                                    target="Node.js")])
+    lsp, other = info["extensions"]
+    assert lsp["findings"]["total"] == 1 and lsp["findings_listed"] == 1
+    assert other["findings"]["total"] == 0 and info["unmatched"] == 1
+    assert "root" not in lsp and "listings" not in lsp
+
+
 def test_documentation_mentioning_child_process_runs_nothing(tmp_path):
     d = make_folder(tmp_path, files={"out/extension.js": "1",
                                      ".github/notes.md": "Use require('child_process') and eval(x) here.",
