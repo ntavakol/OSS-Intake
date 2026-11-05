@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-05
+
+The command builder is easier for people who do not know the options: paste a link, an install command, a
+package, an image or a file name, and it sets up the check, or says why it cannot. Review now says what to have
+ready before the run and what to read after it. An admin guide walks through each common check.
+
 ### Added
 - The command builder starts with "Paste what you were given": a GitHub, npm, PyPI, Maven or Docker Hub link, an
   `npm install`, `pip install` or `docker pull` command, a package, an image or a file name. It says what it
