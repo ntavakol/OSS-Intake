@@ -182,7 +182,7 @@ function fileResult(text, ctx) {
 }
 
 // Where VS Code, VSCodium, Cursor and Windsurf keep installed extensions: the folder, or one extension in it.
-const EXTENSIONS_DIR = /(^|[\\/])\.(vscode|vscode-oss|vscode-insiders|cursor|windsurf)[\\/]extensions([\\/][^\\/]+)?[\\/]?$/i;
+const EXTENSIONS_DIR = /(^|[\\/])\.(vscode|vscode-oss|vscode-insiders|vscode-server|cursor|windsurf)[\\/]extensions([\\/][^\\/]+)?[\\/]?$/i;
 
 function folderResult(text) {
   if (/^[A-Za-z]:[\\/]?$/.test(text)) return no("a whole drive. Paste the folder or file to check.");

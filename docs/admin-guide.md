@@ -190,8 +190,8 @@ oss-intake --path ~/.vscode/extensions --out report-vscode-extensions --fail-on 
 - Repository: what the publisher wrote in `package.json`. It is a claim, not proof, so it is not checked
   unless you add it in **Where is the source on GitHub?**.
 
-VS Code removes extensions on the removal list from its own installs, but Cursor, VSCodium and a `.vsix`
-installed by hand are not covered, which is where this check matters most.
+VS Code itself disables extensions Microsoft has found to be malicious, but not those removed for other reasons,
+and Cursor, VSCodium and a `.vsix` installed by hand do not get that, which is where this check matters most.
 
 ## Check an SBOM or a package list
 

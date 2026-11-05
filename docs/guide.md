@@ -188,19 +188,25 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
 - **The npm packages it ships**, scanned with Trivy `rootfs` and checked against OSV like any other. An extension
   whose code is bundled into one file (a large main file and no `node_modules`) hides them; the report says so.
 - **Behaviour indicators** in its own files (not its dependencies, which the scanners cover), each with the file
-  and line: `activationEvents` `*` or `onStartupFinished`; native programs or libraries (by extension and by
-  their first bytes); `child_process`; `eval` or `new Function`; Unicode variation selectors or tag characters,
-  or a run of zero-width characters (how GlassWorm hid its code); text-reordering characters (Trojan Source);
-  base64 or hex strings of 2,000 characters or more; `extensionDependencies` and `extensionPack`; and a folder
-  name or `.vsix` manifest that names a different extension from `package.json`. The web addresses in its code
-  are listed too. These are signals for a person to read, not verdicts.
+  and line: `activationEvents` `*` or `onStartupFinished`; native programs or libraries, WebAssembly included
+  (by name and by their first bytes); `child_process`; `eval` or `new Function`; runs of four or more Unicode
+  variation selectors or zero-width characters, or tag characters other than an emoji flag (how GlassWorm hid its
+  code); text-reordering characters (Trojan Source); base64 or hex strings of 2,000 characters or more (not an
+  image or font `data:` URI); `extensionDependencies` and `extensionPack`; and a folder name or `.vsix`
+  manifest that names a different extension from `package.json` (each name is looked up in the removal list).
+  Every text file of the extension's own is read, whatever its name, except source maps; the top-level
+  `node_modules` is left to the scanners. The web addresses in its code are listed too. These are signals for a
+  person to read, not verdicts.
 - **The repository it claims** in `package.json` is shown, not checked: a malicious extension can name a
   well-known project. Give `--repo` to check a project you trust.
 
 Nothing in an extension is run. A `.vsix` is unpacked into a temporary folder, removed afterwards, with limits:
-at most 50,000 files, 300 MB a file and 1 GB in all (counted as written), no member that expands more than
-200 times, and no absolute paths, `..` or links. One that breaks a limit is refused (exit 2) before anything is
-written. The Marketplace signature is not checked. `--fail-on mismatch` is refused, as for a folder.
+at most 50,000 files, 300 MB a file and 1 GB in all (counted as written), no member over 1 MB that expands more
+than 200 times, no links, no names that could leave the folder on any system (a root, a drive or colon, `..`,
+a part ending in a dot or space, a reserved Windows name) and no two names that are one file on macOS or Windows.
+One that breaks a limit, or is damaged, is refused (exit 2) before anything is written. The Marketplace
+signature is not checked. `--fail-on mismatch` is refused, as for a folder. The details are in the
+[threat model](threat-model.md).
 
 ### Package inventory
 

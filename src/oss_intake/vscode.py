@@ -13,12 +13,15 @@ the number of files, their sizes and how far they expand, and with no absolute p
 
 from __future__ import annotations
 
+import bisect
 import json
 import os
 import re
 import stat
+import unicodedata
 import zipfile
-from pathlib import Path, PurePosixPath
+import zlib
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .http import Http, HttpError
 from .inputs import InputError
@@ -38,9 +41,14 @@ MAX_RATIO = 200  # a member that expands more than this from its compressed size
 READ_FILE_BYTES = 20_000_000
 READ_TOTAL_BYTES = 400_000_000
 MAX_HITS = 20  # occurrences kept per indicator
-CODE_SUFFIXES = {".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx", ".json", ".sh", ".ps1", ".bat", ".cmd", ".py"}
-NATIVE_SUFFIXES = {".node", ".exe", ".dll", ".so", ".dylib"}
-NATIVE_MAGIC = (b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe")
+# Every file of the extension's own is read as text unless it is binary (a NUL in its first 8 KB) or a source map
+# (which carries its dependencies' sources). Node loads a file of any name as JavaScript, so the suffix is not used.
+NOT_READ_SUFFIXES = {".map"}
+NATIVE_SUFFIXES = {".node", ".exe", ".dll", ".so", ".dylib", ".wasm"}
+NATIVE_MAGIC = (b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe",
+                b"\0asm")
+MAX_HOSTS = 1000
+_RESERVED = re.compile(r"^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$", re.I)
 BUNDLE_BYTES = 200_000  # a main file this large with no node_modules folder is taken as bundled
 
 # What a run of an extension is checked for. Each is a signal for a person to look at, not a verdict.
@@ -59,11 +67,20 @@ INDICATORS = {
 
 _PROCESS = re.compile(r"\bchild_process\b|\b(?:execSync|spawnSync|execFileSync)\s*\(")
 _EVAL = re.compile(r"(?<![\w.$])eval\s*\(|\bnew\s+Function\s*\(")
-_BLOB = re.compile(r"[A-Za-z0-9+/]{2000,}={0,2}|\b[0-9a-fA-F]{2000,}\b")
-_INVISIBLE = re.compile("[\U000e0100-\U000e01ef\U000e0000-\U000e007f]|[\ufe00-\ufe0f\u200b-\u200d\u2060-\u2064]{4,}")
+# Runs of the base64 alphabet (hex is a subset), matched whole so the time is linear; the length is checked in
+# code. A data: URI for an image or font is ordinary and not counted.
+_RUN = re.compile(r"[A-Za-z0-9+/]+={0,2}")
+_DATA_URI = re.compile(r"data:(?:image|font|application/(?:font|x-font)[\w.+-]*)[\w/.+-]*;base64,$")
+BLOB_CHARS = 2000
+# GlassWorm hid its code in long runs of Unicode variation selectors, which display as nothing. A single one is
+# ordinary (emoji, CJK variants), so only runs of four or more count, and tag characters except an emoji flag.
+_INVISIBLE = re.compile("[\ufe00-\ufe0f\U000e0100-\U000e01ef\u200b-\u200d\u2060-\u2064]{4,}"
+                        "|(?<![\U0001f3f4\U000e0000-\U000e007f])[\U000e0000-\U000e007f]+")
 _BIDI = re.compile("[\u202a-\u202e\u2066-\u2069]")
 _URL = re.compile(r"https?://([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
-_FOLDER = re.compile(r"^(?P<id>[^/\\]+?\.[^/\\]+?)-(?P<version>\d[\w.+-]*?)"
+# publisher.name-1.2.3, with an optional platform: the version is split off at the last "-digit" (names can have
+# "-3d" in them).
+_FOLDER = re.compile(r"^(?P<id>[^/\\]+\.[^/\\]+)-(?P<version>\d[\w.+]*(?:-[\w.+]+)??)"
                      r"(?:-(?:win32|linux|darwin|alpine|web)-\w+)?$")
 
 
@@ -76,7 +93,7 @@ def _manifest(folder: Path) -> dict | None:
         if not p.is_file() or p.stat().st_size > 5_000_000:
             return None
         data = json.loads(p.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):  # RecursionError: JSON nested deeper than Python can parse
         return None
     if isinstance(data, dict) and data.get("publisher") and isinstance(data.get("engines"), dict) \
             and data["engines"].get("vscode"):
@@ -91,17 +108,18 @@ def is_vsix(path: Path) -> bool:
             return False
         with zipfile.ZipFile(path) as z:
             return "extension/package.json" in z.namelist()
-    except (OSError, zipfile.BadZipFile, ValueError):
+    except (OSError, zipfile.BadZipFile, ValueError, RuntimeError, NotImplementedError, zlib.error, EOFError):
         return False
 
 
 def extension_folders(path: Path) -> list[Path]:
     """The extensions in a folder: the folder itself if it is one, otherwise the extensions directly inside it
-    (as in ~/.vscode/extensions). Empty when there are none."""
+    (as in ~/.vscode/extensions). An extension installed as a link to its folder (as for one being developed) is
+    included: it is installed, so it is checked. Empty when there are none."""
     if _manifest(path) is not None:
         return [path]
     try:
-        children = sorted(p for p in path.iterdir() if p.is_dir() and not p.is_symlink())
+        children = sorted(p for p in path.iterdir() if p.is_dir())
     except OSError:
         return []
     return [p for p in children if _manifest(p) is not None]
@@ -114,13 +132,27 @@ def is_extension_input(path: Path) -> bool:
 # --------------------------------------------------------------------------------------------- unpacking
 
 def _member_path(name: str) -> PurePosixPath:
-    """The member's path inside the destination, refusing anything that could land outside it."""
-    if "\\" in name or name.startswith("/") or re.match(r"^[A-Za-z]:", name) or "\x00" in name:
+    """The member's path inside the destination, refusing anything that could land outside it on any system, or
+    that Windows would read as another name: a drive or colon anywhere, a backslash, a root, '..' or '.', an empty
+    part, a part ending in a dot or space, a reserved device name, or a control character."""
+    bare = name[:-1] if name.endswith("/") else name
+    if (not bare or "\\" in name or ":" in name or name.startswith("/") or any(ord(c) < 32 for c in name)
+            or PureWindowsPath(bare).drive or PureWindowsPath(bare).root):
         raise InputError(f"refused: the .vsix has an unsafe file name ({name[:120]!r})")
-    p = PurePosixPath(name)
-    if any(part in ("..", "") for part in p.parts[:-1]) or ".." in p.parts:
-        raise InputError(f"refused: the .vsix has a file name that leaves its folder ({name[:120]!r})")
-    return p
+    parts = bare.split("/")
+    for part in parts:
+        if part in ("", ".", "..") or part != part.rstrip(". ") or _RESERVED.match(part):
+            raise InputError(f"refused: the .vsix has a file name that could leave its folder ({name[:120]!r})")
+    return PurePosixPath(*parts)
+
+
+def _same_name(name: str) -> str:
+    """The name as a case-insensitive file system (macOS, Windows) sees it, so two members that would land on
+    the same file are caught."""
+    return unicodedata.normalize("NFC", name.rstrip("/")).casefold()
+
+
+_ZIP_ERRORS = (zipfile.BadZipFile, zlib.error, NotImplementedError, RuntimeError, EOFError, ValueError, OSError)
 
 
 def unpack(vsix: Path, dest: Path) -> Path:
@@ -128,16 +160,28 @@ def unpack(vsix: Path, dest: Path) -> Path:
     Raises InputError, naming the reason, for a file that breaks a limit; nothing is left half-trusted, since
     the caller removes dest either way."""
     try:
-        z = zipfile.ZipFile(vsix)
-    except (OSError, zipfile.BadZipFile) as exc:
-        raise InputError(f"cannot open {vsix.name} as a .vsix: {exc}") from None
+        return _unpack(vsix, dest)
+    except InputError:
+        raise
+    except _ZIP_ERRORS as exc:  # a damaged, encrypted or oddly compressed file is the input's fault: exit 2
+        raise InputError(f"refused: {vsix.name} could not be unpacked ({type(exc).__name__}: {exc})") from None
+
+
+def _unpack(vsix: Path, dest: Path) -> Path:
+    z = zipfile.ZipFile(vsix)
     with z:
         infos = z.infolist()
         if len(infos) > MAX_FILES:
             raise InputError(f"refused: {vsix.name} has {len(infos)} files, more than {MAX_FILES}")
         total = 0
+        seen: set[str] = set()
         for info in infos:
             rel = _member_path(info.filename)
+            key = _same_name(info.filename)
+            if key in seen:
+                raise InputError(f"refused: {vsix.name} has two files that would be the same file on macOS or "
+                                 f"Windows ({info.filename[:120]!r}); which one counts depends on the system")
+            seen.add(key)
             mode = info.external_attr >> 16
             if stat.S_ISLNK(mode):
                 raise InputError(f"refused: {vsix.name} contains a link ({info.filename[:120]})")
@@ -160,22 +204,27 @@ def unpack(vsix: Path, dest: Path) -> Path:
                         raise InputError(f"refused: {vsix.name} unpacks to more than the limit "
                                          f"({MAX_FILE_BYTES} bytes a file, {MAX_TOTAL_BYTES} in all)")
                     out.write(chunk)
-        manifest = z.read("extension.vsixmanifest").decode("utf-8", "replace") \
-            if "extension.vsixmanifest" in z.namelist() else ""
+        manifest = ""
+        if "extension.vsixmanifest" in z.namelist():
+            with z.open("extension.vsixmanifest") as fh:
+                manifest = fh.read(200_000).decode("utf-8", "replace")
     folder = dest / "extension"
     if _manifest(folder) is None:
         raise InputError(f"{vsix.name} has no extension/package.json with a publisher and engines.vscode")
     # Kept beside the unpacked files under a name of ours, replacing any file of that name the .vsix brought.
     kept = dest / MANIFEST_COPY
+    if kept.is_dir() and not kept.is_symlink():
+        raise InputError(f"refused: {vsix.name} has a folder named {MANIFEST_COPY}")
     kept.unlink(missing_ok=True)
     if manifest:
-        kept.write_text(manifest[:200_000], encoding="utf-8")
+        kept.write_text(manifest, encoding="utf-8")
     return folder
 
 
 # --------------------------------------------------------------------------------------------- reading
 
 def _text(path: Path, budget: list[int]) -> str | None:
+    """The file as text, or None when it is over the reading limits (the caller lists it as not read)."""
     try:
         size = path.stat().st_size
         if size > READ_FILE_BYTES or budget[0] <= 0:
@@ -184,6 +233,16 @@ def _text(path: Path, budget: list[int]) -> str | None:
         return path.read_bytes().decode("utf-8", "replace")
     except OSError:
         return None
+
+
+class _Lines:
+    """Line numbers for positions in one text, in O(log n) each after one pass."""
+
+    def __init__(self, text: str) -> None:
+        self._nl = [m.start() for m in re.finditer("\n", text)]
+
+    def __call__(self, index: int) -> int:
+        return bisect.bisect_left(self._nl, index) + 1
 
 
 def _files(folder: Path):
@@ -218,55 +277,80 @@ def github_repo(url: str) -> str:
     return f"{m.group(1)}/{m.group(2)}" if m else ""
 
 
-def _vsix_identity(dest: Path) -> dict | None:
+def _vsix_identity(manifest: Path | None) -> dict | None:
     """Publisher, Id and Version from the .vsix manifest's Identity element (read as text: no XML parser runs on
-    untrusted input)."""
-    p = dest.parent / MANIFEST_COPY
-    if not p.is_file():
+    untrusted input). Only for an unpacked .vsix, whose copy oss-intake wrote itself."""
+    if manifest is None or not manifest.is_file() or manifest.is_symlink():
         return None
-    m = re.search(r"<Identity\b([^>]*)>", p.read_text(encoding="utf-8"))
+    m = re.search(r"<Identity\b([^>]{0,2000})>", manifest.read_text(encoding="utf-8", errors="replace"))
     if not m:
         return None
     attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
     return {"id": f"{attrs.get('Publisher')}.{attrs.get('Id')}", "version": attrs.get("Version", "")}
 
 
-def analyse(folder: Path, budget: list[int] | None = None) -> dict:
-    """One extension: its identity and its indicators, each with the files and lines it was seen in."""
+def _key(extension_id: str) -> str:
+    """An extension ID as the removal list is looked up: case, compatibility forms (full-width letters), spaces
+    and invisible format characters do not make a listed extension a different one."""
+    text = unicodedata.normalize("NFKC", extension_id)
+    return "".join(c for c in text if not c.isspace() and unicodedata.category(c) != "Cf").casefold()
+
+
+def _has_dependencies(folder: Path) -> bool:
+    """A real node_modules folder with at least one package in it (an empty or linked one shows nothing)."""
+    nm = folder / "node_modules"
+    if not nm.is_dir() or nm.is_symlink():
+        return False
+    return any(nm.glob("*/package.json")) or any(nm.glob("@*/*/package.json"))
+
+
+def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None = None) -> dict:
+    """One extension: its identity and its indicators, each with the files and lines it was seen in. manifest is
+    the copy of a .vsix's own manifest, for an unpacked .vsix only."""
     data = _manifest(folder) or {}
     ident = _identity(data)
     budget = budget if budget is not None else [READ_TOTAL_BYTES]
     hits: dict[str, list[dict]] = {}
     unread: list[str] = []
+    ids = [ident["id"]]
 
-    def add(kind: str, file: str, line: int | None, detail: str) -> None:
+    def add(kind: str, file: str, line: int | None, detail: str) -> bool:
+        """Record a hit; False once the indicator has its fill, so the caller stops looking."""
         bucket = hits.setdefault(kind, [])
         if len(bucket) < MAX_HITS:
             bucket.append({"file": file, "line": line, "detail": detail[:200]})
+        return len(bucket) < MAX_HITS
 
     raw = (folder / "package.json").read_text(encoding="utf-8-sig", errors="replace")
+    lines = _Lines(raw)
     events = data.get("activationEvents") or []
     for ev, kind in (("*", "activation-all"), ("onStartupFinished", "activation-startup")):
         if isinstance(events, list) and ev in events:
-            add(kind, "package.json", _line(raw, max(raw.find(f'"{ev}"'), 0)), f'"{ev}"')
+            add(kind, "package.json", lines(max(raw.find(f'"{ev}"'), 0)), f'"{ev}"')
     for key in ("extensionDependencies", "extensionPack"):
         listed = data.get(key)
         if isinstance(listed, list) and listed:
-            add("installs", "package.json", _line(raw, max(raw.find(f'"{key}"'), 0)),
+            add("installs", "package.json", lines(max(raw.find(f'"{key}"'), 0)),
                 f"{key}: {', '.join(str(x) for x in listed[:10])}")
-    # The folder name of an installed extension, and a .vsix's own manifest, must name the same extension.
+    # The folder name of an installed extension, and a .vsix's own manifest, must name the same extension. Each
+    # name is also looked up in the removal list, so a renamed package.json does not hide a listed extension.
     m = _FOLDER.match(folder.name)
-    if m and (m.group("id").lower() != ident["id"].lower() or m.group("version") != ident["version"]):
-        add("identity", folder.name, None, f"the folder is named {m.group('id')} {m.group('version')}; "
-                                           f"package.json says {ident['id']} {ident['version']}")
-    vsix = _vsix_identity(folder)
-    if vsix and (vsix["id"].lower() != ident["id"].lower() or vsix["version"] != ident["version"]):
-        add("identity", "extension.vsixmanifest", None, f"the manifest says {vsix['id']} {vsix['version']}; "
-                                                        f"package.json says {ident['id']} {ident['version']}")
+    if m:
+        ids.append(m.group("id"))
+        if _key(m.group("id")) != _key(ident["id"]) or m.group("version") != ident["version"]:
+            add("identity", folder.name, None, f"the folder is named {m.group('id')} {m.group('version')}; "
+                                               f"package.json says {ident['id']} {ident['version']}")
+    vsix = _vsix_identity(manifest)
+    if vsix:
+        ids.append(vsix["id"])
+        if _key(vsix["id"]) != _key(ident["id"]) or vsix["version"] != ident["version"]:
+            add("identity", "extension.vsixmanifest", None, f"the manifest says {vsix['id']} {vsix['version']}; "
+                                                            f"package.json says {ident['id']} {ident['version']}")
 
+    main_name = str(data.get("main") or data.get("browser") or "")
+    main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
     hosts: set[str] = set()
     files = 0
-    has_node_modules = (folder / "node_modules").is_dir()
     for p in _files(folder):
         files += 1
         if files > MAX_FILES:
@@ -275,40 +359,44 @@ def analyse(folder: Path, budget: list[int] | None = None) -> dict:
         if p.is_symlink() or not p.is_file():
             continue
         rel = p.relative_to(folder).as_posix()
-        in_deps = rel.startswith("node_modules/") or "/node_modules/" in rel
+        is_main = p.resolve() in main_files
+        # The packages in the top-level node_modules are the extension's dependencies: the scanners check them,
+        # and reading their code for these signals would mostly find ordinary libraries doing ordinary things.
+        # A node_modules folder anywhere else is the extension's own code.
+        in_deps = rel.startswith("node_modules/") and not is_main
         try:
             with open(p, "rb") as fh:
-                head = fh.read(4)
+                head = fh.read(8192)
         except OSError:
             continue
         if p.suffix.lower() in NATIVE_SUFFIXES or head.startswith(NATIVE_MAGIC):
             add("native", rel, None, p.suffix.lower() or "a program")
-        # Dependencies are scanned by the scanners; reading their code for these signals would mostly find
-        # ordinary libraries doing ordinary things.
-        if in_deps or p.suffix.lower() not in CODE_SUFFIXES:
+        if in_deps or (not is_main and (p.suffix.lower() in NOT_READ_SUFFIXES or b"\0" in head)):
             continue
         text = _text(p, budget)
         if text is None:
             unread.append(rel)
             continue
+        where = _Lines(text)
         for kind, rx in (("process", _PROCESS), ("eval", _EVAL), ("invisible", _INVISIBLE), ("bidi", _BIDI)):
             for hit in rx.finditer(text):
-                add(kind, rel, _line(text, hit.start()),
-                    f"{len(hit.group(0))} hidden character(s)" if kind in ("invisible", "bidi") else hit.group(0))
-                if len(hits.get(kind, [])) >= MAX_HITS:
+                detail = f"{len(hit.group(0))} hidden character(s)" if kind in ("invisible", "bidi") else hit.group(0)
+                if not add(kind, rel, where(hit.start()), detail):
                     break
-        for hit in _BLOB.finditer(text):
-            add("blob", rel, _line(text, hit.start()), f"{len(hit.group(0))} characters")
-        if p.suffix.lower() != ".json":
-            hosts.update(h.lower() for h in _URL.findall(text))
+        for hit in _RUN.finditer(text):
+            run = hit.group(0)
+            if len(run) >= BLOB_CHARS and not _DATA_URI.search(text, max(0, hit.start() - 80), hit.start()):
+                if not add("blob", rel, where(hit.start()), f"{len(run)} characters"):
+                    break
+        if len(hosts) < MAX_HOSTS:
+            hosts.update(h.lower() for h in _URL.findall(text)[:MAX_HOSTS])
 
-    main = str(data.get("main") or data.get("browser") or "")
-    main_file = next((c for c in (folder / main, folder / f"{main}.js") if main and c.is_file()), None)
-    bundled = bool(main_file and not has_node_modules and main_file.stat().st_size >= BUNDLE_BYTES)
-    return {**ident, "folder": folder.name,
+    bundled = bool(main_files) and not _has_dependencies(folder) and \
+        max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
+    return {**ident, "folder": folder.name, "ids_checked": list(dict.fromkeys(ids)),
             "indicators": [{"id": k, "title": INDICATORS[k], "seen": v} for k, v in hits.items()],
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
-            "bundled": bundled, "dependencies_visible": has_node_modules or not bundled,
+            "bundled": bundled, "dependencies_visible": not bundled,
             "not_read": unread[:20], "not_read_total": len(unread)}
 
 
@@ -322,7 +410,10 @@ def parse_removed(text: str) -> dict[str, dict]:
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) < 3 or not re.fullmatch(r"[\w-]+\.[\w.-]+", cells[0]) or cells[0] == "Extension Identifier":
             continue
-        out[cells[0].lower()] = {"id": cells[0], "date": cells[1], "type": cells[2]}
+        entry = {"id": cells[0], "date": cells[1], "type": cells[2]}
+        old = out.get(_key(cells[0]))
+        if old is None or (is_malicious(entry) and not is_malicious(old)):  # a repeated row: malware wins
+            out[_key(cells[0])] = entry
     return out
 
 
@@ -349,18 +440,21 @@ def load_removed(http: Http | None) -> tuple[dict[str, dict] | None, str]:
 
 # --------------------------------------------------------------------------------------------- the whole input
 
-def assess(target: Path, http: Http | None) -> dict:
-    """Every extension under target (a scan folder from stage()), with the removal list's verdict on each."""
-    folders: list[Path] = []
-    for f in [target, *sorted(p for p in target.iterdir() if p.is_dir())] if target.is_dir() else []:
-        if (f / "extension").is_dir() and _manifest(f / "extension") is not None:
-            folders.append(f / "extension")  # an unpacked .vsix
-    folders = folders or extension_folders(target)
+def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
+    """Every extension in target, with the removal list's verdict on each. staged: target is the temporary folder
+    a .vsix was unpacked into (inputs.stage), which holds exactly one unpacked .vsix laid out as <name>/extension;
+    a folder the user gave is never read that way, so a folder named extension inside it cannot stand in for the
+    extension itself."""
     budget = [READ_TOTAL_BYTES]
-    found = [analyse(f, budget) for f in folders]
+    if staged:
+        (unpacked,) = [p for p in target.iterdir() if p.is_dir()]
+        found = [analyse(unpacked / "extension", budget, unpacked / MANIFEST_COPY)]
+    else:
+        found = [analyse(f, budget) for f in extension_folders(target)]
     removed, why = load_removed(http)
     for e in found:
-        hit = removed.get(e["id"].lower()) if removed is not None else None
+        hits = [removed[k] for k in map(_key, e["ids_checked"]) if k in removed] if removed is not None else []
+        hit = next((h for h in hits if is_malicious(h)), hits[0] if hits else None)
         e["removed"] = hit
         e["malicious"] = bool(hit and is_malicious(hit))
     return {"extensions": found,
@@ -388,4 +482,3 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
         other.append(f"The VS Code Marketplace removal list was {rl['detail']}, so no extension was checked "
                      "against it")
     return alerts, other
-

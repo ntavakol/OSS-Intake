@@ -7,16 +7,21 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - VS Code extensions: `--path` takes a `.vsix`, an installed extension's folder, or a whole extensions folder
-  (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf). Each extension is checked
-  against the VS Code Marketplace's removal list: removed as malware leads the report and counts for
-  `--fail-on malicious`, other removals are warnings, and a list that could not be fetched fails the gate rather
-  than passing. The npm packages it ships are scanned and checked against OSV as usual, and a bundled extension
-  is flagged because its dependencies cannot be seen. Its own files are read for behaviour indicators, each with
-  the file and line: starting with VS Code, native code, starting programs, eval, hidden Unicode (GlassWorm),
-  text-reordering characters, long encoded strings, extensions it installs, and an identity that does not match.
-  Nothing in an extension is run; a `.vsix` is unpacked with limits and refused if it tries to write outside its
-  folder. The command builder offers "A VS Code extension" as a first answer, and the paste box takes a `.vsix` or an
+  (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf). Each extension is checked against
+  the VS Code Marketplace's removal list: removed as malware leads the report and counts for `--fail-on malicious`,
+  other removals are warnings, and a list that could not be fetched fails the gate rather than passing. The npm
+  packages it ships are scanned and checked against OSV as usual, and a bundled extension is flagged because its
+  dependencies cannot be seen. Its own files are read for behaviour indicators, each with the file and line:
+  starting with VS Code, native code, starting programs, eval, hidden Unicode (GlassWorm), text-reordering
+  characters, long encoded strings, extensions it installs, and an identity that does not match. Nothing in an
+  extension is run; a `.vsix` is unpacked with limits and refused if it tries to write outside its folder. The
+  command builder offers "A VS Code extension" as a first answer, and the paste box takes a `.vsix` or an
   extensions folder. The threat model (`docs/threat-model.md`) starts with this input.
+
+### Changed
+- A `--path` folder that is a VS Code extension, or holds extensions directly inside it (a `package.json` with
+  `publisher` and `engines.vscode`), is now checked as extensions instead of as a folder of built files: the
+  report has the extensions section, and `--fail-on mismatch` is refused for it as for any folder.
 
 ## [0.14.0] - 2026-11-05
 

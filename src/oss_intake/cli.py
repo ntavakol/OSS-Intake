@@ -690,7 +690,7 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     # VS Code extensions: the removal list and what their own files show; nothing in them is run.
     args.extension_info = None
     if args.path_kind == "vscode":
-        args.extension_info = vscode.assess(Path(args.scan_target), net)
+        args.extension_info = vscode.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())
         alerts, more = vscode.warnings(args.extension_info)
         warnings[:0] = alerts
         warnings.extend(more)

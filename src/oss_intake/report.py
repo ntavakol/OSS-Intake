@@ -244,9 +244,9 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
     blocks.append(("p", "An extension runs with your rights: VS Code has no permission model. The indicators are "
                         "what its own files show it can do (its dependencies are checked by the scanners instead), "
                         "so read each one against what the extension is for: a terminal tool starts programs, a "
-                        "theme should not. The removal list is Microsoft's (" + rl["source"] + "); VS Code removes "
-                        "listed extensions from its own installs, but not from Cursor, VSCodium or a .vsix "
-                        "installed by hand. The repository is what the publisher wrote in package.json, not proof: "
+                        "theme should not. The removal list is Microsoft's (" + rl["source"] + "); VS Code itself "
+                        "disables extensions found to be malicious, but Cursor, VSCodium and a .vsix installed by "
+                        "hand do not get that. The repository is what the publisher wrote in package.json, not proof: "
                         "to check that project's health, add --repo owner/name if you trust the link."
                         + (" Files too large to read, or over the reading limit: " + "; ".join(unread) + "."
                            if unread else "")))
