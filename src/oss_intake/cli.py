@@ -1070,6 +1070,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc)) if lk_cfg else None
 
+    if args.extension_info:
+        vscode.attribute(args.extension_info, findings)
     assessment = {
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),

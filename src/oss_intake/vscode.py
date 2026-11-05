@@ -44,6 +44,10 @@ MAX_HITS = 20  # occurrences kept per indicator
 # Every file of the extension's own is read as text unless it is binary (a NUL in its first 8 KB) or a source map
 # (which carries its dependencies' sources). Node loads a file of any name as JavaScript, so the suffix is not used.
 NOT_READ_SUFFIXES = {".map"}
+# Documentation and markup: mentioning child_process or eval there runs nothing, so those two are not looked for
+# in them. Hidden characters and encoded strings are looked for in every file.
+DOC_SUFFIXES = {".md", ".markdown", ".rst", ".adoc", ".html", ".htm", ".css", ".scss", ".svg", ".yml", ".yaml",
+                ".xml", ".toml", ".ini", ".cfg", ".txt", ".lock"}
 NATIVE_SUFFIXES = {".node", ".exe", ".dll", ".so", ".dylib", ".wasm"}
 NATIVE_MAGIC = (b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe",
                 b"\0asm")
@@ -296,6 +300,22 @@ def _key(extension_id: str) -> str:
     return "".join(c for c in text if not c.isspace() and unicodedata.category(c) != "Cf").casefold()
 
 
+MAX_PACKAGES = 20_000
+
+
+def _note_package(path: Path, packages: set[tuple[str, str]]) -> None:
+    """The npm package (name, version) a node_modules package.json describes, so findings can be matched to the
+    extension that ships it (the scanners do not say where in the folder a package is)."""
+    try:
+        if path.stat().st_size > 1_000_000:
+            return
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
+        return
+    if isinstance(data, dict) and isinstance(data.get("name"), str) and isinstance(data.get("version"), str):
+        packages.add((data["name"], data["version"]))
+
+
 def _has_dependencies(folder: Path) -> bool:
     """A real node_modules folder with at least one package in it (an empty or linked one shows nothing)."""
     nm = folder / "node_modules"
@@ -350,6 +370,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     main_name = str(data.get("main") or data.get("browser") or "")
     main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
     hosts: set[str] = set()
+    packages: set[tuple[str, str]] = set()
     files = 0
     for p in _files(folder):
         files += 1
@@ -364,6 +385,8 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         # and reading their code for these signals would mostly find ordinary libraries doing ordinary things.
         # A node_modules folder anywhere else is the extension's own code.
         in_deps = rel.startswith("node_modules/") and not is_main
+        if in_deps and p.name == "package.json" and len(packages) < MAX_PACKAGES:
+            _note_package(p, packages)
         try:
             with open(p, "rb") as fh:
                 head = fh.read(8192)
@@ -378,7 +401,9 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             unread.append(rel)
             continue
         where = _Lines(text)
-        for kind, rx in (("process", _PROCESS), ("eval", _EVAL), ("invisible", _INVISIBLE), ("bidi", _BIDI)):
+        checks = ((("process", _PROCESS), ("eval", _EVAL)) if is_main or p.suffix.lower() not in DOC_SUFFIXES
+                  else ()) + (("invisible", _INVISIBLE), ("bidi", _BIDI))
+        for kind, rx in checks:
             for hit in rx.finditer(text):
                 detail = f"{len(hit.group(0))} hidden character(s)" if kind in ("invisible", "bidi") else hit.group(0)
                 if not add(kind, rel, where(hit.start()), detail):
@@ -397,7 +422,8 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             "indicators": [{"id": k, "title": INDICATORS[k], "seen": v} for k, v in hits.items()],
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
             "bundled": bundled, "dependencies_visible": not bundled,
-            "not_read": unread[:20], "not_read_total": len(unread)}
+            "not_read": unread[:20], "not_read_total": len(unread),
+            "packages": sorted(packages)}
 
 
 # --------------------------------------------------------------------------------------------- removal list
@@ -451,6 +477,10 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
         found = [analyse(unpacked / "extension", budget, unpacked / MANIFEST_COPY)]
     else:
         found = [analyse(f, budget) for f in extension_folders(target)]
+    # VS Code keeps an updated extension's old version on disk until it cleans up, listing it in .obsolete.
+    old = _obsolete(target) if not staged else set()
+    for e in found:
+        e["in_use"] = e["folder"].casefold() not in old
     removed, why = load_removed(http)
     for e in found:
         hits = [removed[k] for k in map(_key, e["ids_checked"]) if k in removed] if removed is not None else []
@@ -460,6 +490,47 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     return {"extensions": found,
             "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
                              "source": REMOVED_PAGE, "entries": len(removed or {})}}
+
+
+def _obsolete(folder: Path) -> set[str]:
+    """The folder names VS Code lists in .obsolete (old versions it has not removed yet), case-folded."""
+    p = folder / ".obsolete"
+    try:
+        if not p.is_file() or p.stat().st_size > 1_000_000:
+            return set()
+        data = json.loads(p.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
+        return set()
+    return {str(k).casefold() for k, v in data.items() if v} if isinstance(data, dict) else set()
+
+
+def attribute(info: dict, findings: list) -> None:
+    """Match each finding to the extensions that ship its package: npm packages by the name and version found in
+    each extension's node_modules, anything else by a target path that starts with the extension's folder.
+    Sets "findings" on each extension and "unmatched" on info. A package several extensions ship counts for each."""
+    by_package: dict[tuple[str, str], list[dict]] = {}
+    for e in info["extensions"]:
+        e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
+        for pkg in e.pop("packages", []):
+            by_package.setdefault(tuple(pkg), []).append(e)
+    by_folder = {e["folder"].casefold(): e for e in info["extensions"]}
+    unmatched = 0
+    for f in findings:
+        owners = list(by_package.get((f.package, f.installed), [])) if (f.purl or "").startswith("pkg:npm/") \
+            or f.pkg_type in ("node-pkg", "npm") else []
+        for t in (f.target or "").split(";"):
+            e = by_folder.get(t.replace("\\", "/").split("/")[0].casefold())
+            if e is not None and e not in owners:
+                owners.append(e)
+        if not owners:
+            unmatched += 1
+        for e in owners:
+            n = e["findings"]
+            n["total"] += 1
+            n["critical"] += f.severity == "CRITICAL"
+            n["high"] += f.severity == "HIGH"
+            n["malicious"] += bool(f.malicious)
+    info["unmatched"] = unmatched
 
 
 def warnings(info: dict) -> tuple[list[str], list[str]]:
@@ -472,11 +543,12 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
                           f"{e['version']} (removed {hit['date']}). Uninstall it everywhere and treat machines "
                           "that ran it as compromised")
         elif hit:
-            other.append(f"{e['id']} was removed from the VS Code Marketplace for {hit['type']} ({hit['date']}). "
-                         "It may be a copy of another extension: check who publishes it before you keep it")
-        if e["bundled"]:
-            other.append(f"{e['id']} bundles its code into one file, so the scanners cannot see its dependencies: "
-                         "no findings for it does not mean it has none")
+            other.append(f"{e['id']} {e['version']} was removed from the VS Code Marketplace for {hit['type']} "
+                         f"({hit['date']}). It may be a copy of another extension: check who publishes it before you "
+                         "keep it")
+        if e["bundled"] and e.get("in_use", True):
+            other.append(f"{e['id']} {e['version']} bundles its code into one file, so the scanners cannot see its "
+                         "dependencies: no findings for it does not mean it has none")
     rl = info["removed_list"]
     if rl["status"] != "checked":
         other.append(f"The VS Code Marketplace removal list was {rl['detail']}, so no extension was checked "

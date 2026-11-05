@@ -185,8 +185,13 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
   malicious leads the report and counts for `--fail-on malicious`; one removed for Impersonation, Typo-squatting,
   Untrustworthy or Spam is a warning. If the list cannot be fetched, or with `--offline`, the report says it was
   not checked, and `--fail-on malicious` exits 1 rather than passing.
-- **The npm packages it ships**, scanned with Trivy `rootfs` and checked against OSV like any other. An extension
-  whose code is bundled into one file (a large main file and no `node_modules`) hides them; the report says so.
+- **The npm packages it ships**, scanned with Trivy `rootfs` and checked against OSV like any other. Each
+  finding is matched to the extensions that ship that package version (oss-intake reads their `node_modules`,
+  since the scanners do not say where in the folder a package is), and the report counts them per extension. An
+  extension whose code is bundled into one file (a large main file and no `node_modules`) hides them; the report
+  says so.
+- **Old versions** that VS Code has replaced but not yet deleted (listed in the folder's `.obsolete` file) are
+  marked as not in use: checked against the removal list, left out of the indicator tables and warnings.
 - **Behaviour indicators** in its own files (not its dependencies, which the scanners cover), each with the file
   and line: `activationEvents` `*` or `onStartupFinished`; native programs or libraries, WebAssembly included
   (by name and by their first bytes); `child_process`; `eval` or `new Function`; runs of four or more Unicode

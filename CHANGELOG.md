@@ -10,9 +10,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf). Each extension is checked against
   the VS Code Marketplace's removal list: removed as malware leads the report and counts for `--fail-on malicious`,
   other removals are warnings, and a list that could not be fetched fails the gate rather than passing. The npm
-  packages it ships are scanned and checked against OSV as usual, and a bundled extension is flagged because its
-  dependencies cannot be seen. Its own files are read for behaviour indicators, each with the file and line:
-  starting with VS Code, native code, starting programs, eval, hidden Unicode (GlassWorm), text-reordering
+  packages it ships are scanned and checked against OSV as usual, and the report counts the findings for each
+  extension; a bundled extension is flagged because its dependencies cannot be seen, and old versions VS Code has
+  not deleted yet are marked as not in use. Its own files are read for behaviour indicators, each with the file and
+  line: starting with VS Code, native code, starting programs, eval, hidden Unicode (GlassWorm), text-reordering
   characters, long encoded strings, extensions it installs, and an identity that does not match. Nothing in an
   extension is run; a `.vsix` is unpacked with limits and refused if it tries to write outside its folder. The
   command builder offers "A VS Code extension" as a first answer, and the paste box takes a `.vsix` or an

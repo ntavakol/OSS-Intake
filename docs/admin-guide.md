@@ -184,9 +184,11 @@ oss-intake --path ~/.vscode/extensions --out report-vscode-extensions --fail-on 
   starting programs, native code, code built from text, hidden characters, long encoded strings, and other
   extensions it installs. An extension runs with your rights, so read each one against what the extension is
   for: a terminal tool starts programs, a colour theme should not.
-- Dependencies: the npm packages it ships are checked for known vulnerabilities and malware like any other.
-  An extension that bundles its code into one file hides them, and the report says so: no findings then does not
-  mean none.
+- Findings in the packages it ships: how many of the run's findings come from that extension's npm packages,
+  with the critical and high ones counted. An extension that bundles its code into one file hides them, and the
+  report says so: no findings then does not mean none.
+- Old versions VS Code has replaced but not yet deleted are marked "old version, not in use". They are still
+  checked against the removal list, since their files are still on the machine.
 - Repository: what the publisher wrote in `package.json`. It is a claim, not proof, so it is not checked
   unless you add it in **Where is the source on GitHub?**.
 

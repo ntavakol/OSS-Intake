@@ -467,3 +467,52 @@ def test_hostile_vsix_is_refused_before_anything_is_written(tmp_path, fixtures, 
 def test_mismatch_gate_is_refused_for_an_extension(tmp_path, fixtures):
     code, _ = scan(tmp_path, fixtures, make_vsix(tmp_path / "ok.vsix"), FakeHttp(), "--fail-on", "mismatch")
     assert code == cli.EXIT_USAGE
+
+
+# ------------------------------------------------------------------------------------------ after a real run
+
+def test_old_versions_vs_code_has_not_deleted_yet(tmp_path, fixtures):
+    """VS Code lists replaced versions in .obsolete: they are checked against the list but not shown as installs."""
+    root = tmp_path / "exts"
+    bundle = {"out/extension.js": "x" * vscode.BUNDLE_BYTES}
+    make_folder(root, "example.ext-1.2.3", files=bundle)
+    make_folder(root, "example.ext-1.3.0", manifest(version="1.3.0"), files=bundle)
+    (root / ".obsolete").write_text('{"example.ext-1.2.3": true}', encoding="utf-8")
+    info = vscode.assess(root, None)
+    assert [(e["version"], e["in_use"]) for e in info["extensions"]] == [("1.2.3", False), ("1.3.0", True)]
+    _, other = vscode.warnings(info)
+    assert [w for w in other if "bundles" in w] == [
+        "example.ext 1.3.0 bundles its code into one file, so the scanners cannot see its dependencies: no "
+        "findings for it does not mean it has none"]
+    _, out = scan(tmp_path, fixtures, root, FakeHttp())
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "1.2.3 (old version, not in use)" in md and "1 old version VS Code has replaced" in md
+
+
+def test_findings_are_matched_to_the_extension_that_ships_them(tmp_path):
+    from oss_intake.models import Finding
+
+    root = tmp_path / "exts"
+    make_folder(root, "example.a-1.0.0", manifest(name="a", version="1.0.0"),
+                files={"out/extension.js": "1", "node_modules/@scope/lib/package.json":
+                       '{"name": "@scope/lib", "version": "2.0.0"}'})
+    make_folder(root, "example.b-1.0.0", manifest(name="b", version="1.0.0"),
+                files={"out/extension.js": "1", "node_modules/@scope/lib/package.json":
+                       '{"name": "@scope/lib", "version": "3.0.0"}'})
+    info = vscode.assess(root, None)
+    findings = [Finding("CVE-2099-1", "@scope/lib", "2.0.0", "CRITICAL", purl="pkg:npm/%40scope/lib@2.0.0"),
+                Finding("CVE-2099-2", "rand", "0.8.5", "LOW", pkg_type="cargo",
+                        target="example.b-1.0.0/dist/manifest.spdx.json"),
+                Finding("CVE-2099-3", "other", "1.0.0", "HIGH", purl="pkg:npm/other@1.0.0")]
+    vscode.attribute(info, findings)
+    a, b = info["extensions"]
+    assert a["findings"] == {"total": 1, "critical": 1, "high": 0, "malicious": 0}
+    assert b["findings"]["total"] == 1 and info["unmatched"] == 1
+    assert "packages" not in a  # the package list is only for matching, not for the report
+
+
+def test_documentation_mentioning_child_process_runs_nothing(tmp_path):
+    d = make_folder(tmp_path, files={"out/extension.js": "1",
+                                     ".github/notes.md": "Use require('child_process') and eval(x) here.",
+                                     "docs/hidden.md": f"text {HIDDEN}"})
+    assert [i["id"] for i in vscode.analyse(d)["indicators"]] == ["invisible"]

@@ -215,29 +215,41 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
     if not info:
         return None
     exts, rl = info["extensions"], info["removed_list"]
+    current = [e for e in exts if e.get("in_use", True)]
     rows = []
     for e in exts:
         hit = e.get("removed")
         removed = (f"REMOVED as {hit['type']} ({hit['date']})" if hit and e["malicious"]
                    else f"removed for {hit['type']} ({hit['date']})" if hit
                    else "not on the list" if rl["status"] == "checked" else "not checked")
-        rows.append([e["id"], e["version"], removed,
-                     ", ".join(i["id"] for i in e["indicators"]) or "none",
-                     "bundled: not visible to the scanners" if e["bundled"] else "visible to the scanners",
-                     e["repository"] or "none given"])
+        n = e.get("findings")
+        found = ("" if n is None else "none" if not n["total"] else
+                 f"{n['total']}" + "".join(f", {n[k]} {k}" for k in ("malicious", "critical", "high") if n[k]))
+        if e["bundled"]:
+            found = (found + "; " if found and found != "none" else "") + "bundled: dependencies not visible"
+        version = e["version"] if e.get("in_use", True) else f"{e['version']} (old version, not in use)"
+        rows.append([e["id"], version, removed, ", ".join(i["id"] for i in e["indicators"]) or "none",
+                     found or "visible to the scanners", e["repository"] or "none given"])
     seen = []
-    for e in exts:
+    for e in current:
         for i in e["indicators"]:
             where = "; ".join(f"{s['file']}{':' + str(s['line']) if s['line'] else ''}"
                               + (f" ({s['detail']})" if s["detail"] else "") for s in i["seen"][:3])
             more = len(i["seen"]) - 3
             seen.append([e["id"], i["title"], where + (f"; and {more} more" if more > 0 else "")])
-    blocks: list = [("table", ["Extension", "Version", "Marketplace removal list", "Indicators", "Dependencies",
-                               "Repository (as the publisher states it)"], rows)]
+    blocks: list = [("table", ["Extension", "Version", "Marketplace removal list", "Indicators",
+                               "Findings in the packages it ships", "Repository (as the publisher states it)"], rows)]
+    old = len(exts) - len(current)
+    if old or info.get("unmatched"):
+        blocks.append(("p", " ".join(x for x in (
+            f"{old} old version{'s' if old != 1 else ''} VS Code has replaced but not yet deleted (listed in its "
+            ".obsolete file) are checked against the removal list but left out of the tables below." if old else "",
+            f"{info['unmatched']} finding{'s' if info['unmatched'] != 1 else ''} could not be matched to an "
+            "extension; findings.csv has them all." if info.get("unmatched") else "") if x)))
     if seen:
         blocks.append(("table", ["Extension", "Indicator", "Seen in (first 3)"], seen))
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
-                                                       else "")] for e in exts if e["hosts"]]
+                                                       else "")] for e in current if e["hosts"]]
     if hosts:
         blocks.append(("table", ["Extension", "Web addresses in its code"], hosts))
     unread = [f"{e['id']}: {e['not_read_total']} file(s)" for e in exts if e["not_read_total"]]
