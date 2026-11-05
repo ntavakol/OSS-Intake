@@ -303,12 +303,14 @@ def _key(extension_id: str) -> str:
 MAX_PACKAGES = 20_000
 
 
-def _note_package(path: Path, packages: set[tuple[str, str]]) -> None:
+def _note_package(path: Path, packages: set[tuple[str, str]], budget: list[int]) -> None:
     """The npm package (name, version) a node_modules package.json describes, so findings can be matched to the
     extension that ships it (the scanners do not say where in the folder a package is)."""
     try:
-        if path.stat().st_size > 1_000_000:
+        size = path.stat().st_size
+        if size > 1_000_000 or budget[0] <= 0:
             return
+        budget[0] -= size
         data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, RecursionError):
         return
@@ -371,6 +373,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
     listings: list[str] = []
+    dep_files: list[tuple[Path, str]] = []
     files = 0
     for p in _files(folder):
         files += 1
@@ -388,7 +391,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         # A package the scanners can see: a package.json directly in a node_modules package folder, at any depth
         # (Trivy reads them all, so a bundled extension can still ship some packages it sees).
         if _PACKAGE_JSON.search(rel) and len(packages) < MAX_PACKAGES:
-            _note_package(p, packages)
+            _note_package(p, packages, budget)
         if _LISTING.search(rel) and len(listings) < 100:
             listings.append(rel)
         try:
@@ -398,7 +401,10 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             continue
         if p.suffix.lower() in NATIVE_SUFFIXES or head.startswith(NATIVE_MAGIC):
             add("native", rel, None, p.suffix.lower() or "a program")
-        if in_deps or (not is_main and (p.suffix.lower() in NOT_READ_SUFFIXES or b"\0" in head)):
+        if not is_main and (p.suffix.lower() in NOT_READ_SUFFIXES or b"\0" in head):
+            continue
+        if in_deps:
+            dep_files.append((p, rel))  # read after the extension's own files, so they cannot use up the budget
             continue
         text = _text(p, budget)
         if text is None:
@@ -420,6 +426,21 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         if len(hosts) < MAX_HOSTS:
             hosts.update(h.lower() for h in _URL.findall(text)[:MAX_HOSTS])
 
+    # Dependencies: the scanners check them for known vulnerabilities and malware, but a package of the extension's
+    # own (unknown to any database) could carry hidden code, so hidden characters are looked for there too. The
+    # other checks are not: ordinary libraries start programs and use eval.
+    for p, rel in dep_files:
+        if budget[0] <= 0:
+            unread.append("node_modules: the reading limit was reached")
+            break
+        text = _text(p, budget)
+        if text is None:
+            continue
+        where = _Lines(text)
+        for kind, rx in (("invisible", _INVISIBLE), ("bidi", _BIDI)):
+            for hit in rx.finditer(text):
+                if not add(kind, rel, where(hit.start()), f"{len(hit.group(0))} hidden character(s), in a dependency"):
+                    break
     # Bundled: a large main file and no package the scanners can see (an empty node_modules, or one behind a
     # link, which is not followed, shows none).
     bundled = bool(main_files) and not packages and max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
@@ -483,7 +504,8 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     else:
         found = [analyse(f, budget) for f in extension_folders(target)]
     # VS Code keeps an updated extension's old version on disk until it cleans up, listing it in .obsolete.
-    old = _obsolete(target) if not staged else set()
+    # Only a folder of extensions has one: an extension's own folder could bring a .obsolete naming itself.
+    old = _obsolete(target) if not staged and _manifest(target) is None else set()
     for e in found:
         e["in_use"] = e["folder"].casefold() not in old
     removed, why = load_removed(http)
@@ -509,6 +531,51 @@ def _obsolete(folder: Path) -> set[str]:
     return {str(k).casefold() for k, v in data.items() if v} if isinstance(data, dict) else set()
 
 
+MAX_LISTED = 200_000
+_YARN_ENTRY = re.compile(r'^"?((?:@[^@/\s"]+/)?[^@/\s",]+)@[^\n]*\n(?:[ \t]+[^\n]*\n){0,8}?[ \t]+version:? "?([^"\s]+)',
+                         re.M)
+_PNPM_ENTRY = re.compile(r"""(?:^|\s)['"]?/?((?:@[\w.-]+/)?[\w.-]+)@(\d[^:'"()\s]*)""", re.M)
+
+
+def _listed(path: Path, budget: list[int]) -> set[tuple[str, str]] | None:
+    """The (name, version) pairs an SBOM or lockfile lists, read once; None when it could not be read. JSON is
+    walked for objects with a name and a version (SPDX 2 and 3, CycloneDX, package-lock keys); yarn and pnpm
+    locks are read with linear-time patterns."""
+    text = _text(path, budget)
+    if text is None:
+        return None
+    pairs: set[tuple[str, str]] = set()
+    if path.name.endswith((".lock", ".yaml")):
+        rx = _YARN_ENTRY if path.name.endswith(".lock") else _PNPM_ENTRY
+        for m in rx.finditer(text):
+            pairs.add((m.group(1), m.group(2)))
+            if len(pairs) >= MAX_LISTED:
+                break
+        return pairs
+    try:
+        data = json.loads(text)
+    except (ValueError, RecursionError):
+        return set()
+    stack = [data]
+    while stack and len(pairs) < MAX_LISTED:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            name = node.get("name")
+            version = node.get("version") or node.get("versionInfo") or node.get("software_packageVersion")
+            if isinstance(name, str) and isinstance(version, str):
+                pairs.add((name, version))
+                if isinstance(node.get("group"), str) and node["group"]:  # CycloneDX: group "@scope", name "x"
+                    pairs.add((f"{node['group']}/{name}", version))
+            for key, value in node.items():
+                if isinstance(value, dict) and isinstance(value.get("version"), str) and isinstance(key, str):
+                    pairs.add((key.rsplit("node_modules/", 1)[-1], value["version"]))  # package-lock keys
+                if isinstance(value, (dict, list)):
+                    stack.append(value)
+    return pairs
+
+
 def attribute(info: dict, findings: list) -> None:
     """Match each finding to the extensions that ship its package: npm packages by the name and version found in
     each extension's node_modules, anything else by a target path that starts with the extension's folder.
@@ -521,24 +588,38 @@ def attribute(info: dict, findings: list) -> None:
         for pkg in e.pop("packages", []):
             by_package.setdefault(tuple(pkg), []).append(e)
     by_folder = {e["folder"].casefold(): e for e in info["extensions"]}
+    # Each shipped SBOM or lockfile is read once into the package versions it lists.
     budget = [READ_TOTAL_BYTES]
-    texts: dict[str, str] = {}
-    lists = [(e, Path(e.pop("root", "")) / rel) for e in info["extensions"] for rel in e.pop("listings", [])]
+    by_listing: dict[tuple[str, str], list[dict]] = {}
+    not_read = 0
+    for e in info["extensions"]:
+        root = Path(e.pop("root", ""))
+        for rel in e.pop("listings", []):
+            pairs = _listed(root / rel, budget)
+            if pairs is None:
+                not_read += 1
+                continue
+            for pair in pairs:
+                owners_of = by_listing.setdefault(pair, [])
+                if not any(x is e for x in owners_of):
+                    owners_of.append(e)
+    only = info["extensions"][0] if len(info["extensions"]) == 1 else None
     unmatched = 0
     for f in findings:
         owners = list(by_package.get((f.package, f.installed), [])) if (f.purl or "").startswith("pkg:npm/") \
             or f.pkg_type in ("node-pkg", "npm") else []
         for t in (f.target or "").split(";"):
-            e = by_folder.get(t.replace("\\", "/").split("/")[0].casefold())
-            if e is not None and e not in owners:
+            # Trivy's paths start at the extension's folder; Grype's start with "/".
+            e = by_folder.get(t.replace("\\", "/").lstrip("/").split("/")[0].casefold())
+            if e is not None and not any(x is e for x in owners):
                 owners.append(e)
         listed = False
         if not owners:
             # Not installed anywhere on disk: an SBOM or lockfile the extension ships may list it.
-            for e, path in lists:
-                if e not in owners and _lists(texts, path, budget, f.package, f.installed):
-                    owners.append(e)
-                    listed = True
+            owners = list(by_listing.get((f.package, f.installed), []))
+            listed = bool(owners)
+        if not owners and only is not None:
+            owners = [only]  # one extension: everything scanned is its own (a .vsix's paths start elsewhere)
         if not owners:
             unmatched += 1
         for e in owners:
@@ -549,23 +630,7 @@ def attribute(info: dict, findings: list) -> None:
             n["high"] += f.severity == "HIGH"
             n["malicious"] += bool(f.malicious)
     info["unmatched"] = unmatched
-
-
-def _lists(texts: dict[str, str], path: Path, budget: list[int], name: str, version: str) -> bool:
-    """Whether a shipped SBOM or lockfile names this package version: the quoted name (or a key ending in it,
-    as in package-lock.json) with the quoted version within a few hundred characters."""
-    key = str(path)
-    if key not in texts:
-        texts[key] = _text(path, budget) or ""
-    text, needle, ver = texts[key], f'{name}"', f'"{version}"'
-    if not name or not version or needle not in text:
-        return False
-    i = text.find(needle)
-    while i >= 0:
-        if ver in text[max(0, i - 400): i + 400]:
-            return True
-        i = text.find(needle, i + 1)
-    return False
+    info["listings_not_read"] = not_read
 
 
 def warnings(info: dict) -> tuple[list[str], list[str]]:

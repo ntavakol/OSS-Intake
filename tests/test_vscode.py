@@ -570,3 +570,119 @@ def test_a_folder_with_no_packages_is_not_called_an_image(tmp_path, fixtures):
     warnings = json.loads((out / "assessment.json").read_text(encoding="utf-8"))["warnings"]
     assert "No language packages found in reports, so OSV was not queried" in warnings
     assert not any("in the image" in w for w in warnings)
+
+
+# ------------------------------------------------------------------------------------------ pre-release review
+
+def _finding(name, version, **kw):
+    from oss_intake.models import Finding
+
+    return Finding(f"CVE-2099-{abs(hash((name, version))) % 10000}", name, version, kw.pop("severity", "HIGH"), **kw)
+
+
+def test_every_shipped_listing_is_read_from_its_extension(tmp_path, monkeypatch):
+    """Two SBOMs in one extension: both read from the extension's folder, not the current directory."""
+    root = tmp_path / "exts"
+    make_folder(root, "example.lsp-1.0.0", manifest(name="lsp", version="1.0.0"), files={
+        "out/extension.js": "1",
+        "a/one.spdx.json": json.dumps({"packages": [{"name": "one", "versionInfo": "1.0.0"}]}),
+        "b/two.cdx.json": json.dumps({"components": [{"group": "@scope", "name": "two", "version": "2.0.0"}]})})
+    make_folder(root, "example.none-1.0.0", manifest(name="none", version="1.0.0"))
+    monkeypatch.chdir(tmp_path)
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [_finding("one", "1.0.0", pkg_type="node-pkg"),
+                            _finding("@scope/two", "2.0.0", pkg_type="node-pkg")])
+    lsp, none = info["extensions"]
+    assert lsp["findings"]["total"] == 2 and lsp["findings_listed"] == 2 and info["unmatched"] == 0
+    for e in (lsp, none):
+        assert not {"root", "listings", "packages"} & set(e), e.keys()
+
+
+def test_no_local_path_reaches_the_assessment(tmp_path, fixtures):
+    root = tmp_path / "exts"
+    make_folder(root)
+    _, out = scan(tmp_path, fixtures, root, FakeHttp())
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    for e in a["extensions"]["extensions"]:
+        assert not {"root", "listings", "packages"} & set(e)
+        assert str(root) not in json.dumps(e)
+
+
+def test_lockfiles_are_read_for_the_versions_they_list(tmp_path):
+    root = tmp_path / "exts"
+    make_folder(root, files={
+        "out/extension.js": "1",
+        "a/package-lock.json": json.dumps({"packages": {"node_modules/@azure/msal-node": {"version": "5.3.1"}}}),
+        "b/yarn.lock": '"left-pad@^1.0.0":\n  version "1.3.0"\n  resolved "x"\n',
+        "c/pnpm-lock.yaml": "packages:\n  /@scope/lib@2.0.0:\n    resolution: {}\n  'other@3.1.0':\n    x: 1\n"})
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [_finding(n, v, pkg_type="node-pkg") for n, v in (
+        ("@azure/msal-node", "5.3.1"), ("left-pad", "1.3.0"), ("@scope/lib", "2.0.0"), ("other", "3.1.0"))])
+    assert info["extensions"][0]["findings_listed"] == 4
+
+
+def test_a_listing_names_the_whole_package_not_part_of_it(tmp_path):
+    """A finding for "ms" or "3" must not match a listing of "items" 2.1.3."""
+    root = tmp_path / "exts"
+    make_folder(root, "example.a-1.0.0", manifest(name="a", version="1.0.0"), files={
+        "out/extension.js": "1", "sbom.spdx.json": json.dumps({"packages": [{"name": "items",
+                                                                              "versionInfo": "2.1.3"}]})})
+    make_folder(root, "example.b-1.0.0", manifest(name="b", version="1.0.0"))
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [_finding("ms", "2.1.3", pkg_type="node-pkg"), _finding("3", "2.1.3", pkg_type="npm")])
+    assert info["extensions"][0]["findings"]["total"] == 0 and info["unmatched"] == 2
+
+
+def test_matching_against_listings_is_not_slow_on_crafted_text(tmp_path):
+    """Compared with an ordinary listing of the same size, not with a fixed time."""
+    timings = []
+    for i, body in enumerate(['{"packages": [' + ",".join(json.dumps({"name": f"p{n}", "versionInfo": f"1.0.{n}"})
+                                                         for n in range(40_000)) + "]}",
+                              '{"x": ["' + '", "'.join(["q1"] * 150_000) + '"]}']):
+        root = tmp_path / f"exts{i}"
+        make_folder(root, files={"out/extension.js": "1", "sbom.spdx.json": body})
+        info = vscode.assess(root, None)
+        start = time.perf_counter()
+        vscode.attribute(info, [_finding("q1", f"9.0.{n}", pkg_type="node-pkg") for n in range(300)])
+        timings.append(time.perf_counter() - start)
+    assert timings[1] < 20 * max(timings[0], 0.02), timings
+
+
+def test_an_extension_cannot_mark_itself_as_an_old_version(tmp_path):
+    d = make_folder(tmp_path, files={"out/extension.js": "x" * vscode.BUNDLE_BYTES,
+                                     ".obsolete": '{"example.ext-1.2.3": true}'})
+    (e,) = vscode.assess(d, None)["extensions"]
+    assert e["in_use"]
+    _, other = vscode.warnings({"extensions": [{**e, "removed": None, "malicious": False}],
+                                "removed_list": {"status": "checked", "detail": "", "source": "", "entries": 1}})
+    assert any("bundles" in w for w in other)
+
+
+def test_one_extension_owns_every_finding(tmp_path):
+    """A .vsix or a single folder: Trivy's paths start at the unpacked folder, so they do not name the extension."""
+    vsix = make_vsix(tmp_path / "x.vsix")
+    stage = tmp_path / "stage"
+    vscode.unpack(vsix, stage / "x")
+    info = vscode.assess(stage, None, staged=True)
+    vscode.attribute(info, [_finding("golang.org/x/net", "v0.1.0", pkg_type="gobinary", target="x/extension/bin/tool")])
+    assert info["extensions"][0]["findings"]["total"] == 1 and info["unmatched"] == 0
+
+
+def test_grype_paths_with_a_leading_slash_are_matched(tmp_path):
+    root = tmp_path / "exts"
+    make_folder(root, "example.a-1.0.0", manifest(name="a", version="1.0.0"))
+    make_folder(root, "example.b-1.0.0", manifest(name="b", version="1.0.0"))
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [_finding("tool", "1.0.0", pkg_type="go-module", target="/example.b-1.0.0/bin/tool")])
+    assert [e["findings"]["total"] for e in info["extensions"]] == [0, 1]
+
+
+def test_hidden_characters_in_a_dependency_are_reported(tmp_path):
+    """A private package in node_modules is unknown to every database, so hidden code there is looked for too."""
+    d = make_folder(tmp_path, files={"out/extension.js": "require('helper-x7');",
+                                     "node_modules/helper-x7/package.json": '{"name": "helper-x7", "version": "1.0.0"}',
+                                     "node_modules/helper-x7/index.js": f"const s = '{HIDDEN}'; eval(s);"})
+    got = {i["id"]: i["seen"] for i in vscode.analyse(d)["indicators"]}
+    assert set(got) == {"invisible"}
+    assert got["invisible"][0]["file"] == "node_modules/helper-x7/index.js"
+    assert got["invisible"][0]["detail"].endswith("in a dependency")

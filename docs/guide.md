@@ -194,8 +194,9 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
   lists it (Pylance, for one, ships SPDX SBOMs of its bundled tools), and the report counts them per extension. An
   extension whose code is bundled into one file (a large main file and no npm package the scanners can see) hides
   them; the report says so.
-- **Old versions** that VS Code has replaced but not yet deleted (listed in the folder's `.obsolete` file) are
-  marked as not in use: checked against the removal list, left out of the indicator tables and warnings.
+- **Old versions** that VS Code has replaced but not yet deleted (listed in the extensions folder's `.obsolete`
+  file, which is read only there, never inside an extension) are marked as not in use: checked against the removal
+  list, left out of the indicator tables and warnings.
 - **Behaviour indicators** in its own files (not its dependencies, which the scanners cover), each with the file
   and line: `activationEvents` `*` or `onStartupFinished`; native programs or libraries, WebAssembly included
   (by name and by their first bytes); `child_process`; `eval` or `new Function`; runs of four or more Unicode

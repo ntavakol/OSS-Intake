@@ -228,7 +228,7 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
                  + (f" ({e['findings_listed']} listed in an SBOM or lockfile it ships)"
                     if e.get("findings_listed") else ""))
         if e.get("packages_seen"):
-            found += f" (in {e['packages_seen']} npm package{'s' if e['packages_seen'] != 1 else ''} it ships)"
+            found += f"; it ships {e['packages_seen']} npm package{'s' if e['packages_seen'] != 1 else ''}"
         if e["bundled"]:
             # The bundle hides the dependencies of the extension's own JavaScript; findings above come from
             # packages or SBOMs it ships besides that bundle.
@@ -247,12 +247,15 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
     blocks: list = [("table", ["Extension", "Version", "Marketplace removal list", "Indicators",
                                "Findings in the packages it ships", "Repository (as the publisher states it)"], rows)]
     old = len(exts) - len(current)
-    if old or info.get("unmatched"):
+    if old or info.get("unmatched") or info.get("listings_not_read"):
         blocks.append(("p", " ".join(x for x in (
             f"{old} old version{'s' if old != 1 else ''} VS Code has replaced but not yet deleted (listed in its "
-            ".obsolete file) are checked against the removal list but left out of the tables below." if old else "",
+            f".obsolete file) {'are' if old != 1 else 'is'} checked against the removal list but left out of the "
+            "tables below." if old else "",
             f"{info['unmatched']} finding{'s' if info['unmatched'] != 1 else ''} could not be matched to an "
-            "extension; findings.csv has them all." if info.get("unmatched") else "") if x)))
+            "extension; findings.csv has them all." if info.get("unmatched") else "",
+            f"{info['listings_not_read']} SBOM or lockfile(s) shipped in the extensions were over the reading limit, "
+            "so findings they list may be unmatched." if info.get("listings_not_read") else "") if x)))
     if seen:
         blocks.append(("table", ["Extension", "Indicator", "Seen in (first 3)"], seen))
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
