@@ -29,7 +29,7 @@ machine if the extension ever ran.
 | Reading a huge installed folder, or text crafted to make the checks slow, exhausts memory or time | Files over 20 MB are not read, reading stops at 400 MB in all and at 50,000 files an extension, and what was not read is listed in the report. The patterns are matched in linear time (encoded strings are found as whole runs and measured in code), each indicator stops at 20 hits, and line numbers come from one pass. | `vscode.analyse` |
 | Code hidden where it is not read: a main file with an odd name or none, or code under a `node_modules` folder of its own | Every file of the extension's own is read as text unless it is binary or a source map, and its main file always is. Documentation and markup files are checked too (Node loads a required `.txt` or `.md` as JavaScript), with the hits labelled. The top-level `node_modules`, its dependencies, is left to the scanners, except for hidden characters, which are looked for there too (a private package is unknown to any database). | `vscode.analyse` |
 | An extension's own `.obsolete` file marks it "old version, not in use", hiding its indicators | `.obsolete` is read only in a folder of extensions, never inside an extension's own folder or a `.vsix`. One in the extensions folder itself needs code that already runs on the machine to write it. | `vscode.assess` |
-| Findings matched to the wrong extension, or matching made slow by a crafted SBOM or lockfile | Each shipped SBOM or lockfile is read once, within the reading limit, into the exact package names and versions it lists; findings are looked up in that, not searched for in the text. One that is over the limit is reported. | `vscode._listed`, `vscode.attribute` |
+| Findings matched to the wrong extension, or matching made slow by a crafted SBOM or lockfile | Each shipped SBOM or lockfile is read once, within the reading limit, into the exact package names and versions it lists (JSON walked without recursion, yarn.lock line by line, pnpm with a single-line pattern), and findings are looked up in that, not searched for in the text. One that is over the limit is reported. | `vscode._listed`, `vscode.attribute` |
 | An absolute path of the user's machine written into the report | The extension's folder is used only while findings are matched and never reaches `assessment.json`. | `vscode.attribute` |
 | Dependencies hidden by bundling make the report look clean | A large main file is reported as bundled whatever else the extension ships (so a stray `package.json` cannot turn the warning off), with a warning that no findings does not mean none. | `vscode.analyse`, `vscode.warnings` |
 | Code hidden in invisible characters (GlassWorm) or reordered text (Trojan Source) | Variation selectors, tag characters, runs of zero-width characters and bidirectional controls are reported with file and line. | `vscode.analyse` |
@@ -42,8 +42,9 @@ machine if the extension ever ran.
 
 - A copy of listed malware republished under a new name is a different extension: the list does not name it,
   so only the indicators can show it.
-- Reading is shared across a folder: an extension early in the order can use up the 400 MB, so later ones are
-  listed as not read rather than checked.
+- Reading is shared across a folder: an extension early in the order can use up the 400 MB for the extensions'
+  own code (dependencies have a 400 MB budget of their own), so later ones are listed as not read rather than
+  checked.
 - The archive's directory is read whole by Python's zipfile before the member count is checked.
 - Trivy reads the unpacked files, so a flaw in Trivy's parsers is exposed to them; pin and verify Trivy as the
   guide describes.

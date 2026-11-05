@@ -325,12 +325,16 @@ _LISTING = re.compile(r"(?:\.spdx\.json|\.cdx\.json|(?:^|/)bom\.json|(?:^|/)pack
 _PACKAGE_JSON = re.compile(r"(?:^|/)node_modules/(?:@[^/]+/)?[^/@][^/]*/package\.json$")
 
 
-def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None = None) -> dict:
+def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None = None,
+            dep_budget: list[int] | None = None) -> dict:
     """One extension: its identity and its indicators, each with the files and lines it was seen in. manifest is
     the copy of a .vsix's own manifest, for an unpacked .vsix only."""
     data = _manifest(folder) or {}
     ident = _identity(data)
     budget = budget if budget is not None else [READ_TOTAL_BYTES]
+    # Dependencies have a budget of their own, so a large node_modules in one extension cannot leave another
+    # extension's own code unread.
+    dep_budget = dep_budget if dep_budget is not None else [READ_TOTAL_BYTES]
     hits: dict[str, list[dict]] = {}
     unread: list[str] = []
     ids = [ident["id"]]
@@ -391,7 +395,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         # A package the scanners can see: a package.json directly in a node_modules package folder, at any depth
         # (Trivy reads them all, so a bundled extension can still ship some packages it sees).
         if _PACKAGE_JSON.search(rel) and len(packages) < MAX_PACKAGES:
-            _note_package(p, packages, budget)
+            _note_package(p, packages, dep_budget)
         if _LISTING.search(rel) and len(listings) < 100:
             listings.append(rel)
         try:
@@ -404,7 +408,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
         if not is_main and (p.suffix.lower() in NOT_READ_SUFFIXES or b"\0" in head):
             continue
         if in_deps:
-            dep_files.append((p, rel))  # read after the extension's own files, so they cannot use up the budget
+            dep_files.append((p, rel))  # read after the extension's own files, from the dependency budget
             continue
         text = _text(p, budget)
         if text is None:
@@ -429,10 +433,10 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     # own (unknown to any database) could carry hidden code, so hidden characters are looked for there too. The
     # other checks are not: ordinary libraries start programs and use eval.
     for p, rel in dep_files:
-        if budget[0] <= 0:
-            unread.append("node_modules: the reading limit was reached")
+        if dep_budget[0] <= 0:
+            unread.append("node_modules: the reading limit for dependencies was reached")
             break
-        text = _text(p, budget)
+        text = _text(p, dep_budget)
         if text is None:
             continue
         where = _Lines(text)
@@ -497,12 +501,12 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     a .vsix was unpacked into (inputs.stage), which holds exactly one unpacked .vsix laid out as <name>/extension;
     a folder the user gave is never read that way, so a folder named extension inside it cannot stand in for the
     extension itself."""
-    budget = [READ_TOTAL_BYTES]
+    budget, dep_budget = [READ_TOTAL_BYTES], [READ_TOTAL_BYTES]
     if staged:
         (unpacked,) = [p for p in target.iterdir() if p.is_dir()]
-        found = [analyse(unpacked / "extension", budget, unpacked / MANIFEST_COPY)]
+        found = [analyse(unpacked / "extension", budget, unpacked / MANIFEST_COPY, dep_budget)]
     else:
-        found = [analyse(f, budget) for f in extension_folders(target)]
+        found = [analyse(f, budget, None, dep_budget) for f in extension_folders(target)]
     # VS Code keeps an updated extension's old version on disk until it cleans up, listing it in .obsolete.
     # Only a folder of extensions has one: an extension's own folder could bring a .obsolete naming itself.
     old = _obsolete(target) if not staged and _manifest(target) is None else set()
@@ -514,7 +518,7 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
         hit = next((h for h in hits if is_malicious(h)), hits[0] if hits else None)
         e["removed"] = hit
         e["malicious"] = bool(hit and is_malicious(hit))
-    return {"extensions": found,
+    return {"extensions": found, "single": staged or _manifest(target) is not None,
             "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
                              "source": REMOVED_PAGE, "entries": len(removed or {})}}
 
@@ -532,9 +536,27 @@ def _obsolete(folder: Path) -> set[str]:
 
 
 MAX_LISTED = 200_000
-_YARN_ENTRY = re.compile(r'^"?((?:@[^@/\s"]+/)?[^@/\s",]+)@[^\n]*\n(?:[ \t]+[^\n]*\n){0,8}?[ \t]+version:? "?([^"\s]+)',
-                         re.M)
 _PNPM_ENTRY = re.compile(r"""(?:^|\s)['"]?/?((?:@[\w.-]+/)?[\w.-]+)@(\d[^:'"()\s]*)""", re.M)
+
+
+def _yarn_pairs(text: str) -> set[tuple[str, str]]:
+    """(name, version) from a yarn.lock, read line by line (a regular expression over several lines can be made to
+    backtrack without end): an unindented entry line names the package, its indented version line the version."""
+    pairs: set[tuple[str, str]] = set()
+    name = ""
+    for line in text.splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            first = line.split(",")[0].strip().strip('"').rstrip(":").strip('"')
+            at = first.find("@", 1)  # a scoped name starts with @, so the version range is after the next one
+            name = first[:at] if at > 0 else ""
+        elif name and line.strip().startswith("version"):
+            version = line.strip()[len("version"):].lstrip(": ").strip().strip('"')
+            if version:
+                pairs.add((name, version))
+                if len(pairs) >= MAX_LISTED:
+                    break
+            name = ""
+    return pairs
 
 
 def _listed(path: Path, budget: list[int]) -> set[tuple[str, str]] | None:
@@ -546,8 +568,9 @@ def _listed(path: Path, budget: list[int]) -> set[tuple[str, str]] | None:
         return None
     pairs: set[tuple[str, str]] = set()
     if path.name.endswith((".lock", ".yaml")):
-        rx = _YARN_ENTRY if path.name.endswith(".lock") else _PNPM_ENTRY
-        for m in rx.finditer(text):
+        if path.name.endswith(".lock"):
+            return _yarn_pairs(text)
+        for m in _PNPM_ENTRY.finditer(text):
             pairs.add((m.group(1), m.group(2)))
             if len(pairs) >= MAX_LISTED:
                 break
@@ -569,6 +592,8 @@ def _listed(path: Path, budget: list[int]) -> set[tuple[str, str]] | None:
                 if isinstance(node.get("group"), str) and node["group"]:  # CycloneDX: group "@scope", name "x"
                     pairs.add((f"{node['group']}/{name}", version))
             for key, value in node.items():
+                if len(pairs) >= MAX_LISTED:
+                    break
                 if isinstance(value, dict) and isinstance(value.get("version"), str) and isinstance(key, str):
                     pairs.add((key.rsplit("node_modules/", 1)[-1], value["version"]))  # package-lock keys
                 if isinstance(value, (dict, list)):
@@ -603,7 +628,9 @@ def attribute(info: dict, findings: list) -> None:
                 owners_of = by_listing.setdefault(pair, [])
                 if not any(x is e for x in owners_of):
                     owners_of.append(e)
-    only = info["extensions"][0] if len(info["extensions"]) == 1 else None
+    # A .vsix or one extension's folder: everything scanned is that extension's (Trivy's paths there do not start
+    # with its folder name). Not for a folder of extensions, where other folders may hold other things.
+    only = info["extensions"][0] if info.get("single") and len(info["extensions"]) == 1 else None
     unmatched = 0
     for f in findings:
         owners = list(by_package.get((f.package, f.installed), [])) if (f.purl or "").startswith("pkg:npm/") \

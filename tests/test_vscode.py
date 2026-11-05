@@ -690,3 +690,47 @@ def test_hidden_characters_in_a_dependency_are_reported(tmp_path):
     assert set(got) == {"invisible"}
     assert got["invisible"][0]["file"] == "node_modules/helper-x7/index.js"
     assert got["invisible"][0]["detail"].endswith("in a dependency")
+
+
+# ------------------------------------------------------------------------------------------ second review pass
+
+def test_yarn_lock_reading_is_linear_on_crafted_text(tmp_path):
+    """An entry line followed by space-only lines made the earlier multi-line pattern backtrack without end."""
+    crafted = "a@x\n" + (" " * 20 + "\n") * 9
+    ordinary = "".join(f'"p{n}@^1.0.0":\n  version "1.0.{n}"\n  resolved "x"\n\n' for n in range(20_000))
+    timings = []
+    for i, text in enumerate((ordinary, crafted * 20_000)):
+        p = tmp_path / f"yarn{i}.lock"
+        p.write_text(text, encoding="utf-8")
+        start = time.perf_counter()
+        vscode._listed(p, [vscode.READ_TOTAL_BYTES])
+        timings.append(time.perf_counter() - start)
+    assert timings[1] < 20 * max(timings[0], 0.02), timings
+    p = tmp_path / "yarn.lock"
+    p.write_text('# yarn lockfile v1\n\n"@scope/lib@^2.0.0", "@scope/lib@^2.1.0":\n  version "2.1.3"\n\n'
+                 'left-pad@^1.0.0:\n  version "1.3.0"\n', encoding="utf-8")
+    assert vscode._listed(p, [vscode.READ_TOTAL_BYTES]) == {("@scope/lib", "2.1.3"), ("left-pad", "1.3.0")}
+
+
+def test_one_extensions_dependencies_cannot_leave_anothers_code_unread(tmp_path, monkeypatch):
+    monkeypatch.setattr(vscode, "READ_TOTAL_BYTES", 400_000)
+    root = tmp_path / "exts"
+    make_folder(root, "aaa.big-1.0.0", manifest("aaa", "big", "1.0.0"),
+                files={f"node_modules/dep{n}/index.js": "x" * 100_000 for n in range(10)} | {"out/extension.js": "1"})
+    make_folder(root, "zzz.evil-1.0.0", manifest("zzz", "evil", "1.0.0"),
+                files={"out/extension.js": "require('child_process').exec(x)"})
+    evil = vscode.assess(root, None)["extensions"][1]
+    assert [i["id"] for i in evil["indicators"]] == ["process"] and evil["not_read_total"] == 0
+
+
+def test_in_a_folder_of_extensions_other_folders_are_not_credited(tmp_path):
+    root = tmp_path / "exts"
+    make_folder(root, "example.a-1.0.0", manifest(name="a", version="1.0.0"))
+    (root / "junk-folder" / "bin").mkdir(parents=True)
+    info = vscode.assess(root, None)
+    vscode.attribute(info, [_finding("tool", "1.0.0", severity="CRITICAL", pkg_type="go-module",
+                                     target="junk-folder/bin/tool")])
+    assert info["extensions"][0]["findings"]["total"] == 0 and info["unmatched"] == 1
+    single = vscode.assess(root / "example.a-1.0.0", None)
+    vscode.attribute(single, [_finding("tool", "1.0.0", pkg_type="go-module", target="bin/tool")])
+    assert single["extensions"][0]["findings"]["total"] == 1
