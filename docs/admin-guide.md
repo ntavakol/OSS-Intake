@@ -8,6 +8,7 @@ link that opens the builder with it already filled in, so you can change it to y
 For every option and how the numbers are worked out, see the [guide](guide.md).
 
 - [Before you start](#before-you-start)
+- [The quickest way: paste what you were given](#the-quickest-way-paste-what-you-were-given)
 - [Check a container image](#check-a-container-image)
 - [Check a project's dependencies (a lockfile)](#check-a-projects-dependencies-a-lockfile)
 - [Check a file you downloaded or built](#check-a-file-you-downloaded-or-built)
@@ -29,12 +30,42 @@ For every option and how the numbers are worked out, see the [guide](guide.md).
 3. Optional: set `GITHUB_TOKEN` to raise the GitHub rate limit when you use `--repo`. It is only sent to
    api.github.com.
 4. Open the [command builder](https://ntavakol.github.io/OSS-Intake/builder/). It opens on **Guided**. In the
-   **Command** panel, pick **bash / zsh** (macOS, Linux) or **PowerShell** (Windows): the quoting changes to suit.
+   **Command** panel, **bash / zsh** (macOS, Linux) or **PowerShell** (Windows) sets the quoting.
 
-The builder has four steps: **1. What are you checking?**, **2. Details**, **3. What do you want back?** and
-**4. Review**. **Next** stays unavailable until the step is complete, and says why. Beside every step,
+On Windows the builder starts on PowerShell, elsewhere on bash / zsh. The builder has four steps: **1. What are you checking?**, **2. Details**, **3. What do you want back?** and
+**4. Review**. **Next** stays unavailable until the step is complete, and says why. **4. Review** starts with
+**Before you run it** (what the computer needs, with commands to copy) and **After it runs** (which file to open
+and what to read first). Beside every step,
 **What this command will do** says what the command checks, what it sends where, when it fails and what it does
 not check. Read it before you copy.
+
+## The quickest way: paste what you were given
+
+Most checks start from something someone sent you: a link, an install command, a package name or a file. Paste
+it into **Paste what you were given** at the top of the first step, and press Enter or **Set it up**. The builder
+says what it recognised (for example "an npm package: chalk 5.6.1"), fills in the details and a folder name for
+the report, and moves on to **3. What do you want back?**. Check the details, then carry on as in the sections
+below.
+
+| You paste | It sets up |
+|---|---|
+| `https://www.npmjs.com/package/chalk/v/5.6.1` or `npm install chalk@5.6.1` | the npm package chalk 5.6.1 |
+| `https://pypi.org/project/requests/2.34.2/` or `pip install requests==2.34.2` | the PyPI package requests 2.34.2 |
+| `npm install chalk@5.6.1 debug@4.4.2` | both packages, in one check |
+| A Maven Central or mvnrepository link to a version | that Maven package |
+| `docker pull nginx:1.27`, `nginx:1.27`, or a Docker Hub tag link | the container image nginx:1.27 |
+| `https://github.com/owner/name` | the GitHub project's health |
+| `package-lock.json`, `requirements.txt`, `app-2.4.1.jar`, `packages.csv`, `sbom.cdx.json` | the matching file check |
+
+When it needs one more thing, it asks with buttons: "Which kind of package is chalk 5.6.1?" or "Is owner/app a
+GitHub project or a container image?". When it cannot help, it says why and what to do instead, for example:
+
+- a link or command with no version, or with a range such as `^5.0.0` or `latest`: oss-intake checks one exact
+  version, and the page looks nothing up, so it cannot find one for you;
+- an image with no tag;
+- `package.json` or `build.gradle`: these list ranges, so it tells you which lockfile to check instead;
+- a VS Code Marketplace link: oss-intake cannot check an installed extension, so check its source's lockfile;
+- a browser extension: oss-intake does not check browser extensions.
 
 ## Check a container image
 

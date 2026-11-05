@@ -44,7 +44,7 @@ findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
 ## Build the command
 
 oss-intake has 70 options; most runs need three. The [command builder](https://ntavakol.github.io/OSS-Intake/builder/)
-asks what you are checking and what you want back, then gives the command for bash, zsh or PowerShell and says in
+takes a link, an install command or a file name you paste (or asks what you are checking), then gives the command for bash, zsh or PowerShell and says in
 plain words what it will check, what it sends where, and when it fails. It runs in your browser and sends
 nothing anywhere.
 

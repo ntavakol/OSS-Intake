@@ -1,5 +1,5 @@
 {
- "about": "The command builder's wizard, maintained by hand: the questions it asks, the options each answer offers, the sentences of 'What this command will do', and the checks that depend on the kind of file (kind_rules: refused by the CLI; kind_cautions: gates the CLI accepts but can only ever fail with exit 1). Every option it offers must exist in options.json and have a summary line that refers to it; the gates must be the CLI's --fail-on values; the services must be every host the code calls; lockfile_names must be inputs.LOCKFILES; each kind rule's args must be refused by the CLI with its message and its ok_args must not be (tests/test_builder.py checks all of these). Conditions use the rules.json operators, plus {\"what\": [...]}, true when the kind of input is one of those: the wizard's first answer, corrected by the file name (wizard.js kindOf), so also \"renv\". Text puts an option's value where {dest} is written; {malware} reads ' and malware' when OSV is used.",
+ "about": "The command builder's wizard, maintained by hand: the questions it asks, the options each answer offers, the sentences of 'What this command will do', and the checks that depend on the kind of file (kind_rules: refused by the CLI; kind_cautions: gates the CLI accepts but can only ever fail with exit 1). Every option it offers must exist in options.json and have a summary line that refers to it; the gates must be the CLI's --fail-on values; the services must be every host the code calls; lockfile_names must be inputs.LOCKFILES; each kind rule's args must be refused by the CLI with its message and its ok_args must not be (tests/test_builder.py checks all of these). Conditions use the rules.json operators, plus {\"what\": [...]}, true when the kind of input is one of those: the wizard's first answer, corrected by the file name (wizard.js kindOf), so also \"renv\". Text puts an option's value where {dest} is written; {malware} reads ' and malware' when OSV is used. For the paste box: ecosystems maps the names --package accepts before the colon to their purl types (inputs.ECOSYSTEMS), and version_not_allowed is the CLI's rule for what is not one version (inputs._NOT_A_VERSION, matched ignoring case).",
  "targets": [
   {
    "id": "lockfile",
@@ -2009,5 +2009,34 @@
    ],
    "cli_says": "could not be evaluated"
   }
- ]
+ ],
+ "ecosystems": {
+  "npm": "npm",
+  "node": "npm",
+  "javascript": "npm",
+  "pypi": "pypi",
+  "python": "pypi",
+  "pip": "pypi",
+  "maven": "maven",
+  "java": "maven",
+  "go": "golang",
+  "golang": "golang",
+  "nuget": "nuget",
+  ".net": "nuget",
+  "dotnet": "nuget",
+  "cargo": "cargo",
+  "rust": "cargo",
+  "crates.io": "cargo",
+  "gem": "gem",
+  "rubygems": "gem",
+  "ruby": "gem",
+  "composer": "composer",
+  "packagist": "composer",
+  "php": "composer",
+  "cran": "cran",
+  "r": "cran",
+  "hex": "hex",
+  "pub": "pub"
+ },
+ "version_not_allowed": "[\\s^~<>=*,|]|^(latest|any|x)$|(^|\\.)x$|\\+$"
 }

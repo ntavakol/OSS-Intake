@@ -1,0 +1,897 @@
+{
+ "about": "What the builder's paste box (site/builder/detect.js) must make of each input. tests/builder/detect.test.mjs checks each; tests/test_builder.py runs every package, image and repo it produces through the CLI's own validation. Add a case for every input people paste that is not here.",
+ "cases": [
+  {
+   "input": "https://www.npmjs.com/package/chalk/v/5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "https://www.npmjs.com/package/@ctrl/tinycolor/v/4.1.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:@ctrl/tinycolor@4.1.1"
+    ],
+    "out": "report-ctrl-tinycolor-4.1.1"
+   }
+  },
+  {
+   "input": "https://www.npmjs.com/package/chalk",
+   "status": "no"
+  },
+  {
+   "input": "https://pypi.org/project/requests/2.34.2/",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.34.2"
+    ],
+    "out": "report-requests-2.34.2"
+   }
+  },
+  {
+   "input": "https://pypi.org/project/requests/",
+   "status": "no"
+  },
+  {
+   "input": "https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core/2.14.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "maven:org.apache.logging.log4j:log4j-core@2.14.1"
+    ],
+    "out": "report-org.apache.logging.log4j-log4j-core-2.14.1"
+   }
+  },
+  {
+   "input": "https://central.sonatype.com/artifact/org.apache.logging.log4j/log4j-core/2.14.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "maven:org.apache.logging.log4j:log4j-core@2.14.1"
+    ],
+    "out": "report-org.apache.logging.log4j-log4j-core-2.14.1"
+   }
+  },
+  {
+   "input": "https://github.com/owner/pdf-tool",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/pdf-tool",
+    "out": "report-owner-pdf-tool"
+   }
+  },
+  {
+   "input": "https://github.com/owner/app.git",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/app",
+    "out": "report-owner-app"
+   }
+  },
+  {
+   "input": "https://github.com/owner/app/blob/main/package-lock.json",
+   "status": "ok",
+   "what": "repo",
+   "values": {
+    "repo": "owner/app",
+    "out": "report-owner-app"
+   }
+  },
+  {
+   "input": "https://hub.docker.com/_/nginx",
+   "status": "no"
+  },
+  {
+   "input": "https://hub.docker.com/r/bitnami/redis/tags?name=7.4.1",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "bitnami/redis:7.4.1",
+    "out": "report-bitnami-redis-7.4.1"
+   }
+  },
+  {
+   "input": "https://marketplace.visualstudio.com/items?itemName=ms-python.python",
+   "status": "no"
+  },
+  {
+   "input": "https://chromewebstore.google.com/detail/abc",
+   "status": "no"
+  },
+  {
+   "input": "https://example.com/x",
+   "status": "unknown"
+  },
+  {
+   "input": "npm install chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "npm i @ctrl/tinycolor@4.1.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:@ctrl/tinycolor@4.1.1"
+    ],
+    "out": "report-ctrl-tinycolor-4.1.1"
+   }
+  },
+  {
+   "input": "npm install chalk",
+   "status": "no"
+  },
+  {
+   "input": "npm install chalk@latest",
+   "status": "no"
+  },
+  {
+   "input": "pip install requests==2.34.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.34.2"
+    ],
+    "out": "report-requests-2.34.2"
+   }
+  },
+  {
+   "input": "pip install 'django>=4'",
+   "status": "no"
+  },
+  {
+   "input": "python3 -m pip install requests==2.34.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.34.2"
+    ],
+    "out": "report-requests-2.34.2"
+   }
+  },
+  {
+   "input": "docker pull nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "docker run --rm -p 8080:80 nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "docker pull nginx",
+   "status": "no"
+  },
+  {
+   "input": "pkg:npm/chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pkg:npm/chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "pkg:pypi/django",
+   "status": "no"
+  },
+  {
+   "input": "npm:chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "npm:@ctrl/tinycolor@4.1.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:@ctrl/tinycolor@4.1.1"
+    ],
+    "out": "report-ctrl-tinycolor-4.1.1"
+   }
+  },
+  {
+   "input": "maven:org.apache.logging.log4j:log4j-core@2.14.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "maven:org.apache.logging.log4j:log4j-core@2.14.1"
+    ],
+    "out": "report-org.apache.logging.log4j-log4j-core-2.14.1"
+   }
+  },
+  {
+   "input": "requests==2.34.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.34.2"
+    ],
+    "out": "report-requests-2.34.2"
+   }
+  },
+  {
+   "input": "chalk@5.6.1",
+   "status": "ask",
+   "choices": [
+    {
+     "label": "npm",
+     "status": "ok",
+     "values": {
+      "package": [
+       "npm:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    },
+    {
+     "label": "PyPI",
+     "status": "ok",
+     "values": {
+      "package": [
+       "pypi:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    },
+    {
+     "label": "NuGet",
+     "status": "ok",
+     "values": {
+      "package": [
+       "nuget:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    },
+    {
+     "label": "Cargo (Rust)",
+     "status": "ok",
+     "values": {
+      "package": [
+       "cargo:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    },
+    {
+     "label": "RubyGems",
+     "status": "ok",
+     "values": {
+      "package": [
+       "gem:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    },
+    {
+     "label": "Composer (PHP)",
+     "status": "ok",
+     "values": {
+      "package": [
+       "composer:chalk@5.6.1"
+      ],
+      "out": "report-chalk-5.6.1"
+     }
+    }
+   ]
+  },
+  {
+   "input": "@ctrl/tinycolor@4.1.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:@ctrl/tinycolor@4.1.1"
+    ],
+    "out": "report-ctrl-tinycolor-4.1.1"
+   }
+  },
+  {
+   "input": "owner/app",
+   "status": "ask",
+   "choices": [
+    {
+     "label": "A GitHub project",
+     "status": "ok",
+     "values": {
+      "repo": "owner/app",
+      "out": "report-owner-app"
+     }
+    },
+    {
+     "label": "A container image",
+     "status": "no"
+    }
+   ]
+  },
+  {
+   "input": "nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "ghcr.io/owner/app:1.2.3",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "ghcr.io/owner/app:1.2.3",
+    "out": "report-owner-app-1.2.3"
+   }
+  },
+  {
+   "input": "registry.example.com:5000/team/app:2.0",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "registry.example.com:5000/team/app:2.0",
+    "out": "report-team-app-2.0"
+   }
+  },
+  {
+   "input": "nginx",
+   "status": "no",
+   "says": "no version or tag"
+  },
+  {
+   "input": "package-lock.json",
+   "status": "ok",
+   "what": "lockfile",
+   "values": {
+    "path": "package-lock.json",
+    "out": "report-package-lock"
+   }
+  },
+  {
+   "input": "~/projects/web/requirements.txt",
+   "status": "ok",
+   "what": "lockfile",
+   "values": {
+    "path": "~/projects/web/requirements.txt",
+    "out": "report-web"
+   }
+  },
+  {
+   "input": "C:\\Users\\ned\\Downloads\\app-2.4.1.jar",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "C:\\Users\\ned\\Downloads\\app-2.4.1.jar",
+    "out": "report-app-2.4.1"
+   }
+  },
+  {
+   "input": "renv.lock",
+   "status": "ok",
+   "what": "lockfile",
+   "values": {
+    "path": "renv.lock",
+    "out": "report-renv"
+   }
+  },
+  {
+   "input": "packages.csv",
+   "status": "ok",
+   "what": "inventory",
+   "values": {
+    "path": "packages.csv",
+    "out": "report-packages"
+   }
+  },
+  {
+   "input": "sbom.cdx.json",
+   "status": "ok",
+   "what": "inventory",
+   "values": {
+    "path": "sbom.cdx.json",
+    "out": "report-sbom"
+   }
+  },
+  {
+   "input": "ms-python.python-2024.1.vsix",
+   "status": "no"
+  },
+  {
+   "input": "  'npm:chalk@5.6.1'  ",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "",
+   "status": "unknown"
+  },
+  {
+   "input": "hello world",
+   "status": "unknown"
+  },
+  {
+   "input": "line1\nline2",
+   "status": "unknown"
+  },
+  {
+   "input": "Owner/App:1",
+   "status": "no"
+  },
+  {
+   "input": "docker run -it --rm alpine:3.20 sh -c \"echo a:b\"",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "alpine:3.20",
+    "out": "report-alpine-3.20"
+   }
+  },
+  {
+   "input": "docker run nginx",
+   "status": "no",
+   "says": "no tag"
+  },
+  {
+   "input": "docker pull Nginx:1.27",
+   "status": "no",
+   "says": "lowercase"
+  },
+  {
+   "input": "docker pull nginx:latest",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:latest",
+    "out": "report-nginx-latest"
+   },
+   "says": "moves"
+  },
+  {
+   "input": "https://www.npmjs.com/package/chalk/v/latest",
+   "status": "no",
+   "says": "not one version"
+  },
+  {
+   "input": "npm install chalk@^5.0.0",
+   "status": "no",
+   "says": "not one version"
+  },
+  {
+   "input": "pip install django==2.*",
+   "status": "no",
+   "says": "not one version"
+  },
+  {
+   "input": "npm i lodash@5.x",
+   "status": "no",
+   "says": "not one version"
+  },
+  {
+   "input": "pkg:docker/nginx@1.27",
+   "status": "no",
+   "says": "not one oss-intake checks"
+  },
+  {
+   "input": "pkg:github/owner/app@1.0",
+   "status": "no",
+   "says": "not one oss-intake checks"
+  },
+  {
+   "input": "pkg:maven/log4j-core@2.14.1",
+   "status": "no",
+   "says": "group:artifact"
+  },
+  {
+   "input": "maven:log4j-core@2.14.1",
+   "status": "no",
+   "says": "group:artifact"
+  },
+  {
+   "input": "npm install foo@npm:bar@1.0.0",
+   "status": "no",
+   "says": "package-lock.json"
+  },
+  {
+   "input": "https://github.com/orgs/owner",
+   "status": "no",
+   "says": "not a project"
+  },
+  {
+   "input": "https://github.com/marketplace/actions/x",
+   "status": "no",
+   "says": "not a project"
+  },
+  {
+   "input": "https://github.com/owner/app/pkgs/container/app",
+   "status": "no",
+   "says": "ghcr.io/owner/app:"
+  },
+  {
+   "input": "pip install -e .",
+   "status": "no",
+   "says": "local project"
+  },
+  {
+   "input": "pip install git+https://github.com/a/b",
+   "status": "no",
+   "says": "git package"
+  },
+  {
+   "input": "npm install ./local",
+   "status": "no",
+   "says": "package-lock.json"
+  },
+  {
+   "input": "package.json",
+   "status": "no",
+   "says": "--package-lock-only"
+  },
+  {
+   "input": "build.gradle",
+   "status": "no",
+   "says": "gradle.lockfile"
+  },
+  {
+   "input": "packages.config",
+   "status": "no",
+   "says": "packages.lock.json"
+  },
+  {
+   "input": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+   "status": "no",
+   "says": "git commit"
+  },
+  {
+   "input": "npm ci",
+   "status": "no",
+   "says": "package-lock.json"
+  },
+  {
+   "input": "npm install",
+   "status": "no",
+   "says": "package-lock.json"
+  },
+  {
+   "input": "https://ghcr.io/owner/app",
+   "status": "no",
+   "says": "no tag"
+  },
+  {
+   "input": "ext.vsix",
+   "status": "no",
+   "says": "cannot open .vsix"
+  },
+  {
+   "input": "docker run --link db:db --restart always nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "docker run \"nginx:1.27\"",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "docker image pull redis:7.4",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "redis:7.4",
+    "out": "report-redis-7.4"
+   }
+  },
+  {
+   "input": "pip install django===4.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:django@4.2"
+    ],
+    "out": "report-django-4.2"
+   }
+  },
+  {
+   "input": "pkg:maven/org.apache/log4j-core@2.14.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pkg:maven/org.apache/log4j-core@2.14.1"
+    ],
+    "out": "report-org.apache-log4j-core-2.14.1"
+   }
+  },
+  {
+   "input": "pip install -r requirements.txt",
+   "status": "ok",
+   "what": "lockfile",
+   "values": {
+    "path": "requirements.txt",
+    "out": "report-requirements"
+   }
+  },
+  {
+   "input": "app.exe",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "app.exe",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": "thing.weird",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "thing.weird",
+    "out": "report-thing"
+   }
+  },
+  {
+   "input": "npm install chalk@5.6.1 debug@4.4.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1",
+     "npm:debug@4.4.2"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "npm install --save-dev chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "pip install requests==2.32.3 urllib3==2.2.2",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3",
+     "pypi:urllib3@2.2.2"
+    ],
+    "out": "report-requests-2.32.3"
+   }
+  },
+  {
+   "input": "github.com/gin-gonic/gin@v1.10.0",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "golang:github.com/gin-gonic/gin@v1.10.0"
+    ],
+    "out": "report-github.com-gin-gonic-gin-v1.10.0"
+   }
+  },
+  {
+   "input": "golang.org/x/text@0.14.0",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "golang:golang.org/x/text@v0.14.0"
+    ],
+    "out": "report-golang.org-x-text-v0.14.0"
+   }
+  },
+  {
+   "input": "org.apache.logging.log4j:log4j-core:2.14.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "maven:org.apache.logging.log4j:log4j-core@2.14.1"
+    ],
+    "out": "report-org.apache.logging.log4j-log4j-core-2.14.1"
+   }
+  },
+  {
+   "input": "R:\\Builds\\app@1.0",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "R:\\Builds\\app@1.0",
+    "out": "report-app-1.0"
+   }
+  },
+  {
+   "input": "file:///Users/me/app.jar",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "/Users/me/app.jar",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": ".net:Newtonsoft.Json@13.0.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "nuget:Newtonsoft.Json@13.0.1"
+    ],
+    "out": "report-newtonsoft.json-13.0.1"
+   }
+  },
+  {
+   "input": "$ npm install chalk@5.6.1",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "npm:chalk@5.6.1"
+    ],
+    "out": "report-chalk-5.6.1"
+   }
+  },
+  {
+   "input": "PS C:\\Users\\me> pip install requests==2.32.3",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3"
+    ],
+    "out": "report-requests-2.32.3"
+   }
+  },
+  {
+   "input": "sudo docker pull nginx:1.27",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "uv add requests==2.32.3",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3"
+    ],
+    "out": "report-requests-2.32.3"
+   }
+  },
+  {
+   "input": "https://hub.docker.com/layers/library/nginx/1.27/images/sha256-abc",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  },
+  {
+   "input": "~/Downloads/app",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "~/Downloads/app",
+    "out": "report-app"
+   }
+  },
+  {
+   "input": "./dist",
+   "status": "ok",
+   "what": "artifact",
+   "values": {
+    "path": "./dist",
+    "out": "report-dist"
+   }
+  },
+  {
+   "input": "pip install \"requests[security]==2.32.3\"",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:requests@2.32.3"
+    ],
+    "out": "report-requests-2.32.3"
+   }
+  },
+  {
+   "input": "python -m pip install flask==3.0.0",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:flask@3.0.0"
+    ],
+    "out": "report-flask-3.0.0"
+   }
+  },
+  {
+   "input": "py -m pip install flask==3.0.0",
+   "status": "ok",
+   "what": "package",
+   "values": {
+    "package": [
+     "pypi:flask@3.0.0"
+    ],
+    "out": "report-flask-3.0.0"
+   }
+  },
+  {
+   "input": "docker run -p 8080:80 -e A=b:c nginx:1.27 nginx -g \"daemon off;\"",
+   "status": "ok",
+   "what": "image",
+   "values": {
+    "image": "nginx:1.27",
+    "out": "report-nginx-1.27"
+   }
+  }
+ ]
+}

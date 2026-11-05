@@ -401,3 +401,37 @@ def test_admin_guide_commands_parse():
     assert len(commands) >= 8
     for c in commands:
         cli.build_parser().parse_args(["scan", *shlex.split(c)[1:]])
+
+
+def test_paste_box_results_are_valid_cli_input():
+    """Every package, image and repository the builder's paste box produces (tests/fixtures/detect_cases.json,
+    checked against detect.js under Node) is accepted by the CLI's own validation."""
+    from oss_intake import inputs
+
+    path = ROOT / "tests" / "fixtures" / "detect_cases.json"
+    cases = json.loads(path.read_text(encoding="utf-8"))["cases"]
+    ready = [c for c in cases if c["status"] == "ok"]
+    ready += [x for c in cases for x in c.get("choices", []) if x["status"] == "ok"]
+    assert len(ready) >= 30
+    for r in ready:
+        v = r["values"]
+        if "package" in v:
+            inputs.packages(v["package"])
+        if "image" in v:
+            cli.validate_image(v["image"])
+        if "repo" in v:
+            cli.validate_repo(v["repo"])
+
+
+def test_paste_box_knows_the_clis_ecosystems():
+    from oss_intake import inputs
+
+    assert _load("wizard.json")["ecosystems"] == inputs.ECOSYSTEMS
+
+
+def test_paste_box_uses_the_clis_version_rule():
+    """The paste box refuses what --package refuses as not one version (ranges, placeholders, latest)."""
+    from oss_intake import inputs
+
+    assert _load("wizard.json")["version_not_allowed"] == inputs._NOT_A_VERSION.pattern
+    assert inputs._NOT_A_VERSION.flags & re.IGNORECASE

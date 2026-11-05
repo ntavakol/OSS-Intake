@@ -46,7 +46,8 @@ test("the labels the guide tells you to pick are the builder's own", () => {
       "What this command will do", "Doesn't check", "Fix existed before release", "Act now", "Review",
       "Check conditions", "Routine", "Warnings", "Malicious packages", "Suggested triage", "Top findings",
       "Project health", "recommended", "Add another --package", "remote", "1. What are you checking?",
-      "2. Details", "3. What do you want back?"];
+      "2. Details", "3. What do you want back?", "Paste what you were given", "Set it up", "Before you run it",
+      "After it runs"];
     assert.ok(isUi || prose.includes(l), `"${l}" in the guide is not a label the builder shows`);
   }
 });

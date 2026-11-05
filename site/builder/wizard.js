@@ -255,3 +255,60 @@ export function explain(data, state) {
   const values = state.values ?? {};
   return options.filter((o) => b.isSet(o, values[o.dest])).map((o) => ({ flag: o.flag, help: o.help }));
 }
+
+// ---------------------------------------------------------------- before and after the run
+
+const GUIDE = "https://github.com/ntavakol/OSS-Intake/blob/main/docs/guide.md";
+
+/** What the person needs before running the command, and what to do after: [{ text, code?, link? }] each.
+ * Built from the kind of input and the options, like the summary; shell picks how to read the exit code. */
+export function checklist(data, wiz, state, shell = "bash") {
+  const v = state.values ?? {};
+  const what = kindOf(wiz, state);
+  if (!what || state.command !== SCAN) return { before: [], after: [] };
+  const before = [{ text: "oss-intake installed. The first command checks; if it says \"not found\", install it with the second.",
+    code: ["oss-intake --version", "pipx install oss-intake"] }];
+  // Trivy runs unless its report is imported; Grype is optional either way.
+  const scans = ["lockfile", "image", "artifact", "path"].includes(what) && !v.from_trivy_json;
+  if (scans) {
+    before.push({ text: "Trivy installed, the scanner this check runs (Grype is optional). Install a pinned version and "
+      + "check it, as the guide shows.", code: ["trivy --version"],
+    link: { text: "Install the scanners", href: `${GUIDE}#install-the-scanners-yourself-pinned-and-verified` } });
+  }
+  if (what === "image" && String(v.image_src ?? "") !== "remote") {
+    before.push({ text: "Docker (or another container runtime) running. The scanners read the image from it if it "
+      + "has the image, and otherwise pull it from the registry. To always pull it, pick remote under \"Where should "
+      + "the scanners read it from?\"." });
+  }
+  if (["lockfile", "artifact", "inventory", "renv", "path"].includes(what) && v.path) {
+    before.push({ text: `The file ${v.path} on the computer where you run the command. A path that is not a full `
+      + "path is read from the folder the terminal is in." });
+  }
+  if (v.repo) before.push({ text: "Optional: a GITHUB_TOKEN set, to raise the GitHub rate limit. It is sent only to api.github.com." });
+  if (!v.offline) before.push({ text: "Internet access to the services listed under \"What leaves your computer\"." });
+  else if (scans) {
+    before.push({ text: "Internet access for Trivy, unless it already has a current copy of its vulnerability database: "
+      + "offline turns off oss-intake's own lookups, not the scanner's database download." });
+  }
+
+  const out = String(v.out ?? "report");
+  const formats = String(v.formats ?? "csv,md,json,html").split(",").map((x) => x.trim().toLowerCase());
+  const html = formats.includes("html");
+  const after = [html
+    ? { text: `Open ${out}/report.html in your browser. Read the Warnings first (anything not checked), then `
+      + "Malicious packages (remove them, do not patch), then the Act now group." }
+    : { text: `Read the results in ${out}/ (${formats.includes("md") ? "summary.md" : "findings.csv"} first). `
+      + "Add html to the formats for the report you open in a browser." }];
+  if (html && ["inventory", "package"].includes(what)) {
+    after.push({ text: `${out}/executive-summary.html is the one page to share with a manager.` });
+  }
+  if (String(v.fail_on ?? "").trim() || String(v.fail_on_likelihood ?? "").trim()) {
+    after.push({ text: "The exit code is the result: 0 passed, 3 a gate was hit, 1 a check could not run (it fails "
+      + "rather than pass), 2 the command was refused. To see it:",
+    code: [shell === "powershell" ? "$LASTEXITCODE" : "echo $?"] });
+  }
+  after.push({ text: `To keep what you decide about each finding for next time, fill in ${out}/findings.csv and give it `
+    + "to the next run, with a new folder for its report: each run writes findings.csv again.",
+  link: { text: "Re-run and keep your decisions", href: "https://github.com/ntavakol/OSS-Intake/blob/main/docs/admin-guide.md#re-run-and-keep-your-earlier-decisions" } });
+  return { before, after };
+}

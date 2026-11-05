@@ -232,7 +232,10 @@ const hooks = { refresh, render, set, textInput, repeatableRows, choiceSelect };
 function fromLink() {
   const got = b.fromFragment(app.data, location.hash);
   app.state = got.state;
-  app.shell = got.shell;
+  // No shell in the link: PowerShell on Windows, bash or zsh elsewhere (read from the browser, nothing sent).
+  const windows = /Windows/i.test(navigator.userAgentData?.platform ?? navigator.userAgent ?? "");
+  app.shell = /(^|[#&])shell=/.test(location.hash) ? got.shell : (windows ? "powershell" : "bash");
+  app.pasted = null;
   app.view = got.extra.view === "form" || app.state.command !== "scan" ? "form" : "wizard";  // the wizard: scan only
   if (app.view === "wizard") {
     // A link's first answer counts only while its options fit it (a link can say anything).

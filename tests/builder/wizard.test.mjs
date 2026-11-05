@@ -328,3 +328,38 @@ test("every first answer has an icon, and the Contacts group carries the service
   for (const s of g.services) assert.ok(g.items.some((i) => i.includes(s.sends)), s.name);  // the text says the same
   assert.deepEqual(g.notes, g.items.slice(g.services.length));
 });
+
+test("before and after the run, for each kind of check", () => {
+  const list = (values, what, shell) => {
+    const c = w.checklist(data, wizard, { command: "scan", what, values: { out: "r", ...values } }, shell);
+    return { before: c.before.map((x) => x.text).join("\n"), after: c.after.map((x) => x.text).join("\n"),
+      code: [...c.before, ...c.after].flatMap((x) => x.code ?? []) };
+  };
+  const pkg = list({ package: ["npm:chalk@5.6.1"] }, "package");
+  assert.doesNotMatch(pkg.before, /Trivy/);
+  assert.match(pkg.after, /r\/executive-summary\.html/);
+  assert.deepEqual(pkg.code, ["oss-intake --version", "pipx install oss-intake"]);
+  const img = list({ image: "a/b:1" }, "image");
+  assert.match(img.before, /Trivy installed/);
+  assert.match(img.before, /Docker/);
+  assert.doesNotMatch(list({ image: "a/b:1", image_src: "remote" }, "image").before, /Docker/);
+  assert.doesNotMatch(list({ image: "a/b:1", from_trivy_json: "t" }, "image").before, /Trivy installed/);
+  assert.match(list({ path: "package-lock.json" }, "lockfile").before, /The file package-lock\.json/);
+  assert.doesNotMatch(list({ path: "packages.csv" }, "inventory").before, /Trivy/);
+  assert.match(list({ repo: "o/n" }, "repo").before, /GITHUB_TOKEN/);
+  // Offline still needs the scanner's database, unless the scanner's report is imported.
+  assert.match(list({ path: "a.jar", offline: true }, "artifact").before, /Internet access for Trivy/);
+  assert.doesNotMatch(list({ path: "a.jar", offline: true, from_trivy_json: "t" }, "artifact").before, /Internet|Trivy installed/);
+  assert.doesNotMatch(list({ path: "packages.csv", offline: true }, "inventory").before, /Internet/);
+  assert.match(list({ image: "a/b:1", from_trivy_json: "t" }, "image").before, /Docker/);
+  const noHtml = list({ package: ["npm:chalk@5.6.1"], formats: "csv,md" }, "package");
+  assert.doesNotMatch(noHtml.after, /\.html/);
+  assert.match(noHtml.after, /summary\.md first/);
+  assert.match(list({ path: "a.jar", formats: "csv" }, "artifact").after, /findings\.csv first/);
+  assert.match(pkg.after, /a new folder/);
+  const gate = list({ path: "package-lock.json", fail_on: "malicious" }, "lockfile", "powershell");
+  assert.match(gate.after, /0 passed, 3 a gate was hit, 1 a check could not run/);
+  assert.ok(gate.code.includes("$LASTEXITCODE"));
+  assert.ok(list({ path: "package-lock.json", fail_on: "malicious" }, "lockfile", "bash").code.includes("echo $?"));
+  assert.doesNotMatch(list({ path: "package-lock.json" }, "lockfile").after, /exit code/);
+});
