@@ -12,6 +12,7 @@ For every option and how the numbers are worked out, see the [guide](guide.md).
 - [Check a container image](#check-a-container-image)
 - [Check a project's dependencies (a lockfile)](#check-a-projects-dependencies-a-lockfile)
 - [Check a file you downloaded or built](#check-a-file-you-downloaded-or-built)
+- [Check VS Code extensions](#check-vs-code-extensions)
 - [Check an SBOM or a package list](#check-an-sbom-or-a-package-list)
 - [Check a few packages by name](#check-a-few-packages-by-name)
 - [Check a GitHub project's health](#check-a-github-projects-health)
@@ -64,7 +65,8 @@ GitHub project or a container image?". When it cannot help, it says why and what
   version, and the page looks nothing up, so it cannot find one for you;
 - an image with no tag;
 - `package.json` or `build.gradle`: these list ranges, so it tells you which lockfile to check instead;
-- a VS Code Marketplace link: oss-intake cannot check an installed extension, so check its source's lockfile;
+- a VS Code Marketplace link: the page downloads nothing, so it asks for the copy you have (a `.vsix`, or
+  `~/.vscode/extensions` for everything installed);
 - a browser extension: oss-intake does not check browser extensions.
 
 ## Check a container image
@@ -149,6 +151,47 @@ oss-intake --path ~/Downloads/app-2.4.1.jar --repo owner/app --out report-app-ja
 (rebuilt, repackaged or tampered with). The exit code is 3 for a mismatch or malware, and 1 if the file could not
 be compared (a binary, a JAR without its Maven details, or a version the registry does not have). A match proves
 only that the file is the published one, not that it is safe.
+
+## Check VS Code extensions
+
+**When:** before you install an extension from a `.vsix` someone sent you, or to check every extension already
+installed on a machine. This works for VS Code, and for Cursor, VSCodium and Windsurf, which keep extensions the
+same way.
+
+**You need:** Trivy, and the extensions themselves: a `.vsix` file, one installed extension's folder, or the
+whole extensions folder (`~/.vscode/extensions`; Cursor uses `~/.cursor/extensions`, VSCodium
+`~/.vscode-oss/extensions`). Nothing in an extension is installed or run. A `.vsix` is unpacked into a temporary
+folder with limits, and one that tries to write outside it is refused.
+
+1. Pick **A VS Code extension**, then **Next**.
+2. In **Where is it?**, type the path, such as `~/.vscode/extensions`.
+3. **Next**. To fail when an extension was removed from the Marketplace as malware, pick **A pass or fail check,
+   for CI** and tick **A package is known malware**.
+4. Set **Folder for the report**, **Next**, review and **Copy**.
+
+[Open this example in the builder](https://ntavakol.github.io/OSS-Intake/builder/#what=vscode&cmd=scan&path=%7E%2F.vscode%2Fextensions&out=report-vscode-extensions&fail_on=malicious)
+
+```bash
+oss-intake --path ~/.vscode/extensions --out report-vscode-extensions --fail-on malicious
+```
+
+**Read the result:** the VS Code extensions section of `report.html` has one row per extension:
+
+- Marketplace removal list: whether Microsoft removed it, and why. Removed as malware leads the report and
+  fails the gate: uninstall it and treat machines that ran it as compromised. Removed for impersonation or as
+  untrustworthy is a warning: it may be a copy of another extension, so check who publishes it.
+- Indicators: what its own files show it can do, each with the file and line: starting with VS Code,
+  starting programs, native code, code built from text, hidden characters, long encoded strings, and other
+  extensions it installs. An extension runs with your rights, so read each one against what the extension is
+  for: a terminal tool starts programs, a colour theme should not.
+- Dependencies: the npm packages it ships are checked for known vulnerabilities and malware like any other.
+  An extension that bundles its code into one file hides them, and the report says so: no findings then does not
+  mean none.
+- Repository: what the publisher wrote in `package.json`. It is a claim, not proof, so it is not checked
+  unless you add it in **Where is the source on GitHub?**.
+
+VS Code removes extensions on the removal list from its own installs, but Cursor, VSCodium and a `.vsix`
+installed by hand are not covered, which is where this check matters most.
 
 ## Check an SBOM or a package list
 

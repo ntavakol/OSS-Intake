@@ -41,6 +41,7 @@ export function kindOf(wiz, state) {
   if (!["lockfile", "artifact", "inventory", "path"].includes(what)) return what;
   const name = String(state.values?.path ?? "").trim().split(/[\\/]/).pop();
   if (!name) return what;
+  if (/\.vsix$/i.test(name)) return "vscode";  // the CLI reads a .vsix by its content; its name says it too
   if (name === "renv.lock") return "renv";
   if (name.toLowerCase().endsWith(".csv")) return "inventory";
   if (new RegExp(wiz.lockfile_names).test(name)) return "lockfile";
@@ -270,7 +271,7 @@ export function checklist(data, wiz, state, shell = "bash") {
     code: ["oss-intake --version", "pipx install oss-intake"] }];
   // Which scanners run (cli._resolve_scanners): auto is Trivy, plus Grype when it is installed; a scanner whose
   // report is imported does not run.
-  const kindScans = ["lockfile", "image", "artifact", "path"].includes(what);
+  const kindScans = ["lockfile", "image", "artifact", "vscode", "path"].includes(what);
   const list = String(v.scanners ?? "auto").split(",").map((x) => x.trim().toLowerCase());
   const auto = list.includes("auto") || !String(v.scanners ?? "").trim();
   const runs = (tool, imported) => kindScans && !imported && (auto ? tool === "trivy" || "maybe" : list.includes(tool));
@@ -297,7 +298,7 @@ export function checklist(data, wiz, state, shell = "bash") {
         + "read it from?\".";
     before.push({ text: onlyIf + runtime });
   }
-  if (["lockfile", "artifact", "inventory", "renv", "path"].includes(what) && v.path) {
+  if (["lockfile", "artifact", "vscode", "inventory", "renv", "path"].includes(what) && v.path) {
     before.push({ text: `The file ${v.path} on the computer where you run the command. A path that is not a full `
       + "path is read from the folder the terminal is in." });
   }

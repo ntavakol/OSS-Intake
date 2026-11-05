@@ -101,7 +101,8 @@
   },
   {
    "input": "https://marketplace.visualstudio.com/items?itemName=ms-python.python",
-   "status": "no"
+   "status": "no",
+   "says": "~/.vscode/extensions"
   },
   {
    "input": "https://chromewebstore.google.com/detail/abc",
@@ -431,7 +432,12 @@
   },
   {
    "input": "ms-python.python-2024.1.vsix",
-   "status": "no"
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "ms-python.python-2024.1.vsix",
+    "out": "report-ms-python.python-2024.1"
+   }
   },
   {
    "input": "  'npm:chalk@5.6.1'  ",
@@ -601,8 +607,13 @@
   },
   {
    "input": "ext.vsix",
-   "status": "no",
-   "says": "cannot open .vsix"
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "ext.vsix",
+    "out": "report-ext"
+   },
+   "says": "a VS Code extension"
   },
   {
    "input": "docker run --link db:db --restart always nginx:1.27",
@@ -1305,6 +1316,56 @@
   {
    "input": "app-1.0.tar.gz",
    "status": "no"
+  },
+  {
+   "input": "https://open-vsx.org/extension/redhat/java",
+   "status": "no",
+   "says": "redhat.java"
+  },
+  {
+   "input": "~/.vscode/extensions",
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "~/.vscode/extensions",
+    "out": "report-vscode-extensions"
+   }
+  },
+  {
+   "input": "~/.vscode/extensions/ms-python.python-2024.1.0",
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "~/.vscode/extensions/ms-python.python-2024.1.0",
+    "out": "report-ms-python.python-2024.1.0"
+   }
+  },
+  {
+   "input": "C:\\Users\\me\\.vscode\\extensions",
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "C:\\Users\\me\\.vscode\\extensions",
+    "out": "report-vscode-extensions"
+   }
+  },
+  {
+   "input": "~/.cursor/extensions/",
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "~/.cursor/extensions/",
+    "out": "report-vscode-extensions"
+   }
+  },
+  {
+   "input": "~/.vscode-oss/extensions",
+   "status": "ok",
+   "what": "vscode",
+   "values": {
+    "path": "~/.vscode-oss/extensions",
+    "out": "report-vscode-extensions"
+   }
   }
  ]
 }

@@ -169,6 +169,39 @@ advisories, since neither scanner reads it; packages from Bioconductor, GitHub o
 not checked. A folder is scanned as built artifacts; for a source checkout, pass its lockfile. Release lag needs
 the project's release: `--repo` with `--release-tag`, or `--release-date`.
 
+### VS Code extensions
+
+```bash
+oss-intake --path ./extension.vsix --out ./reports
+oss-intake --path ~/.vscode/extensions --out ./reports --fail-on malicious   # everything installed
+```
+
+A `.vsix` (recognised by its content: a zip with `extension/package.json`), an installed extension's folder, or a
+folder of them (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf) is checked as
+extensions. There is no vulnerability database for extensions, so oss-intake reports what can be known:
+
+- **The VS Code Marketplace removal list** ([RemovedPackages.md](https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md),
+  fetched from raw.githubusercontent.com; nothing is sent). An extension removed as Malware or Potentially
+  malicious leads the report and counts for `--fail-on malicious`; one removed for Impersonation, Typo-squatting,
+  Untrustworthy or Spam is a warning. If the list cannot be fetched, or with `--offline`, the report says it was
+  not checked, and `--fail-on malicious` exits 1 rather than passing.
+- **The npm packages it ships**, scanned with Trivy `rootfs` and checked against OSV like any other. An extension
+  whose code is bundled into one file (a large main file and no `node_modules`) hides them; the report says so.
+- **Behaviour indicators** in its own files (not its dependencies, which the scanners cover), each with the file
+  and line: `activationEvents` `*` or `onStartupFinished`; native programs or libraries (by extension and by
+  their first bytes); `child_process`; `eval` or `new Function`; Unicode variation selectors or tag characters,
+  or a run of zero-width characters (how GlassWorm hid its code); text-reordering characters (Trojan Source);
+  base64 or hex strings of 2,000 characters or more; `extensionDependencies` and `extensionPack`; and a folder
+  name or `.vsix` manifest that names a different extension from `package.json`. The web addresses in its code
+  are listed too. These are signals for a person to read, not verdicts.
+- **The repository it claims** in `package.json` is shown, not checked: a malicious extension can name a
+  well-known project. Give `--repo` to check a project you trust.
+
+Nothing in an extension is run. A `.vsix` is unpacked into a temporary folder, removed afterwards, with limits:
+at most 50,000 files, 300 MB a file and 1 GB in all (counted as written), no member that expands more than
+200 times, and no absolute paths, `..` or links. One that breaks a limit is refused (exit 2) before anything is
+written. The Marketplace signature is not checked. `--fail-on mismatch` is refused, as for a folder.
+
 ### Package inventory
 
 To check the open source an organisation already uses, pass a CSV list of packages, for example exported from

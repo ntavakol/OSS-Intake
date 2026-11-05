@@ -80,6 +80,7 @@ Questions a security or engineering manager gets asked, and what answering them 
 | An R `renv.lock` | `--path renv.lock` | No |
 | A lockfile: npm, Python, Maven, Go, Rust, PHP, Ruby or .NET | `--path package-lock.json` | Trivy |
 | A JAR, WAR, EAR or binary, also checked against the registry's published checksum | `--path app.jar` | Trivy |
+| VS Code extensions: a `.vsix`, or everything installed, also checked against the Marketplace's removal list | `--path ~/.vscode/extensions` | Trivy |
 | A container image | `--image owner/app:1.2.3` | Trivy (Grype optional) |
 | A GitHub project | `--repo owner/name`: alone for project health; with an image, artifact or lockfile, also release lag | No |
 

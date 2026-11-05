@@ -33,6 +33,7 @@ from . import (
     sbom,
     triage,
     upgrade,
+    vscode,
 )
 from .enrich import (
     advisories,
@@ -633,10 +634,14 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     for tool in ("trivy", "grype"):
         if tool in chosen and not getattr(args, f"from_{tool}_json"):
             find_executable(tool, getattr(args, f"{tool}_path"))
-    out = prepare_out(args.out)
     scanned_offline = args.from_trivy_json and args.from_grype_json
+    if args.path_kind == "vscode":
+        # A .vsix is unpacked here, before anything is written: one that breaks a limit is refused (exit 2). The
+        # extension's own files are read even when the scanners' reports are imported.
+        args.scan_target, tmp_dir = inputs.stage(Path(args.path), "vscode")
     try:
-        if args.path and args.path_kind not in ("renv", "inventory") and not scanned_offline:
+        out = prepare_out(args.out)
+        if args.path and args.path_kind not in ("renv", "inventory", "vscode") and not scanned_offline:
             args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
         return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)
     finally:  # S8: the temporary copy of the artifact is removed whatever happens
@@ -682,7 +687,14 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
                                + ". Treat the file as untrusted until you know where it came from")
         elif args.registry_result["status"] == "error":
             warnings.append("Registry checksum lookup failed: " + registry_check.summary(args.registry_result))
-    # 2. Scanners. Integrity failures abort; scanner failures abort (a partial scan is misleading).
+    # VS Code extensions: the removal list and what their own files show; nothing in them is run.
+    args.extension_info = None
+    if args.path_kind == "vscode":
+        args.extension_info = vscode.assess(Path(args.scan_target), net)
+        alerts, more = vscode.warnings(args.extension_info)
+        warnings[:0] = alerts
+        warnings.extend(more)
+        # 2. Scanners. Integrity failures abort; scanner failures abort (a partial scan is misleading).
     trivy_report, groups, scan_info = _scan(args, chosen, out, net, scanners_meta, warnings)
     return _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats,
                    as_of, release_override, lk_cfg)
@@ -1088,6 +1100,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         "likelihood": lk,
         "warnings": warnings,
     }
+    if args.extension_info:
+        assessment["extensions"] = args.extension_info
     if args.sbom_info:
         assessment["sbom"] = args.sbom_info
     pkg_rows = None
@@ -1149,7 +1163,8 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
-    tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None))
+    tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None),
+                    getattr(args, "extension_info", None))
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}", args.quiet, force=True)
         if t == "unknown-age":
@@ -1250,6 +1265,11 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
         missing = [n for n in sources if checks.state_of(chk, n) != checks.CHECKED]
         if gate in wanted and missing:
             out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(chk, n)}" for n in missing)))
+    ext = getattr(args, "extension_info", None)
+    if ext and ext["removed_list"]["status"] != "checked":
+        for gate in ("malicious", "act"):
+            if gate in wanted and not any(g == gate for g, _ in out):
+                out.append((gate, f"the VS Code Marketplace removal list was {ext['removed_list']['detail']}"))
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))
@@ -1274,12 +1294,15 @@ def _unknown_age(age_info: dict) -> bool:
     return bool(age_info.get("unknown_purls") or age_info.get("unsupported_purls"))
 
 
-def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None) -> list[str]:
+def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None,
+          extensions: dict | None = None) -> list[str]:
     """The --fail-on conditions met. Findings set aside (evidence or an assessor decision) do not count, except
-    a malicious package, which no decision sets aside."""
+    a malicious package, which no decision sets aside. An extension the Marketplace removed as malware counts
+    as malicious."""
     live = [f for f in findings if f.triage_group != "aside"]
+    removed = any(e["malicious"] for e in (extensions or {}).get("extensions", []))
     met = {
-        "malicious": any(f.malicious for f in findings),
+        "malicious": removed or any(f.malicious for f in findings),
         "kev": any(f.kev for f in live),
         "act": any(f.triage_group == "act" for f in live),
         "critical": any(f.severity == "CRITICAL" for f in live),

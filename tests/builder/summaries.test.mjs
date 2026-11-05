@@ -16,6 +16,7 @@ const KINDS = {
   renv: { path: "renv.lock" },
   image: { image: "owner/app:1.0" },
   artifact: { path: "app.jar" },
+  vscode: { path: "ext.vsix", __what: "vscode" },
   folder: { path: "build" },
   inventory: { path: "packages.csv" },
   sbom: { path: "sbom.cdx.json", __what: "inventory" },

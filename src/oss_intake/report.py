@@ -208,6 +208,51 @@ def release_age_section(a: dict) -> tuple[str, list] | None:
               "repository) before relying on it.")])
 
 
+def extensions_section(a: dict) -> tuple[str, list] | None:
+    """VS Code extensions: the removal list's verdict, the behaviour indicators with where each was seen, whether
+    the dependencies could be seen, and the repository each claims. None for any other input."""
+    info = a.get("extensions")
+    if not info:
+        return None
+    exts, rl = info["extensions"], info["removed_list"]
+    rows = []
+    for e in exts:
+        hit = e.get("removed")
+        removed = (f"REMOVED as {hit['type']} ({hit['date']})" if hit and e["malicious"]
+                   else f"removed for {hit['type']} ({hit['date']})" if hit
+                   else "not on the list" if rl["status"] == "checked" else "not checked")
+        rows.append([e["id"], e["version"], removed,
+                     ", ".join(i["id"] for i in e["indicators"]) or "none",
+                     "bundled: not visible to the scanners" if e["bundled"] else "visible to the scanners",
+                     e["repository"] or "none given"])
+    seen = []
+    for e in exts:
+        for i in e["indicators"]:
+            where = "; ".join(f"{s['file']}{':' + str(s['line']) if s['line'] else ''}"
+                              + (f" ({s['detail']})" if s["detail"] else "") for s in i["seen"][:3])
+            more = len(i["seen"]) - 3
+            seen.append([e["id"], i["title"], where + (f"; and {more} more" if more > 0 else "")])
+    blocks: list = [("table", ["Extension", "Version", "Marketplace removal list", "Indicators", "Dependencies",
+                               "Repository (as the publisher states it)"], rows)]
+    if seen:
+        blocks.append(("table", ["Extension", "Indicator", "Seen in (first 3)"], seen))
+    hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
+                                                       else "")] for e in exts if e["hosts"]]
+    if hosts:
+        blocks.append(("table", ["Extension", "Web addresses in its code"], hosts))
+    unread = [f"{e['id']}: {e['not_read_total']} file(s)" for e in exts if e["not_read_total"]]
+    blocks.append(("p", "An extension runs with your rights: VS Code has no permission model. The indicators are "
+                        "what its own files show it can do (its dependencies are checked by the scanners instead), "
+                        "so read each one against what the extension is for: a terminal tool starts programs, a "
+                        "theme should not. The removal list is Microsoft's (" + rl["source"] + "); VS Code removes "
+                        "listed extensions from its own installs, but not from Cursor, VSCodium or a .vsix "
+                        "installed by hand. The repository is what the publisher wrote in package.json, not proof: "
+                        "to check that project's health, add --repo owner/name if you trust the link."
+                        + (" Files too large to read, or over the reading limit: " + "; ".join(unread) + "."
+                           if unread else "")))
+    return (f"VS Code extensions ({len(exts)})", blocks)
+
+
 def decisions_section(a: dict) -> tuple[str, list] | None:
     """Assessor decisions carried in with --decisions: what was applied, what needs another look."""
     d = a.get("decisions")
@@ -294,6 +339,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
                 detail += ", hash verified" if s["hash_verified"] else ", hash NOT verified"
             scope_rows.append([f"Source: {name}", detail])
     secs.append(("Scope", [("table", ["Item", "Value"], scope_rows), ("p", CAVEAT)]))
+    ext = extensions_section(a)
+    if ext:
+        secs.append(ext)
     inv = a.get("inventory")
     if inv:
         from .inventory_report import label_text

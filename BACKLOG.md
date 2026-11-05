@@ -6,7 +6,7 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
 1. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
-   Linked from SECURITY.md.
+   Linked from SECURITY.md. Started: the VS Code extension section (unpacking a .vsix) is written.
 2. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
@@ -43,6 +43,17 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - CRAN fix dates for `renv.lock` findings (from CRAN's archive or the CRAN package database), and Bioconductor
   packages (OSV has a Bioconductor ecosystem).
 - Non-GitHub forges (GitLab, Codeberg) for release cadence.
+
+## VS Code extensions (agreed 5 Nov; files and folders shipped first)
+- Download by ID (`vscode:publisher.name@1.2.3`), from Open VSX's public API only: the VS Code Marketplace's API
+  is unofficial and its terms tie it to Microsoft's products.
+- Compare two versions of an extension: what changed in an update (new indicators, new web addresses, new
+  native files, a new publisher), since most extension compromises arrive as an update to a trusted one.
+- Fleet input from osquery's `vscode_extensions` table, through the existing osquery collector: the removal list
+  check for every machine, by ID and version.
+- Open VSX metadata (publisher verification, downloads, last update) for extensions from Cursor and VSCodium.
+- Check the Marketplace signature of a `.vsix`.
+- JetBrains plugins (plugins.jetbrains.com has a public API).
 
 ## Outputs
 - PDF report. Deferred because it needs either a heavy dependency (WeasyPrint, ReportLab) or a headless

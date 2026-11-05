@@ -45,11 +45,14 @@ class InputError(Exception):
 
 
 def classify(path: Path) -> str:
-    """Kind of input path: "sbom", "dir", "renv" (renv.lock), "inventory" (.csv), "lockfile" or "artifact"."""
-    from . import sbom
+    """Kind of input path: "sbom", "vscode" (a .vsix, an installed VS Code extension or a folder of them), "dir",
+    "renv" (renv.lock), "inventory" (.csv), "lockfile" or "artifact"."""
+    from . import sbom, vscode
 
     if sbom.is_sbom(path):  # by content: an SBOM file, or a folder that holds only SBOMs
         return "sbom"
+    if vscode.is_extension_input(path):  # by content too: a .vsix is a zip with extension/package.json in it
+        return "vscode"
     if path.is_dir():
         return "dir"
     if path.name == "renv.lock":
@@ -68,11 +71,16 @@ def trivy_mode(kind: str) -> str:
 
 def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
     """Return (scan target, temporary directory to remove afterwards or None)."""
-    if kind == "dir":
+    if kind == "dir" or (kind == "vscode" and path.is_dir()):
         return path, None
     tmp = Path(tempfile.mkdtemp(prefix="oss-intake-"))
     try:
-        shutil.copy2(path, tmp / path.name)
+        if kind == "vscode":
+            from . import vscode
+
+            vscode.unpack(path, tmp / path.stem)  # a .vsix: unpacked with limits, never run
+        else:
+            shutil.copy2(path, tmp / path.name)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise

@@ -21,6 +21,9 @@
    "bash": "oss-intake --package npm:chalk@5.6.1 --package pypi:requests@2.34.2 --out report --fail-on malicious,recent"},
   {"name": "project health only", "what": "repo", "outcome": "report",
    "values": {"repo": "owner/name", "out": "report"},
-   "bash": "oss-intake --repo owner/name --out report"}
+   "bash": "oss-intake --repo owner/name --out report"},
+  {"name": "installed VS Code extensions, CI gate", "what": "vscode", "outcome": "gate",
+   "values": {"path": "~/.vscode/extensions", "out": "report-vscode"}, "gates": ["malicious"],
+   "bash": "oss-intake --path ~/.vscode/extensions --out report-vscode --fail-on malicious"}
  ]
 }

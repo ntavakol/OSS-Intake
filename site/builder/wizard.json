@@ -61,6 +61,25 @@
    "icon": "archive"
   },
   {
+   "id": "vscode",
+   "label": "A VS Code extension",
+   "hint": "A .vsix file, an installed extension's folder, or all your installed extensions (~/.vscode/extensions). Cursor and VSCodium keep theirs in ~/.cursor/extensions and ~/.vscode-oss/extensions.",
+   "fields": [
+    "path"
+   ],
+   "repo": true,
+   "gates": [
+    "malicious",
+    "kev",
+    "act",
+    "critical",
+    "high",
+    "recent",
+    "unknown-age"
+   ],
+   "icon": "code"
+  },
+  {
    "id": "inventory",
    "label": "An SBOM or a package list",
    "hint": "A CycloneDX or SPDX SBOM, a folder of them, or a .csv with ecosystem,name,version (or purl) columns.",
@@ -119,7 +138,8 @@
    "placeholder": {
     "lockfile": "~/Downloads/project/package-lock.json",
     "artifact": "~/Downloads/app-1.2.3.jar",
-    "inventory": "~/Downloads/sbom.cdx.json"
+    "inventory": "~/Downloads/sbom.cdx.json",
+    "vscode": "~/.vscode/extensions"
    }
   },
   "image": {
@@ -315,6 +335,15 @@
    "head": "Checks",
    "when": {
     "what": [
+     "vscode"
+    ]
+   },
+   "text": "the VS Code extension {path}: whether the VS Code Marketplace removed it and why, what its own files show it can do (starting with VS Code, starting programs, native code, hidden characters, encoded strings), and the npm packages it ships, for known vulnerabilities{malware}, with {scanners}. A .vsix is unpacked with limits; nothing in it is installed or run."
+  },
+  {
+   "head": "Checks",
+   "when": {
+    "what": [
      "inventory"
     ]
    },
@@ -365,6 +394,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -407,6 +437,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -426,6 +457,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -483,6 +515,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      }
@@ -610,6 +643,7 @@
       "what": [
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -836,6 +870,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -995,6 +1030,7 @@
        "lockfile",
        "image",
        "artifact",
+       "vscode",
        "path"
       ]
      },
@@ -1029,6 +1065,7 @@
          "what": [
           "image",
           "artifact",
+          "vscode",
           "path"
          ]
         },
@@ -1112,6 +1149,15 @@
     ]
    },
    "text": "how new each package version is (turned off)."
+  },
+  {
+   "head": "Doesn't check",
+   "when": {
+    "what": [
+     "vscode"
+    ]
+   },
+   "text": "whether what an indicator shows is harmful: an extension runs with your rights, so read each one against what the extension is for. Nor the Marketplace signature, or the code of a bundled extension's dependencies."
   }
  ],
  "services": [
@@ -1470,6 +1516,28 @@
     ]
    },
    "short": "Fix-date records"
+  },
+  {
+   "name": "VS Code Marketplace removal list (GitHub)",
+   "hosts": [
+    "raw.githubusercontent.com"
+   ],
+   "sends": "nothing (it downloads the whole list)",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "vscode"
+      ]
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   },
+   "short": "Removal list"
   }
  ],
  "scanner_notes": [
@@ -1620,7 +1688,8 @@
      {
       "what": [
        "lockfile",
-       "artifact"
+       "artifact",
+       "vscode"
       ]
      },
      {
@@ -1684,7 +1753,8 @@
      {
       "what": [
        "lockfile",
-       "artifact"
+       "artifact",
+       "vscode"
       ]
      },
      {
@@ -1861,6 +1931,7 @@
       "what": [
        "lockfile",
        "artifact",
+       "vscode",
        "renv"
       ]
      }
@@ -1919,6 +1990,7 @@
      {
       "what": [
        "lockfile",
+       "vscode",
        "inventory",
        "renv"
       ]

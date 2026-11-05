@@ -76,6 +76,7 @@ export const ICONS = {
   doc: [["path", "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"], ["path", "M14 3v6h6M8 13h8M8 17h6"]],
   cube: [["path", "M21 8 12 3 3 8v8l9 5 9-5z"], ["path", "M3 8l9 5 9-5M12 13v8"]],
   archive: [["path", "M3 7h18v13H3zM3 7l2-4h14l2 4M9 11h6"]],
+  code: [["path", "M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"]],
   list: [["path", "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"]],
   tag: [["path", "M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"], ["path", "M7.5 7.5h.01"]],
   branch: [["circle", "6,6,2"], ["circle", "6,18,2"], ["circle", "18,8,2"], ["path", "M6 8v8M18 10c0 4-6 3-10 6"]],

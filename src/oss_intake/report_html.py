@@ -156,6 +156,15 @@ def _tiles(a: dict) -> str:
                                    "serves"),
                       "not_published": ("a", "Registry checksum", "n/a", f"not published on {reg.get('registry')}")
                       }[reg["status"]])
+    ext = a.get("extensions")
+    if ext:
+        bad = sum(1 for e in ext["extensions"] if e["malicious"])
+        listed = sum(1 for e in ext["extensions"] if e.get("removed"))
+        tiles.append(("c", "Removed extensions", str(bad), "removed as malware: uninstall") if bad
+                     else ("a", "Removed extensions", str(listed), "removed for other reasons") if listed
+                     else ("g", "Removed extensions", "0", f"{len(ext['extensions'])} checked against the list")
+                     if ext["removed_list"]["status"] == "checked"
+                     else ("n", "Removed extensions", "not checked", ext["removed_list"]["detail"]))
     chk = a.get("checks") or {}
     mal = lag.get("malicious_packages") or []
     if mal:
@@ -615,6 +624,12 @@ def _blocks(sec: tuple[str, list] | None, num: set[int]) -> str:
     return _section(title, body)
 
 
+def _extensions(a: dict) -> str:
+    from .report import extensions_section
+
+    return _blocks(extensions_section(a), set())
+
+
 def _decisions(a: dict) -> str:
     from .report import decisions_section
 
@@ -671,6 +686,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     title = _title(a) or "assessment"
     lk = a.get("likelihood")
     mismatch = (a.get("registry_check") or {}).get("status") == "mismatch"
+    mismatch = mismatch or any(e["malicious"] for e in (a.get("extensions") or {}).get("extensions", []))
     accent = "c" if a["lag"].get("malicious") or mismatch else tone_level(lk["level"]) if lk else "n"
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
              '<meta name="viewport" content="width=device-width, initial-scale=1">',
@@ -683,7 +699,8 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _not_checked(a), _decisions(a),
+    parts += [_extensions(a), _packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _not_checked(a),
+              _decisions(a),
               _likelihood(a, heuristic_note),
               _lag(a, lag_note),
               f'<div class="grid2">{_health(a)}{_ci(a)}</div>',

@@ -167,10 +167,7 @@ function fileResult(text, ctx) {
       + `such as requirements-${lower.replace(/\.txt$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app"}.txt and paste that.`);
   }
   if (OTHER_LOCKS.test(name)) return no(`${name} is not a lockfile oss-intake reads. Check the built app or an SBOM made from it instead.`);
-  if (lower.endsWith(".vsix")) {
-    return no("a VS Code extension package (.vsix). oss-intake cannot open .vsix files yet: check the extension's "
-      + "source instead, by its GitHub link or its package-lock.json.");
-  }
+  if (lower.endsWith(".vsix")) return ok("vscode", { path: text }, `a VS Code extension: ${name}`);
   if (lower.endsWith(".crx") || lower.endsWith(".xpi")) return no("a browser extension. oss-intake does not check browser extensions.");
   if (BUILT.test(lower)) return ok("artifact", { path: text }, `a file you downloaded or built: ${name}`);
   if (/\.(zip|tar|tgz|tar\.gz|tar\.xz|7z|rar|nupkg|gem|crate)$/.test(lower)) {
@@ -184,8 +181,16 @@ function fileResult(text, ctx) {
     + "and built files: a JAR, WAR, EAR or program, or a folder of them.");
 }
 
+// Where VS Code, VSCodium, Cursor and Windsurf keep installed extensions: the folder, or one extension in it.
+const EXTENSIONS_DIR = /(^|[\\/])\.(vscode|vscode-oss|vscode-insiders|cursor|windsurf)[\\/]extensions([\\/][^\\/]+)?[\\/]?$/i;
+
 function folderResult(text) {
   if (/^[A-Za-z]:[\\/]?$/.test(text)) return no("a whole drive. Paste the folder or file to check.");
+  if (EXTENSIONS_DIR.test(text)) {
+    const one = EXTENSIONS_DIR.exec(text)[3];
+    return one ? ok("vscode", { path: text }, `an installed VS Code extension: ${one.slice(1)}`)
+      : ok("vscode", { path: text, out: "report-vscode-extensions" }, "all the VS Code extensions installed in this folder");
+  }
   const name = lastPart(text);
   return ok("artifact", { path: text }, `a folder or program: ${name || text}, scanned as built files. For a `
     + "source checkout, give its lockfile instead");
@@ -255,8 +260,10 @@ function fromUrl(url, ctx) {
       : no(`a container image, ${ref}, but with no tag. Paste it as ${ref}:1.2.3, with the tag you run.`);
   }
   if (host === "marketplace.visualstudio.com" || host === "open-vsx.org") {
-    return no("a VS Code extension. oss-intake cannot check an installed extension yet: find its source on GitHub "
-      + "(the extension's page links to it) and check its package-lock.json.");
+    const item = url.searchParams.get("itemName") || (host === "open-vsx.org" && parts[0] === "extension"
+      ? `${parts[1]}.${parts[2]}` : "");
+    return no(`a VS Code extension${item ? `, ${item}` : ""}. This page does not download anything: check the copy you `
+      + "have instead. Paste ~/.vscode/extensions to check every installed extension, or the path of a .vsix file.");
   }
   if (["chromewebstore.google.com", "chrome.google.com", "addons.mozilla.org", "microsoftedge.microsoft.com"].includes(host)) {
     return no("a browser extension. oss-intake does not check browser extensions.");

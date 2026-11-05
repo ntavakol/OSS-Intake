@@ -80,6 +80,8 @@ class FakeHttp(Http):
             return 200, (FIX / "nuclei_cves.json").read_text(encoding="utf-8")
         if url.endswith("/files_exploits.csv"):
             return 200, (FIX / "exploitdb.csv").read_text(encoding="utf-8")
+        if url == "https://raw.githubusercontent.com/microsoft/vsmarketplace/main/RemovedPackages.md":
+            return 200, (FIX / "vscode_removed.md").read_text(encoding="utf-8")
         if url == "https://go.dev/doc/devel/release":
             return 200, (FIX / "go_release.html").read_text(encoding="utf-8")
         if url.startswith("https://deb.debian.org/debian/dists/") and url.endswith("/ChangeLog"):
