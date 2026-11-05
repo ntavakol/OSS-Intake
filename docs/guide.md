@@ -74,12 +74,12 @@ oss-intake itself:
 
 ```bash
 pip install sigstore
-for f in oss_intake-0.14.0-py3-none-any.whl oss-intake-0.14.0.cdx.json; do
+for f in oss_intake-0.15.0-py3-none-any.whl oss-intake-0.15.0.cdx.json; do
   python -m sigstore verify identity --bundle "$f.sigstore.json" \
     --cert-oidc-issuer https://token.actions.githubusercontent.com \
-    --cert-identity https://github.com/ntavakol/OSS-Intake/.github/workflows/release.yml@refs/tags/v0.14.0 "$f"
+    --cert-identity https://github.com/ntavakol/OSS-Intake/.github/workflows/release.yml@refs/tags/v0.15.0 "$f"
 done
-oss-intake --path oss-intake-0.14.0.cdx.json --out sbom-check
+oss-intake --path oss-intake-0.15.0.cdx.json --out sbom-check
 ```
 
 The SBOM lists the versions resolved when the release was built; installing later may resolve newer ones within
@@ -306,7 +306,7 @@ the PyPI package, so they can be copied to the machine that needs one (an osquer
 reach Nexus) without installing anything. Get the ones matching your oss-intake version, and check them:
 
 ```bash
-V=$(oss-intake --version | awk '{print $NF}')    # e.g. 0.14.0
+V=$(oss-intake --version | awk '{print $NF}')    # e.g. 0.15.0
 BASE=https://raw.githubusercontent.com/ntavakol/OSS-Intake/v$V/examples
 curl -fsSLO "$BASE/nexus/nexus_sbom.py"
 curl -fsSLO "$BASE/osquery/osquery_sbom.py"

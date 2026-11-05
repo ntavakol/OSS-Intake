@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-06
+
+oss-intake checks VS Code extensions: a .vsix before you install it, or everything installed. Each extension is
+checked against the VS Code Marketplace's removal list, the packages it ships are scanned, and its own files are
+read for warning signs, with nothing in it ever run.
+
 ### Added
 - VS Code extensions: `--path` takes a `.vsix`, an installed extension's folder, or a whole extensions folder
   (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf). Each extension is checked against

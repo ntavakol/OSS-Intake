@@ -4,10 +4,17 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
+1. Test fixtures counted as the project's own vulnerabilities (added 6 Nov): OpenSSF Scorecard's Vulnerabilities
+   check runs OSV-Scanner over the repo and reports 59 (Alpine CVEs, the chalk and @ctrl/tinycolor malware,
+   old django), all from deliberately vulnerable SBOM fixtures in tests/fixtures/sbom (*.cdx.json, *.spdx.json),
+   so the check scores 0. Rename the fixtures so OSV-Scanner does not read them as SBOMs (oss-intake reads SBOMs
+   by content), as was done for examples/compromised-npm/package-lock.sample.json; check first whether Scorecard
+   honours an osv-scanner.toml ignore list. The renames change paths the tests refer to (Ned's OK needed). The
+   project's own pins (requirements/*.txt) were clean under pip-audit on 6 Nov.
+2. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
    outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
    Linked from SECURITY.md. Started: the VS Code extension section (unpacking a .vsix) is written.
-2. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
+3. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 
