@@ -22,7 +22,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-from . import ScannerError, run
+from . import ScannerError, path_arg, run
 
 NAME = "govulncheck"
 
@@ -101,7 +101,7 @@ def _analyse(messages: list[dict]) -> dict[str, dict]:
 
 
 def scan_binary(binary: str, target: Path, timeout: int) -> dict[str, dict]:
-    raw = run([binary, "-mode=binary", "-format", "json", str(target)], timeout)
+    raw = run([binary, "-mode=binary", "-format", "json", path_arg(target)], timeout)
     return analyse(parse_stream(raw.decode("utf-8", "replace")))
 
 

@@ -3094,3 +3094,22 @@ def test_workflow_audit_with_every_file_read_is_ok():
 
     r = wf.fetch(H(), "o/r")
     assert r["status"] == "ok" and r["files_unread"] == [] and wf.files_audited(r) == "1"
+
+
+def test_path_starting_with_a_dash_is_not_read_as_a_scanner_option(monkeypatch):
+    """Threat model open item: a --path folder named like an option reached Trivy and govulncheck as one."""
+    import os
+
+    from oss_intake.scanners import govulncheck, grype, trivy
+
+    seen = []
+    for mod in (trivy, grype, govulncheck):
+        monkeypatch.setattr(mod, "run", lambda cmd, timeout: seen.append(cmd) or b"")
+    trivy.scan_path("trivy", "fs", "--config=evil.yaml", [], 60)
+    grype.scan_path("grype", "-x", [], 60)
+    govulncheck.scan_binary("govulncheck", Path("-dir") / "app", 60)
+    assert seen[0][-1] == os.path.join(".", "--config=evil.yaml")
+    assert seen[1][1] == "dir:-x"  # Grype's dir: prefix already keeps it a source
+    assert seen[2][-1] == os.path.join(".", "-dir", "app")
+    trivy.scan_path("trivy", "fs", "/abs/app", [], 60)
+    assert seen[3][-1] == "/abs/app"

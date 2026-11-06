@@ -34,6 +34,7 @@ nothing, or output that is not what it seems).
 | A scanner command line is hijacked: shell metacharacters, or an image reference read as an option | Scanners run as an argument list without a shell. Image references must start with a letter or digit and carry a tag or digest, so `-x`, spaces and `;` are refused (exit 2). | `scanners.run`, `options.validate_image` |
 | A known-compromised scanner release runs | Its version is read from the Go build information in the file, without running it, and checked against `known_bad.json`; the version the binary reports is checked again. Either match refuses the run. | `integrity.refuse_known_bad_before_run`, `integrity.check_binary` |
 | A swapped or tampered binary runs | With `--<tool>-sha256`, a cosign bundle, or the release archive and its checksums, the binary is checked before it runs at all. Without them the report says the hash was not verified; checked only against a checksums file nothing has signed, it says that, not hash verified. | `integrity.verify_before_run`, `scanning.run_or_load` |
+| A `--path` named like an option (`--config=x.yaml`) changes what the scanner does | A path starting with `-` is given to Trivy and govulncheck as `./-...`; Grype gets it after its `dir:` prefix. | `scanners.path_arg` |
 | A scanner that fails, hangs or prints nothing reads as "no findings" | A non-zero exit, a timeout or output that is not JSON stops the run with exit 1. | `scanners.run`, `scanners.load_json_bytes` |
 | The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused, and one that names nothing it scanned and lists nothing is refused too; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
 | A required scanner is missing | Named scanners must be found. With `--scanners auto`, a missing Grype is a warning in the report, not silence. | `scanners.find_executable`, `cli` |
@@ -51,8 +52,6 @@ nothing, or output that is not what it seems).
 - The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
   its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
-- A folder given to `--path` whose name starts with `-` reaches Trivy, and with `--reachability` govulncheck, as
-  an option (Grype gets a `dir:` prefix).
 - Scanner output size is not limited, and the scanner's vulnerability database age is shown but not enforced.
 - Anything wrong inside a scanner (a parser flaw reached by the files it reads) is the scanner's: pin and verify
   it as the guide describes.
@@ -282,8 +281,7 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-4. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-5. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-6. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+4. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+5. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.

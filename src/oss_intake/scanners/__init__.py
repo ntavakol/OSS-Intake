@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -31,6 +32,13 @@ def find_executable(name: str, explicit: str | None = None) -> str:
             f"{name} not found on PATH. Install a pinned, checksum-verified release or pass --{name}-path."
         )
     return found
+
+
+def path_arg(path: str | Path) -> str:
+    """A path as a scanner argument: one starting with '-' (a folder named '-x', or '--config=...') would be read
+    as an option, so it is given as './-x'. Absolute paths and others are unchanged."""
+    s = str(path)
+    return os.path.join(".", s) if s.startswith("-") else s
 
 
 def run(cmd: list[str], timeout: int) -> bytes:

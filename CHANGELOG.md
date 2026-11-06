@@ -39,6 +39,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   one others could write to. These are now ignored or refused, and entries are written for the user only
   whatever the umask. On Windows the folder was not checked at all; a `--cache-dir` outside the user's profile is
   now not used, with a warning.
+- A `--path` folder whose name starts with `-` reached Trivy, and with `--reachability` govulncheck, as an
+  option. It is now given as `./-name`.
 
 ## [0.16.0] - 2026-11-06
 
