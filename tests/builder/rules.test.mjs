@@ -34,3 +34,12 @@ test("presets produce commands with no problems", () => {
     assert.deepEqual(b.problems(data, rules, state), [], p.name);
   }
 });
+
+test("invisible characters in a value are refused, as control and direction characters are", () => {
+  // Audit (7 Nov): a value from a link could carry a zero-width character and look like a different value.
+  const o = b.optionsFor(data, "scan").find((x) => x.dest === "out");
+  for (const ch of ["​", "‌", "‍", "⁠", "﻿", "؜", "‮", "\n"]) {
+    assert.notDeepEqual(b.fieldErrors(o, `rep${ch}orts`, rules, "scan"), [], JSON.stringify(ch));
+  }
+  assert.deepEqual(b.fieldErrors(o, "reports-café", rules, "scan"), []);
+});

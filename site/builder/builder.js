@@ -79,8 +79,10 @@ function realDate(text) {
 }
 
 // Characters a value must not carry: control characters (a newline would end the command; the text box hides
-// it) and the bidirectional controls that can make text read differently from what runs.
-const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f]/;
+// it), the bidirectional controls that can make text read differently from what runs, and the invisible ones
+// (zero-width space, joiners, word joiner, byte order mark, Arabic letter mark) that make a value from a link look
+// like a different one.
+const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200b-\u200f\u2060\ufeff\u061c]/;
 
 /** Problems with one field's value: hidden characters, argparse's own checks (int, choices) and rules.json
  * "fields". */
