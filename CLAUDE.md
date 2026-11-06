@@ -32,10 +32,12 @@ regenerated from `requirements/dev.in` with the `uv pip compile` command in its 
 inserts `scan` when the first argument is not a subcommand) that runs external scanners, merges their output,
 enriches it from public APIs and writes reports.
 
-The `scan` pipeline in `cli.py` runs in numbered stages: `cmd_scan` validates every input before any work is done
-(bad input exits 2, before an output folder is created) -> `_plan_and_scan` (response cache, registry checksum check
-of artifacts) -> `_scan` -> `_assess` (malicious marking, 3. project health, 4. enrichment, 5. reports).
-Exit codes: 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
+The `scan` pipeline runs in numbered stages: `cli.cmd_scan` validates every input before any work is done, with
+the option checks in `options.py` (bad input exits 2, before an output folder is created) -> `cli._plan_and_scan`
+(response cache, registry checksum check of artifacts) -> `scanning.run` (2. scanners and OSV) ->
+`assessment.assess` (named steps: merge and malicious marking, 3. project health, 4. enrichment, decisions,
+triage and `--min-severity`, lag and likelihood, 5. reports, then `gates.py` for `--fail-on`).
+Exit codes (`options.py`): 0 ok, 1 error, 2 usage, 3 `--fail-on` threshold hit.
 
 - **Input**: `inputs.classify()` decides what `--path` is (artifact, lockfile, renv, inventory CSV, SBOM folder...).
   `sbom.py`, `os_packages.py` and `inventory_report.py` handle the organisation-inventory paths.

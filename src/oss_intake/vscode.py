@@ -3,7 +3,7 @@
 
 There is no vulnerability database for extensions, so an extension is assessed on what can be known about it:
 - whether the VS Code Marketplace removed it, and why (Microsoft's RemovedPackages list);
-- the npm packages it ships, which the scanners and OSV check like any other (cli.py does that part);
+- the npm packages it ships, which the scanners and OSV check like any other (scanning.py does that part);
 - behaviour indicators found by reading its files: what it can do, not a verdict on whether it does harm;
 - whether its code is bundled, which hides its dependencies from the scanners.
 

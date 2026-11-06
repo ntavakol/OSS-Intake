@@ -3,12 +3,7 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
-   the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
-   unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
-
-## Next: the threat model's open items (agreed 6 Nov, in this order, after the list above)
+## Next: the threat model's open items (agreed 6 Nov, in this order)
 Open items 1 to 12 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
 2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and

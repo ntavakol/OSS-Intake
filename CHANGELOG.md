@@ -31,6 +31,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - With `--min-severity`, fix dates, KEV, EPSS and exploits are looked up for every finding, not only those shown,
   so such runs make more requests. Findings are looked up most severe first, so lookups that are capped reach
   the severe ones.
+- `cli.py` (1,415 lines) is split: `options.py` (the parser and option checks), `scanning.py` (running scanners
+  and OSV), `assessment.py` (stages 3 to 5, as named steps) and `gates.py` (`--fail-on`); `cli.py` keeps the
+  commands. No behaviour change: 17 fixture runs give identical output before and after, on Python 3.10 and 3.13.
 - CI installs the unpacked source archive with `pip install -e .`, which OpenSSF Scorecard accepts as a local
   install, and a test checks that every `pip install` in the workflows is pinned by hash or local.
 

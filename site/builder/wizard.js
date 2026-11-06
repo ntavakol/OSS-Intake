@@ -269,7 +269,7 @@ export function checklist(data, wiz, state, shell = "bash") {
   if (!what || state.command !== SCAN) return { before: [], after: [] };
   const before = [{ text: "oss-intake installed. The first command checks; if it says \"not found\", install it with the second.",
     code: ["oss-intake --version", "pipx install oss-intake"] }];
-  // Which scanners run (cli._resolve_scanners): auto is Trivy, plus Grype when it is installed; a scanner whose
+  // Which scanners run (options.resolve_scanners): auto is Trivy, plus Grype when it is installed; a scanner whose
   // report is imported does not run.
   const kindScans = ["lockfile", "image", "artifact", "vscode", "path"].includes(what);
   const list = String(v.scanners ?? "auto").split(",").map((x) => x.trim().toLowerCase());

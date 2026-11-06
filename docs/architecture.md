@@ -18,8 +18,8 @@ verifies them and runs them, but never downloads or bundles them.
 ```mermaid
 flowchart TD
     A["1. Validate<br/>cli.cmd_scan<br/>every input checked; bad input exits 2,<br/>before an output folder exists"] --> B
-    B["2. Plan and scan<br/>cli._plan_and_scan, cli._scan<br/>integrity checks, then scanners or OSV"] --> C
-    C["Merge<br/>merge.merge<br/>one Finding per vulnerability, package and version"] --> D
+    B["2. Plan and scan<br/>cli._plan_and_scan, scanning.run<br/>integrity checks, then scanners or OSV"] --> C
+    C["Merge<br/>assessment.assess, merge.merge<br/>one Finding per vulnerability, package and version"] --> D
     D["3. Project health<br/>health/: releases, Scorecard, workflow audit"] --> E
     E["4. Enrichment<br/>enrich/: fix dates, KEV, EPSS, exploits<br/>release_age, decisions"] --> F
     F["Analysis<br/>checks, triage, lag, likelihood,<br/>inventory_report, upgrade"] --> G
@@ -27,24 +27,23 @@ flowchart TD
     H["Exit code<br/>0 ok, 1 error, 2 usage, 3 --fail-on threshold"]
 ```
 
-The numbers match the stage comments in `src/oss_intake/cli.py`.
+The numbers match the stage comments in `src/oss_intake/cli.py` and `assessment.py`.
 
-1. **Validate** (`cmd_scan`). Every argument and input file is checked before any network call or scan:
-   `inputs.classify` decides what `--path` is, `inputs.inventory` and `inputs.packages` validate every row or
-   `--package` value, and gates that could not be evaluated are refused here. A bad input exits 2 with every
-   problem listed, and no output folder is left behind.
-2. **Plan and scan** (`_plan_and_scan`, `_scan`). Sets up the response cache, checks an artifact's checksum
-   against its registry (`registry_check`), then gets findings: by running Trivy and Grype (each binary checked
-   first by `integrity`), by loading saved scanner JSON (`--from-trivy-json`, `--from-grype-json`), or, for
+1. **Validate** (`cli.cmd_scan`, with the checks in `options`). Every argument and input file is checked before any
+   network call or scan: `inputs.classify` decides what `--path` is, `inputs.inventory` and `inputs.packages`
+   validate every row or `--package` value, and gates that could not be evaluated are refused here. A bad input
+   exits 2 with every problem listed, and no output folder is left behind.
+2. **Plan and scan** (`cli._plan_and_scan`, `scanning.run`). Sets up the response cache, checks an artifact's
+   checksum against its registry (`registry_check`), then gets findings: by running Trivy and Grype (each binary
+   checked first by `integrity`), by loading saved scanner JSON (`--from-trivy-json`, `--from-grype-json`), or, for
    package lists, SBOMs, `renv.lock` and `--package`, by asking OSV directly. A Trivy or Grype failure stops the
-   run, because a partial scan would read as a clean one, and so does an OSV failure when OSV is the only
-   source (package lists, SBOMs, `renv.lock`, `--package`). When OSV only supplements Trivy, the run continues
-   and the malicious package check is marked partial.
-   - **Merge** (`merge.merge`, at the start of `_assess`). Findings from several sources become one row per
-     vulnerability, package and version, recording which sources saw it. Straight after the merge,
-     `reachability` applies govulncheck results, malicious releases mark every finding on their package
-     version, and `conditions` extracts each advisory's own "applies only if"
-     sentences.
+   run, because a partial scan would read as a clean one, and so does an OSV failure when OSV is the only source
+   (package lists, SBOMs, `renv.lock`, `--package`). When OSV only supplements Trivy, the run continues and the
+   malicious package check is marked partial.
+   - **Merge** (`merge.merge`, in `assessment._merge`, the first step of `assessment.assess`). Findings from several
+     sources become one row per vulnerability, package and version, recording which sources saw it. Straight after
+     the merge, `reachability` applies govulncheck results, malicious releases mark every finding on their package
+     version, and `conditions` extracts each advisory's own "applies only if" sentences.
 3. **Project health** (`health/`). With `--repo`: release cadence and the release used for lag
    (`health.releases`), OpenSSF Scorecard (`health.scorecard`), and an audit of the project's GitHub Actions
    workflows (`health.workflows`).
@@ -68,7 +67,11 @@ The numbers match the stage comments in `src/oss_intake/cli.py`.
 
 | Area | Modules | Responsibility |
 |---|---|---|
-| Entry and pipeline | `cli.py`, `__main__.py` | Arguments, the `scan`, `doctor` and `verify` commands, the stages above, gates and exit codes |
+| Entry and pipeline | `cli.py`, `__main__.py` | The `scan`, `doctor` and `verify` commands: validation, then the stages below |
+| Options | `options.py` | The argument parser, the checks on option values, which scanners run, the exit codes |
+| Scanning | `scanning.py` | Stage 2: verify and run Trivy and Grype or load their reports, govulncheck, the OSV lookups |
+| Assessment | `assessment.py` | Stages 3 to 5, as named steps: merge, health, enrichment, decisions, triage, lag, likelihood, reports |
+| Gates | `gates.py` | Which `--fail-on` conditions a run met, and which it could not evaluate |
 | Inputs | `inputs.py`, `sbom.py`, `os_packages.py` | What a path is, inventory and `--package` validation, SBOM reading, OS packages to OSV ecosystems |
 | Scanners | `scanners/trivy.py`, `scanners/grype.py`, `scanners/osv.py`, `scanners/govulncheck.py` | Run a tool or query OSV, and turn its output into `Finding` objects |
 | Integrity | `integrity.py`, `registry_check.py`, `data/known_bad.json` | Scanner version pins, SHA-256 and cosign checks, known-bad versions; artifact checksums against registries |
@@ -126,19 +129,19 @@ since its answers could have been planted.
 - `scanners/<name>.py` with `parse(report) -> (list[Finding], dict)`, like `scanners/trivy.py` and
   `scanners/grype.py`: set `sources={"<name>"}` and a package URL where the tool gives one; the dict is scan
   information for the reports.
-- `cli.py`: the `_SCANNERS` set and `_resolve_scanners`, `_scan`, the scanner metadata in `_plan_and_scan`,
-  and, for an executable, the per-tool options in `build_parser` (`--<name>-version`, `--<name>-sha256`,
-  `--<name>-path`, archive and cosign options) and the per-tool checks in `cmd_scan`. Add
+- `options.py`: the `SCANNERS` set and `resolve_scanners`; `scanning.py`: `run`, and the scanner metadata in
+  `cli._plan_and_scan`; for an executable, the per-tool options in `options.build_parser` (`--<name>-version`,
+  `--<name>-sha256`, `--<name>-path`, archive and cosign options) and the per-tool checks in `cli.cmd_scan`. Add
   `--from-<name>-json` if the tool can save its output; the tests depend on it.
 - `integrity.py`: a `DEFAULT_COSIGN_IDENTITY` entry (it is looked up for every tool), and known-bad versions
   in `data/known_bad.json`.
 
-For text fields such as the title and URL, the first source to report one keeps it, and `_scan` adds sources in
-the order Trivy, Grype, OSV.
+For text fields such as the title and URL, the first source to report one keeps it, and `scanning.run` adds sources
+in the order Trivy, Grype, OSV.
 
 **A new enricher.** Add `enrich/<name>.py` with `enrich(http, findings) -> dict`: prefetch the URLs it needs,
 fill fields on the findings in place, and return counts (looked up, found, errors) for `assessment.json`. Call
-it from the enrichment stage in `cli._assess`, add a route for its URLs to `FakeHttp`, and, if a failure could
+it from the enrichment step, `assessment._enrich`, add a route for its URLs to `FakeHttp`, and, if a failure could
 make a result look clean, record it in `checks.py` so the reports say "not checked".
 
 **A new input source (collector).** Prefer a small standalone script in `examples/` that writes a CycloneDX

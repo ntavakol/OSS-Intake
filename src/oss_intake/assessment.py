@@ -66,7 +66,34 @@ def network_info(net) -> dict:
 
 def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report, scan_info, formats, as_of,
             release_override, lk_cfg):
+    """Stages 3 to 5 of a scan, in order: merge, project health, the release date, enrichment, release age,
+    decisions, which checks ran, triage and --min-severity, lag and likelihood, the reports, then the exit code.
+    warnings is shared by every step and ends up in every report, in the order the steps add to it."""
+    findings, reach_stats, flagged, flag_at = _merge(args, groups, warnings)
+    enabled = [s for s in ("trivy", "grype", "osv") if scanners_meta[s].get("enabled")]
+    health, sc = _health(args, net, as_of, warnings)
+    release_date, release_date_source = _release_date(args, findings, health, scan_info, release_override,
+                                                      warnings)
+    fd_stats, kev_info, epss_info, exploit_info = _enrich(args, net, findings, warnings)
+    age_info = _release_age(args, net, trivy_report, as_of, warnings)
+    is_latest = health.get("scanned_is_latest") if not release_override else None
+    decision_info = _apply_decisions(args, findings, warnings)
+    check_info, n_missing_live = _checks(args, findings, kev_info, epss_info, exploit_info, warnings)
+    findings, all_findings, triage_info = _shown(args, findings, check_info, age_info, warnings)
+    warnings[flag_at:flag_at] = flag_warnings(findings, flagged)
+    lag_m, lk = _lag_and_likelihood(args, findings, all_findings, release_date, as_of, is_latest, check_info,
+                                    lk_cfg, health, sc, warnings)
+    doc, pkg_rows = _document(args, net, findings, all_findings, as_of, scanners_meta, scan_info, enabled,
+                              fd_stats, kev_info, epss_info, exploit_info, triage_info, check_info,
+                              decision_info, age_info, reach_stats, lag_m, release_date_source, health, sc,
+                              lk, warnings)
+    written = _write_reports(args, out, formats, doc, findings, all_findings, pkg_rows, decision_info, as_of)
+    return _finish(args, out, findings, all_findings, pkg_rows, age_info, check_info, n_missing_live, lag_m, lk,
+                   written, warnings)
 
+
+def _merge(args, groups: list, warnings: list[str]):
+    """Merge what every source found; mark malicious packages and flag findings to leave out of lag."""
     findings = merge.merge(*groups)
     reach_stats = reachability.apply(findings, getattr(args, "reach_results", {}) or {})
     for f in findings:
@@ -92,8 +119,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
                "older": {id(f) for f in findings if f.note.startswith("No listed fix (")},
                "label": {id(f) for f in findings if f.likely_fixed}}
     flag_at = len(warnings)  # their warnings go here, counted once --min-severity has chosen what is shown
-    enabled = [s for s in ("trivy", "grype", "osv") if scanners_meta[s].get("enabled")]
+    return findings, reach_stats, flagged, flag_at
 
+
+def _health(args, net, as_of: datetime, warnings: list[str]):
+    """3. Project health: GitHub releases, Scorecard and the project's own workflows."""
     # 3. Project health.
     health: dict = {}
     sc: dict = {"status": "skipped"}
@@ -117,7 +147,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
                                 f"({kb['reference']})")
     elif args.repo:
         warnings.append("--offline: release cadence and Scorecard skipped")
+    return health, sc
 
+
+def _release_date(args, findings: list, health: dict, scan_info: dict, release_override, warnings: list[str]):
+    """The date release lag is measured against: --release-date, the matched GitHub release or the image build."""
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
     release_date_source = "--release-date" if release_override else ("GitHub release" if release_date else None)
     if release_override:
@@ -143,7 +177,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
             hint = "pass --repo, or --release-date."
         if args.path_kind != "inventory":  # an inventory has no single release to compare against
             warnings.append("No release date known, so 'fix existed before release' cannot be computed: " + hint)
+    return release_date, release_date_source
 
+
+def _enrich(args, net, findings: list, warnings: list[str]):
+    """4. Enrichment: fix dates, CISA KEV, exploits and EPSS."""
     # 4. Enrichment.
     fd_stats: dict = {}
     kev_info: dict = {"status": "skipped"}
@@ -229,7 +267,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
             epss_info = {"status": "ok", **epss.enrich(net, ranked)}
             if epss_info["errors"]:
                 warnings.append(f"EPSS lookups failed for {epss_info['errors']} batch(es); EPSS signals are partial")
+    return fd_stats, kev_info, epss_info, exploit_info
 
+
+def _release_age(args, net, trivy_report: dict | None, as_of: datetime, warnings: list[str]):
+    """Which package versions are new (--release-age-days), from their published dates."""
     age_info: dict = {"status": "skipped", "days": args.release_age_days,
                       "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
     purls = scanning.language_purls(args, trivy_report) if net and args.release_age_days else []
@@ -258,7 +300,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
         if age_info["errors"]:
             warnings.append(f"deps.dev release date lookups failed for {age_info['errors']} package version(s), "
                             "so they were not checked for being new")
-    is_latest = health.get("scanned_is_latest") if not release_override else None
+    return age_info
+
+
+def _apply_decisions(args, findings: list, warnings: list[str]):
+    """The assessor's decisions from an earlier run (--decisions)."""
     decision_info = None
     if args.decision_list is not None:
         decision_info = decisions.apply(findings, args.decision_list)
@@ -268,6 +314,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
         if decision_info["stale"]:
             warnings.append(f"{decision_info['stale']} decision(s) were made for a different installed version; they "
                             "still apply but are marked for review")
+    return decision_info
+
+
+def _checks(args, findings: list, kev_info: dict, epss_info: dict, exploit_info: dict, warnings: list[str]):
+    """Which sources were checked in full, so a gap never reads as a clean result."""
     skipped_by = {}
     for name, flag in (("kev", "no_kev"), ("exploits", "no_exploits"), ("epss", "no_epss")):
         skipped_by[name] = "--offline" if args.offline else f"--{flag.replace('_', '-')}" if getattr(args, flag) \
@@ -291,6 +342,11 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
         lead = sum(1 for _ in itertools.takewhile(
             lambda w: w.startswith(("ARTIFACT DOES NOT MATCH", "MALICIOUS PACKAGE")), warnings))
         warnings.insert(lead, gap_warning)  # after the malware and tampering alerts, before everything else
+    return check_info, n_missing_live
+
+
+def _shown(args, findings: list, check_info: dict, age_info: dict, warnings: list[str]):
+    """Triage, then --min-severity: (findings the reports show, every finding, triage counts of those shown)."""
     triage_info = triage.apply(findings, check_info)
     # --min-severity only shortens the reports: it is applied once KEV, exploits and triage are known, keeps what
     # needs action or could not be fully checked, and the gates still see every finding (threat model, 6 Nov).
@@ -301,7 +357,12 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
     if len(findings) < len(all_findings):
         triage_info = triage.apply(findings, check_info)  # the counts the reports show
         warnings.extend(gates.hidden_warnings(args, all_findings, findings, age_info))
-    warnings[flag_at:flag_at] = flag_warnings(findings, flagged)
+    return findings, all_findings, triage_info
+
+
+def _lag_and_likelihood(args, findings: list, all_findings: list, release_date, as_of: datetime, is_latest, check_info:
+                        dict, lk_cfg, health: dict, sc: dict, warnings: list[str]):
+    """Release lag of the findings shown; likelihood from every finding, as it is a gate too."""
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
     # Likelihood is a gate too (--fail-on-likelihood), so it is worked out from every finding, not only those the
@@ -317,7 +378,14 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
             warnings.append(f"likelihood is {lk['level']} ({lk['label']}) from every finding; the findings shown, "
                             f"without those below --min-severity {args.min_severity}, would give "
                             f"{shown_lk['level']} ({shown_lk['label']})")
+    return lag_m, lk
 
+
+def _document(args, net, findings: list, all_findings: list, as_of: datetime, scanners_meta: dict, scan_info: dict,
+              enabled: list[str], fd_stats: dict, kev_info: dict, epss_info: dict, exploit_info: dict, triage_info:
+              dict, check_info: dict, decision_info, age_info: dict, reach_stats: dict, lag_m: dict,
+              release_date_source, health: dict, sc: dict, lk, warnings: list[str]):
+    """The assessment every report is written from, and the per-package rows for an inventory."""
     if args.extension_info:
         vscode.attribute(args.extension_info, findings)
     assessment = {
@@ -369,7 +437,12 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
             warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
         assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows,
                                    "executive": exec_summary.compute(pkg_rows, findings, as_of, args.previous)}
+    return assessment, pkg_rows
 
+
+def _write_reports(args, out: Path, formats: list[str], assessment: dict, findings: list, all_findings: list, pkg_rows,
+                   decision_info, as_of: datetime):
+    """5. Reports: the files asked for with --formats, packages.csv for an inventory, VEX with --decisions."""
     # 5. Reports.
     written = []
     if "csv" in formats:
@@ -400,7 +473,12 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
     if "html" in formats:
         report.write_html(out / "report.html", assessment, findings, max(args.top, 50))
         written.append("report.html")
+    return written
 
+
+def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_info: dict, check_info: dict,
+            n_missing_live: int, lag_m: dict, lk, written: list[str], warnings: list[str]):
+    """The summary line, verdicts and warnings, then the gates: the exit code."""
     sev = lag_m["by_severity"]
     print(f"findings={lag_m['total']} critical={sev['CRITICAL']} high={sev['HIGH']} "
           f"with_fix={lag_m['with_fix']} fix_before_release={lag_m['fix_available_at_release']} "
