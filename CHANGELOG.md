@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- CI tests Python 3.14 and 3.15 on Linux, Windows and macOS, as well as 3.10 on all three and 3.11 to 3.13 on
+  Linux; the package lists 3.14 and 3.15 as supported. Deeply nested JSON was read as data on 3.14 on macOS,
+  and CI stopped at 3.13.
+
 ### Fixed
 - A Trivy or Grype report that names nothing it scanned and lists nothing (`{"SchemaVersion": 2}`,
   `{"matches": []}`) was accepted as a clean scan; it is now refused. Real reports always name their target.

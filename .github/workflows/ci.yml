@@ -21,13 +21,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The oldest supported and the newest two on every OS: interpreters differ by OS (3.14 on macOS stopped
+        # refusing deeply nested JSON while 3.14 on Linux still did), so the newest are tested everywhere.
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.10", "3.13"]
+        python: ["3.10", "3.14", "3.15"]
         include:  # the versions in between, on one OS
           - os: ubuntu-latest
             python: "3.11"
           - os: ubuntu-latest
             python: "3.12"
+          - os: ubuntu-latest
+            python: "3.13"
     steps:
       # Third-party actions are pinned by full commit SHA. Tags are mutable; in March 2026
       # attackers force-pushed 76 of 77 aquasecurity/trivy-action tags to malicious commits.
@@ -37,6 +41,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
+          allow-prereleases: true  # a version newer than the runner's images resolves to its latest pre-release
       - name: Install (hash-pinned)
         run: |
           python -m pip install --require-hashes -r requirements/dev.txt
