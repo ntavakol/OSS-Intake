@@ -243,7 +243,7 @@ machine if the extension ever ran.
 | An extension's own `.obsolete` file marks it "old version, not in use", hiding its indicators | `.obsolete` is read only in a folder of extensions, never inside an extension's own folder or a `.vsix`. One in the extensions folder itself needs code that already runs on the machine to write it. | `vscode.assess` |
 | Findings matched to the wrong extension, or matching made slow by a crafted SBOM or lockfile | Each shipped SBOM or lockfile is read once, within the reading limit, into the exact package names and versions it lists (JSON walked without recursion, yarn.lock line by line, pnpm with a single-line pattern), and findings are looked up in that, not searched for in the text. One that is over the limit is reported. | `vscode._listed`, `vscode.attribute` |
 | An absolute path of the user's machine written into the report | The extension's folder is used only while findings are matched and never reaches `assessment.json`. | `vscode.attribute` |
-| Dependencies hidden by bundling make the report look clean | A large main file is reported as bundled whatever else the extension ships (so a stray `package.json` cannot turn the warning off), with a warning that no findings does not mean none. | `vscode.analyse`, `vscode.warnings` |
+| Dependencies hidden by bundling make the report look clean | A large main file is reported as bundled whatever else the extension ships (so a stray `package.json` cannot turn the warning off), with a warning that no findings does not mean none. The main file is found inside the extension's folder as VS Code reads it: an absolute `main`, a drive or `../` does not lead outside it. | `vscode.analyse`, `vscode.warnings` |
 | Code hidden in invisible characters (GlassWorm) or reordered text (Trojan Source) | Variation selectors, tag characters, runs of zero-width characters and bidirectional controls are reported with file and line. | `vscode.analyse` |
 | The extension claims a trusted project's repository, to borrow its health score | The `repository` field is shown as the publisher's claim and never checked automatically; `--repo` is the user's choice. | `report.extensions_section` |
 | The extension claims another extension's identity, or rewrites its own to dodge the removal list | A folder name or `.vsix` manifest that disagrees with `package.json` is reported, and every one of those names is looked up in the list. IDs are compared after case folding and Unicode compatibility normalisation, with spaces and invisible format characters removed. | `vscode.analyse`, `vscode._key` |
@@ -261,9 +261,6 @@ machine if the extension ever ran.
 - Trivy reads the unpacked files, so a flaw in Trivy's parsers is exposed to them; pin and verify Trivy as the
   guide describes.
 - The Marketplace signature is not checked, so a `.vsix` repackaged after publication is not detected.
-- The main file named in package.json is joined to the extension's folder as given, so an absolute `main`
-  (`"/extension.js"`) or one with `../` points outside it: the extension's real main file is not found, and
-  the warning that its code is bundled can be avoided (VS Code reads `main` relative to the extension).
 - The indicators are patterns in text: a determined author can avoid them (by fetching code at run time, for
   example). A clean result means none were found, not that the extension is safe.
 - The removal list is fetched over HTTPS from GitHub and trusted as published; it is not signed.
@@ -281,5 +278,3 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
-   leave it), so the bundled check cannot be avoided.

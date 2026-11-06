@@ -734,3 +734,18 @@ def test_in_a_folder_of_extensions_other_folders_are_not_credited(tmp_path):
     single = vscode.assess(root / "example.a-1.0.0", None)
     vscode.attribute(single, [_finding("tool", "1.0.0", pkg_type="go-module", target="bin/tool")])
     assert single["extensions"][0]["findings"]["total"] == 1
+
+
+@pytest.mark.parametrize("main", ["/out/extension.js", "../out/extension.js", "../../out/extension",
+                                  "./../out/extension.js", "C:/out/extension.js", "\\out\\extension.js"])
+def test_main_outside_the_folder_is_read_inside_it_as_vs_code_does(tmp_path, main):
+    """Threat model open item: main was joined to the folder as given, so '/x' or '../x' pointed outside it, the
+    real main file was not found and the bundled warning was avoided."""
+    d = make_folder(tmp_path / "exts", pkg=manifest(main=main), files={"out/extension.js": "x" * vscode.BUNDLE_BYTES})
+    assert vscode.analyse(d)["bundled"], main
+
+
+def test_main_inside_the_folder_still_found():
+    assert vscode._inside("./out/extension.js") == "out/extension.js"
+    assert vscode._inside("out/../dist/main") == "dist/main"
+    assert vscode._inside("") == "" and vscode._inside("/") == "" and vscode._inside("..") == ""

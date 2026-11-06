@@ -47,6 +47,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `assessment.json` the scanner's path and the cache folder, and with them the user's name. The target is now
   given by its name (`inputs.path` in `assessment.json` is the file or folder name), the scanner by its name with
   its version and SHA-256, and the cache folder from `~`.
+- A VS Code extension's `main` was joined to its folder as given, so an absolute one (`/extension.js`) or one with
+  `../` pointed outside it: the real main file was not found and the warning that its code is bundled was
+  avoided. It is now read inside the folder, as VS Code does.
 
 ## [0.16.0] - 2026-11-06
 

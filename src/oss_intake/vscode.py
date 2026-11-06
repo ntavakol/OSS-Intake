@@ -372,7 +372,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             add("identity", "extension.vsixmanifest", None, f"the manifest says {vsix['id']} {vsix['version']}; "
                                                             f"package.json says {ident['id']} {ident['version']}")
 
-    main_name = str(data.get("main") or data.get("browser") or "")
+    main_name = _inside(str(data.get("main") or data.get("browser") or ""))
     main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
@@ -521,6 +521,16 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     return {"extensions": found, "single": staged or _manifest(target) is not None,
             "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
                              "source": REMOVED_PAGE, "entries": len(removed or {})}}
+
+
+def _inside(main: str) -> str:
+    """package.json's main as VS Code reads it, inside the extension's folder: an absolute path or '..' does not
+    leave it ("/extension.js" and "../x/extension.js" are the folder's extension.js and x/extension.js)."""
+    import posixpath
+
+    main = re.sub(r"^[A-Za-z]:", "", main.replace("\\", "/"))  # a drive (C:/x) is no way out either
+    norm = posixpath.normpath("/" + main) if main else ""
+    return norm.lstrip("/") if norm not in ("", "/") else ""
 
 
 def _obsolete(folder: Path) -> set[str]:
