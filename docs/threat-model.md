@@ -147,8 +147,9 @@ memory and time.
 - One decision can cover more than its row suggests: one without a version applies to every version without a
   review flag, and the `aliases` cell extends it to every ID listed there.
 - Names in CSV inventories and SBOMs are not checked as `--package` names are (`pkg:pypi//@1.0` is accepted).
-- `--fail-on recent` passes for a version deps.dev has no date for, which is likely for a release hours old; only
-  `--fail-on unknown-age` catches it.
+- `--fail-on recent` passes for a version in a registry deps.dev does not cover at all (RubyGems, CRAN), as it
+  would otherwise fail on every run; `--fail-on unknown-age` catches those. A version in a registry deps.dev
+  covers but has no date for (as for a release hours old) makes the gate fail with exit 1.
 - An SBOM in which most components could not be checked still passes a gate if the rest are clean; the unchecked
   ones are a warning and a list, not a failure.
 - Single files given to `--path` other than SBOMs have no size limit (the scanners read them). Inventories,
@@ -270,9 +271,7 @@ machine if the extension ever ran.
 
 ## Open items that could be fixed
 
-All of these were agreed for the backlog on 6 Nov; BACKLOG.md has them in order, and each is removed here when
-it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
-indicators, the single maintainer) are limits of the approach rather than defects.
-
-1. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
-   so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).
+The open items agreed on 6 Nov are all fixed (CHANGELOG.md). One decision is to be revisited (BACKLOG.md): a
+kernel CVE on a kernel header package stays set aside even when it is in CISA KEV. What is not listed here (a
+service that answers wrongly, an extension author determined to avoid the indicators, the single maintainer)
+are limits of the approach rather than defects.

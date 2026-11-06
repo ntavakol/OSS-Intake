@@ -1025,11 +1025,36 @@ def test_new_release_is_flagged_and_can_fail_ci(tmp_path, capsys):
     assert "fresh-pkg 5.6.1 (2 days old)" in (out / "executive-summary.html").read_text(encoding="utf-8")
     assert "## New releases (published in the last 7 days)" in (out / "summary.md").read_text(encoding="utf-8")
 
-    # Older than the window: the gate passes.
+    # Older than the window, but two versions have no date on deps.dev, which covers npm: they may be hours old,
+    # so the gate cannot pass (Ned, 7 Nov: option C; it passed until then).
+    capsys.readouterr()
     code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o2"), "--no-latest", "--as-of", "2026-10-22",
                      "--release-age-days", "1", "--fail-on", "recent"],
                     http=_inventory_http({"npm/fresh-pkg/5.6.1": "2026-10-20T13:16:00Z"}))
+    assert code == cli.EXIT_ERROR
+    err = capsys.readouterr().err
+    assert "2 package version(s) in registries deps.dev covers have no release date there yet" in err
+    assert "pkg:npm/old-pkg@1.0.0" in err
+    # Every version dated and older than the window: the gate passes.
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o3"), "--no-latest", "--as-of", "2026-10-22",
+                     "--release-age-days", "1", "--fail-on", "recent"],
+                    http=_inventory_http({"npm/fresh-pkg/5.6.1": "2026-10-20T13:16:00Z",
+                                          "npm/old-pkg/1.0.0": "2024-01-01T00:00:00Z",
+                                          "npm/unknown-pkg/2.0.0": "2024-01-01T00:00:00Z"}))
     assert code == cli.EXIT_OK
+
+
+def test_recent_gate_passes_for_a_registry_deps_dev_does_not_cover(tmp_path):
+    """RubyGems has no dates on deps.dev at all: --fail-on recent leaves it to --fail-on unknown-age, or it
+    would fail on every run of a Ruby project."""
+    inv = tmp_path / "packages.csv"
+    inv.write_text("ecosystem,name,version\ngem,rack,3.0.0\n", encoding="utf-8")
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o"), "--no-latest", "--as-of", "2026-10-22",
+                     "--fail-on", "recent"], http=_inventory_http({}))
+    assert code == cli.EXIT_OK
+    code = cli.main(["--path", str(inv), "--out", str(tmp_path / "o2"), "--no-latest", "--as-of", "2026-10-22",
+                     "--fail-on", "unknown-age"], http=_inventory_http({}))
+    assert code == cli.EXIT_THRESHOLD
 
 
 def test_fail_on_gate(tmp_path, fixtures, fake_http, capsys):

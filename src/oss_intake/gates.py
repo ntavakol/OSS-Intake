@@ -32,6 +32,16 @@ def not_evaluated(wanted: list[str], age_info: dict, registry: dict | None, args
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))
+    # A version deps.dev covers but has no date for may be new: one only hours old is often not indexed yet,
+    # which is the case --fail-on recent is for, so the gate cannot pass on it (Ned, 7 Nov: option C). A
+    # registry deps.dev does not cover at all (RubyGems, CRAN) is left to --fail-on unknown-age, or this gate
+    # would fail on every run for those projects.
+    elif "recent" in wanted and not age_info.get("recent") and age_info.get("unknown"):
+        named = age_info.get("unknown_purls") or []
+        more = age_info["unknown"] - len(named)
+        out.append(("recent", f"{age_info['unknown']} package version(s) in registries deps.dev covers have no "
+                              "release date there yet, as for a release only hours old: "
+                              + ", ".join(named) + (f" and {more} more" if more > 0 else "")))
     if "unknown-age" in wanted and age_info.get("status") != "ok" and not unknown_age(age_info):
         out.append(("unknown-age", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                               f"{age_info.get('skipped_limit', 0)} over the limit"))

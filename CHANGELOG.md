@@ -16,6 +16,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- `--fail-on recent` passed for a version deps.dev had no release date for, which is what a release only hours
+  old looks like, so the case the gate is for slipped through. For registries deps.dev covers (npm, PyPI,
+  Maven, Go, Cargo, NuGet), such a version now fails the gate with exit 1, naming it. Registries it does not
+  cover (RubyGems, CRAN) are still left to `--fail-on unknown-age`, or the gate would fail on every run.
 - With `--reachability`, govulncheck's "not reachable" set a finding aside even when nothing had checked the
   govulncheck executable, so a swapped one could hide any Go finding. The verdict now sets a finding aside only
   with `--govulncheck-sha256`; without it, the verdict is shown in the finding's reason and the finding stays in

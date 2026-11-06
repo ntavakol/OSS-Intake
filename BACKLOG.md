@@ -3,10 +3,12 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Next: the threat model's open items (agreed 6 Nov, in this order)
-Open item 1 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
-1. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
-   so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).
+## Later: revisit (agreed 7 Nov)
+- A kernel CVE on a kernel header package (`linux-libc-dev` and the like) is set aside even when it is in CISA
+  KEV, as a container uses the host's kernel. Kept that way on 7 Nov. To revisit: it is wrong outside containers
+  (a VM image, `--path` on a host), and the options considered were KEV winning (shown in Act now with a "kernel
+  header package; affects the host" note), deciding by target (`--image` set aside, `--path` and SBOM act), or
+  naming the KEV ones in the Set aside group's heading so they stay visible.
 
 ## Later: when commits are less frequent (agreed 6 Nov)
 - Branch protection with required status checks: changes reach main only through a pull request whose CI has
