@@ -217,6 +217,17 @@ def hashes(fmt: str, item: dict) -> list[dict]:
     return [{"alg": alg, "content": str(sums[k])} for k, alg in _HASHES if sums.get(k)]
 
 
+def _written_by_us(path: Path) -> bool:
+    """An SBOM this collector wrote (its tool name in metadata): only those are replaced, so an --out folder that
+    already holds other SBOMs loses none of them."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        tools = doc["metadata"]["tools"]["components"]
+        return any(isinstance(t, dict) and t.get("name") == "oss-intake nexus collector" for t in tools)
+    except (OSError, ValueError, KeyError, TypeError, RecursionError):
+        return False
+
+
 def sbom(repo: dict, comps: list[dict], base_url: str) -> dict:
     return {
         "bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1,
@@ -327,7 +338,8 @@ def _run(a, opener) -> None:
     for sub in ("all", "new") if state is not None else ("all",):
         (a.out / sub).mkdir(parents=True, exist_ok=True)
         for old in (a.out / sub).glob("*.cdx.json"):
-            old.unlink()  # this run's view only: no repository from an earlier run, read or not
+            if _written_by_us(old):
+                old.unlink()  # this run's view only: no repository from an earlier run, read or not
     used: set[str] = set()
     for repo, comps, new, _ in results:
         name = f"{_file_name(repo['name'], used)}.cdx.json"

@@ -395,11 +395,11 @@
    }
   },
   {
-   "input": "C:\\Users\\ned\\Downloads\\app-2.4.1.jar",
+   "input": "C:\\Users\\alex\\Downloads\\app-2.4.1.jar",
    "status": "ok",
    "what": "artifact",
    "values": {
-    "path": "C:\\Users\\ned\\Downloads\\app-2.4.1.jar",
+    "path": "C:\\Users\\alex\\Downloads\\app-2.4.1.jar",
     "out": "report-app-2.4.1"
    }
   },

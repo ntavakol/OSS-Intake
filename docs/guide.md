@@ -330,8 +330,8 @@ curl -fsSLO "$BASE/nexus/nexus_sbom.py"
 curl -fsSLO "$BASE/osquery/osquery_sbom.py"
 curl -fsSLO "$BASE/osquery/oss-intake-pack.conf"
 shasum -a 256 -c <<'SUMS'
-520a8480a2deaa061ed2d0f39bb46a6afcdd6629b48e289971a8c9f5fa6f8295  nexus_sbom.py
-75a11d6305e639106368f77668292f61662921571cf8390e52214d3cd84b4170  osquery_sbom.py
+79eff58018a09f1e1599ee9d1723af815794f5109b1b53be11629af4f513cd89  nexus_sbom.py
+0fbaa9d99d2714337a2bbc286543f7a47153ba878edde0edd87dee0697307bd7  osquery_sbom.py
 b5dfa634d47e15ed06bed1118b40cef9ea02c78c8da2da7ed80c1546567e1a93  oss-intake-pack.conf
 SUMS
 ```
@@ -573,6 +573,32 @@ Unknown signals (no Scorecard score, say) never trigger a rule. To use your own 
 <!-- generated:likelihood-metrics -->
 The available metrics are `archived`, `critical_fix_at_release`, `critical_fix_unshipped`, `critical_with_fix`, `days_since_latest_release`, `fix_date_unknown`, `high_fix_at_release`, `high_fix_unshipped`, `high_with_fix`, `kev_with_fix`, `malicious`, `max_days_fix_available`, `max_epss_with_fix`, `public_exploit_with_fix`, `release_date_known`, `scanned_is_latest`, `scorecard_score`, `weaponised_with_fix` and `with_fix`.
 <!-- /generated:likelihood-metrics -->
+
+## Data sources and their terms
+
+oss-intake fetches public data at run time and repeats parts of it in the reports (advisory summaries,
+identifiers, scores). It does not redistribute the sources; their terms apply to what you do with the reports.
+The live feeds read from a repository's main branch (marked *) are trusted as published: a compromised upstream
+repository could add or hide exploit evidence, though never a vulnerability.
+
+| Source | Used for | Terms |
+|---|---|---|
+| [OSV.dev](https://osv.dev) | Which advisories affect a version, advisory details | Per source; GitHub advisories are CC-BY-4.0 ([OSV data sources](https://google.github.io/osv.dev/data/)) |
+| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Known exploited in the wild | Public, from the US government |
+| [FIRST EPSS](https://www.first.org/epss/) | Exploitation probability | FIRST's EPSS usage terms: free to use, credit FIRST |
+| [Exploit-DB](https://gitlab.com/exploit-database/exploitdb) * | Public exploit index | The repository's licence (GPL-2.0) |
+| [Metasploit](https://github.com/rapid7/metasploit-framework) * | Module metadata | BSD-3-Clause |
+| [nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) * | Template index | MIT |
+| [PoC-in-GitHub](https://github.com/nomi-sec/PoC-in-GitHub) * | Proof-of-concept listings | See the repository |
+| [deps.dev](https://deps.dev) | Release dates, latest versions | See deps.dev |
+| [OpenSSF Scorecard](https://scorecard.dev) | Project health (`--repo`) | See scorecard.dev |
+| [GitHub](https://github.com) | Project health and releases (`--repo`) | GitHub's API terms |
+| Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat | Checksums, fix dates | Each registry's or distribution's terms |
+| [VS Code Marketplace removal list](https://github.com/microsoft/vsmarketplace) * | Removed extensions | See the repository |
+
+The test fixtures shipped in the source package include advisory records from the GitHub Advisory Database
+(CC-BY-4.0) and real Trivy and Grype output with advisory text from NVD, GitHub, Red Hat, Debian and Ubuntu;
+NOTICE credits them.
 
 ## Limitations
 

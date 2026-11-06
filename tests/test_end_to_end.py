@@ -2234,13 +2234,13 @@ def test_cache_folder_is_shown_from_home_or_by_name(tmp_path, monkeypatch):
     from oss_intake import assessment
     from oss_intake.http import ResponseCache
 
-    monkeypatch.setattr(P, "home", classmethod(lambda cls: tmp_path / "home" / "ned"))
+    monkeypatch.setattr(P, "home", classmethod(lambda cls: tmp_path / "home" / "alex"))
 
     class Net:
         requests_made = 0
 
     net = Net()
-    net.cache = ResponseCache(tmp_path / "home" / "ned" / ".cache" / "oss-intake")
+    net.cache = ResponseCache(tmp_path / "home" / "alex" / ".cache" / "oss-intake")
     assert assessment.network_info(net)["cache"]["folder"] == "~/.cache/oss-intake"
     net.cache = ResponseCache(tmp_path / "srv" / "shared-cache")
     assert assessment.network_info(net)["cache"]["folder"] == "shared-cache"

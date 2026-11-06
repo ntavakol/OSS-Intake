@@ -194,8 +194,8 @@ def test_host_file_names_never_collide(tmp_path):
 
 
 @pytest.mark.parametrize("path, masked", [
-    ("/var/home/ned/app", "~/app"), ("/export/home/ned", "~"), ("c:\\users\\ned\\x", "~\\x"),
-    ("C:/Users/ned/x", "~/x"), ("\\\\?\\C:\\Users\\ned\\x", "~\\x"), ("/root/.local", "~/.local"),
+    ("/var/home/alex/app", "~/app"), ("/export/home/alex", "~"), ("c:\\users\\alex\\x", "~\\x"),
+    ("C:/Users/alex/x", "~/x"), ("\\\\?\\C:\\Users\\alex\\x", "~\\x"), ("/root/.local", "~/.local"),
     ("/rootfs/x", "/rootfs/x"), ("/usr/lib/python3", "/usr/lib/python3")])
 def test_mask_home(path, masked):
     assert col.mask_home(path) == masked

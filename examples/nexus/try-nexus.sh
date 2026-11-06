@@ -59,11 +59,17 @@ if [ -z "$PW" ]; then
     fi
     PW=$NEXUS_PASSWORD
 fi
-AUTH="admin:$PW"
+# The password goes in a netrc file readable by this user only, never on a command line, where any process on
+# the machine can see it. Removed on exit, with the folders pip downloads into.
+NETRC_FILE=$(mktemp)
+DL_DIR=$(mktemp -d)
+trap 'rm -rf "$NETRC_FILE" "$DL_DIR"' EXIT
+chmod 600 "$NETRC_FILE"
+printf 'machine localhost login admin password %s\n' "$PW" > "$NETRC_FILE"
 
 # Newer Community Edition releases need their licence accepted before use. That is your decision, so this
 # script does not accept it for you: it stops, links the licence and gives the command that accepts it.
-EULA=$(curl -s -u "$AUTH" "$URL/service/rest/v1/system/eula" || true)
+EULA=$(curl -s --netrc-file "$NETRC_FILE" "$URL/service/rest/v1/system/eula" || true)
 case "$EULA" in
     *'"accepted" : false'*|*'"accepted":false'*)
         echo "Nexus Community Edition needs its licence accepted first. Read it:"
@@ -77,9 +83,9 @@ case "$EULA" in
 esac
 
 make_proxy() {  # format name remote
-    if curl -sf -u "$AUTH" "$URL/service/rest/v1/repositories/$2" >/dev/null; then return; fi
+    if curl -sf --netrc-file "$NETRC_FILE" "$URL/service/rest/v1/repositories/$2" >/dev/null; then return; fi
     echo "== creating $2 (proxy of $3)"
-    curl -sf -u "$AUTH" -H 'Content-Type: application/json' -X POST "$URL/service/rest/v1/repositories/$1/proxy" \
+    curl -sf --netrc-file "$NETRC_FILE" -H 'Content-Type: application/json' -X POST "$URL/service/rest/v1/repositories/$1/proxy" \
         -d "{\"name\":\"$2\",\"online\":true,\"storage\":{\"blobStoreName\":\"default\",\"strictContentTypeValidation\":true},
              \"proxy\":{\"remoteUrl\":\"$3\",\"contentMaxAge\":1440,\"metadataMaxAge\":1440},
              \"negativeCache\":{\"enabled\":true,\"timeToLive\":1440},
@@ -89,7 +95,7 @@ make_proxy npm npm-proxy https://registry.npmjs.org
 make_proxy pypi pypi-proxy https://pypi.org
 
 fetch() {  # path, through the proxy, as a developer's npm or pip would
-    code=$(curl -s -o /dev/null -w '%{http_code}' -u "$AUTH" "$URL/repository/$1")
+    code=$(curl -s -o /dev/null -w '%{http_code}' --netrc-file "$NETRC_FILE" "$URL/repository/$1")
     echo "   $code $1"
 }
 echo "== caching packages through the proxies"
@@ -97,16 +103,12 @@ fetch npm-proxy/lodash/-/lodash-4.17.15.tgz
 fetch npm-proxy/minimist/-/minimist-1.2.0.tgz
 fetch npm-proxy/@babel/traverse/-/traverse-7.22.0.tgz
 fetch maven-central/org/apache/logging/log4j/log4j-core/2.14.1/log4j-core-2.14.1.jar
-# pip reads the password from a netrc file, so it is not on pip's command line, where any process can see it.
-NETRC_FILE=$(mktemp)
-chmod 600 "$NETRC_FILE"
-printf 'machine localhost login admin password %s\n' "$PW" > "$NETRC_FILE"
+# pip reads the same netrc file.
 for pkg in django==2.2 urllib3==1.24.1; do
-    NETRC="$NETRC_FILE" python3 -m pip download -q --no-deps -d "$(mktemp -d)" \
+    NETRC="$NETRC_FILE" python3 -m pip download -q --no-deps -d "$DL_DIR" \
         --index-url "http://localhost:$PORT/repository/pypi-proxy/simple/" "$pkg" >/dev/null 2>&1 \
         && echo "   ok  pypi-proxy $pkg" || echo "   failed pypi-proxy $pkg"
 done
-rm -f "$NETRC_FILE"
 
 echo "== recording the API answers (for oss-intake's tests)"
 NEXUS_PASSWORD="$PW" python3 - "$URL" <<'PY'

@@ -319,3 +319,17 @@ def test_recorded_real_nexus(tmp_path, capsys):
     assert '"admin"' not in written  # who pulled each package through the proxy stays in Nexus
     printed = capsys.readouterr().out
     assert "nuget-hosted: hosted" in printed and "maven-public: a group" in printed
+
+
+def test_other_sboms_in_out_are_kept(tmp_path):
+    """Audit (7 Nov): every *.cdx.json in --out/all was deleted, so an --out folder that already held other SBOMs
+    lost them. Only SBOMs this collector wrote are replaced."""
+    out = tmp_path / "s"
+    (out / "all").mkdir(parents=True)
+    mine = out / "all" / "from-elsewhere.cdx.json"
+    mine.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}), encoding="utf-8")
+    assert col.main(["--url", "http://localhost:8081", "--out", str(out)], opener=FakeNexus(ITEMS)) == 0
+    assert mine.exists()
+    assert col.main(["--url", "http://localhost:8081", "--out", str(out), "--repository", "npm-proxy"],
+                    opener=FakeNexus(ITEMS)) == 0
+    assert sorted(p.name for p in (out / "all").iterdir()) == ["from-elsewhere.cdx.json", "npm-proxy.cdx.json"]

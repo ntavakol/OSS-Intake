@@ -22,8 +22,8 @@ What osquery does not see, and what oss-intake cannot check, is said rather than
     are written without a purl and listed in the report as not checked, with the reason.
   - osquery has no Alpine (apk) table.
 
-Home folders are shortened (/Users/ned/app -> ~/app) so user names in paths do not reach reports. The host
-name is osquery's hostname, or --host to set your own; host names often carry a user name (Neds-MacBook-Pro).
+Home folders are shortened (/Users/alex/app -> ~/app) so user names in paths do not reach reports. The host
+name is osquery's hostname, or --host to set your own; host names often carry a user name (Alexs-MacBook-Pro).
 
 Standard library only; Python 3.10 or later.
 """

@@ -57,10 +57,10 @@ To check what the collector made of a host, open its `.cdx.json`; every componen
 
 osquery has no Alpine (`apk`) table; for Alpine images use [examples/sbom](../sbom) instead.
 
-Home folders are shortened (`/Users/ned/app` becomes `~/app`, `/root/x` becomes `~/x`, Windows
-`C:\Users\ned` becomes `~`), so user names in paths do not reach reports; the folder appears as each package's
+Home folders are shortened (`/Users/alex/app` becomes `~/app`, `/root/x` becomes `~/x`, Windows
+`C:\Users\alex` becomes `~`), so user names in paths do not reach reports; the folder appears as each package's
 `location` label in `packages.csv`. Host names are another matter: the host name comes from osquery
-(`system_info.hostname`, or the log's `hostIdentifier`) and often carries a user name (`Neds-MacBook-Pro`). Use
+(`system_info.hostname`, or the log's `hostIdentifier`) and often carries a user name (`Alexs-MacBook-Pro`). Use
 `--host` to set your own for one machine, or `--host_identifier=uuid` for a fleet.
 
 Python packages are read for every user (`users CROSS JOIN python_packages`), which needs osquery to run as

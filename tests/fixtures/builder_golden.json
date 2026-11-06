@@ -209,18 +209,18 @@
    "state": {
     "command": "scan",
     "values": {
-     "path": "C:\\Users\\ned\\packages.csv",
+     "path": "C:\\Users\\alex\\packages.csv",
      "out": "C:\\reports"
     }
    },
    "args": [
     "--path",
-    "C:\\Users\\ned\\packages.csv",
+    "C:\\Users\\alex\\packages.csv",
     "--out",
     "C:\\reports"
    ],
-   "bash": "oss-intake --path 'C:\\Users\\ned\\packages.csv' --out 'C:\\reports'",
-   "powershell": "oss-intake --path C:\\Users\\ned\\packages.csv --out C:\\reports"
+   "bash": "oss-intake --path 'C:\\Users\\alex\\packages.csv' --out 'C:\\reports'",
+   "powershell": "oss-intake --path C:\\Users\\alex\\packages.csv --out C:\\reports"
   },
   {
    "name": "verify with checksums",
