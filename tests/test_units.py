@@ -3137,3 +3137,22 @@ def test_every_workflow_is_pinned_with_top_level_permissions(name):
     steps = re.split(r"(?m)^\s+- (?=uses:|name:|run:)", text)
     checkouts = [s for s in steps if s.startswith("uses: actions/checkout@")]
     assert checkouts and all("persist-credentials: false" in s for s in checkouts), name
+
+
+def test_decision_from_one_scanner_still_applies_to_anothers_finding(tmp_path):
+    """Review (6 Nov): pkg_type is in each scanner's words (Trivy jar, Grype java-archive, OSV maven; Trivy ubuntu,
+    Grype deb), so a decision recorded from one run stopped applying when the scanner set changed."""
+    from oss_intake import decisions
+    from oss_intake.models import Finding
+
+    p = tmp_path / "d.csv"
+    p.write_text("id,package,pkg_type,triage_status,triage_notes\nCVE-2099-1,jackson-databind,jar,not_affected,x\n"
+                 "CVE-2099-2,libc6,ubuntu,not_affected,x\n", encoding="utf-8")
+    ds = decisions.load(p)
+    grype = [Finding(vuln_id="CVE-2099-1", package="jackson-databind", installed="2.0", pkg_type="java-archive"),
+             Finding(vuln_id="CVE-2099-2", package="libc6", installed="2.39", pkg_type="deb")]
+    decisions.apply(grype, ds)
+    assert all(f.decision_status == "not_affected" for f in grype)
+    npm = [Finding(vuln_id="CVE-2099-1", package="jackson-databind", installed="2.0", pkg_type="npm")]
+    decisions.apply(npm, ds)
+    assert not npm[0].decision_status  # still not across ecosystems

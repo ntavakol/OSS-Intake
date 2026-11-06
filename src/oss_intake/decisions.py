@@ -144,14 +144,39 @@ def _purl_type(purl: str) -> str:
     return purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") and "/" in purl[4:] else ""
 
 
+# pkg_type is in each source's own words (Trivy "jar" or "ubuntu", Grype "java-archive" or "deb", OSV the purl
+# type), so a decision recorded from one scanner's findings.csv must still match another's: each is mapped to
+# its ecosystem. A type not listed here has no known ecosystem, and its decisions match by name, as before.
+_ECOSYSTEM = {t: eco for eco, types in {
+    "maven": "maven jar war ear par sar pom gradle sbt java java-archive jenkins-plugin",
+    "npm": "npm node-pkg yarn pnpm bun javascript",
+    "pypi": "pypi pip pipenv poetry uv python python-pkg python-egg",
+    "go": "golang go gomod gobinary go-module",
+    "cargo": "cargo rust rust-crate rustbinary",
+    "gem": "gem gemspec bundler rubygems",
+    "nuget": "nuget dotnet dotnet-core dotnet-deps dotnet-pkg packages-lock",
+    "composer": "composer php php-composer php-pear",
+    "deb": "deb dpkg debian ubuntu",
+    "rpm": "rpm redhat centos rocky alma almalinux amazon fedora oracle ol suse opensuse sles photon cbl-mariner "
+           "mariner azurelinux",
+    "apk": "apk alpine wolfi chainguard",
+    "cran": "cran r r-package",
+    "hex": "hex erlang elixir",
+    "pub": "pub dart",
+    "swift": "swift swiftpm cocoapods",
+}.items() for t in types.split()}
+
+
+def _ecosystem(kind: str) -> str:
+    return _ECOSYSTEM.get(kind.strip().lower(), "")
+
+
 def _same_ecosystem(d: dict, f: Finding) -> bool:
-    """A decision applies only in its own ecosystem when both it and the finding say which that is (findings.csv
-    has pkg_type, OpenVEX a purl). A decision that does not say still matches by name, as before."""
-    if d.get("pkg_type") and f.pkg_type:
-        return d["pkg_type"] == f.pkg_type.lower()
-    if d.get("purl_type") and _purl_type(f.purl or ""):
-        return d["purl_type"] == _purl_type(f.purl or "")
-    return True
+    """A decision applies only in its own ecosystem when both it and the finding have a known one (findings.csv
+    has pkg_type, OpenVEX a purl; the finding its purl, else its pkg_type). Otherwise it matches by name."""
+    mine = _ecosystem(d.get("pkg_type") or "") or _ecosystem(d.get("purl_type") or "")
+    theirs = _ecosystem(_purl_type(f.purl or "")) or _ecosystem(f.pkg_type or "")
+    return mine == theirs if mine and theirs else True
 
 
 def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
