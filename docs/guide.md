@@ -497,8 +497,10 @@ With `--reachability`, Go binaries in the scan are checked with Go's official
 actually linked into the binary. Install it yourself (`go install golang.org/x/vuln/cmd/govulncheck@v1.1.4`);
 oss-intake never downloads it. For an image, the binaries are copied out with Docker (`docker create` and
 `docker cp`) or `crane export`. A finding whose vulnerable functions are absent from every binary it was seen
-in is marked "not reachable" and set aside in triage, with the govulncheck ID as the reason; one whose function
-is present is marked "reachable". Counts and likelihood do not change: the vulnerable version is still shipped.
+in is marked "not reachable" and, if you pinned govulncheck with `--govulncheck-sha256`, set aside in triage
+with the govulncheck ID as the reason. Without the pin it stays in its group with the verdict in the reason: an
+unchecked executable could say "not reachable" of anything. One whose function is present is marked
+"reachable". Counts and likelihood do not change: the vulnerable version is still shipped.
 This covers Go only; for other languages the advisory conditions are the assessor's guide.
 
 ## Suggested triage

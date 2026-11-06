@@ -17,10 +17,13 @@ def _norm(path: str) -> str:
     return path.lstrip("/")
 
 
-def apply(findings: list[Finding], results: dict[str, dict[str, dict]]) -> dict:
+def apply(findings: list[Finding], results: dict[str, dict[str, dict]], *, verified: bool) -> dict:
     """Apply govulncheck results (binary path -> vulnerability ID -> result) to findings in place: reachable if any
     target binary contains the vulnerable function (level 3 or above), not reachable if every target has a result
-    and none does. Sets reachability and reachability_note; returns stats: binaries, reachable, not_reachable."""
+    and none does. Sets reachability and reachability_note, and reachability_verified to verified (was the
+    govulncheck executable checked against --govulncheck-sha256; an unchecked one could say "not reachable" of
+    anything, so triage does not set a finding aside on its word). Returns stats: binaries, reachable,
+    not_reachable."""
     stats = {"binaries": len(results), "reachable": 0, "not_reachable": 0}
     by_path = {_norm(k): v for k, v in results.items()}
     for f in findings:
@@ -37,6 +40,7 @@ def apply(findings: list[Finding], results: dict[str, dict[str, dict]]) -> dict:
                 hits.append((t, best))
         if not hits:
             continue
+        f.reachability_verified = verified
         reach = [(t, h) for t, h in hits if h["level"] >= 3]
         if reach:
             t, h = reach[0]

@@ -66,7 +66,7 @@ def parse_stream(text: str) -> list[dict]:
 
 def analyse(messages: list[dict]) -> dict[str, dict]:
     """Return {CVE or GO ID: {"level": 0..3, "go_id": ...}} for every vulnerability govulncheck listed. Output of
-    the wrong shape raises ScannerError: its "not reachable" verdicts set findings aside, so it is never guessed."""
+    the wrong shape raises ScannerError: its "not reachable" verdicts can set findings aside, so it is never guessed."""
     try:
         return _analyse(messages)
     except (AttributeError, TypeError, KeyError, IndexError, ValueError) as exc:

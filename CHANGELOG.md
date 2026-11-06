@@ -16,6 +16,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- With `--reachability`, govulncheck's "not reachable" set a finding aside even when nothing had checked the
+  govulncheck executable, so a swapped one could hide any Go finding. The verdict now sets a finding aside only
+  with `--govulncheck-sha256`; without it, the verdict is shown in the finding's reason and the finding stays in
+  its group.
 - A Trivy or Grype report that names nothing it scanned and lists nothing (`{"SchemaVersion": 2}`,
   `{"matches": []}`) was accepted as a clean scan; it is now refused. Real reports always name their target.
 - A finding listed in CISA KEV was set aside by the build-label rule or govulncheck's "not reachable", and a

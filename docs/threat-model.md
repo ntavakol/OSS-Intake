@@ -45,10 +45,10 @@ nothing, or output that is not what it seems).
   it in between. The binary's own folder is not checked for who can write to it.
 - On Windows, `shutil.which` looks in the current folder before the PATH, so a `trivy.exe` there is the one
   found. A pinned hash still stops it.
-- govulncheck has no known-bad list and its hash is checked only with `--govulncheck-sha256`, yet with
-  `--reachability` its "not reachable" verdict sets a finding aside, so it no longer counts for the severity
-  gates (never a malicious or CISA KEV finding, which come first). A kernel CVE on a kernel header package stays
-  set aside even in KEV, by design: it does not apply in a container.
+- govulncheck has no known-bad list, and with `--govulncheck-sha256` its "not reachable" verdict sets a finding
+  aside, so it no longer counts for the severity gates (never a malicious or CISA KEV finding, which come first).
+  Without the pin the verdict is shown but sets nothing aside. A kernel CVE on a kernel header package stays set
+  aside even in KEV, by design: it does not apply in a container (decided 7 Nov, to revisit: BACKLOG.md).
 - The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
   its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
@@ -274,9 +274,5 @@ All of these were agreed for the backlog on 6 Nov; BACKLOG.md has them in order,
 it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
 indicators, the single maintainer) are limits of the approach rather than defects.
 
-1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
-   test expects "not reachable" to set a finding aside without a hash, so this waits on a maintainer decision).
-   Malicious and CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header
-   CVE in KEV, which an existing test keeps set aside on purpose; also a maintainer decision.
-2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
+1. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).

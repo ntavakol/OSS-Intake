@@ -1175,7 +1175,7 @@ def test_govulncheck_parsing_and_reachability():
     absent = go("CVE-2099-7778", "/usr/bin/app")
     mixed = go("CVE-2099-7778", "usr/bin/app;usr/bin/other")  # other binary not analysed: no conclusion
     unknown = go("CVE-2099-7779", "usr/bin/app")
-    stats = reachability.apply([called, absent, mixed, unknown], {"usr/bin/app": res})
+    stats = reachability.apply([called, absent, mixed, unknown], {"usr/bin/app": res}, verified=True)
     assert called.reachability == "reachable" and "GO-2099-0001" in called.reachability_note
     assert absent.reachability == "not reachable"
     assert mixed.reachability == "" and unknown.reachability == ""
@@ -3178,3 +3178,19 @@ def test_deep_json_is_refused_on_every_python():
     assert jsonsafe.depth('["[[[[", "a\\\\", "b\\"[[{"]') == 1
     assert jsonsafe.loads('{"t": "' + "[" * 5000 + '"}') == {"t": "[" * 5000}
     assert jsonsafe.loads('"\\u00e9"'.encode("utf-16")) == "é"
+
+
+def test_unverified_govulncheck_does_not_set_a_finding_aside():
+    """Ned (7 Nov, option B): a govulncheck executable not checked against --govulncheck-sha256 could say "not
+    reachable" of anything, so its verdict is shown but sets nothing aside."""
+    from oss_intake import reachability, triage
+
+    res = {"CVE-2099-7778": {"level": 1, "go_id": "GO-2099-0002"}}
+    f = _f(vuln_id="CVE-2099-7778", package="stdlib", purl="pkg:golang/stdlib@v1.21.0", installed="v1.21.0",
+           severity="CRITICAL", target="usr/bin/app")
+    reachability.apply([f], {"usr/bin/app": res}, verified=False)
+    assert f.reachability == "not reachable" and not f.reachability_verified
+    group, reason = triage.classify(f)
+    assert group == "review" and "not set aside: the govulncheck executable was not verified" in reason
+    reachability.apply([f], {"usr/bin/app": res}, verified=True)
+    assert triage.classify(f)[0] == "aside"

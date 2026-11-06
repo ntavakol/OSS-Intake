@@ -340,16 +340,28 @@ def test_reachability_on_path_dir(tmp_path, fixtures):
     fake.write_text(f"#!{sys.executable}\n" + (fixtures / "fake_govulncheck.py").read_text(encoding="utf-8"),
                     encoding="utf-8")
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
-    out = tmp_path / "o"
-    code = cli.main(["--path", str(app), "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
-                     "--offline", "--reachability", "--govulncheck-path", str(fake)])
-    assert code == 0
-    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
-    by = {f["id"]: f for f in a["findings"]}
+    from oss_intake import integrity
+
+    def assess(name, *extra):
+        out = tmp_path / name
+        code = cli.main(["--path", str(app), "--out", str(out), "--from-trivy-json", str(tj), "--scanners",
+                         "trivy", "--offline", "--reachability", "--govulncheck-path", str(fake), *extra])
+        assert code == 0
+        a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+        return a, {f["id"]: f for f in a["findings"]}
+
+    # With govulncheck's hash checked, its "not reachable" sets the finding aside.
+    a, by = assess("o", "--govulncheck-sha256", integrity.sha256_file(fake))
     assert by["CVE-2099-7777"]["reachability"] == "reachable"
     assert by["CVE-2099-7778"]["reachability"] == "not reachable"
     assert by["CVE-2099-7778"]["suggested_group"] == "Set aside"
     assert a["scanners"]["govulncheck"]["version"] == "1.1.4"
+    # Without it (Ned, 7 Nov: option B), an unchecked executable could say "not reachable" of anything: the
+    # verdict is shown, but the finding is not set aside.
+    _, by = assess("o2")
+    assert by["CVE-2099-7778"]["reachability"] == "not reachable"
+    assert by["CVE-2099-7778"]["suggested_group"] != "Set aside"
+    assert "not set aside: the govulncheck executable was not verified" in by["CVE-2099-7778"]["suggested_reason"]
 
 
 def test_no_repo_no_release_date(tmp_path, fixtures, capsys):

@@ -4,12 +4,8 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order)
-Open items 1 to 2 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
-1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
-   test expects "not reachable" to set a finding aside without a hash, so this waits on a maintainer decision).
-   Malicious and CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header
-   CVE in KEV, which an existing test keeps set aside on purpose; also a maintainer decision.
-2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
+Open item 1 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+1. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).
 
 ## Later: when commits are less frequent (agreed 6 Nov)

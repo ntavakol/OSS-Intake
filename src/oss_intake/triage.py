@@ -8,9 +8,9 @@ Groups, first match wins:
              the assessor confirms whether they hold in the deployment
   routine    Routine: none of the above; patch in the normal cycle
   aside      Set aside: only with evidence the tool has (kernel CVEs on kernel header packages, the installed
-             version already matches a fix apart from a build label, govulncheck shows the function is not in
-             the binary) or an assessor's decision; a malicious package is never set aside, and a CISA KEV
-             finding only as a kernel header CVE or by an assessor's decision
+             version already matches a fix apart from a build label, a hash-verified govulncheck shows the
+             function is not in the binary) or an assessor's decision; a malicious package is never set aside,
+             and a CISA KEV finding only as a kernel header CVE or by an assessor's decision
 
 This is a reading order, not a risk rating, and never a statement that a finding carries no risk.
 """
@@ -29,14 +29,17 @@ MEANING = {
     "conditions": "The advisory says it applies only under stated conditions; confirm whether they hold",
     "routine": "No exploit, KEV or EPSS signal in the sources that were checked, no stated conditions; normal "
                "patch cycle",
-    "aside": "Evidence it does not apply: kernel header package, already fixed, govulncheck shows the "
-             "vulnerable function is not in the binary, or the assessor recorded not affected or fixed",
+    "aside": "Evidence it does not apply: kernel header package, already fixed, govulncheck (hash-verified) shows "
+             "the vulnerable function is not in the binary, or the assessor recorded not affected or fixed",
 }
 EPSS_REVIEW = 0.1
 
 
 def classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
     group, reason = _classify(f, checks)
+    if f.reachability == "not reachable" and not f.reachability_verified and not f.kev:
+        reason += (f"; {f.reachability_note}, but not set aside: the govulncheck executable was not verified "
+                   "(add --govulncheck-sha256)")
     if f.decision_status and group != "aside":
         stale = (f" (decided for {f.decision_version}; installed {f.installed}: review)"
                  if f.decision_version and f.installed and f.decision_version != f.installed else "")
@@ -82,7 +85,7 @@ def _classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
             f"; not set aside although {evidence}, as it is known to be exploited" if evidence else "")
     if f.likely_fixed:
         return "aside", "installed version matches a listed fix apart from a build label"
-    if f.reachability == "not reachable":
+    if f.reachability == "not reachable" and f.reachability_verified:
         return "aside", f.reachability_note
     if f.details_unavailable:
         return "review", ("advisory details could not be loaded from OSV, so severity, fix, KEV and exploit "

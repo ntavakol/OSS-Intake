@@ -119,7 +119,8 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
 def _merge(args, groups: list, warnings: list[str]):
     """Merge what every source found; mark malicious packages and flag findings to leave out of lag."""
     findings = merge.merge(*groups)
-    reach_stats = reachability.apply(findings, getattr(args, "reach_results", {}) or {})
+    reach_stats = reachability.apply(findings, getattr(args, "reach_results", {}) or {},
+                                     verified=bool(getattr(args, "govulncheck_sha256", None)))
     for f in findings:
         f.conditions = conditions.extract(f.description)
     # A malicious finding (MAL- entry or CWE-506) on a package version marks every finding on it: GitHub and

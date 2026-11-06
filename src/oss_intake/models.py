@@ -143,6 +143,8 @@ class Finding:
     exploit_refs: list[str] = field(default_factory=list)
     reachability: str = ""  # govulncheck evidence for Go binaries: reachable | not reachable | ""
     reachability_note: str = ""
+    reachability_verified: bool = True  # False: govulncheck's executable was not hash-checked, so its "not
+    # reachable" does not set the finding aside (reachability.apply sets it; True only for findings built directly)
     malicious_package: bool = False  # another finding on this package version is malicious
     decision_status: str = ""  # assessor decision carried in with --decisions (OpenVEX status)
     decision_notes: str = ""
