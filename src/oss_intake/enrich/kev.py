@@ -10,11 +10,15 @@ KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulner
 
 def load(http: Http) -> tuple[set[str], str | None]:
     """Fetch the CISA KEV catalogue (www.cisa.gov) and return (CVE IDs, catalogue version or release date); an empty
-    set and None for a non-200 or non-object response. HttpError propagates."""
+    set and None for a non-200 response, or one that is not an object with a list of vulnerabilities each naming its
+    cveID. HttpError propagates."""
     status, data = http.get_json(KEV_URL)
-    if status != 200 or not isinstance(data, dict):
+    if status != 200 or not isinstance(data, dict) or not isinstance(data.get("vulnerabilities"), list):
         return set(), None
-    ids = {str(v.get("cveID", "")).upper() for v in data.get("vulnerabilities") or [] if v.get("cveID")}
+    entries = data["vulnerabilities"]
+    if not all(isinstance(v, dict) and isinstance(v.get("cveID"), str) and v["cveID"] for v in entries):
+        return set(), None  # a catalogue with entries that cannot be read is not trusted in part
+    ids = {v["cveID"].upper() for v in entries}
     return ids, data.get("catalogVersion") or data.get("dateReleased")
 
 

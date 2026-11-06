@@ -92,7 +92,7 @@ def renv_purls(path: Path) -> tuple[list[str], list[str]]:
     which OSV's CRAN advisories do not cover)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:
         raise InputError(f"cannot read {path.name} as an renv lockfile: {exc}") from None
     pkgs = data.get("Packages") if isinstance(data, dict) else None
     if not isinstance(pkgs, dict):
@@ -156,7 +156,7 @@ def _purl_for(ptype: str, name: str, version: str) -> str:
 def _row_purl(row: dict[str, str]) -> str:
     purl = row.get("purl", "")
     if purl:
-        if not purl.startswith("pkg:") or "/" not in purl[4:]:
+        if not purl.startswith("pkg:") or "/" not in purl.split("?", 1)[0].split("#", 1)[0][4:]:
             raise ValueError(f"purl '{purl}' is not a package URL (pkg:type/name@version)")
         ptype = purl[4:].split("/", 1)[0].lower()
         rest = purl.split("?", 1)[0].split("#", 1)[0]

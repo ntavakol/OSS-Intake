@@ -51,23 +51,44 @@ def parse_stream(text: str) -> list[dict]:
             i += 1
         if i >= len(text):
             break
-        obj, i = dec.raw_decode(text, i)
+        try:
+            obj, i = dec.raw_decode(text, i)
+        except (ValueError, RecursionError) as exc:
+            raise ScannerError(f"govulncheck output is not a stream of JSON objects: {exc or 'nested too deeply'}") \
+                from None
         out.append(obj)
     return out
 
 
 def analyse(messages: list[dict]) -> dict[str, dict]:
-    """Return {CVE or GO ID: {"level": 0..3, "go_id": ...}} for every vulnerability govulncheck listed."""
+    """Return {CVE or GO ID: {"level": 0..3, "go_id": ...}} for every vulnerability govulncheck listed. Output of
+    the wrong shape raises ScannerError: its "not reachable" verdicts set findings aside, so it is never guessed."""
+    try:
+        return _analyse(messages)
+    except (AttributeError, TypeError, KeyError, IndexError, ValueError) as exc:
+        raise ScannerError(f"govulncheck output has an unexpected structure ({type(exc).__name__}: {exc})") \
+            from exc
+
+
+def _analyse(messages: list[dict]) -> dict[str, dict]:
     aliases: dict[str, set[str]] = {}
     level: dict[str, int] = {}
     for m in messages:
+        if not isinstance(m, dict):
+            raise TypeError("a message is not an object")
         osv = m.get("osv")
         if isinstance(osv, dict) and osv.get("id"):
+            if not isinstance(osv["id"], str):
+                raise TypeError("osv.id is not text")
             aliases[osv["id"]] = {a.upper() for a in osv.get("aliases") or []}
             level.setdefault(osv["id"], 0)
         f = m.get("finding")
         if isinstance(f, dict) and f.get("osv"):
+            if not isinstance(f["osv"], str):
+                raise TypeError("finding.osv is not text")
             trace = f.get("trace") or [{}]
+            if not isinstance(trace, list):
+                raise TypeError("finding.trace is not a list")
             top = trace[0] or {}
             lvl = 3 if top.get("function") else 2 if top.get("package") else 1
             level[f["osv"]] = max(level.get(f["osv"], 0), lvl)

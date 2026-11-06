@@ -57,8 +57,13 @@ def unguard(value: str) -> str:
 
 def _read_csv(path: Path) -> list[dict]:
     # newline="" keeps line breaks inside quoted cells (multi-line notes) instead of splitting the row.
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        return list(csv.DictReader(fh))
+    try:
+        with open(path, encoding="utf-8-sig", newline="") as fh:
+            return list(csv.DictReader(fh))
+    except UnicodeDecodeError as exc:
+        raise InputError(f"{path.name} is not UTF-8 text: {exc.reason} at byte {exc.start}") from None
+    except csv.Error as exc:
+        raise InputError(f"{path.name} is not a readable CSV file: {exc}") from None
 
 
 def _status(value: str) -> str | None:
@@ -135,14 +140,30 @@ def _purl_name_version(purl: str) -> tuple[str, str]:
 def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    except ValueError as exc:
-        raise InputError(f"{path.name} is not valid JSON: {exc}") from None
+    except (ValueError, RecursionError) as exc:  # UnicodeDecodeError is a ValueError
+        raise InputError(f"{path.name} is not valid JSON: {exc or 'nested too deeply'}") from None
     if not isinstance(doc, dict) or "statements" not in doc:
         raise InputError(f"{path.name} is not an OpenVEX document (no 'statements')")
+    statements = doc.get("statements") or []
+    if not isinstance(statements, list):
+        raise InputError(f"{path.name}: 'statements' must be a list")
     out, errors = [], []
-    for n, st in enumerate(doc.get("statements") or [], start=1):
+    for n, st in enumerate(statements, start=1):
+        if not isinstance(st, dict):
+            errors.append(f"statement {n}: not an object")
+            continue
         vuln = st.get("vulnerability") or {}
         vuln = {"name": vuln} if isinstance(vuln, str) else vuln
+        aliases = vuln.get("aliases") or [] if isinstance(vuln, dict) else None
+        if not isinstance(vuln, dict) or not isinstance(vuln.get("name"), str) or not isinstance(aliases, list) \
+                or not all(isinstance(a, str) for a in aliases):
+            errors.append(f"statement {n}: vulnerability must be a name, or an object with a name and a list of "
+                          "aliases")
+            continue
+        products = st.get("products") or []
+        if not isinstance(products, list):
+            errors.append(f"statement {n}: products must be a list")
+            continue
         status = _status(str(st.get("status") or ""))
         if not status:
             errors.append(f"statement {n}: status '{st.get('status')}' is not one of {', '.join(STATUSES)}")
@@ -152,13 +173,13 @@ def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
         if status == "not_affected" and not (notes or justification):
             errors.append(f"statement {n}: not_affected needs a justification or impact_statement")
             continue
-        for prod in st.get("products") or []:
+        for prod in products:
             pid = prod.get("@id") if isinstance(prod, dict) else str(prod)
             name, version = _purl_name_version(pid or "") if str(pid).startswith("pkg:") else ("", "")
             if not name:
                 errors.append(f"statement {n}: product '{pid}' is not a package URL (pkg:...)")
                 continue
-            out.append({"ids": _ids(vuln.get("name"), *(vuln.get("aliases") or [])), "package": name,
+            out.append({"ids": _ids(vuln["name"], *aliases), "package": name,
                         "version": version, "status": status, "notes": notes or justification.replace("_", " "),
                         "reachable": "", "justification": justification, "source": f"{path.name} statement {n}"})
     return out, errors

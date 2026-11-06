@@ -509,6 +509,16 @@ def _run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_m
     return data
 
 
+def _parse_report(tool: str, mod, report: dict, args: argparse.Namespace):
+    """mod.parse(report); a report that cannot be parsed is a usage error (exit 2) when the user imported it."""
+    try:
+        return mod.parse(report)
+    except ScannerError as exc:
+        if getattr(args, f"from_{tool}_json"):
+            raise UsageError(f"--from-{tool}-json {Path(getattr(args, f'from_{tool}_json')).name}: {exc}") from exc
+        raise
+
+
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
     if not args.image and not args.repo and not args.path and not args.package:
@@ -747,10 +757,11 @@ def _scan(args, chosen, out, net, scanners_meta, warnings):
         return None, groups, scan_info
     if "trivy" in chosen:
         trivy_report = _run_or_load("trivy", trivy_mod, args, out, scanners_meta, warnings)
-        f, scan_info = trivy_mod.parse(trivy_report)
+        f, scan_info = _parse_report("trivy", trivy_mod, trivy_report, args)
         groups.append(f)
     if "grype" in chosen:
-        g, _ = grype_mod.parse(_run_or_load("grype", grype_mod, args, out, scanners_meta, warnings))
+        g, _ = _parse_report("grype", grype_mod, _run_or_load("grype", grype_mod, args, out, scanners_meta,
+                                                                warnings), args)
         groups.append(g)
     args.reach_results = {}
     if args.reachability and trivy_report is not None:

@@ -61,8 +61,8 @@ def load_json_bytes(data: bytes, what: str) -> dict:
     encoding = "utf-16" if data[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
     try:
         return json.loads(data.decode(encoding))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ScannerError(f"{what} is not valid JSON: {exc}") from None
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise ScannerError(f"{what} is not valid JSON: {exc or 'nested too deeply'}") from None
 
 
 def report_kind(data: object) -> str:
@@ -84,7 +84,10 @@ def report_kind(data: object) -> str:
 def check_report(data: object, tool: str, what: str) -> None:
     """Refuse a report that is not the tool's JSON, so a wrong or empty file never reads as 'no findings'."""
     kind = report_kind(data)
-    if kind == tool:
+    if kind == tool and isinstance(data, dict):
+        problem = _shape_problem(data, tool)
+        if problem:
+            raise ReportShapeError(f"{what} is not a well-formed {tool.capitalize()} report: {problem}")
         return
     looks = {"trivy": "a Trivy report", "grype": "a Grype report",
              "sbom": "an SBOM (CycloneDX or SPDX), which lists packages but not vulnerabilities"}.get(kind)
@@ -92,6 +95,63 @@ def check_report(data: object, tool: str, what: str) -> None:
                 "grype": "a Grype JSON report (grype ... -o json), with matches"}[tool]
     raise ReportShapeError(f"{what} is not {expected}" + (f"; it looks like {looks}" if looks else
                                                          "; it has neither shape"))
+
+
+_STR_FIELDS = {
+    "trivy_result": ("Target", "Type", "Class"),
+    "trivy_vuln": ("VulnerabilityID", "PkgID", "PkgName", "PkgPath", "InstalledVersion", "FixedVersion", "Severity",
+                   "SeveritySource", "PublishedDate", "LastModifiedDate", "Title"),
+    "trivy_pkg": ("ID", "Name", "Version", "SrcName", "SrcVersion", "SrcRelease"),
+    "grype_artifact": ("name", "version", "type", "purl"),
+    "grype_vuln": ("id", "severity", "namespace", "dataSource", "description"),
+}
+
+
+def _bad_fields(obj: dict, kind: str) -> str | None:
+    for k in _STR_FIELDS[kind]:
+        if obj.get(k) is not None and not isinstance(obj[k], str):
+            return k
+    return None
+
+
+def _shape_problem(data: dict, tool: str) -> str | None:
+    """The first place a report of the right kind has a value of the wrong type, as the fields oss-intake reads
+    (here and after parsing) expect; None when it is well formed. Deeper oddities are caught when parsing."""
+    def lists(obj: dict, key: str) -> list | None:
+        v = obj.get(key)
+        return [] if v is None else v if isinstance(v, list) and all(isinstance(e, dict) for e in v) else None
+
+    if tool == "trivy":
+        if not isinstance(data.get("Metadata", {}) or {}, dict):
+            return "Metadata is not an object"
+        results = lists(data, "Results")
+        if results is None:
+            return "Results must be a list of objects"
+        for n, r in enumerate(results, 1):
+            if (k := _bad_fields(r, "trivy_result")) is not None:
+                return f"result {n}: {k} is not text"
+            for key, kind in (("Vulnerabilities", "trivy_vuln"), ("Packages", "trivy_pkg")):
+                entries = lists(r, key)
+                if entries is None:
+                    return f"result {n}: {key} must be a list of objects"
+                for m, e in enumerate(entries, 1):
+                    if (k := _bad_fields(e, kind)) is not None:
+                        return f"result {n}, {key} entry {m}: {k} is not text"
+        return None
+    matches = lists(data, "matches")
+    if matches is None:
+        return "matches must be a list of objects"
+    for key in ("descriptor", "distro", "source"):
+        if not isinstance(data.get(key) or {}, dict):
+            return f"{key} is not an object"
+    for n, m in enumerate(matches, 1):
+        for key, kind in (("artifact", "grype_artifact"), ("vulnerability", "grype_vuln")):
+            obj = m.get(key) or {}
+            if not isinstance(obj, dict):
+                return f"match {n}: {key} is not an object"
+            if (k := _bad_fields(obj, kind)) is not None:
+                return f"match {n}: {key}.{k} is not text"
+    return None
 
 
 class ReportShapeError(ValueError):

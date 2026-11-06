@@ -42,6 +42,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
   are now an OSV failure: a package-list run stops (exit 1), and for an image the malicious-package check is
   marked partial. The Ubuntu fix-date lookup, which had the same loop, uses the same checks (a failure leaves
   those fix dates unknown), and a package listed twice is asked about once.
+- Malformed input found by fuzzing the parsers no longer stops the run with a Python traceback. Deeply nested
+  JSON, fields of the wrong type and text that is not UTF-8 are now input errors (exit 2) in SBOMs (a list field
+  of another type is refused, not read as empty), inventories (a purl such as `pkg:a?/b`), decisions files (CSV
+  and OpenVEX), renv.lock and imported Trivy and Grype reports, and clear errors (exit 1) in live scanner output,
+  govulncheck output, checksums files and likelihood configurations (which also refuse a condition value that is
+  not a number). Trivy and Grype reports are checked for the types of the fields oss-intake reads before any of
+  them is used. A KEV list with any entry that cannot be read, or an exploit-db index that cannot be read, is
+  treated as that source failing; workflow listing entries that cannot be read are skipped; a cached answer
+  nested too deeply is ignored.
 
 ## [0.15.0] - 2026-11-06
 

@@ -93,7 +93,8 @@ def fetch(http: Http, repo: str) -> dict:
         return {"status": "none", "note": "No .github/workflows directory; the project may build elsewhere."}
     if status != 200 or not isinstance(listing, list):
         return {"status": "error", "note": f"GitHub contents API returned HTTP {status}"}
-    files = [e for e in listing if e.get("type") == "file" and e.get("name", "").endswith((".yml", ".yaml"))]
+    files = [e for e in listing if isinstance(e, dict) and e.get("type") == "file" and isinstance(e.get("path"), str)
+             and isinstance(e.get("name"), str) and e["name"].endswith((".yml", ".yaml"))]
     known_bad = load_known_bad().get("actions", [])
     results, skipped = [], max(0, len(files) - MAX_FILES)
     for e in files[:MAX_FILES]:
@@ -103,7 +104,10 @@ def fetch(http: Http, repo: str) -> dict:
             continue
         if st != 200 or not isinstance(data, dict) or data.get("encoding") != "base64":
             continue
-        text = base64.b64decode(data.get("content", "")).decode("utf-8", errors="replace")
+        try:
+            text = base64.b64decode(str(data.get("content", ""))).decode("utf-8", errors="replace")
+        except ValueError:  # binascii.Error: not base64
+            continue
         results.append(analyse(e["name"], text, known_bad))
     total = sum(r["uses"] for r in results)
     unpinned = sum(len(r["unpinned"]) for r in results)

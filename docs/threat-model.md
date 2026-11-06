@@ -73,7 +73,7 @@ not trust them to be up, or to answer in the right shape.
 |---|---|---|
 | Traffic is read or changed in transit | Every service URL is fixed in the code as `https://`; certificates are checked by requests. | `http.RequestsHttp`, the callers |
 | `GITHUB_TOKEN` leaks to another host or into output | It is read once, attached only when the host is exactly `api.github.com` (a look-alike such as `api.github.com.evil.example` gets none), never put in a URL, and left out of error messages, logs and reports. requests drops it on a redirect to another host. GitHub API responses are never cached. | `http.RequestsHttp._headers`, `http.CACHE_RULES` |
-| A service that is down or answers garbage reads as clean | The top level of each answer is checked for type before use; wrong types deeper in stop the run with a traceback (exit 1), never as clean. An OSV failure stops a package-list run, and for an image marks the malicious-package check partial, which fails `--fail-on malicious`. KEV that did not load fails the KEV gates. Release-age and registry errors make those checks partial and their gates fail. A removal list with under 100 rows is not used. | `scanners.osv`, `enrich.kev`, `release_age`, `registry_check`, `vscode.load_removed`, `cli._gate_unknown` |
+| A service that is down or answers garbage reads as clean | Answers are checked for type before use; an answer of the wrong shape (OSV, KEV with any unreadable entry, the exploit indexes) is treated as that source failing, never as clean. Workflow listing entries that cannot be read are skipped (see open item 4). An OSV failure stops a package-list run, and for an image marks the malicious-package check partial, which fails `--fail-on malicious`. KEV that did not load fails the KEV gates. Release-age and registry errors make those checks partial and their gates fail. A removal list with under 100 rows is not used. | `scanners.osv`, `enrich.kev`, `release_age`, `registry_check`, `vscode.load_removed`, `cli._gate_unknown` |
 | OSV leaves some packages out of its answer, so they read as clean | An answer must hold one result object per package asked about; a page token that repeats, or more than 25 pages for one package, is an error too. Each is handled as an OSV failure. The Ubuntu fix-date lookup uses the same checks. | `scanners.osv.querybatch` |
 | One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" | `scanners.osv` |
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
@@ -89,7 +89,6 @@ not trust them to be up, or to answer in the right shape.
   with the wrong fix version) is passed on. OSV, deps.dev and KEV are not signed.
 - Maven Central answering 5xx or 429 for every checksum reads as "not published" rather than as an error
   (`--fail-on mismatch` still fails), and SHA-1 is accepted when it is all Maven has.
-- A workflow listing whose entries are not objects stops the run with a traceback instead of a clear error.
 
 ## The cache folder
 
@@ -135,6 +134,7 @@ memory and time.
 | An SBOM whose components cannot be checked reads as clean | Components without a usable purl are counted and listed in the report; an SBOM with nothing checkable is refused. | `sbom.read`, `cli` |
 | An SBOM or inventory column takes the place of a report column | Columns and SBOM label names that clash with report columns are refused, and SBOM label values are cut to 300 characters. | `inputs.inventory`, `sbom._label_key` |
 | A decision hides a finding that matters | A decision never sets aside a malicious package. `not_affected` and `mitigated` need a note (in OpenVEX, any justification counts). A decision made for another version still applies but is flagged for review. | `decisions.apply`, `triage` |
+| A malformed file stops the run with a traceback, or is half read | Deeply nested JSON, fields of the wrong type and text that is not UTF-8 are input errors (exit 2) in SBOMs, inventories, decisions, renv.lock and imported scanner reports, and scanner or configuration errors (exit 1) in live scanner output, govulncheck output, checksums files and likelihood configurations. A list field of another type is refused, never read as empty. Found and checked by fuzzing the parsers. | `sbom`, `inputs`, `decisions`, `scanners.check_report`, `scanners.trivy.parse`, `scanners.grype.parse`, `scanners.govulncheck.analyse`, `likelihood.validate` |
 | A gate is asked for that cannot be checked | A gate whose check is turned off is refused (exit 2); one whose check could not run fails (exit 1). | `cli._refuse_gates_without_their_check`, `cli._gate_unknown` |
 | `--min-severity` hides what a gate depends on | It is applied after KEV, exploits and triage, keeps findings in Act now, malicious ones and those missing their details, and the gates and likelihood see every finding; a gate met only by findings it left out is named in a warning. | `cli._assess`, `cli._hidden_gate_warnings` |
 | Spreadsheet formulas in an input cell | Kept as text, and neutralised when written to CSV (see "Reports"). | `report.csv_safe` |
@@ -155,8 +155,6 @@ memory and time.
   `--fail-on unknown-age` catches it.
 - An SBOM in which most components could not be checked still passes a gate if the rest are clean; the unchecked
   ones are a warning and a list, not a failure.
-- Deeply nested JSON, wrong types in SBOM or OpenVEX fields, and a decisions CSV that is not UTF-8 stop the run
-  with a traceback (exit 1) instead of an input error (exit 2). They fail closed, never as clean.
 - Inventory CSVs, decisions files, imported scanner reports and single files given to `--path` have no size
   limit; SBOMs are read whole into memory within their 200 MB limit. Inventory label values are not cut.
 - A file symlink inside an SBOM folder is read (folder symlinks are not followed).
@@ -290,11 +288,9 @@ indicators, the single maintainer) are limits of the approach rather than defect
    as partial.
 5. Report a binary checked against an unsigned checksums file as such, not as hash verified.
 6. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-7. Turn malformed SBOM, OpenVEX, decisions and service content into clear errors instead of tracebacks; the
-   fuzzing item in the backlog would find more of these.
-8. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
-    for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-9. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-10. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-11. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-12. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+7. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+   for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
+8. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.

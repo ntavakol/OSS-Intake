@@ -68,6 +68,16 @@ def _best_cvss(entries: list[dict], source: str) -> tuple[float, str, str] | Non
 
 
 def parse(report: dict) -> tuple[list[Finding], dict]:
+    """Findings and scan details from a Grype JSON report. A report whose structure is not Grype's (a field of
+    the wrong type, from a truncated, edited or forged file) raises ScannerError instead of a traceback."""
+    try:
+        return _parse(report)
+    except (AttributeError, TypeError, KeyError, IndexError, ValueError) as exc:
+        raise ScannerError(f"Grype report has an unexpected structure ({type(exc).__name__}: {exc}); "
+                           "if it is a real Grype report, please report this") from exc
+
+
+def _parse(report: dict) -> tuple[list[Finding], dict]:
     findings: list[Finding] = []
     distro = report.get("distro") or {}
     os_release = f"{distro.get('name', '')} {distro.get('version', '')}".strip().lower() if distro.get("name") else ""

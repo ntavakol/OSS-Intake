@@ -126,8 +126,8 @@ def _load(path: Path) -> dict:
         raise InputError(f"{path.name} is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB; split it")
     try:
         data = json.loads(path.read_bytes().decode("utf-8-sig"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise InputError(f"{path.name} is not valid JSON: {exc}") from None
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+        raise InputError(f"{path.name} is not valid JSON: {exc or 'nested too deeply'}") from None
     kind = kind_of(data)
     if kind is None:
         raise InputError(f"{path.name} is not a CycloneDX or SPDX JSON SBOM")
@@ -138,26 +138,38 @@ def _load(path: Path) -> dict:
 
 
 def _props(component: dict) -> dict:
-    return {str(p.get("name")): str(p.get("value")) for p in component.get("properties") or []
+    return {str(p.get("name")): str(p.get("value")) for p in _list(component.get("properties"), "properties")
             if isinstance(p, dict) and p.get("name")}
+
+
+def _list(value: object, what: str) -> list:
+    """value as a list ([] when absent). Any other type is an input error: read as absent, it would drop the
+    packages under it without a word."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise InputError(f"SBOM field '{what}' must be a list, not {type(value).__name__}")
+    return value
 
 
 def _cyclonedx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
     spec = str(data.get("specVersion", ""))
     if spec not in _CDX_SPECS:
         raise InputError(f"CycloneDX specVersion '{spec}' is not supported ({', '.join(_CDX_SPECS)})")
-    meta = (data.get("metadata") or {}).get("component") or {}
+    metadata = data.get("metadata")
+    component = metadata.get("component") if isinstance(metadata, dict) else None
+    meta: dict = component if isinstance(component, dict) else {}
     subject = " ".join(x for x in (str(meta.get("name") or ""), str(meta.get("version") or "")) if x)
     out = []
-    stack = list(data.get("components") or [])
+    stack = list(_list(data.get("components"), "components"))
     while stack:
         c = stack.pop(0)
         if not isinstance(c, dict):
             continue
-        stack.extend(c.get("components") or [])
+        stack.extend(_list(c.get("components"), "components"))
         if not c.get("purl") and (c.get("type") in ("operating-system", "file")
                                   or any(p.get("name") == "aquasecurity:trivy:Class"
-                                         for p in c.get("properties") or [] if isinstance(p, dict))):
+                                         for p in _list(c.get("properties"), "properties") if isinstance(p, dict))):
             continue  # the OS itself, a file, or a scanned target such as a lockfile: not packages
         sup = c.get("supplier")
         supplier = (sup.get("name") if isinstance(sup, dict) else "") or c.get("publisher") or ""
@@ -169,10 +181,10 @@ def _cyclonedx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
 def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
     if not str(data.get("spdxVersion", "")).startswith(("SPDX-2.2", "SPDX-2.3")):
         raise InputError(f"SPDX version '{data.get('spdxVersion')}' is not supported (2.2, 2.3)")
-    described = set(data.get("documentDescribes") or [])
-    described |= {r.get("relatedSpdxElement") for r in data.get("relationships") or []
+    described = {d for d in _list(data.get("documentDescribes"), "documentDescribes") if isinstance(d, str)}
+    described |= {r["relatedSpdxElement"] for r in _list(data.get("relationships"), "relationships")
                   if isinstance(r, dict) and r.get("relationshipType") == "DESCRIBES"
-                  and r.get("spdxElementId") == "SPDXRef-DOCUMENT"}
+                  and r.get("spdxElementId") == "SPDXRef-DOCUMENT" and isinstance(r.get("relatedSpdxElement"), str)}
     subject = str(data.get("name") or "")
     out: list[tuple[str, str, str, dict]] = []
     for p in data.get("packages") or []:

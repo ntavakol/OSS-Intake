@@ -69,7 +69,10 @@ def parse_checksums(data: bytes) -> dict[str, str]:
     """
     if not isinstance(data, (bytes, bytearray)):
         raise TypeError("parse_checksums expects bytes; read the file with 'rb' or response.content")
-    text = bytes(data).decode("utf-8-sig")
+    try:
+        text = bytes(data).decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise IntegrityError(f"checksums file is not UTF-8 text: {exc.reason} at byte {exc.start}") from None
     out: dict[str, str] = {}
     for raw in text.splitlines():
         line = raw.strip()

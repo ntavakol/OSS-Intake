@@ -74,8 +74,8 @@ def load_config(path: str | None) -> dict:
         return DEFAULT_CONFIG
     try:
         cfg = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ConfigError(f"cannot read likelihood config: {exc}") from None
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise ConfigError(f"cannot read likelihood config: {exc or 'nested too deeply'}") from None
     if not isinstance(cfg, dict):
         raise ConfigError("likelihood config must be a JSON object with a 'rules' list")
     validate(cfg)
@@ -86,12 +86,21 @@ def validate(cfg: dict) -> None:
     if not isinstance(cfg.get("rules"), list) or not cfg["rules"]:
         raise ConfigError("likelihood config needs a non-empty 'rules' list")
     for i, r in enumerate(cfg["rules"]):
-        if not isinstance(r.get("level"), int) or not 1 <= r["level"] <= 5:
+        if not isinstance(r, dict):
+            raise ConfigError(f"rule {i}: must be an object")
+        if not isinstance(r.get("level"), int) or isinstance(r["level"], bool) or not 1 <= r["level"] <= 5:
             raise ConfigError(f"rule {i}: 'level' must be an integer 1 to 5")
         for kind in ("all", "any"):
-            for c in r.get(kind, []):
-                if c.get("op") not in OPS or "metric" not in c or "value" not in c:
+            conds = r.get(kind, [])
+            if not isinstance(conds, list):
+                raise ConfigError(f"rule {i}: '{kind}' must be a list of conditions")
+            for c in conds:
+                if not isinstance(c, dict) or c.get("op") not in OPS or "metric" not in c or "value" not in c:
                     raise ConfigError(f"rule {i}: each condition needs metric, op ({', '.join(OPS)}) and value")
+                if not isinstance(c["metric"], str):
+                    raise ConfigError(f"rule {i}: a condition's metric must be a name")
+                if not isinstance(c["value"], (int, float)):  # bool is an int: archived == true
+                    raise ConfigError(f"rule {i}: a condition's value must be a number or true/false")
 
 
 def metrics(lag: dict, health: dict, scorecard: dict) -> dict:

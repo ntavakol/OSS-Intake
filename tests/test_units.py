@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from oss_intake import cvss, integrity, likelihood, merge, versions
+from oss_intake import cvss, inputs, integrity, likelihood, merge, versions
 from oss_intake.models import canonical_id, normalise_purl, parse_datetime, purl_without_version
 from oss_intake.scanners import grype, trivy
 
@@ -2567,3 +2567,297 @@ def test_ubuntu_fix_date_lookup_is_bounded_too():
         ubuntu._query(_BatchHttp(same, same, same), [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "a"}}])
     with pytest.raises(HttpError, match="0 result"):
         ubuntu._query(_BatchHttp({"results": []}), [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "a"}}])
+
+
+# Malformed input found by fuzzing (6 Nov, threat model open item 7): each crashed with a traceback. A file the user
+# gives is an input error (exit 2); a scanner report, scanner output or a checksums file is a scanner or integrity
+# error (exit 1); service data that cannot be read marks that source as failed. None may read as clean.
+_DEEP = b'{"a":' * 50000 + b"1" + b"}" * 50000
+
+
+def _deep_list(prefix: bytes, suffix: bytes = b"}") -> bytes:
+    return prefix + b"[" * 50000 + b"]" * 50000 + suffix
+
+
+@pytest.mark.parametrize("name, data", [
+    ("deep", _deep_list(b'{"bomFormat":"CycloneDX","specVersion":"1.5","components":')),
+    ("metadata not an object", b'{"bomFormat":"CycloneDX","specVersion":"1.5","metadata":"x",'
+                               b'"components":[{"purl":"pkg:npm/a@1.0.0"}]}'),
+], ids=lambda v: v if isinstance(v, str) else "")
+def test_malformed_sbom_is_an_input_error_or_read(tmp_path, name, data):
+    from oss_intake import sbom
+
+    p = tmp_path / "s.cdx.json"
+    p.write_bytes(data)
+    try:
+        comps = sbom.read(p)[0]
+    except inputs.InputError:
+        return
+    assert [c["purl"] for c in comps] == ["pkg:npm/a@1.0.0"]  # a stray metadata value is ignored
+
+
+@pytest.mark.parametrize("name, data, suffix", [
+    ("openvex deep", _deep_list(b'{"statements":'), ".json"),
+    ("openvex statement not an object", b'{"statements":["x"]}', ".json"),
+    ("openvex statements not a list", b'{"statements":{"a":1}}', ".json"),
+    ("csv not UTF-8", b"id,package,triage_status\n\xff\xfe,a,fixed\n", ".csv"),
+], ids=lambda v: v if isinstance(v, str) and not v.startswith(".") else "")
+def test_malformed_decisions_are_an_input_error(tmp_path, name, data, suffix):
+    from oss_intake import decisions
+
+    p = tmp_path / ("d" + suffix)
+    p.write_bytes(data)
+    with pytest.raises(inputs.InputError):
+        decisions.load(p)
+
+
+@pytest.mark.parametrize("row", ["pkg:a?/b", "pkg:npm#/x"])
+def test_inventory_purl_without_a_name_is_an_input_error(tmp_path, row):
+    p = tmp_path / "i.csv"
+    p.write_text(f"purl\n{row}\n", encoding="utf-8")
+    with pytest.raises(inputs.InputError):
+        inputs.inventory(p)
+
+
+def test_deep_renv_lock_is_an_input_error(tmp_path):
+    p = tmp_path / "renv.lock"
+    p.write_bytes(_deep_list(b'{"Packages":'))
+    with pytest.raises(inputs.InputError):
+        inputs.renv_purls(p)
+
+
+@pytest.mark.parametrize("report", [
+    {"SchemaVersion": 2, "Results": ["x"]},
+    {"SchemaVersion": 2, "Results": [{"Vulnerabilities": ["x"]}]},
+    {"SchemaVersion": 2, "Results": [{"Packages": ["x"], "Vulnerabilities": [{"PkgName": "a"}]}]},
+    {"SchemaVersion": 2, "Results": [{"Vulnerabilities": [{"PkgName": "a", "Severity": 5}]}]},
+    {"SchemaVersion": 2, "Results": [{"Vulnerabilities": [{"PkgName": "a", "CVSS": {"nvd": "x"}}]}]},
+    {"SchemaVersion": 2, "Metadata": "x", "Results": []},
+])
+def test_malformed_trivy_report_is_a_scanner_error(report):
+    from oss_intake.scanners import ScannerError, trivy
+
+    with pytest.raises(ScannerError, match="Trivy report"):
+        trivy.parse(report)
+
+
+@pytest.mark.parametrize("report", [
+    {"matches": ["x"]},
+    {"matches": [{"vulnerability": {"cvss": ["x"]}}]},
+    {"matches": [{"vulnerability": "x", "artifact": {}}]},
+    {"distro": "x", "matches": []},
+])
+def test_malformed_grype_report_is_a_scanner_error(report):
+    from oss_intake.scanners import ScannerError, grype
+
+    with pytest.raises(ScannerError, match="Grype report"):
+        grype.parse(report)
+
+
+def test_deep_scanner_report_is_a_scanner_error():
+    from oss_intake.scanners import ScannerError, load_json_bytes
+
+    with pytest.raises(ScannerError, match="not valid JSON"):
+        load_json_bytes(_deep_list(b'{"SchemaVersion":2,"Results":'), "import")
+
+
+def test_broken_govulncheck_output_is_a_scanner_error():
+    from oss_intake.scanners import ScannerError, govulncheck
+
+    with pytest.raises(ScannerError, match="govulncheck"):
+        govulncheck.parse_stream('{"config": {}}\n{"finding": ')
+
+
+def test_checksums_file_that_is_not_utf8_is_an_integrity_error():
+    with pytest.raises(integrity.IntegrityError, match="UTF-8"):
+        integrity.parse_checksums(b"\xff\xfe\x00 abc  tool.tar.gz\n")
+
+
+@pytest.mark.parametrize("cfg", [
+    _DEEP,
+    b'{"rules": ["x"]}',
+    b'{"rules": [{"level": 1, "all": "x"}]}',
+    b'{"rules": [{"level": 1, "all": ["x"]}]}',
+    b'{"rules": [{"level": 1, "any": [{"metric": "critical_with_fix", "op": ">=", "value": "a"}]}]}',
+    b'{"rules": [{"level": 1, "all": [{"metric": 5, "op": ">=", "value": 1}]}]}',
+], ids=["deep", "rule not an object", "all not a list", "condition not an object", "value not a number",
+        "metric not a name"])
+def test_malformed_likelihood_config_is_a_config_error(tmp_path, cfg):
+    from oss_intake import likelihood
+
+    p = tmp_path / "lk.json"
+    p.write_bytes(cfg)
+    with pytest.raises(likelihood.ConfigError):
+        likelihood.load_config(str(p))
+
+
+def test_exploit_db_index_that_cannot_be_read_marks_the_source_failed():
+    """A field over the csv module's size limit raised csv.Error out of the exploit lookup."""
+    from oss_intake.enrich import exploits
+
+    class Http:
+        def get_json(self, url, params=None):
+            return 200, {}
+
+        def get_text(self, url):
+            return (200, 'id,codes\n1,"' + "x" * 200_000 + '"\n') if "exploit" in url else (200, "")
+
+    info = {"sources": {}, "failed": []}
+    exploits._load(Http(), info)
+    assert "exploit-db" in info["failed"]
+
+
+def test_deep_cache_entry_is_ignored(tmp_path):
+    from oss_intake.http import ResponseCache
+
+    cache = ResponseCache(tmp_path)
+    url = "https://api.osv.dev/v1/vulns/GHSA-x"
+    cache.put(url, 200, {"id": "GHSA-x"})
+    cache._file(url).write_bytes(_DEEP)
+    assert cache.get(url) is None
+
+
+@pytest.mark.parametrize("data", [{"vulnerabilities": "x"}, {"vulnerabilities": ["x", 5]}])
+def test_kev_list_of_the_wrong_shape_is_not_loaded_or_skips_bad_entries(data):
+    from oss_intake.enrich import kev
+
+    class Http:
+        def get_json(self, url, params=None):
+            return 200, {**data, "catalogVersion": "1"}
+
+    ids, version = kev.load(Http())
+    assert ids == set()  # read as not loaded (KEV gates fail) or as no usable entries, never a traceback
+
+
+def test_workflow_listing_with_bad_entries_does_not_crash():
+    from oss_intake.health import workflows
+
+    class Http:
+        def get_json(self, url, params=None):
+            if url.endswith("/.github/workflows"):
+                return 200, ["x", {"type": "file", "name": 5}, {"type": "file", "name": "a.yml"},
+                             {"type": "file", "name": "b.yml", "path": ".github/workflows/b.yml"}]
+            return 200, {"encoding": "base64", "content": "not base64!"}
+
+    out = workflows.fetch(Http(), "owner/app")
+    # Only b.yml is a usable entry, and its content is not base64, so nothing is audited. (Reporting that as
+    # partial rather than "ok" is a separate backlog item: a workflow audit with files missing.)
+    assert out["files"] == 0
+
+
+@pytest.mark.parametrize("doc", [
+    {"bomFormat": "CycloneDX", "specVersion": "1.5", "components": 5},
+    {"bomFormat": "CycloneDX", "specVersion": "1.5", "components": [{"purl": "pkg:npm/a@1.0.0", "components": 5}]},
+    {"bomFormat": "CycloneDX", "specVersion": "1.5", "components": [{"name": "x", "properties": 5}]},
+    {"spdxVersion": "SPDX-2.3", "documentDescribes": 5, "packages": [{"name": "a"}]},
+    {"spdxVersion": "SPDX-2.3", "relationships": "x", "packages": [{"name": "a"}]},
+], ids=["components", "nested components", "properties", "documentDescribes", "relationships"])
+def test_sbom_field_of_the_wrong_type_is_an_input_error(tmp_path, doc):
+    """Review (6 Nov): these crashed; read as absent they would drop the packages under them silently."""
+    import json
+
+    from oss_intake import sbom
+
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(inputs.InputError, match="must be a list"):
+        sbom.read(p)
+
+
+def test_sbom_described_element_of_the_wrong_type_is_ignored(tmp_path):
+    import json
+
+    from oss_intake import sbom
+
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps({"spdxVersion": "SPDX-2.3", "documentDescribes": [["x"]], "relationships": [
+        {"relationshipType": "DESCRIBES", "spdxElementId": "SPDXRef-DOCUMENT", "relatedSpdxElement": ["y"]}],
+        "packages": [{"name": "a", "versionInfo": "1.0.0", "SPDXID": "SPDXRef-a", "externalRefs": [
+            {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+             "referenceLocator": "pkg:npm/a@1.0.0"}]}]}), encoding="utf-8")
+    assert [c["purl"] for c in sbom.read(p)[0]] == ["pkg:npm/a@1.0.0"]
+
+
+@pytest.mark.parametrize("statement", [
+    {"vulnerability": 5, "status": "fixed", "products": ["pkg:npm/a@1.0.0"]},
+    {"vulnerability": ["CVE-1"], "status": "fixed", "products": ["pkg:npm/a@1.0.0"]},
+    {"vulnerability": {"name": "CVE-1", "aliases": 5}, "status": "fixed", "products": ["pkg:npm/a@1.0.0"]},
+    {"vulnerability": {"name": 5}, "status": "fixed", "products": ["pkg:npm/a@1.0.0"]},
+    {"vulnerability": "CVE-1", "status": "fixed", "products": 5},
+], ids=["int", "list", "aliases", "name", "products"])
+def test_openvex_fields_of_the_wrong_type_are_invalid_decisions(tmp_path, statement):
+    import json
+
+    from oss_intake import decisions
+
+    p = tmp_path / "v.json"
+    p.write_text(json.dumps({"statements": [statement]}), encoding="utf-8")
+    with pytest.raises(inputs.InputError, match="invalid decision"):
+        decisions.load(p)
+
+
+@pytest.mark.parametrize("report", [
+    {"SchemaVersion": 2, "Results": [{"Target": 5, "Vulnerabilities": []}]},
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Class": ["os-pkgs"]}]},
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{"PkgName": 5}]}]},
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Packages": "x"}]},
+], ids=["Target", "Class", "PkgName", "Packages"])
+def test_trivy_report_with_fields_of_the_wrong_type_is_refused_before_use(report):
+    """Review (6 Nov): parse() was guarded, but the report is read again after it (reachability, OSV), so a
+    Target that is not text crashed there."""
+    from oss_intake.scanners import ReportShapeError, check_report
+
+    with pytest.raises(ReportShapeError, match="well-formed Trivy report"):
+        check_report(report, "trivy", "import")
+
+
+@pytest.mark.parametrize("report", [
+    {"matches": [{"artifact": {"name": 5}, "vulnerability": {}}]},
+    {"matches": [{"artifact": "x", "vulnerability": {}}]},
+    {"matches": [{"artifact": {}, "vulnerability": {"id": ["x"]}}]},
+    {"matches": [], "descriptor": "x"},
+], ids=["artifact name", "artifact", "vulnerability id", "descriptor"])
+def test_grype_report_with_fields_of_the_wrong_type_is_refused_before_use(report):
+    from oss_intake.scanners import ReportShapeError, check_report
+
+    with pytest.raises(ReportShapeError):
+        check_report(report, "grype", "import")
+
+
+def test_imported_report_that_cannot_be_parsed_is_a_usage_error(tmp_path):
+    """Review (6 Nov): a report of the wrong top-level shape exited 2, one that failed deeper exited 1."""
+    import json
+
+    from oss_intake import cli
+
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps({"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [
+        {"PkgName": "a", "VulnerabilityID": "CVE-1", "CVSS": {"nvd": "x"}}]}]}), encoding="utf-8")
+    lock = tmp_path / "package-lock.json"
+    lock.write_text("{}", encoding="utf-8")
+    assert cli.main(["--path", str(lock), "--out", str(tmp_path / "o"), "--from-trivy-json", str(tj),
+                     "--scanners", "trivy", "--offline"]) == cli.EXIT_USAGE
+
+
+@pytest.mark.parametrize("messages", [[1], [{"osv": {"id": 5}}], [{"osv": {"id": "GO-1", "aliases": 5}}],
+                                      [{"finding": {"osv": "GO-1", "trace": "x"}}],
+                                      [{"finding": {"osv": "GO-1", "trace": [5]}}],
+                                      [{"finding": {"osv": ["GO-1"]}}]],
+                         ids=["message", "id", "aliases", "trace", "trace entry", "finding osv"])
+def test_govulncheck_output_of_the_wrong_shape_is_a_scanner_error(messages):
+    """Review (6 Nov): its "not reachable" verdict sets findings aside, so output that cannot be read is an error."""
+    from oss_intake.scanners import ScannerError, govulncheck
+
+    with pytest.raises(ScannerError, match="govulncheck"):
+        govulncheck.analyse(messages)
+
+
+def test_kev_list_with_any_unreadable_entry_is_not_loaded():
+    """Review (6 Nov): one usable entry among unreadable ones read as a loaded catalogue, so KEV gates passed."""
+    from oss_intake.enrich import kev
+
+    class Http:
+        def get_json(self, url, params=None):
+            return 200, {"vulnerabilities": ["x", {"cveID": "CVE-2099-1"}], "catalogVersion": "1"}
+
+    assert kev.load(Http()) == (set(), None)

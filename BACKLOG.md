@@ -6,16 +6,17 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
 1. Fuzzing with Atheris (agreed 6 Nov): one harness per parser of untrusted input, taken from the threat
    model's user inputs section (.vsix unpacking, the shipped SBOM and lockfile readers, SBOM input, the CSV
-   inventory, package.json). A weekly scheduled CI job on Linux and Python 3.13 runs each for a few minutes, with
-   Atheris pinned by hash in its own requirements file and crashing inputs kept as job artifacts. Each crash is
-   fixed as a bug, with a test that fails without the fix. Linux only (Atheris has no macOS wheels); CONTRIBUTING
-   says so. Also satisfies the Scorecard Fuzzing check, which is not the reason for doing it.
+   inventory, package.json). The crashes a first fuzzing run found are already fixed (6 Nov). A weekly scheduled
+   CI job on Linux and Python 3.13 runs each for a few minutes, with Atheris pinned by hash in its own requirements
+   file and crashing inputs kept as job artifacts. Each crash is fixed as a bug, with a test that fails without the
+   fix. Linux only (Atheris has no macOS wheels); CONTRIBUTING says so. Also satisfies the Scorecard Fuzzing
+   check, which is not the reason for doing it.
 2. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order, after the list above)
-Open items 1 to 12 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+Open items 1 to 11 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
 2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
@@ -24,14 +25,12 @@ Open items 1 to 12 of `docs/threat-model.md`. Each fix comes with a test that fa
    as partial.
 5. Report a binary checked against an unsigned checksums file as such, not as hash verified.
 6. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-7. Turn malformed SBOM, OpenVEX, decisions and service content into clear errors instead of tracebacks; the
-   fuzzing item in the backlog would find more of these.
-8. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for
+7. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for
    each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-9. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-10. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-11. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-12. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+8. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
 
 ## Later: when commits are less frequent (agreed 6 Nov)
 - Branch protection with required status checks: changes reach main only through a pull request whose CI has

@@ -95,7 +95,7 @@ class ResponseCache:
                 with self._lock:
                     self.hits += 1
                 return int(rec["status"]), rec.get("data")
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError):
             pass
         with self._lock:
             self.misses += 1
