@@ -15,6 +15,10 @@ from pathlib import Path
 from . import __version__, inputs, inventory_report, lag, release_age
 from .models import SEVERITY_ORDER, parse_datetime
 
+# Exit codes: 0 clean, 1 a scanner, integrity, configuration, HTTP or OS error (or a gate that could not be
+# evaluated), 2 a usage or input error, 3 a --fail-on or --fail-on-likelihood gate met.
+EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_THRESHOLD = 0, 1, 2, 3
+
 FAIL_ON = {
     "malicious": "a malicious package",
     "kev": "a finding in CISA KEV",
