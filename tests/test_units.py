@@ -2742,8 +2742,8 @@ def test_workflow_listing_with_bad_entries_does_not_crash():
             return 200, {"encoding": "base64", "content": "not base64!"}
 
     out = workflows.fetch(Http(), "owner/app")
-    # Only b.yml is a usable entry, and its content is not base64, so nothing is audited. (Reporting that as
-    # partial rather than "ok" is a separate backlog item: a workflow audit with files missing.)
+    # Only b.yml is a usable entry, and its content is not base64, so nothing is audited (and the audit is
+    # reported as partial: test_workflow_audit_with_unreadable_files_is_partial).
     assert out["files"] == 0
 
 
@@ -3048,3 +3048,49 @@ def test_more_placeholder_versions_are_refused(version):
     package read as clean."""
     with pytest.raises(inputs.InputError, match="placeholder"):
         inputs.packages([f"npm:left-pad@{version}"])
+
+
+def test_workflow_audit_with_unreadable_files_is_partial():
+    """Threat model open item: a workflow file that failed to download was skipped and the audit still read as
+    complete ("ok"), so a project could hide its riskiest workflow behind a failed fetch."""
+    import base64
+
+    from oss_intake import report_html
+    from oss_intake.health import workflows as wf
+    from oss_intake.http import HttpError
+
+    class H:
+        def get_json(self, url, params=None):
+            if url.endswith("/contents/.github/workflows"):
+                return 200, [{"type": "file", "name": n, "path": f".github/workflows/{n}"}
+                             for n in ("ci.yml", "gone.yml", "odd.yml", "err.yml")]
+            if url.endswith("gone.yml"):
+                return 500, None
+            if url.endswith("odd.yml"):
+                return 200, {"encoding": "none", "content": ""}
+            if url.endswith("err.yml"):
+                raise HttpError("timed out")
+            return 200, {"encoding": "base64", "content": base64.b64encode(WORKFLOW_GOOD.encode()).decode()}
+
+    r = wf.fetch(H(), "o/r")
+    assert r["status"] == "partial" and r["files"] == 1
+    assert r["files_unread"] == ["gone.yml", "odd.yml", "err.yml"]
+    text = wf.files_audited(r)
+    assert "3 could not be read" in text and "partial" in text and "gone.yml" in text
+    html = report_html._ci({"health": {"workflows": r}})  # the HTML report shows a partial audit, and says so
+    assert "Workflow files checked" in html and "could not be read, so the audit is partial" in html
+
+
+def test_workflow_audit_with_every_file_read_is_ok():
+    import base64
+
+    from oss_intake.health import workflows as wf
+
+    class H:
+        def get_json(self, url, params=None):
+            if url.endswith("/contents/.github/workflows"):
+                return 200, [{"type": "file", "name": "ci.yml", "path": ".github/workflows/ci.yml"}]
+            return 200, {"encoding": "base64", "content": base64.b64encode(WORKFLOW_GOOD.encode()).decode()}
+
+    r = wf.fetch(H(), "o/r")
+    assert r["status"] == "ok" and r["files_unread"] == [] and wf.files_audited(r) == "1"

@@ -17,6 +17,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `pkg_type`, OpenVEX's package URL); one that does not still matches by name.
 - Versions such as `unknown`, `TBD`, `N/A`, `none`, `-` or `?` in a package list or `--package` are refused as
   placeholders, as `latest` was: OSV knows nothing about them, so the package read as clean.
+- The audit of a project's GitHub Actions workflows skipped a file that failed to download and still read as
+  complete. It is now reported as partial, in a warning and in both reports, naming the files not read.
 
 ## [0.16.0] - 2026-11-06
 

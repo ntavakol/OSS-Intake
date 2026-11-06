@@ -83,7 +83,8 @@ def analyse(name: str, text: str, known_bad: list[dict]) -> dict:
 def fetch(http: Http, repo: str) -> dict:
     """Analyse the repository's GitHub Actions workflows (up to 20 files) via the contents API at api.github.com:
     action pinning, known bad actions, permissions and pull_request_target use. Returns a summary dict with status
-    ok, none (no .github/workflows) or error; HTTP errors are returned, not raised."""
+    ok, partial (some files could not be read: files_unread names them), none (no .github/workflows) or error;
+    HTTP errors are returned, not raised."""
     owner, name = repo.split("/", 1)
     try:
         status, listing = http.get_json(f"{API}/{owner}/{name}/contents/.github/workflows")
@@ -97,24 +98,29 @@ def fetch(http: Http, repo: str) -> dict:
              and isinstance(e.get("name"), str) and e["name"].endswith((".yml", ".yaml"))]
     known_bad = load_known_bad().get("actions", [])
     results, skipped = [], max(0, len(files) - MAX_FILES)
+    unread: list[str] = []  # listed but not audited: never left out silently, as the audit would read as complete
     for e in files[:MAX_FILES]:
         try:
             st, data = http.get_json(f"{API}/{owner}/{name}/contents/{quote(e['path'])}")
         except HttpError:
+            unread.append(e["name"])
             continue
         if st != 200 or not isinstance(data, dict) or data.get("encoding") != "base64":
+            unread.append(e["name"])
             continue
         try:
             text = base64.b64decode(str(data.get("content", ""))).decode("utf-8", errors="replace")
         except ValueError:  # binascii.Error: not base64
+            unread.append(e["name"])
             continue
         results.append(analyse(e["name"], text, known_bad))
     total = sum(r["uses"] for r in results)
     unpinned = sum(len(r["unpinned"]) for r in results)
     return {
-        "status": "ok",
+        "status": "partial" if unread else "ok",
         "files": len(results),
         "files_skipped": skipped,
+        "files_unread": unread,
         "uses_total": total,
         "unpinned": unpinned,
         "pinned_percent": round(100 * (total - unpinned) / total) if total else None,
@@ -125,3 +131,14 @@ def fetch(http: Http, repo: str) -> dict:
         "pull_request_target_pr_code": [r["file"] for r in results if r["pull_request_target_pr_code"]],
         "details": results,
     }
+
+
+def files_audited(wf: dict) -> str:
+    """How many workflow files were audited, and which were listed but not (over the limit, or unreadable)."""
+    out = str(wf["files"])
+    if wf.get("files_skipped"):
+        out += f" ({wf['files_skipped']} more not checked)"
+    if wf.get("files_unread"):
+        out += (f"; {len(wf['files_unread'])} could not be read, so the audit is partial: "
+                + ", ".join(wf["files_unread"]))
+    return out

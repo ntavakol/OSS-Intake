@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from . import checks as checks_mod
+from .health.workflows import files_audited
 from .models import SEVERITIES, Finding
 from .triage import rank_key
 
@@ -486,8 +487,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         secs.append(("Project health", [("table", ["Signal", "Value"], h_rows)]))
 
     wf = health.get("workflows") or {}
-    if wf.get("status") == "ok":
-        checked = str(wf["files"]) + (f" ({wf['files_skipped']} more not checked)" if wf["files_skipped"] else "")
+    if wf.get("status") in ("ok", "partial"):
+        checked = files_audited(wf)
         w_rows = [["Workflow files checked", checked],
                   ["Action references", wf["uses_total"]],
                   ["Pinned to a full commit SHA", _v(wf["pinned_percent"], "%")],
@@ -611,3 +612,4 @@ def write_html(path: Path, a: dict, findings: list[Finding], top: int = 50) -> N
 
     lag = a["lag"]
     report_html.write(path, a, findings, top, CAVEAT, HEURISTIC_NOTE, lag_note(lag))
+

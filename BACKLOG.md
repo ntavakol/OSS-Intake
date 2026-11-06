@@ -9,8 +9,8 @@ Open items 1 to 10 of `docs/threat-model.md`. Each fix comes with a test that fa
    test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
    CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
    which an existing test keeps set aside on purpose; also Ned's call.
-2. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
-   as partial.
+2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
+   so this needs Ned's OK; `--fail-on unknown-age` catches these today).
 3. Report a binary checked against an unsigned checksums file as such, not as hash verified.
 4. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
 5. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for

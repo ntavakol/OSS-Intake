@@ -15,6 +15,7 @@ import html
 from pathlib import Path
 
 from . import checks as checks_mod
+from .health.workflows import files_audited
 from .models import SEVERITIES, Finding
 from .triage import LABEL as TRIAGE_LABEL
 from .triage import MEANING as TRIAGE_MEANING
@@ -397,10 +398,10 @@ def _ci(a: dict) -> str:
     wf = a["health"].get("workflows") or {}
     if wf.get("status") in ("none", "error"):
         return _section("Project CI hygiene (GitHub Actions)", _note(wf.get("note", "")))
-    if wf.get("status") != "ok":
+    if wf.get("status") not in ("ok", "partial"):
         return ""
     pin = wf["pinned_percent"]
-    files = str(wf["files"]) + (f" ({wf['files_skipped']} more not checked)" if wf["files_skipped"] else "")
+    files = files_audited(wf)
 
     def listed(xs: list[str], tone: str) -> tuple:
         return (Raw(", ".join(str(_code(x)) for x in xs)), tone) if xs else ("none", "g")

@@ -74,7 +74,7 @@ not trust them to be up, or to answer in the right shape.
 |---|---|---|
 | Traffic is read or changed in transit | Every service URL is fixed in the code as `https://`; certificates are checked by requests. | `http.RequestsHttp`, the callers |
 | `GITHUB_TOKEN` leaks to another host or into output | It is read once, attached only when the host is exactly `api.github.com` (a look-alike such as `api.github.com.evil.example` gets none), never put in a URL, and left out of error messages, logs and reports. requests drops it on a redirect to another host. GitHub API responses are never cached. | `http.RequestsHttp._headers`, `http.CACHE_RULES` |
-| A service that is down or answers garbage reads as clean | Answers are checked for type before use; an answer of the wrong shape (OSV, KEV with any unreadable entry, the exploit indexes) is treated as that source failing, never as clean. Workflow listing entries that cannot be read are skipped (see open item 4). An OSV failure stops a package-list run, and for an image marks the malicious-package check partial, which fails `--fail-on malicious`. KEV that did not load fails the KEV gates. Release-age and registry errors make those checks partial and their gates fail. A removal list with under 100 rows is not used. | `scanners.osv`, `enrich.kev`, `release_age`, `registry_check`, `vscode.load_removed`, `gates.not_evaluated` |
+| A service that is down or answers garbage reads as clean | Answers are checked for type before use; an answer of the wrong shape (OSV, KEV with any unreadable entry, the exploit indexes) is treated as that source failing, never as clean. Workflow listing entries of the wrong shape are skipped; a listed workflow file that cannot be downloaded or decoded makes the audit partial, named in a warning and the reports. An OSV failure stops a package-list run, and for an image marks the malicious-package check partial, which fails `--fail-on malicious`. KEV that did not load fails the KEV gates. Release-age and registry errors make those checks partial and their gates fail. A removal list with under 100 rows is not used. | `scanners.osv`, `enrich.kev`, `release_age`, `registry_check`, `vscode.load_removed`, `health.workflows`, `gates.not_evaluated` |
 | OSV leaves some packages out of its answer, so they read as clean | An answer must hold one result object per package asked about, each with its vulnerabilities as a list of objects with an id; a page token that repeats, or more than 200 pages for one package, is an error too. Each is handled as an OSV failure. The Ubuntu fix-date lookup uses the same checks. | `scanners.osv.querybatch` |
 | One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" | `scanners.osv` |
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
@@ -215,8 +215,6 @@ publishes to PyPI, GitHub releases and GitHub Pages. A compromise here reaches e
   example, but not in `codeql.yml` or `scorecard.yml`; the release test does not check its top-level
   permissions.
 - Python and Node come from setup-python and setup-node by version, and CI installs zsh with apt, unpinned.
-- The workflow audit of a project being assessed skips a workflow file that fails to download, and still reports
-  the audit as complete.
 - `main` accepts direct pushes from the maintainer, without a pull request or passing checks first (branch
   protection with required checks is in the backlog). With one maintainer, the maintainer's GitHub account is the
   single point of trust for code, releases and the site.
@@ -286,8 +284,8 @@ indicators, the single maintainer) are limits of the approach rather than defect
    test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
    CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
    which an existing test keeps set aside on purpose; also Ned's call.
-2. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
-   as partial.
+2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
+   so this needs Ned's OK; `--fail-on unknown-age` catches these today).
 3. Report a binary checked against an unsigned checksums file as such, not as hash verified.
 4. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
 5. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline

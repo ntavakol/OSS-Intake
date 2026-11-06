@@ -142,6 +142,9 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
                 sc = {"status": "error", "note": str(exc)}
         if not args.no_workflows:
             health["workflows"] = workflows.fetch(net, args.repo)
+            if health["workflows"].get("files_unread"):
+                warnings.append("Project workflow audit is partial: "
+                                + workflows.files_audited(health["workflows"]).split("; ", 1)[1])
             for kb in health["workflows"].get("known_bad", []):
                 warnings.append(f"Project workflow {kb['file']} uses {kb['uses']}, a known-bad action version "
                                 f"({kb['reference']})")
