@@ -100,17 +100,17 @@ one way a package is recognised as malware).
 
 | Threat | Mitigation | Where |
 |---|---|---|
-| Another user plants answers | A folder that others can write to, or that belongs to another user, is not used, with a warning; the folder is created readable by the user only. | `http.ResponseCache.unsafe_reason`, `ResponseCache.put` |
+| Another user plants answers | A folder that others can write to, or that belongs to another user, is not used, with a warning, and nor is one below a folder like that (a shared folder with the sticky bit, such as `/tmp`, is fine above it). The folder is created readable by the user only, and entries are written for the user only whatever the umask. An entry, or the subfolder holding it, that is a link, another user's or writable by others is ignored. On Windows, where permissions are not read, only a folder inside the user's profile is used. | `http.ResponseCache.unsafe_reason`, `http._trusted`, `ResponseCache.get`, `ResponseCache.put` |
 | A stale, misplaced or forged entry is used | An entry is used only if it is for this exact URL, a 200, and not older than its rule or dated in the future. "Not found" is never kept, nor a version without a date. | `http.ResponseCache.get`, `ResponseCache.put` |
 | A half-written entry is read | Entries are written to a temporary file and renamed into place. | `http.ResponseCache.put` |
 | The user wants nothing kept | `--no-cache` and `--offline` turn it off. | `cli` |
 
 **Left open:**
 
-- The ownership check looks at the folder (or, before it exists, its nearest parent) once, before use: not its
-  parents once it exists, its subfolders or entry files, and not again after the check. A folder that already
-  exists keeps its permissions.
-- On Windows the folder is not checked at all, so a shared `--cache-dir` there is trusted.
+- The folder is checked once, before use, and each entry as it is read, so a change between the check and the
+  read is not seen. A folder that already exists keeps its permissions.
+- On Windows a folder inside the user's profile is trusted without reading its permissions, so one someone gave
+  other users write access to is still used.
 - An entry's content is not checked beyond its URL, status and date: anyone who can write as the user can
   rewrite it. (Anyone who can do that can also change oss-intake itself.)
 
@@ -282,9 +282,8 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-4. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-5. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-6. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-7. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+4. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+5. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+6. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.

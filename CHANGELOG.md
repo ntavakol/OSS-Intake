@@ -34,6 +34,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   refused (exit 2) before they are read whole into memory.
 - An SBOM over 200 MB was taken for an ordinary file and given to the scanners, which found nothing in it, so it
   read as clean. It is now recognised by its content and refused (exit 2).
+- The lookup cache checked only its folder (or the nearest existing parent): an entry, or the subfolder holding it,
+  that another user owned, could write to or had replaced with a link was still used, and so was a folder below
+  one others could write to. These are now ignored or refused, and entries are written for the user only
+  whatever the umask. On Windows the folder was not checked at all; a `--cache-dir` outside the user's profile is
+  now not used, with a warning.
 
 ## [0.16.0] - 2026-11-06
 

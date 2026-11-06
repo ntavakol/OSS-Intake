@@ -568,3 +568,75 @@ def test_sbom_over_the_size_limit_is_refused_not_scanned(tmp_path, monkeypatch):
     assert inputs.classify(p) == "sbom"
     with pytest.raises(inputs.InputError, match="larger than"):
         sbom.read(p)
+
+
+# --- The cache's subfolders, entries and parents (threat model open item, 6 Nov) -------------------------------
+
+_POSIX = pytest.mark.skipif(not hasattr(__import__("os"), "getuid"), reason="POSIX permissions")
+_CACHE_URL = "https://api.osv.dev/v1/vulns/GHSA-test"
+
+
+@_POSIX
+def test_cache_entry_others_can_write_is_not_used(tmp_path):
+    c = ResponseCache(tmp_path / "c")
+    c.put(_CACHE_URL, 200, {"id": "GHSA-test"})
+    assert c.get(_CACHE_URL) == (200, {"id": "GHSA-test"})
+    f = c._file(_CACHE_URL)
+    f.chmod(0o666)
+    assert c.get(_CACHE_URL) is None
+    f.chmod(0o600)
+    f.parent.chmod(0o777)  # a subfolder others can write to: they could replace the entry
+    assert c.get(_CACHE_URL) is None
+
+
+@_POSIX
+def test_cache_entry_that_is_a_link_is_not_used(tmp_path):
+    c = ResponseCache(tmp_path / "c")
+    c.put(_CACHE_URL, 200, {"id": "GHSA-test"})
+    f = c._file(_CACHE_URL)
+    planted = tmp_path / "planted.json"
+    planted.write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+    planted.chmod(0o600)
+    f.unlink()
+    f.symlink_to(planted)
+    assert c.get(_CACHE_URL) is None
+
+
+@_POSIX
+def test_cache_entries_are_written_for_this_user_only_whatever_the_umask(tmp_path):
+    import os
+
+    old = os.umask(0o002)
+    try:
+        c = ResponseCache(tmp_path / "c")
+        c.put(_CACHE_URL, 200, {"id": "GHSA-test"})
+    finally:
+        os.umask(old)
+    assert c._file(_CACHE_URL).stat().st_mode & 0o777 == 0o600
+    assert c.get(_CACHE_URL) == (200, {"id": "GHSA-test"})
+
+
+@_POSIX
+def test_cache_under_a_folder_others_can_write_is_not_used(tmp_path):
+    """Only the nearest existing folder was checked: whoever can write to a parent can swap the cache folder."""
+    shared = tmp_path / "shared"
+    (shared / "c").mkdir(parents=True)
+    shared.chmod(0o777)  # writable by others, not sticky
+    (shared / "c").chmod(0o700)
+    try:
+        assert "can be written by other users" in (ResponseCache(shared / "c").unsafe_reason() or "")
+        shared.chmod(0o1777)  # sticky, as /tmp is: others cannot rename the folder away
+        assert ResponseCache(shared / "c").unsafe_reason() is None
+    finally:
+        shared.chmod(0o700)
+
+
+def test_cache_outside_the_user_profile_on_windows_is_not_used(tmp_path, monkeypatch):
+    """The folder was not checked at all on Windows. Its permissions are not read there, so only a folder in the
+    user's own profile is trusted."""
+    monkeypatch.setattr(__import__("pathlib").Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    (tmp_path / "home").mkdir()
+    assert ResponseCache(tmp_path / "home" / "cache").unsafe_reason(windows=True) is None
+    why = ResponseCache(tmp_path / "shared" / "cache").unsafe_reason(windows=True)
+    assert why and "outside your user profile" in why

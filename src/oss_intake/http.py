@@ -54,6 +54,22 @@ class HttpError(Exception):
     """Network or protocol failure. Messages never include request headers."""
 
 
+def _trusted(p: Path) -> bool:
+    """A cache entry or subfolder only this user (or root) could have written: not a link, not another user's,
+    not writable by others. A missing file reads as a miss either way. Always true on Windows (unsafe_reason
+    checks the folder there)."""
+    if sys.platform == "win32" or not hasattr(os, "getuid"):
+        return True
+    import stat
+
+    try:
+        st = os.lstat(p)
+    except OSError:
+        return True  # missing: the read that follows is a miss
+    return (not stat.S_ISLNK(st.st_mode) and st.st_uid in (os.getuid(), 0)
+            and not st.st_mode & (stat.S_IWGRP | stat.S_IWOTH))
+
+
 def default_cache_dir() -> Path:
     """Per-user cache directory: LOCALAPPDATA/oss-intake/cache on Windows, ~/Library/Caches/oss-intake on macOS,
     otherwise XDG_CACHE_HOME/oss-intake (default ~/.cache/oss-intake)."""
@@ -92,7 +108,10 @@ class ResponseCache:
         if age is None:
             return None
         try:
-            rec = json.loads(self._file(url).read_text(encoding="utf-8"))
+            f = self._file(url)
+            if not (_trusted(f.parent) and _trusted(f)):
+                raise ValueError("an entry or subfolder another user could have written")
+            rec = json.loads(f.read_text(encoding="utf-8"))
             if not isinstance(rec, dict):
                 raise ValueError("not an entry")
             elapsed = self._now() - float(rec["fetched"])
@@ -117,31 +136,56 @@ class ResponseCache:
             self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
             f.parent.mkdir(exist_ok=True, mode=0o700)
             tmp = f.with_suffix(f".{threading.get_ident()}.tmp")
-            tmp.write_text(json.dumps({"url": url, "fetched": self._now(), "status": status, "data": data}),
-                           encoding="utf-8")
+            # Readable and writable by this user only, whatever the umask: get() ignores an entry others could
+            # write to.
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(json.dumps({"url": url, "fetched": self._now(), "status": status, "data": data}))
+            os.chmod(tmp, 0o600)  # O_CREAT's mode does not apply to a file left from an earlier attempt
             os.replace(tmp, f)
             with self._lock:
                 self.writes += 1
         except OSError:
             pass  # a cache that cannot be written is only slower
 
-    def unsafe_reason(self) -> str | None:
+    def unsafe_reason(self, windows: bool | None = None) -> str | None:
         """Why this folder should not be trusted, or None. Anyone who can write to it could plant answers (an
-        old release date for a malicious new version), so a folder others can write to is not used."""
-        if os.name == "nt":
-            return None
+        old release date for a malicious new version), so a folder others can write to is not used. The folder
+        and every folder above it are checked: whoever can write to a parent can swap the folder. (Entries and
+        their subfolders are checked as they are read: _trusted.)"""
+        if windows if windows is not None else sys.platform == "win32":
+            return self._windows_reason()
         import stat
 
         for p in [self.folder, *self.folder.parents]:
-            if p.exists():
+            try:
                 st = p.stat()
-                if p == self.folder or not (st.st_mode & stat.S_ISVTX):
-                    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
-                        return f"{p} can be written by other users"
-                    if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
-                        return f"{p} belongs to another user"
-                break
+            except FileNotFoundError:
+                continue  # not made yet: the folder above it decides
+            except OSError as exc:
+                return f"{p} cannot be checked ({exc.strerror or exc})"
+            # A shared folder such as /tmp (sticky: only the owner can rename or delete) is fine above the cache.
+            if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and (p == self.folder or not st.st_mode & stat.S_ISVTX):
+                return f"{p} can be written by other users"
+            if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
+                return f"{p} belongs to another user"
         return None
+
+    def _windows_reason(self) -> str | None:
+        """Windows permissions are not read here, so only a folder inside the user's own profile (where other
+        users cannot write unless someone changed its permissions) is trusted."""
+        def inside(p: Path, root: Path) -> bool:
+            try:
+                p.resolve().relative_to(root.resolve())
+                return True
+            except (ValueError, OSError, RuntimeError):
+                return False
+
+        roots = [Path.home()] + ([Path(os.environ["LOCALAPPDATA"])] if os.environ.get("LOCALAPPDATA") else [])
+        if any(inside(self.folder, r) for r in roots):
+            return None
+        return (f"{self.folder} is outside your user profile, and its Windows permissions are not checked, so "
+                "other users may be able to write to it")
 
     def stats(self) -> dict:
         return {"folder": str(self.folder), "hits": self.hits, "misses": self.misses, "written": self.writes}
