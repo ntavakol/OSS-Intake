@@ -275,8 +275,8 @@ it ships. What is not listed here (a service that answers wrongly, an extension 
 indicators, the single maintainer) are limits of the approach rather than defects.
 
 1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
-   test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
-   CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
-   which an existing test keeps set aside on purpose; also Ned's call.
+   test expects "not reachable" to set a finding aside without a hash, so this waits on a maintainer decision).
+   Malicious and CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header
+   CVE in KEV, which an existing test keeps set aside on purpose; also a maintainer decision.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
-   so this needs Ned's OK; `--fail-on unknown-age` catches these today).
+   so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).

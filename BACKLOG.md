@@ -6,11 +6,11 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 ## Next: the threat model's open items (agreed 6 Nov, in this order)
 Open items 1 to 2 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
-   test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
-   CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
-   which an existing test keeps set aside on purpose; also Ned's call.
+   test expects "not reachable" to set a finding aside without a hash, so this waits on a maintainer decision).
+   Malicious and CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header
+   CVE in KEV, which an existing test keeps set aside on purpose; also a maintainer decision.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
-   so this needs Ned's OK; `--fail-on unknown-age` catches these today).
+   so this waits on a maintainer decision; `--fail-on unknown-age` catches these today).
 
 ## Later: when commits are less frequent (agreed 6 Nov)
 - Branch protection with required status checks: changes reach main only through a pull request whose CI has

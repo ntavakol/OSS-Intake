@@ -2978,7 +2978,7 @@ def test_evidence_rules_do_not_set_aside_kev_or_malicious(evidence, signal, grou
     """Open item 2: the build-label and govulncheck rules came before KEV, and the kernel-header and build-label
     rules before malicious, so a known exploited or malicious finding could be set aside and no longer count for
     any gate. A kernel header CVE stays set aside even in KEV (test_triage_groups: it does not apply in a
-    container); changing that is Ned's call."""
+    container); changing that is a maintainer decision."""
     if evidence.get("excluded") and signal.get("kev"):
         pytest.skip("kernel header KEV finding: deliberately set aside (test_triage_groups)")
     from oss_intake import triage
