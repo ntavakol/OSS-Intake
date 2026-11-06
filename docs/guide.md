@@ -365,7 +365,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--grace-days` | A fix must predate the release by this many days to count as missed (default 14) |
 | `--unshipped-days` | Days a fix must be public, with no newer release, to count as unshipped (default 90) |
 | `--as-of` | Fix the assessment date for reproducible reports |
-| `--min-severity` | Drop findings below a severity |
+| `--min-severity` | Leave findings below a severity out of the reports. Findings in Act now, malicious ones and those whose details could not be loaded are kept, and `--fail-on` and likelihood still see every finding: a gate met only by findings left out is named in a warning |
 | `--formats` | Any of `csv,md,json,html` (default all; `findings.csv` is always written) |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |

@@ -22,6 +22,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Dependabot updates GitHub Actions only. The pinned test and lint tools are updated with uv, as CONTRIBUTING.md
   describes, because Dependabot's regenerated `requirements/dev.txt` left out the Windows and Python 3.10 pins.
   Updated to ruff 0.17.3, mypy 2.4.1 and pytest 9.2.0.
+- With `--min-severity`, fix dates, KEV, EPSS and exploits are looked up for every finding, not only those shown,
+  so such runs make more requests. Findings are looked up most severe first, so lookups that are capped reach
+  the severe ones.
+
+### Fixed
+- `--min-severity` could turn a failing gate into a pass: it removed findings before KEV, exploits and triage were
+  known, and the gates saw only what was left. A finding whose advisory details did not load (no severity), a
+  KEV-listed or exploited finding of low severity, or a HIGH one under `--min-severity CRITICAL` with
+  `--fail-on high`, no longer counted, and likelihood (`--fail-on-likelihood`) was worked out from what was left.
+  The option now only shortens the reports: findings in Act now, malicious ones and those missing their details
+  are kept, the gates and likelihood see every finding, and a gate met only by findings left out is named in a
+  warning (also under `--quiet`). The per-package rows and verdicts and the VEX files count every finding.
 
 ## [0.15.0] - 2026-11-06
 

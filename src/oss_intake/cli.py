@@ -209,7 +209,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="count kernel CVEs on kernel header packages (linux-libc-dev...) in lag and likelihood")
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
-                   help="drop findings below this severity")
+                   help="leave findings below this severity out of the reports (malicious ones, those in Act now and "
+                        "those whose details could not be loaded are kept; --fail-on and likelihood still see every "
+                        "finding)")
     s.add_argument("--formats", default="csv,md,json,html",
                    help="comma list of csv,md,json,html (findings.csv is always written)")
     s.add_argument("--sbom", action="store_true", help="also write a CycloneDX SBOM from Trivy to raw/")
@@ -849,28 +851,20 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     for f in findings:
         if (f.package, f.installed) in mal_keys:
             f.malicious_package = True
-    findings = [f for f in findings
-                if f.malicious or SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER[args.min_severity]]
     bad = sorted({f"{f.package}@{f.installed}" for f in findings if f.malicious})
     if bad:
         listed = ", ".join(bad[:10]) + (f" and {len(bad) - 10} more" if len(bad) > 10 else "")
         warnings.insert(0, f"MALICIOUS PACKAGE: {len(bad)} package(s) are listed as malware (OpenSSF malicious "
                            f"packages, or an advisory classed as embedded malicious code, CWE-506): {listed}. "
                            "Treat the artifact as compromised, not as a patching task")
-    n_label = lag.flag_label_matches(findings)
+    lag.flag_label_matches(findings)
     if not args.include_kernel_headers:
-        n_kh = lag.flag_kernel_headers(findings)
-        if n_kh:
-            warnings.append(f"{n_kh} kernel CVE finding(s) on kernel header packages (e.g. linux-libc-dev) are "
-                            "excluded from lag and likelihood: containers use the host kernel. They remain in "
-                            "findings.csv; --include-kernel-headers keeps them in")
-    n_older = lag.flag_no_newer_fix(findings)
-    if n_older:
-        warnings.append(f"{n_older} finding(s) list only fixes at or below the installed version; noted in "
-                        "findings.csv for manual review and left without a fix date")
-    if n_label:
-        warnings.append(f"{n_label} finding(s) have an installed version equal to a listed fix apart from a "
-                        "build label (e.g. .jre11); flagged as likely already fixed and excluded from lag")
+        lag.flag_kernel_headers(findings)
+    lag.flag_no_newer_fix(findings)
+    flagged = {"kh": {id(f) for f in findings if f.excluded == "kernel-headers"},
+               "older": {id(f) for f in findings if f.note.startswith("No listed fix (")},
+               "label": {id(f) for f in findings if f.likely_fixed}}
+    flag_at = len(warnings)  # their warnings go here, counted once --min-severity has chosen what is shown
     enabled = [s for s in ("trivy", "grype", "osv") if scanners_meta[s].get("enabled")]
 
     # 3. Project health.
@@ -929,25 +923,27 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     epss_info: dict = {"status": "skipped"}
     exploit_info: dict = {"status": "skipped"}
     if net and findings:
+        # Most severe first: some sources cap their lookups, and --min-severity no longer limits what is looked up.
+        ranked = sorted(findings, key=lambda f: -SEVERITY_ORDER[f.severity])
         if not args.no_fix_dates:
-            fd_stats = fixdates.enrich(net, findings)
+            fd_stats = fixdates.enrich(net, ranked)
             if fd_stats.get("errors"):
                 warnings.append(f"deps.dev lookups failed for {fd_stats['errors']} package versions")
-            deb = debian_tracker.enrich(net, findings)
+            deb = debian_tracker.enrich(net, ranked)
             fd_stats["debian_tracker"] = deb
             if deb.get("errors"):
                 warnings.append("Debian security tracker lists could not be loaded; Debian fix dates fall back to OSV")
-            dpr = debian_releases.enrich(net, findings)
+            dpr = debian_releases.enrich(net, ranked)
             fd_stats["debian_point_release"] = dpr
             if dpr.get("errors"):
                 warnings.append("Debian point release ChangeLog could not be loaded; point-release fixes stay undated")
-            rh = redhat.enrich(net, findings)
+            rh = redhat.enrich(net, ranked)
             fd_stats["redhat"] = rh
             if rh.get("errors"):
                 warnings.append(f"Red Hat advisory lookups failed for {rh['errors']} advisories; dates may be partial")
-            ubu = ubuntu.enrich(net, findings)
+            ubu = ubuntu.enrich(net, ranked)
             fd_stats["ubuntu"] = ubu
-            ulp = ubuntu_launchpad.enrich(net, findings)
+            ulp = ubuntu_launchpad.enrich(net, ranked)
             if ubu.get("errors"):
                 what = ("the OSV package query failed" if ubu.get("query_failed")
                         else f"{ubu['errors']} of {ubu['notices_total']} Ubuntu notice lookups in OSV failed")
@@ -959,27 +955,27 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 warnings.append("Launchpad publishing history lookups failed; some Ubuntu fix dates may be missing")
             if ulp.get("skipped_limit"):
                 warnings.append(f"{ulp['skipped_limit']} Ubuntu fix dates skipped to cap Launchpad requests")
-            alp = alpine.enrich(net, findings)
+            alp = alpine.enrich(net, ranked)
             fd_stats["alpine"] = alp
             if alp.get("skipped_limit"):
                 warnings.append(f"{alp['skipped_limit']} Alpine fix dates skipped to stay within GitHub rate limits")
             if alp.get("errors"):
                 warnings.append("Alpine aports history lookups failed for some packages (set GITHUB_TOKEN for "
                                 "higher GitHub API limits)")
-            adv = advisories.enrich(net, findings)
+            adv = advisories.enrich(net, ranked)
             fd_stats["advisory"] = adv
             if adv.get("errors"):
                 warnings.append(f"OSV advisory lookups failed for {adv['errors']} distro advisories")
-            pk = packagist.enrich(net, findings)
+            pk = packagist.enrich(net, ranked)
             fd_stats["packagist"] = pk
             if pk.get("errors"):
                 warnings.append(f"Packagist lookups failed for {pk['errors']} PHP packages")
-            gos = golang_stdlib.enrich(net, findings)
+            gos = golang_stdlib.enrich(net, ranked)
             fd_stats["go_stdlib"] = gos
             if gos.get("errors"):
                 warnings.append("Go release history (go.dev) could not be loaded; Go standard library fixes stay "
                                 "undated")
-            ghr = github_releases.enrich(net, findings)
+            ghr = github_releases.enrich(net, ranked)
             fd_stats["github_release"] = ghr
             if ghr.get("skipped_limit"):
                 warnings.append(f"{ghr['skipped_limit']} Go fix dates skipped to stay within GitHub rate limits; "
@@ -995,7 +991,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 kev_info = {"status": "error", "note": str(exc)}
                 warnings.append(f"CISA KEV catalogue unavailable: {exc}")
         if not args.no_exploits:
-            exploit_info = exploits.enrich(net, findings)
+            exploit_info = exploits.enrich(net, ranked)
             if exploit_info["failed"]:
                 warnings.append("Exploit sources could not be loaded: " + ", ".join(exploit_info["failed"])
                                 + "; exploit levels are partial")
@@ -1003,7 +999,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 warnings.append(f"Proof-of-concept lookups capped or failed for {exploit_info['poc_skipped']} "
                                 "finding(s); their exploit level is 'not checked'")
         if not args.no_epss:
-            epss_info = {"status": "ok", **epss.enrich(net, findings)}
+            epss_info = {"status": "ok", **epss.enrich(net, ranked)}
             if epss_info["errors"]:
                 warnings.append(f"EPSS lookups failed for {epss_info['errors']} batch(es); EPSS signals are partial")
 
@@ -1069,9 +1065,31 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             lambda w: w.startswith(("ARTIFACT DOES NOT MATCH", "MALICIOUS PACKAGE")), warnings))
         warnings.insert(lead, gap_warning)  # after the malware and tampering alerts, before everything else
     triage_info = triage.apply(findings, check_info)
+    # --min-severity only shortens the reports: it is applied once KEV, exploits and triage are known, keeps what
+    # needs action or could not be fully checked, and the gates still see every finding (threat model, 6 Nov).
+    all_findings = findings
+    floor = SEVERITY_ORDER[args.min_severity]
+    findings = [f for f in findings if f.malicious or f.triage_group == "act" or f.details_unavailable
+                or SEVERITY_ORDER[f.severity] >= floor]
+    if len(findings) < len(all_findings):
+        triage_info = triage.apply(findings, check_info)  # the counts the reports show
+        warnings.extend(_hidden_gate_warnings(args, all_findings, findings, age_info))
+    warnings[flag_at:flag_at] = _flag_warnings(findings, flagged)
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
-    lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc)) if lk_cfg else None
+    # Likelihood is a gate too (--fail-on-likelihood), so it is worked out from every finding, not only those the
+    # reports show.
+    lag_all = lag_m
+    if lk_cfg and len(findings) < len(all_findings):
+        lag_all = lag.compute(all_findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
+        lag_all["exploits_checked"] = checks.is_checked(check_info, "exploits")
+    lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_all, health, sc)) if lk_cfg else None
+    if lk and lag_all is not lag_m:
+        shown_lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc))
+        if shown_lk["level"] != lk["level"]:
+            warnings.append(f"likelihood is {lk['level']} ({lk['label']}) from every finding; the findings shown, "
+                            f"without those below --min-severity {args.min_severity}, would give "
+                            f"{shown_lk['level']} ({shown_lk['label']})")
 
     if args.extension_info:
         vscode.attribute(args.extension_info, findings)
@@ -1111,7 +1129,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
         assessment["sbom"] = args.sbom_info
     pkg_rows = None
     if args.path_kind == "inventory":
-        pkg_rows = inventory_report.package_rows(args.inventory, findings)
+        pkg_rows = inventory_report.package_rows(args.inventory, all_findings)  # every finding, as the gates
         recent = {r["purl"]: r for r in age_info.get("recent") or []}
         for r in pkg_rows:
             hit = recent.get(r["purl"])
@@ -1139,11 +1157,11 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             exec_summary.write(out / "executive-summary.html", assessment, pkg_rows,
                                assessment["inventory"]["executive"])
             written.append("executive-summary.html")
-    vex = decisions.openvex(findings, __version__, as_of.isoformat()) if decision_info else None
+    vex = decisions.openvex(all_findings, __version__, as_of.isoformat()) if decision_info else None
     if vex:
         (out / "openvex.json").write_text(json.dumps(vex, indent=2), encoding="utf-8")
         written.append("openvex.json")
-        cdx = decisions.cyclonedx_vex(findings, __version__, as_of.isoformat())
+        cdx = decisions.cyclonedx_vex(all_findings, __version__, as_of.isoformat())
         (out / "vex.cdx.json").write_text(json.dumps(cdx, indent=2), encoding="utf-8")
         written.append("vex.cdx.json")
     if "md" in formats:
@@ -1163,15 +1181,19 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
           + (f" likelihood={lk['level']}({lk['label']},confidence={lk['confidence']})" if lk else "")
           + (f" not_checked={','.join(checks.gaps(check_info))}" if checks.gaps(check_info) else ""))
     if args.package and pkg_rows is not None:
-        for line in _verdicts(pkg_rows, findings, age_info):
+        for line in _verdicts(pkg_rows, all_findings, age_info):
             print(line)
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
-    tripped = _gate(args.fail_on_set, findings, age_info, getattr(args, "registry_result", None),
+    tripped = _gate(args.fail_on_set, all_findings, age_info, getattr(args, "registry_result", None),
                     getattr(args, "extension_info", None))
+    hidden_only = {t for t in tripped if t not in _gate([t], findings, age_info, getattr(args, "registry_result", None),
+                                                          getattr(args, "extension_info", None))}
     for t in tripped:
-        log(f"--fail-on {t}: found {FAIL_ON[t]}", args.quiet, force=True)
+        log(f"--fail-on {t}: found {FAIL_ON[t]}"
+            + (f" (only among findings below --min-severity {args.min_severity}, left out of the reports; "
+               "the warnings name them)" if t in hidden_only else ""), args.quiet, force=True)
         if t == "unknown-age":
             listed = (age_info.get("unknown_purls") or []) + (age_info.get("unsupported_purls") or [])
             log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
@@ -1297,6 +1319,39 @@ def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args
 
 def _unknown_age(age_info: dict) -> bool:
     return bool(age_info.get("unknown_purls") or age_info.get("unsupported_purls"))
+
+
+def _flag_warnings(shown: list, flagged: dict[str, set[int]]) -> list[str]:
+    """The warnings for findings lag.flag_* marked, counted over the findings the reports show."""
+    out = []
+    n_kh, n_older, n_label = (sum(1 for f in shown if id(f) in flagged[k]) for k in ("kh", "older", "label"))
+    if n_kh:
+        out.append(f"{n_kh} kernel CVE finding(s) on kernel header packages (e.g. linux-libc-dev) are "
+                   "excluded from lag and likelihood: containers use the host kernel. They remain in "
+                   "findings.csv; --include-kernel-headers keeps them in")
+    if n_older:
+        out.append(f"{n_older} finding(s) list only fixes at or below the installed version; noted in "
+                   "findings.csv for manual review and left without a fix date")
+    if n_label:
+        out.append(f"{n_label} finding(s) have an installed version equal to a listed fix apart from a "
+                   "build label (e.g. .jre11); flagged as likely already fixed and excluded from lag")
+    return out
+
+
+def _hidden_gate_warnings(args, all_findings: list, shown: list, age_info: dict) -> list[str]:
+    """A --fail-on condition met only by findings --min-severity left out of the reports, named so that exit 3
+    is never left without a finding to explain it."""
+    shown_ids = {id(f) for f in shown}
+    hidden = [f for f in all_findings if id(f) not in shown_ids]
+    out = []
+    for t in args.fail_on_set:
+        if t in _gate([t], all_findings, age_info, None) and t not in _gate([t], shown, age_info, None):
+            names = sorted({f"{f.vuln_id} ({f.package} {f.installed})" for f in hidden
+                            if _gate([t], [f], {}, None)})
+            out.append(f"--fail-on {t} is met by {len(names)} finding(s) below --min-severity {args.min_severity}, "
+                       "which the reports leave out: " + ", ".join(names[:10])
+                       + (f" and {len(names) - 10} more" if len(names) > 10 else ""))
+    return out
 
 
 def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None,

@@ -43,7 +43,7 @@ The numbers match the stage comments in `src/oss_intake/cli.py`.
    - **Merge** (`merge.merge`, at the start of `_assess`). Findings from several sources become one row per
      vulnerability, package and version, recording which sources saw it. Straight after the merge,
      `reachability` applies govulncheck results, malicious releases mark every finding on their package
-     version, `--min-severity` is applied, and `conditions` extracts each advisory's own "applies only if"
+     version, and `conditions` extracts each advisory's own "applies only if"
      sentences.
 3. **Project health** (`health/`). With `--repo`: release cadence and the release used for lag
    (`health.releases`), OpenSSF Scorecard (`health.scorecard`), and an audit of the project's GitHub Actions
@@ -51,9 +51,12 @@ The numbers match the stage comments in `src/oss_intake/cli.py`.
 4. **Enrichment** (`enrich/`, `release_age`, `decisions`). Fix publication dates from deps.dev, Packagist and
    the distro sources (Debian, Ubuntu, Red Hat and Alpine trackers and security advisories), CISA KEV, EPSS,
    exploit evidence (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept), release dates of the package
-   versions, and the assessor's decisions from an earlier run.
+   versions, and the assessor's decisions from an earlier run. Findings are looked up most severe first, since
+   some sources cap their lookups.
    - **Analysis**. `checks` records which sources actually ran, so a skipped check is shown as "not checked",
-     never as a zero. `triage` gives each finding a suggested group, `lag` measures release lag, `likelihood`
+     never as a zero. `triage` gives each finding a suggested group. `--min-severity` is applied only then, and
+     only to what the reports show: findings in Act now, malicious ones and those missing their details are kept,
+     and the gates, likelihood and the per-package rows see every finding. `lag` measures release lag, `likelihood`
      runs the optional 5x5 heuristic, and for package lists `inventory_report` and `upgrade` build the per-package
      rows and the upgrade comparison.
 5. **Reports** (`report`, `report_html`, `exec_summary`). `findings.csv` always, plus the formats chosen with

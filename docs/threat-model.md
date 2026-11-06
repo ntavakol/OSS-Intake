@@ -74,17 +74,13 @@ not trust them to be up, or to answer in the right shape.
 | Traffic is read or changed in transit | Every service URL is fixed in the code as `https://`; certificates are checked by requests. | `http.RequestsHttp`, the callers |
 | `GITHUB_TOKEN` leaks to another host or into output | It is read once, attached only when the host is exactly `api.github.com` (a look-alike such as `api.github.com.evil.example` gets none), never put in a URL, and left out of error messages, logs and reports. requests drops it on a redirect to another host. GitHub API responses are never cached. | `http.RequestsHttp._headers`, `http.CACHE_RULES` |
 | A service that is down or answers garbage reads as clean | The top level of each answer is checked for type before use; wrong types deeper in stop the run with a traceback (exit 1), never as clean. An OSV failure stops a package-list run, and for an image marks the malicious-package check partial, which fails `--fail-on malicious`. KEV that did not load fails the KEV gates. Release-age and registry errors make those checks partial and their gates fail. A removal list with under 100 rows is not used. | `scanners.osv`, `enrich.kev`, `release_age`, `registry_check`, `vscode.load_removed`, `cli._gate_unknown` |
-| One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" (but see `--min-severity` under "Left open"). | `scanners.osv` |
+| One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" | `scanners.osv` |
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
 | A check that needs the network is trusted offline | With `--offline` oss-intake itself fetches nothing (the scanners may still use the network), the cache is off, and gates that need a lookup are refused (exit 2). | `cli._refuse_gates_without_their_check` |
 | Text from a service attacks the report's reader | See "Reports" below: every value is escaped. | `report`, `report_html` |
 
 **Left open:**
 
-- `--min-severity` removes findings below it before the gates run. A finding whose advisory details did not
-  load has no severity, so with `--min-severity HIGH` it disappears and `--fail-on critical` or `kev` passes
-  where it would otherwise fail; a KEV-listed finding of low severity is removed the same way. Malicious ones
-  are kept.
 - An OSV batch answer with fewer results than queries (or none) is read as no vulnerabilities for the packages
   without a result, and OSV's paging has no limit, so a repeated page token loops.
 - Responses have no size limit, and the timeout applies to each read rather than the whole request, so a slow
@@ -141,6 +137,7 @@ memory and time.
 | An SBOM or inventory column takes the place of a report column | Columns and SBOM label names that clash with report columns are refused, and SBOM label values are cut to 300 characters. | `inputs.inventory`, `sbom._label_key` |
 | A decision hides a finding that matters | A decision never sets aside a malicious package. `not_affected` and `mitigated` need a note (in OpenVEX, any justification counts). A decision made for another version still applies but is flagged for review. | `decisions.apply`, `triage` |
 | A gate is asked for that cannot be checked | A gate whose check is turned off is refused (exit 2); one whose check could not run fails (exit 1). | `cli._refuse_gates_without_their_check`, `cli._gate_unknown` |
+| `--min-severity` hides what a gate depends on | It is applied after KEV, exploits and triage, keeps findings in Act now, malicious ones and those missing their details, and the gates and likelihood see every finding; a gate met only by findings it left out is named in a warning. | `cli._assess`, `cli._hidden_gate_warnings` |
 | Spreadsheet formulas in an input cell | Kept as text, and neutralised when written to CSV (see "Reports"). | `report.csv_safe` |
 
 **Left open:**
@@ -282,27 +279,25 @@ machine if the extension ever ran.
 
 ## Open items that could be fixed
 
-All fourteen were agreed for the backlog on 6 Nov; BACKLOG.md has them in order, and each is removed here when
+All of these were agreed for the backlog on 6 Nov; BACKLOG.md has them in order, and each is removed here when
 it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
-indicators, the single maintainer) are limits of the approach rather than defects. The first two can turn a
-failing gate into a pass.
+indicators, the single maintainer) are limits of the approach rather than defects. The first can turn a failing
+gate into a pass.
 
-1. Apply `--min-severity` after the gates (or keep findings without a severity, and KEV findings), so it can only
-   shorten the report, never pass a gate.
-2. Treat a short or empty OSV batch answer as an error, and limit OSV paging.
-3. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
-4. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
+1. Treat a short or empty OSV batch answer as an error, and limit OSV paging.
+2. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
+3. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
-5. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
-6. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
+4. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
+5. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.
-7. Report a binary checked against an unsigned checksums file as such, not as hash verified.
-8. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-9. Turn malformed SBOM, OpenVEX, decisions and service content into clear errors instead of tracebacks; the
+6. Report a binary checked against an unsigned checksums file as such, not as hash verified.
+7. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
+8. Turn malformed SBOM, OpenVEX, decisions and service content into clear errors instead of tracebacks; the
    fuzzing item in the backlog would find more of these.
-10. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+9. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
     for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-11. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-12. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-13. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-14. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+10. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+11. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+12. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+13. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.

@@ -1936,3 +1936,110 @@ def test_fail_on_mismatch_is_refused_for_an_image_or_packages(tmp_path, capsys):
     for argv in (["--image", "owner/app:1.0"], ["--package", "npm:chalk@5.6.1"]):
         assert cli.main([*argv, "--out", str(tmp_path / "o"), "--fail-on", "malicious,mismatch"]) == cli.EXIT_USAGE
         assert "--fail-on mismatch needs a single file" in capsys.readouterr().err, argv
+
+
+@pytest.mark.parametrize("gate", ["critical", "kev"])
+def test_min_severity_does_not_hide_a_finding_whose_details_failed(tmp_path, capsys, gate):
+    """Threat model (6 Nov): the details of GHSA-demo-kev fail to load, so it has no severity; --min-severity HIGH
+    dropped it before the gates and the run passed (exit 0) where it fails without the option."""
+    code, out = _pkg_run(tmp_path, DetailsFailHttp(), "--package", "npm:demo@1.0.0", "--fail-on", gate,
+                         "--min-severity", "HIGH")
+    assert code == cli.EXIT_ERROR
+    assert f"--fail-on {gate}: could not be evaluated" in capsys.readouterr().err
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert "GHSA-demo-kev" in {f["id"] for f in a["findings"]}  # kept in the report, so the failure is explained
+
+
+class LowKevHttp(PkgHttp):
+    """demo 1.0.0's known exploited advisory rated LOW, and its advisory with no fix rated HIGH."""
+
+    def get_json(self, url, params=None):
+        if url.endswith("/vulns/GHSA-demo-kev"):
+            self._check(url)
+            return 200, {**_DEMO_KEV, "database_specific": {"severity": "LOW"}}
+        if url.endswith("/vulns/GHSA-demo-nofix"):
+            self._check(url)
+            return 200, {**_DEMO_NOFIX, "database_specific": {"severity": "HIGH"}}
+        return super().get_json(url, params)
+
+
+@pytest.mark.parametrize("gate", ["kev", "act", "high"])
+def test_min_severity_does_not_pass_a_gate(tmp_path, capsys, gate):
+    """Threat model (6 Nov): a KEV-listed LOW finding was dropped by --min-severity CRITICAL before KEV was
+    matched, so --fail-on kev and act passed; --fail-on high could never trip with it. The option only shortens
+    the report: the gates see every finding."""
+    without, _ = _pkg_run(tmp_path, LowKevHttp(), "--package", "npm:demo@1.0.0", "--fail-on", gate, name="all")
+    capsys.readouterr()
+    code, out = _pkg_run(tmp_path, LowKevHttp(), "--package", "npm:demo@1.0.0", "--fail-on", gate,
+                         "--min-severity", "CRITICAL")
+    assert code == without == cli.EXIT_THRESHOLD
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert len(a["findings"]) == sum(g["total"] for g in a["triage"]["groups"].values())  # counts of those shown
+    ids = {f["id"] for f in a["findings"]}
+    assert "CVE-2099-0003" in ids  # GHSA-demo-kev, under its CVE: Act now, kept whatever its severity
+    if gate == "high":
+        # Met only by the HIGH finding the option left out: the warning names it, so exit 3 is explained.
+        assert "GHSA-demo-nofix" not in ids
+        assert any(w.startswith("--fail-on high is met by 1 finding(s) below --min-severity CRITICAL")
+                   and "GHSA-demo-nofix (demo 1.0.0)" in w for w in a["warnings"])
+        captured = capsys.readouterr()
+        assert "GHSA-demo-nofix (demo 1.0.0)" in captured.err
+        assert "no known vulnerabilities" not in captured.out  # the verdict counts every finding, as the gate
+
+
+def test_min_severity_gate_met_by_hidden_findings_is_explained_under_quiet(tmp_path, capsys):
+    """Review (6 Nov): with --quiet the warning naming the hidden finding was not printed, so CI saw exit 3 and a
+    gate line with nothing in the reports to explain it."""
+    code, _ = _pkg_run(tmp_path, LowKevHttp(), "--package", "npm:demo@1.0.0", "--fail-on", "high",
+                       "--min-severity", "CRITICAL", "--quiet")
+    assert code == cli.EXIT_THRESHOLD
+    assert ("--fail-on high: found a high or critical finding (only among findings below --min-severity CRITICAL"
+            in capsys.readouterr().err)
+
+
+def test_min_severity_flag_warnings_count_the_findings_shown(tmp_path):
+    """Review (6 Nov): with the filter moved after enrichment, the kernel-header warning counted findings
+    --min-severity left out, yet said they remain in findings.csv."""
+    import csv
+
+    def v(i, sev):
+        return {"VulnerabilityID": f"CVE-2099-{i}", "PkgName": "linux-libc-dev", "InstalledVersion": "6.1.0",
+                "FixedVersion": "6.1.1", "Severity": sev,
+                "PkgIdentifier": {"PURL": "pkg:deb/debian/linux-libc-dev@6.1.0?distro=debian-12"}}
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x", "Metadata": {"OS": {"Family": "debian", "Name": "12"}},
+             "Results": [{"Target": "x (debian 12)", "Class": "os-pkgs", "Type": "debian",
+                          "Vulnerabilities": [v(i, "LOW") for i in range(1000, 1004)] + [v(2000, "CRITICAL")]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps(trivy), encoding="utf-8")
+    out = tmp_path / "o"
+    cli.main(["--image", "owner/app:1.0", "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
+              "--offline", "--min-severity", "HIGH", "--as-of", AS_OF, "--quiet"])
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    rows = list(csv.DictReader((out / "findings.csv").open(encoding="utf-8")))
+    assert len(rows) == 1 and a["lag"]["excluded_kernel_headers"] == 1
+    assert [w for w in a["warnings"] if "kernel" in w][0].startswith("1 kernel CVE finding(s)")
+
+
+def test_min_severity_does_not_lower_the_likelihood_gate(tmp_path):
+    """Threat model (6 Nov): likelihood was worked out from what --min-severity left, so a HIGH finding with a fix
+    left out by --min-severity CRITICAL lowered the level from 2 to 1 and --fail-on-likelihood 2 passed."""
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x", "Results": [{
+        "Target": "package-lock.json", "Class": "lang-pkgs", "Type": "npm", "Vulnerabilities": [
+            {"VulnerabilityID": "CVE-2099-0101", "PkgName": "lib", "InstalledVersion": "1.0.0",
+             "FixedVersion": "1.0.1", "Severity": "HIGH", "PkgIdentifier": {"PURL": "pkg:npm/lib@1.0.0"}}]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps(trivy), encoding="utf-8")
+    lock = tmp_path / "package-lock.json"
+    lock.write_text("{}", encoding="utf-8")
+    out = tmp_path / "o"
+    code = cli.main(["--path", str(lock), "--out", str(out), "--from-trivy-json", str(tj), "--scanners", "trivy",
+                     "--offline", "--min-severity", "CRITICAL", "--fail-on-likelihood", "2", "--as-of", AS_OF])
+    assert code == cli.EXIT_THRESHOLD
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["likelihood"]["level"] == 2 and a["findings"] == []
+    # The level the shown findings alone would give is named, so the report does not contradict itself.
+    assert any(w.startswith("likelihood is 2 (Unlikely) from every finding") and "would give 1 (Rare)" in w
+               for w in a["warnings"])
+    full = tmp_path / "full"
+    assert cli.main(["--path", str(lock), "--out", str(full), "--from-trivy-json", str(tj), "--scanners", "trivy",
+                     "--offline", "--fail-on-likelihood", "2", "--as-of", AS_OF]) == cli.EXIT_THRESHOLD

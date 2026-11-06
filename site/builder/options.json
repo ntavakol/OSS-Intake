@@ -447,7 +447,7 @@
      "dest": "min_severity",
      "exclusive_group": null,
      "flag": "--min-severity",
-     "help": "drop findings below this severity",
+     "help": "leave findings below this severity out of the reports (malicious ones, those in Act now and those whose details could not be loaded are kept; --fail-on and likelihood still see every finding)",
      "kind": "choice",
      "metavar": null,
      "required": false,

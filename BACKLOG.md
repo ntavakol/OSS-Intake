@@ -4,23 +4,20 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. Apply `--min-severity` after the gates (or keep findings without a severity, and KEV findings), so it can only
-   shorten the report, never pass a gate. Threat model open item 1: today it can turn a failing gate into a pass.
-   A test fails without the fix.
-2. Treat a short or empty OSV batch answer as an error, and limit OSV paging. Threat model open item 2: today a
+1. Treat a short or empty OSV batch answer as an error, and limit OSV paging. Threat model open item 1: today a
    short answer reads as clean. A test fails without the fix.
-3. Fuzzing with Atheris (agreed 6 Nov): one harness per parser of untrusted input, taken from the threat
+2. Fuzzing with Atheris (agreed 6 Nov): one harness per parser of untrusted input, taken from the threat
    model's user inputs section (.vsix unpacking, the shipped SBOM and lockfile readers, SBOM input, the CSV
    inventory, package.json). A weekly scheduled CI job on Linux and Python 3.13 runs each for a few minutes, with
    Atheris pinned by hash in its own requirements file and crashing inputs kept as job artifacts. Each crash is
    fixed as a bug, with a test that fails without the fix. Linux only (Atheris has no macOS wheels); CONTRIBUTING
    says so. Also satisfies the Scorecard Fuzzing check, which is not the reason for doing it.
-4. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
+3. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order, after the list above)
-Open items 3 to 14 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+Open items 2 to 13 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
 2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
