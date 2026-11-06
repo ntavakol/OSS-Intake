@@ -12,7 +12,7 @@
     {"name": "Go reachability", "basic": false, "options": ["reachability", "govulncheck_path", "govulncheck_sha256", "govulncheck_version"]},
     {"name": "Release lag", "basic": false, "options": ["release_tag", "release_date", "grace_days", "unshipped_days", "no_image_date", "include_kernel_headers"]},
     {"name": "Evidence sources", "basic": false, "options": ["decisions", "offline", "no_fix_dates", "no_kev", "no_epss", "no_exploits", "no_registry_check", "no_latest", "no_workflows", "no_scorecard", "release_age_max"]},
-    {"name": "Network and cache", "basic": false, "options": ["cache_dir", "no_cache"]}
+    {"name": "Network and cache", "basic": false, "options": ["cache_dir", "trust_cache_dir", "no_cache"]}
    ]
   },
   "verify": {

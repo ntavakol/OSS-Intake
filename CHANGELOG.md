@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `--trust-cache-dir`: on Windows, use a `--cache-dir` outside your user profile (a CI workspace on drive D:, say),
+  confirming that only you can write to it, as Windows permissions are not read. Recorded in `assessment.json`.
+  Elsewhere permissions are read and the switch overrides nothing.
+
 ### Changed
 - CI tests Python 3.14 and 3.15 on Linux, Windows and macOS, as well as 3.10 on all three and 3.11 to 3.13 on
   Linux; the package lists 3.14 and 3.15 as supported. Deeply nested JSON was read as data on 3.14 on macOS,

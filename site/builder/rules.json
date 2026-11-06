@@ -439,6 +439,39 @@
    ]
   },
   {
+   "id": "trust-cache-dir-needs-cache-dir",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trust_cache_dir"
+     },
+     {
+      "not": {
+       "set": "cache_dir"
+      }
+     }
+    ]
+   },
+   "message": "--trust-cache-dir needs --cache-dir",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--trust-cache-dir",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--cache-dir",
+    "{out}-cache",
+    "--trust-cache-dir",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
    "id": "release-age-days",
    "command": "scan",
    "when": {

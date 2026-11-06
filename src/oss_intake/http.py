@@ -112,6 +112,7 @@ class ResponseCache:
 
     def __init__(self, folder: Path, now=time.time) -> None:
         self.folder = folder
+        self.operator_trusted = False  # used on the operator's word (--trust-cache-dir), permissions not read
         self._now = now
         self.hits = self.misses = self.writes = 0
         self._lock = threading.Lock()
@@ -176,13 +177,15 @@ class ResponseCache:
         except OSError:
             pass  # a cache that cannot be written is only slower
 
-    def unsafe_reason(self, windows: bool | None = None) -> str | None:
+    def unsafe_reason(self, windows: bool | None = None, operator_trusted: bool = False) -> str | None:
         """Why this folder should not be trusted, or None. Anyone who can write to it could plant answers (an
         old release date for a malicious new version), so a folder others can write to is not used. The folder
         and every folder above it are checked: whoever can write to a parent can swap the folder. (Entries and
         their subfolders are checked as they are read: _trusted.)"""
         if windows if windows is not None else sys.platform == "win32":
-            return self._windows_reason()
+            # The operator's word (--trust-cache-dir) stands in for the permissions Windows does not let us read.
+            # Elsewhere permissions are read, and what they show is not overridden.
+            return None if operator_trusted else self._windows_reason()
         import stat
 
         for p in [self.folder, *self.folder.parents]:
@@ -213,10 +216,11 @@ class ResponseCache:
         if any(inside(self.folder, r) for r in roots):
             return None
         return (f"{self.folder} is outside your user profile, and its Windows permissions are not checked, so "
-                "other users may be able to write to it")
+                "other users may be able to write to it (if only you can, say so with --trust-cache-dir)")
 
     def stats(self) -> dict:
-        return {"folder": str(self.folder), "hits": self.hits, "misses": self.misses, "written": self.writes}
+        return {"folder": str(self.folder), "hits": self.hits, "misses": self.misses, "written": self.writes,
+                **({"operator_trusted": True} if self.operator_trusted else {})}
 
 
 class Http:

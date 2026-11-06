@@ -218,6 +218,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cache-dir", metavar="DIR",
                    help="keep slowly changing lookups (advisory details for a day, release dates for 30 days) "
                         "here between runs (default: the user cache folder)")
+    s.add_argument("--trust-cache-dir", action="store_true",
+                   help="Windows: use --cache-dir outside your user profile, confirming that only you can write to "
+                        "it (Windows permissions are not read). Elsewhere permissions are read and not overridden")
     s.add_argument("--no-cache", action="store_true",
                    help="fetch everything fresh and keep nothing; what affects a version is always fetched fresh")
     s.add_argument("--timeout", type=int, default=1800, help="per scanner timeout in seconds (default 1800)")
@@ -279,6 +282,9 @@ def ineffective_options(args, chosen: list[str]) -> list[str]:
     gv = [f"--govulncheck-{o}" for o in ("path", "sha256", "version") if getattr(args, f"govulncheck_{o}")]
     if gv and not args.reachability:
         out.append(f"{', '.join(gv)} {'has' if len(gv) == 1 else 'have'} no effect without --reachability")
+    if args.trust_cache_dir and sys.platform != "win32":
+        out.append("--trust-cache-dir has no effect here: folder permissions are read on this system, and what "
+                   "they show is not overridden")
     return out
 
 

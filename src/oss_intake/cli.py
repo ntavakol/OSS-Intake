@@ -170,6 +170,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         raise UsageError("--release-age-max must be 1 or more (use --release-age-days 0 to turn the check off)")
     if args.no_cache and args.cache_dir:
         raise UsageError("--cache-dir and --no-cache cannot be used together")
+    if args.trust_cache_dir and not args.cache_dir:
+        raise UsageError("--trust-cache-dir needs --cache-dir: the default cache folder is in your user profile")
     if args.release_age_days < 0:
         raise UsageError("--release-age-days must be zero or more (0 turns the check off)")
     # B23: numbers are range-checked before any work.
@@ -286,10 +288,14 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
 
     cache = None if args.no_cache or args.offline or http else ResponseCache(
         Path(args.cache_dir).expanduser() if args.cache_dir else default_cache_dir())
-    if cache is not None and (why := cache.unsafe_reason()):
+    if cache is not None and (why := cache.unsafe_reason(operator_trusted=args.trust_cache_dir)):
         warnings.append(f"The lookup cache was not used: {why}, so its answers could have been planted. "
                         "Use a folder only you can write to (--cache-dir), or --no-cache")
         cache = None
+    elif cache is not None and args.trust_cache_dir and cache.unsafe_reason():
+        log(f"using the cache in {cache.folder} on your word (--trust-cache-dir): its permissions were not read",
+            args.quiet)
+        cache.operator_trusted = True
     net = None if args.offline else (http or RequestsHttp(cache=cache))
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 

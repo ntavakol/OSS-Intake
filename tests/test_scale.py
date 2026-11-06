@@ -712,3 +712,30 @@ def test_deadline_holds_against_a_real_server_sending_a_byte_at_a_time(monkeypat
         stop.set()
         srv.close()
     assert time.monotonic() - t < 4
+
+
+def test_operator_can_vouch_for_a_windows_cache_outside_the_profile(tmp_path, monkeypatch):
+    """Ned (7 Nov): a --cache-dir outside the profile on Windows (a CI workspace on D:) is used when the operator
+    says only they can write to it; the refusal says how."""
+    monkeypatch.setattr(__import__("pathlib").Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    (tmp_path / "home").mkdir()
+    c = ResponseCache(tmp_path / "ci" / "cache")
+    assert "--trust-cache-dir" in (c.unsafe_reason(windows=True) or "")
+    assert c.unsafe_reason(windows=True, operator_trusted=True) is None
+
+
+@_POSIX
+def test_operator_cannot_vouch_over_permissions_that_are_read(tmp_path):
+    c = ResponseCache(tmp_path / "c")
+    (tmp_path / "c").mkdir(mode=0o700)
+    (tmp_path / "c").chmod(0o777)
+    try:
+        assert "can be written by other users" in (c.unsafe_reason(windows=False, operator_trusted=True) or "")
+    finally:
+        (tmp_path / "c").chmod(0o700)
+
+
+def test_trust_cache_dir_needs_cache_dir(tmp_path, capsys):
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--trust-cache-dir"])
+    assert code == cli.EXIT_USAGE and "--trust-cache-dir needs --cache-dir" in capsys.readouterr().err
