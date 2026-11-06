@@ -35,12 +35,12 @@ nothing, or output that is not what it seems).
 | A known-compromised scanner release runs | Its version is read from the Go build information in the file, without running it, and checked against `known_bad.json`; the version the binary reports is checked again. Either match refuses the run. | `integrity.refuse_known_bad_before_run`, `integrity.check_binary` |
 | A swapped or tampered binary runs | With `--<tool>-sha256`, a cosign bundle, or the release archive and its checksums, the binary is checked before it runs at all. Without them the report says the hash was not verified. | `integrity.verify_before_run`, `scanning.run_or_load` |
 | A scanner that fails, hangs or prints nothing reads as "no findings" | A non-zero exit, a timeout or output that is not JSON stops the run with exit 1. | `scanners.run`, `scanners.load_json_bytes` |
-| The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
+| The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused, and one that names nothing it scanned and lists nothing is refused too; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
 | A required scanner is missing | Named scanners must be found. With `--scanners auto`, a missing Grype is a warning in the report, not silence. | `scanners.find_executable`, `cli` |
 
 **Left open:**
 
-- The shape check is minimal: `{"SchemaVersion": 2}` with no `Results`, or `{"matches": []}`, is accepted as a
+: `{"SchemaVersion": 2}` with no `Results`, or `{"matches": []}`, is accepted as a
   clean Trivy or Grype report, so a truncated or forged import reads as no findings.
 - With `--<tool>-archive` and `--<tool>-checksums` but no signature, the binary is reported as hash verified
   against a checksums file nothing has signed.
@@ -283,19 +283,18 @@ All of these were agreed for the backlog on 6 Nov; BACKLOG.md has them in order,
 it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
 indicators, the single maintainer) are limits of the approach rather than defects.
 
-1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
-2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
+1. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
-3. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
-4. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
+2. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
+3. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.
-5. Report a binary checked against an unsigned checksums file as such, not as hash verified.
-6. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-7. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+4. Report a binary checked against an unsigned checksums file as such, not as hash verified.
+5. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
+6. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
    for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-8. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-12. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+7. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+8. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+9. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+10. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+11. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
     leave it), so the bundled check cannot be avoided.

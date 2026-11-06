@@ -4,22 +4,21 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order)
-Open items 1 to 12 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
-1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
-2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
+Open items 1 to 11 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+1. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
-3. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
-4. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
+2. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
+3. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.
-5. Report a binary checked against an unsigned checksums file as such, not as hash verified.
-6. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-7. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for
+4. Report a binary checked against an unsigned checksums file as such, not as hash verified.
+5. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
+6. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for
    each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-8. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-12. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+7. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+8. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+9. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+10. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+11. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
     leave it), so the bundled check cannot be avoided (agreed 6 Nov).
 
 ## Later: when commits are less frequent (agreed 6 Nov)

@@ -88,6 +88,14 @@ def check_report(data: object, tool: str, what: str) -> None:
         problem = _shape_problem(data, tool)
         if problem:
             raise ReportShapeError(f"{what} is not a well-formed {tool.capitalize()} report: {problem}")
+        # A report that names nothing it scanned and lists nothing is a truncated or hand-made file, not a clean
+        # scan: Trivy always writes ArtifactName and Grype its descriptor and source, even when they find nothing.
+        named = data.get("ArtifactName") if tool == "trivy" else (data.get("descriptor") or data.get("source"))
+        listed = data.get("Results") if tool == "trivy" else data.get("matches")
+        if not named and not listed:
+            raise ReportShapeError(f"{what} names nothing it scanned and lists nothing (no "
+                                   + ("ArtifactName or Results" if tool == "trivy" else "descriptor, source or matches")
+                                   + "), so it is not a scan's report and cannot read as clean")
         return
     looks = {"trivy": "a Trivy report", "grype": "a Grype report",
              "sbom": "an SBOM (CycloneDX or SPDX), which lists packages but not vulnerabilities"}.get(kind)

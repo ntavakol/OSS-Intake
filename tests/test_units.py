@@ -2942,3 +2942,28 @@ def test_spdx_list_field_of_the_wrong_type_is_an_input_error(tmp_path, doc):
     p.write_text(json.dumps(doc), encoding="utf-8")
     with pytest.raises(inputs.InputError, match="must be a list"):
         sbom.read(p)
+
+
+# Threat model open items (agreed 6 Nov), one block each.
+
+@pytest.mark.parametrize("report, tool", [({"SchemaVersion": 2}, "trivy"),
+                                          ({"SchemaVersion": 2, "Results": []}, "trivy"),
+                                          ({"matches": []}, "grype")],
+                         ids=["trivy bare", "trivy empty results", "grype bare"])
+def test_report_that_names_nothing_scanned_and_lists_nothing_is_refused(report, tool):
+    """Open item 1: a truncated or forged report read as a clean scan. A real Trivy report always names what it
+    scanned (ArtifactName), and a real Grype report carries its descriptor, even when nothing was found."""
+    from oss_intake.scanners import ReportShapeError, check_report
+
+    with pytest.raises(ReportShapeError, match="names nothing it scanned"):
+        check_report(report, tool, "import")
+
+
+@pytest.mark.parametrize("report, tool", [
+    ({"SchemaVersion": 2, "ArtifactName": "owner/app:1.0", "ArtifactType": "container_image"}, "trivy"),
+    ({"matches": [], "descriptor": {"name": "grype", "version": "0.121.0"}}, "grype"),
+], ids=["trivy clean scan", "grype clean scan"])
+def test_real_clean_scan_report_is_accepted(report, tool):
+    from oss_intake.scanners import check_report
+
+    check_report(report, tool, "import")

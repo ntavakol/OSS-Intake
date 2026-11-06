@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- A Trivy or Grype report that names nothing it scanned and lists nothing (`{"SchemaVersion": 2}`,
+  `{"matches": []}`) was accepted as a clean scan; it is now refused. Real reports always name their target.
+
 ## [0.16.0] - 2026-11-06
 
 A fix release: upgrade from 0.15.0, especially where oss-intake gates a pipeline. Two bugs could make a gate pass
