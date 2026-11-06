@@ -100,17 +100,37 @@ def check_report(data: object, tool: str, what: str) -> None:
 _STR_FIELDS = {
     "trivy_result": ("Target", "Type", "Class"),
     "trivy_vuln": ("VulnerabilityID", "PkgID", "PkgName", "PkgPath", "InstalledVersion", "FixedVersion", "Severity",
-                   "SeveritySource", "PublishedDate", "LastModifiedDate", "Title"),
+                   "SeveritySource", "PublishedDate", "LastModifiedDate", "Title", "Description", "PrimaryURL"),
     "trivy_pkg": ("ID", "Name", "Version", "SrcName", "SrcVersion", "SrcRelease"),
     "grype_artifact": ("name", "version", "type", "purl"),
     "grype_vuln": ("id", "severity", "namespace", "dataSource", "description"),
 }
+# Lists of text and objects the readers iterate.
+_STR_LISTS = {"trivy_vuln": ("CweIDs", "VendorIDs", "References"), "grype_vuln": ("urls",),
+              "grype_artifact": ("cpes",)}
+_OBJECTS = {"trivy_vuln": ("PkgIdentifier", "CVSS", "DataSource", "VendorSeverity"), "trivy_pkg": ("Identifier",),
+            "grype_vuln": ("fix",), "grype_artifact": ("metadata",)}
 
 
 def _bad_fields(obj: dict, kind: str) -> str | None:
     for k in _STR_FIELDS[kind]:
         if obj.get(k) is not None and not isinstance(obj[k], str):
             return k
+    for k in _STR_LISTS.get(kind, ()):
+        v = obj.get(k)
+        if v is not None and not (isinstance(v, list) and all(isinstance(e, str) for e in v)):
+            return k
+    for k in _OBJECTS.get(kind, ()):
+        if obj.get(k) is not None and not isinstance(obj[k], dict):
+            return k
+    for k in ("PkgIdentifier", "Identifier"):
+        if isinstance(obj.get(k), dict) and not all(isinstance(obj[k].get(f) or "", str) for f in ("PURL", "UID")):
+            return f"{k}.PURL"
+    if kind == "grype_vuln" and isinstance(obj.get("fix"), dict):
+        fix = obj["fix"]
+        if not (isinstance(fix.get("state") or "", str) and isinstance(fix.get("versions") or [], list)
+                and all(isinstance(e, str) for e in fix.get("versions") or [])):
+            return "fix"
     return None
 
 
@@ -136,7 +156,7 @@ def _shape_problem(data: dict, tool: str) -> str | None:
                     return f"result {n}: {key} must be a list of objects"
                 for m, e in enumerate(entries, 1):
                     if (k := _bad_fields(e, kind)) is not None:
-                        return f"result {n}, {key} entry {m}: {k} is not text"
+                        return f"result {n}, {key} entry {m}: {k} is not of the right type"
         return None
     matches = lists(data, "matches")
     if matches is None:
@@ -150,7 +170,12 @@ def _shape_problem(data: dict, tool: str) -> str | None:
             if not isinstance(obj, dict):
                 return f"match {n}: {key} is not an object"
             if (k := _bad_fields(obj, kind)) is not None:
-                return f"match {n}: {key}.{k} is not text"
+                return f"match {n}: {key}.{k} is not of the right type"
+        if lists(m, "relatedVulnerabilities") is None:
+            return f"match {n}: relatedVulnerabilities must be a list of objects"
+        locations = lists(m.get("artifact") or {}, "locations")
+        if locations is None or not all(isinstance(loc.get("path") or "", str) for loc in locations):
+            return f"match {n}: artifact.locations must be a list of objects with a text path"
     return None
 
 

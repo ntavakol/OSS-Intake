@@ -208,7 +208,7 @@ class RequestsHttp(Http):
             return r.status_code, None
         try:
             return r.status_code, r.json()
-        except ValueError:
+        except (ValueError, RecursionError):  # not JSON, or nested too deeply to read: the caller sees no data
             return r.status_code, None
 
     def _get_cached(self, url: str) -> tuple[int, Any]:

@@ -1,0 +1,58 @@
+name: fuzz
+
+# Fuzzes each parser of untrusted input (tests/fuzz/harnesses.py) with Atheris for a few minutes a week, and on
+# demand. A crash, a hang over 10 s on one input or over 2 GB of memory fails the job and keeps the input as an
+# artifact, to be replayed and fixed with a test that fails without the fix (CONTRIBUTING.md). Every push already
+# runs each harness on its seeds without Atheris (tests/test_fuzz_harnesses.py).
+on:
+  schedule:
+    - cron: "41 19 * * 4"  # Thursdays 19:41 UTC
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Seconds to fuzz each target (up to 900)"
+        default: "180"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Must list every harnesses.TARGETS name (tests/test_fuzz_harnesses.py checks).
+        target: [checksums, decisions_file, govulncheck_output, inventory_csv, likelihood_config, osv_advisory, renv_lock,
+          sbom_file, scanner_report, scanner_report_run, service_data, vsix_archive, vsix_files]
+    steps:
+      # Pinned by full commit SHA, as in ci.yml.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install (hash-pinned)
+        run: |
+          python -m pip install --require-hashes -r requirements/dev.txt -r requirements/fuzz.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          TARGET: ${{ matrix.target }}
+          SECONDS_EACH: ${{ github.event.inputs.seconds || '180' }}
+        run: |
+          # A whole number up to 900, so the run ends (and keeps its input) well inside timeout-minutes.
+          case "$SECONDS_EACH" in ''|*[!0-9]*) echo "seconds must be a whole number"; exit 2;; esac
+          if [ "$SECONDS_EACH" -gt 900 ]; then echo "seconds must be 900 or less"; exit 2; fi
+          mkdir -p crashes
+          python tests/fuzz/fuzz.py "$TARGET" -max_total_time="$SECONDS_EACH" -timeout=10 -rss_limit_mb=2048 \
+            -artifact_prefix=crashes/
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: crashes/
+          retention-days: 30

@@ -9,6 +9,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Releases carry SLSA build provenance (`oss-intake-<version>.intoto.jsonl`, SLSA level 3) for the wheel, the
   source archive and the SBOM, made by the SLSA GitHub generator; the guide shows how to check it with
   slsa-verifier.
+- Fuzzing: `tests/fuzz` has fuzz targets for the parsers of files a user gives (SBOMs, inventories, decisions,
+  renv.lock, scanner reports, also imported into a whole offline run, .vsix files), checksums files, likelihood
+  configurations, govulncheck output, OSV advisories and other service text. Each runs with Atheris for three
+  minutes every week (`.github/workflows/fuzz.yml`, also on demand), with a failing input kept as an artifact,
+  and every push runs each target on its seeds without Atheris. CONTRIBUTING.md says how to run and replay them.
+  The crashes the fuzzing found are fixed (see Fixed).
 - `docs/threat-model.md` covers every trust boundary: scanner binaries, public services, the cache folder, user
   inputs, reports and GitHub Actions, as well as VS Code extensions, with the mitigations in the code, what is
   left open, and the open items that could be fixed. SECURITY.md links to it.
@@ -29,6 +35,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   install, and a test checks that every `pip install` in the workflows is pinned by hash or local.
 
 ### Fixed
+- Found by the new fuzz harnesses: a JSON answer from a public service nested too deeply stopped the run with a
+  traceback (on Python 3.10 at fewer levels than 3.13); the lookup now sees no data, which counts as that source
+  failing. A likelihood configuration whose condition `op` or `scale` has the wrong type is refused. An OSV
+  advisory with fields of the wrong type (from OSV or a cache entry) is kept and marked as without its details,
+  never dropped. More fields of imported Trivy and Grype reports are checked for type before use (a `PURL` or
+  `Description` of the wrong type crashed later stages).
 - `--min-severity` could turn a failing gate into a pass: it removed findings before KEV, exploits and triage were
   known, and the gates saw only what was left. A finding whose advisory details did not load (no severity), a
   KEV-listed or exploited finding of low severity, or a HIGH one under `--min-severity CRITICAL` with

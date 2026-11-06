@@ -2,6 +2,6 @@
 graft tests
 graft examples
 include scripts/readme_sync.py scripts/self_inventory.py scripts/release_sbom.py
-include requirements/runtime.txt requirements/dev.txt
+include requirements/runtime.txt requirements/dev.txt requirements/fuzz.txt
 include CHANGELOG.md BACKLOG.md CONTRIBUTING.md SECURITY.md docs/guide.md
 global-exclude __pycache__ *.py[cod]

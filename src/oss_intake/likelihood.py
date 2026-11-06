@@ -85,6 +85,9 @@ def load_config(path: str | None) -> dict:
 def validate(cfg: dict) -> None:
     if not isinstance(cfg.get("rules"), list) or not cfg["rules"]:
         raise ConfigError("likelihood config needs a non-empty 'rules' list")
+    scale = cfg.get("scale", {})
+    if not isinstance(scale, dict) or not all(isinstance(v, str) for v in scale.values()):
+        raise ConfigError("likelihood config 'scale' must map levels to names")
     for i, r in enumerate(cfg["rules"]):
         if not isinstance(r, dict):
             raise ConfigError(f"rule {i}: must be an object")
@@ -95,7 +98,8 @@ def validate(cfg: dict) -> None:
             if not isinstance(conds, list):
                 raise ConfigError(f"rule {i}: '{kind}' must be a list of conditions")
             for c in conds:
-                if not isinstance(c, dict) or c.get("op") not in OPS or "metric" not in c or "value" not in c:
+                if (not isinstance(c, dict) or not isinstance(c.get("op"), str) or c["op"] not in OPS
+                        or "metric" not in c or "value" not in c):
                     raise ConfigError(f"rule {i}: each condition needs metric, op ({', '.join(OPS)}) and value")
                 if not isinstance(c["metric"], str):
                     raise ConfigError(f"rule {i}: a condition's metric must be a name")

@@ -2680,8 +2680,10 @@ def test_checksums_file_that_is_not_utf8_is_an_integrity_error():
     b'{"rules": [{"level": 1, "all": ["x"]}]}',
     b'{"rules": [{"level": 1, "any": [{"metric": "critical_with_fix", "op": ">=", "value": "a"}]}]}',
     b'{"rules": [{"level": 1, "all": [{"metric": 5, "op": ">=", "value": 1}]}]}',
+    b'{"rules": [{"level": 1, "all": [{"metric": "kev", "op": [">="], "value": 1}]}]}',
+    b'{"scale": ["Rare"], "rules": [{"level": 1}]}',
 ], ids=["deep", "rule not an object", "all not a list", "condition not an object", "value not a number",
-        "metric not a name"])
+        "metric not a name", "op not text", "scale not an object"])
 def test_malformed_likelihood_config_is_a_config_error(tmp_path, cfg):
     from oss_intake import likelihood
 
@@ -2801,7 +2803,11 @@ def test_openvex_fields_of_the_wrong_type_are_invalid_decisions(tmp_path, statem
     {"SchemaVersion": 2, "Results": [{"Target": "x", "Class": ["os-pkgs"]}]},
     {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{"PkgName": 5}]}]},
     {"SchemaVersion": 2, "Results": [{"Target": "x", "Packages": "x"}]},
-], ids=["Target", "Class", "PkgName", "Packages"])
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{"PkgName": "a", "PkgIdentifier": {
+        "PURL": 5}}]}]},
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{"PkgName": "a", "Description": {"a": 1}}]}]},
+    {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{"PkgName": "a", "CweIDs": "CWE-79"}]}]},
+], ids=["Target", "Class", "PkgName", "Packages", "PURL", "Description", "CweIDs"])
 def test_trivy_report_with_fields_of_the_wrong_type_is_refused_before_use(report):
     """Review (6 Nov): parse() was guarded, but the report is read again after it (reachability, OSV), so a
     Target that is not text crashed there."""
@@ -2816,7 +2822,10 @@ def test_trivy_report_with_fields_of_the_wrong_type_is_refused_before_use(report
     {"matches": [{"artifact": "x", "vulnerability": {}}]},
     {"matches": [{"artifact": {}, "vulnerability": {"id": ["x"]}}]},
     {"matches": [], "descriptor": "x"},
-], ids=["artifact name", "artifact", "vulnerability id", "descriptor"])
+    {"matches": [{"artifact": {"locations": ["x"]}, "vulnerability": {}}]},
+    {"matches": [{"artifact": {}, "vulnerability": {"fix": {"versions": "1.0"}}}]},
+    {"matches": [{"artifact": {}, "vulnerability": {}, "relatedVulnerabilities": ["x"]}]},
+], ids=["artifact name", "artifact", "vulnerability id", "descriptor", "locations", "fix versions", "related"])
 def test_grype_report_with_fields_of_the_wrong_type_is_refused_before_use(report):
     from oss_intake.scanners import ReportShapeError, check_report
 
@@ -2861,3 +2870,45 @@ def test_kev_list_with_any_unreadable_entry_is_not_loaded():
             return 200, {"vulnerabilities": ["x", {"cveID": "CVE-2099-1"}], "catalogVersion": "1"}
 
     assert kev.load(Http()) == (set(), None)
+
+
+def test_service_answer_nested_too_deeply_reads_as_no_data():
+    """Fuzzing (6 Nov): JSON nested too deeply raised RecursionError out of every lookup (Python 3.10 reaches the
+    limit with fewer levels than 3.13). The caller sees no data, which each treats as the source failing."""
+    from oss_intake.enrich import exploits
+    from oss_intake.http import RequestsHttp
+
+    class Response:
+        status_code, content = 200, b"[[["
+
+        def json(self):
+            raise RecursionError("maximum recursion depth exceeded")
+
+    h = RequestsHttp()
+    h._session.request = lambda *a, **k: Response()
+    assert h.get_json("https://api.osv.dev/v1/vulns/GHSA-x") == (200, None)
+    assert exploits.parse_nuclei("[" * 100_000 + "\n" + '{"ID": "CVE-2099-1"}') == {"CVE-2099-1"}
+
+
+@pytest.mark.parametrize("advisory", [
+    {"id": "GHSA-x", "summary": 5}, {"id": "GHSA-x", "aliases": [{}]}, {"id": "GHSA-x", "affected": ["x"]},
+    {"id": "GHSA-x", "severity": ["x"]}, {"id": "GHSA-x", "published": 5},
+    {"id": "GHSA-x", "affected": [{"package": {"purl": "pkg:npm/left-pad"}, "ranges": [{"events": [{"fixed": 2}]}]}]},
+], ids=["summary", "aliases", "affected", "severity", "published", "events"])
+def test_osv_advisory_of_the_wrong_shape_is_kept_without_its_details(advisory):
+    """Fuzz review (6 Nov): these crashed the run; a garbled advisory (from OSV or a cache entry) is now kept and
+    marked as without details, which puts it in review and fails the gates, never dropped."""
+    from oss_intake.scanners import osv
+
+    class Http:
+        def post_json(self, url, body):
+            return 200, {"results": [{"vulns": [{"id": "GHSA-x"}]}]}
+
+        def get_json(self, url, params=None):
+            return 200, advisory
+
+        def prefetch(self, urls):
+            pass
+
+    (f,) = osv.scan(Http(), ["pkg:npm/left-pad@1.3.0"])
+    assert f.vuln_id == "GHSA-x" and f.details_unavailable

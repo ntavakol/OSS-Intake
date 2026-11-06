@@ -229,7 +229,8 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
                     status, data = 0, None
                 # Without its details an advisory has no severity, fix or CVE alias: keep it, marked, so the run
                 # says so rather than reading as complete.
-                cache[vid] = data if status == 200 and isinstance(data, dict) else {"id": vid, "_unavailable": True}
+                ok = status == 200 and isinstance(data, dict) and _advisory_ok(data)
+                cache[vid] = data if ok else {"id": vid, "_unavailable": True}
         osq = queries.get(purl)
         note = ""
         if osq:
@@ -239,35 +240,72 @@ def scan(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None
             if re.sub(r"^\d+:", "", src_v) != re.sub(r"^\d+:", "", version) or osq["name"] != name:
                 note = f"{name} {version} is built from {osq['name']} {src_v}; fix versions are the source's"
         for vid in ids:
-            v = cache[vid]
-            sev, score, cvss_ver = _severity(v)
-            f = Finding(
-                vuln_id=vid,
-                package=name.replace("/", ":") if purl.startswith("pkg:maven/") else name,
-                installed=version,
-                severity=sev,
-                fixed_versions=_fixed_for_os(v, osq) if osq else _fixed_for(v, purl),
-                cvss=score,
-                cvss_version=cvss_ver if score is not None else "",
-                cvss_source=("ghsa" if vid.startswith("GHSA-") else "osv") if score is not None else "",
-                published=parse_datetime(v.get("published")),
-                purl=purl,
-                pkg_type=purl[4:].split("/", 1)[0],
-                aliases=set(v.get("aliases") or []) | _upstream_cve(v),
-                cwes={str(c).upper() for c in (v.get("database_specific") or {}).get("cwe_ids") or []},
-                title=(v.get("summary") or "")[:200],
-                description=v.get("details") or "",
-                url=f"https://osv.dev/vulnerability/{vid}",
-                sources={NAME},
-            )
-            f.source_severity[NAME] = sev
-            if v.get("_unavailable"):
-                f.details_unavailable = True
-                f.title = "advisory details could not be loaded from OSV"
-                f.note = "advisory details could not be loaded from OSV: severity, fix and CVE aliases are unknown"
+            try:
+                f = _finding(vid, cache[vid], name, version, purl, osq)
+            except (AttributeError, TypeError, KeyError, IndexError, ValueError):
+                # Fields of a shape _advisory_ok did not foresee: kept, marked as without details, never dropped.
+                f = _finding(vid, {"id": vid, "_unavailable": True}, name, version, purl, osq)
             if osq:
-                f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
-                f.source_installed = osq["version"]
                 f.note = "; ".join(x for x in (f.note, note) if x)
             findings.append(f)
     return findings
+
+
+def _advisory_ok(v: dict) -> bool:
+    """The OSV advisory fields read here have the types OSV documents. A forged or garbled answer (from the service
+    or a cache entry) is treated as details that could not be loaded, which keeps the finding and marks it."""
+    def strs(x) -> bool:
+        return x is None or (isinstance(x, list) and all(isinstance(e, str) for e in x))
+
+    def dicts(x) -> bool:
+        return x is None or (isinstance(x, list) and all(isinstance(e, dict) for e in x))
+
+    if not all(v.get(k) is None or isinstance(v[k], str) for k in ("id", "summary", "details", "published",
+                                                                    "modified", "withdrawn")):
+        return False
+    if not (strs(v.get("aliases")) and strs(v.get("upstream")) and dicts(v.get("severity"))
+            and dicts(v.get("affected")) and isinstance(v.get("database_specific") or {}, dict)):
+        return False
+    for a in v.get("affected") or []:
+        if not (isinstance(a.get("package") or {}, dict) and dicts(a.get("ranges")) and strs(a.get("versions"))
+                and isinstance(a.get("ecosystem_specific") or {}, dict)
+                and isinstance(a.get("database_specific") or {}, dict)):
+            return False
+        for r in a.get("ranges") or []:
+            if not dicts(r.get("events")) or not all(isinstance(x, str) for e in r.get("events") or []
+                                                     for x in e.values()):
+                return False
+    return strs((v.get("database_specific") or {}).get("cwe_ids"))
+
+
+def _finding(vid: str, v: dict, name: str, version: str, purl: str, osq: dict | None) -> Finding:
+    """One finding from an OSV advisory (v as cached: the advisory, or {"id", "_unavailable"})."""
+    sev, score, cvss_ver = _severity(v)
+    f = Finding(
+        vuln_id=vid,
+        package=name.replace("/", ":") if purl.startswith("pkg:maven/") else name,
+        installed=version,
+        severity=sev,
+        fixed_versions=_fixed_for_os(v, osq) if osq else _fixed_for(v, purl),
+        cvss=score,
+        cvss_version=cvss_ver if score is not None else "",
+        cvss_source=("ghsa" if vid.startswith("GHSA-") else "osv") if score is not None else "",
+        published=parse_datetime(v.get("published")),
+        purl=purl,
+        pkg_type=purl[4:].split("/", 1)[0],
+        aliases=set(v.get("aliases") or []) | _upstream_cve(v),
+        cwes={str(c).upper() for c in (v.get("database_specific") or {}).get("cwe_ids") or []},
+        title=(v.get("summary") or "")[:200],
+        description=v.get("details") or "",
+        url=f"https://osv.dev/vulnerability/{vid}",
+        sources={NAME},
+    )
+    f.source_severity[NAME] = sev
+    if v.get("_unavailable"):
+        f.details_unavailable = True
+        f.title = "advisory details could not be loaded from OSV"
+        f.note = "advisory details could not be loaded from OSV: severity, fix and CVE aliases are unknown"
+    if osq:
+        f.os_release, f.src_name, f.src_version = osq["os_release"], osq["name"], osq["version"]
+        f.source_installed = osq["version"]
+    return f

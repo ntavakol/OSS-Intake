@@ -107,6 +107,50 @@ python scripts/extract_regression_fixture.py <name> <reports-dir>/raw --match <p
 
 Fixtures in `tests/fixtures/real` come only from public images and keep only the rows a test needs.
 
+## Fuzzing
+
+`tests/fuzz/harnesses.py` has fuzz targets for the parsers of files a user gives (SBOMs, inventories, decisions
+files, renv.lock, scanner reports, also imported into a whole offline run, .vsix files as an archive and as the
+files inside one), and for checksums files, likelihood configurations, govulncheck output, OSV advisories and
+text from other public services. A target may raise only the errors the CLI reports cleanly; anything else, a
+hang over 10 seconds or using over 2 GB is a bug. Answers from the other services (KEV, EPSS, deps.dev, the
+distro trackers, the GitHub API) have no target yet.
+
+- Every push runs each target on its seeds and simple mutations of them, without Atheris, on every platform
+  (`tests/test_fuzz_harnesses.py`). A new target must be added to the matrix in `.github/workflows/fuzz.yml`.
+- `.github/workflows/fuzz.yml` fuzzes each target with [Atheris](https://github.com/google/atheris) for three
+  minutes every week, and on demand (Actions, fuzz, Run workflow). A failing input is kept as the job's artifact.
+
+Atheris runs on Linux x86_64 only (it has no macOS, Windows or Arm wheels). On a Mac, run it in an x86_64
+container from the repository folder (on Apple silicon it is emulated, so slower). This fuzzes the SBOM reader
+for five minutes as your own user, installs into the container only, and leaves any failing input in
+`fuzz-out/`:
+
+```bash
+mkdir -p fuzz-out && docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -v "$PWD":/src -w /src python:3.13 bash -c '
+  python -m venv /tmp/v &&
+  /tmp/v/bin/pip install -q --require-hashes -r requirements/dev.txt -r requirements/fuzz.txt &&
+  PYTHONPATH=src /tmp/v/bin/python tests/fuzz/fuzz.py sbom_file -max_total_time=300 -timeout=10 \
+    -rss_limit_mb=2048 -artifact_prefix=fuzz-out/'
+```
+
+To replay an input, pass the file instead of the time limit: the target runs it once and shows the traceback.
+For an input the weekly job kept, first download its artifact into `fuzz-out/` (the job's page in Actions, or
+`gh run download` with the run's ID and `-n fuzz-` plus the target's name). For the SBOM target:
+
+```bash
+docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -v "$PWD":/src -w /src python:3.13 bash -c '
+  python -m venv /tmp/v &&
+  /tmp/v/bin/pip install -q --require-hashes -r requirements/dev.txt -r requirements/fuzz.txt &&
+  PYTHONPATH=src /tmp/v/bin/python tests/fuzz/fuzz.py sbom_file fuzz-out/crash-*'
+```
+
+Fix each one as a bug, with a test that fails without the fix (the tests at the end of `tests/test_units.py`
+are examples). To update Atheris, change `requirements/fuzz.in` and regenerate `requirements/fuzz.txt` with the
+command in its first lines.
+
 ## Adding a known-bad scanner version
 
 Edit `src/oss_intake/data/known_bad.json`, include a public reference (CVE, GHSA or vendor advisory), and add a
