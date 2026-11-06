@@ -21,6 +21,8 @@ _SYSTEMS = {"maven": "maven", "npm": "npm", "pypi": "pypi", "golang": "go", "car
 
 def _system_and_name(purl: str) -> tuple[str, str] | None:
     body = purl[4:].split("?", 1)[0].split("#", 1)[0]
+    if not purl.startswith("pkg:") or "/" not in body:
+        return None  # not a package URL with a name (pkg:npm from a malformed report): nothing to look up
     ptype, rest = body.split("/", 1)
     system = _SYSTEMS.get(ptype.lower())
     if not system:

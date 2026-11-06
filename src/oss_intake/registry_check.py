@@ -129,9 +129,15 @@ def _check_pypi(http: Http, path: Path) -> dict:
                 "detail": "PyPI has no such release"}
     if status != 200 or not isinstance(data, dict):
         return {"status": "error", "registry": "PyPI", "identity": ident, "detail": f"HTTP {status}"}
-    for f in data.get("urls") or []:
-        if f.get("filename") == path.name:
-            published = (f.get("digests") or {}).get("sha256", "").lower()
+    urls = data.get("urls")
+    for f in urls if isinstance(urls, list) else []:
+        if isinstance(f, dict) and f.get("filename") == path.name:
+            digests = f.get("digests")
+            published = digests.get("sha256") if isinstance(digests, dict) else None
+            if not isinstance(published, str) or not published:
+                return {"status": "error", "registry": "PyPI", "identity": ident,
+                        "detail": "PyPI's answer has no SHA-256 for the file"}
+            published = published.lower()
             actual = _digest(path, "sha256")
             return {"status": "match" if actual == published else "mismatch", "registry": "PyPI",
                     "identity": ident, "algorithm": "sha256", "published": published, "actual": actual,
@@ -166,7 +172,9 @@ def _check_npm(http: Http, path: Path) -> dict:
                 "detail": "the npm registry has no such version"}
     if status != 200 or not isinstance(data, dict):
         return {"status": "error", "registry": "npm", "identity": ident, "detail": f"HTTP {status}"}
-    dist = data.get("dist") or {}
+    dist = data.get("dist")
+    if not isinstance(dist, dict):
+        return {"status": "error", "registry": "npm", "identity": ident, "detail": "the registry's answer has no dist"}
     integrity = str(dist.get("integrity") or "")
     if integrity.startswith("sha512-"):
         published = base64.b64decode(integrity[7:]).hex()

@@ -57,7 +57,8 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
     out["archived"] = bool(meta.get("archived"))
     out["pushed_at"] = meta.get("pushed_at")
     out["days_since_push"] = days_between(parse_datetime(meta.get("pushed_at")), as_of)
-    out["license"] = (meta.get("license") or {}).get("spdx_id")
+    lic = meta.get("license")
+    out["license"] = lic.get("spdx_id") if isinstance(lic, dict) and isinstance(lic.get("spdx_id"), str) else None
 
     status, rels = http.get_json(f"{API}/repos/{owner}/{name}/releases", params={"per_page": 100})
     if status != 200 or not isinstance(rels, list):
@@ -66,7 +67,7 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
         rels = []
     releases = []
     for r in rels:
-        if r.get("draft"):
+        if not isinstance(r, dict) or r.get("draft"):
             continue
         dt = parse_datetime(r.get("published_at") or r.get("created_at"))
         if dt:

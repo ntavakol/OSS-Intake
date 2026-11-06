@@ -758,3 +758,9 @@ def test_main_inside_the_folder_still_found():
     assert vscode._inside("out/../dist/main") == ("dist/main", False)
     assert vscode._inside("") == ("", False) and vscode._inside("/") == ("", False)
     assert vscode._inside("../x") == ("", True)
+
+
+def test_a_main_name_too_long_for_the_system_does_not_stop_the_assessment(tmp_path):
+    """Audit (7 Nov): is_file() raised ENAMETOOLONG for a 300-character main, and the whole folder's run stopped."""
+    d = make_folder(tmp_path / "exts", pkg=manifest(main="a" * 300))
+    assert "bundled" in vscode.analyse(d)

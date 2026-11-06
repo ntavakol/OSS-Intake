@@ -378,7 +378,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     if leaves:
         add("main-outside", "package.json", None, f"main is {given_main!r}, which VS Code loads from outside the "
                                                    "extension's folder; that file is not part of what was assessed")
-    main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
+    main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and _is_file(c)}
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
     listings: list[str] = []
@@ -526,6 +526,15 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     return {"extensions": found, "single": staged or _manifest(target) is not None,
             "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
                              "source": REMOVED_PAGE, "entries": len(removed or {})}}
+
+
+def _is_file(p: Path) -> bool:
+    """is_file that treats a path the system refuses (a name too long, an invalid one) as missing, so one
+    extension's odd manifest cannot stop the assessment of the others."""
+    try:
+        return p.is_file()
+    except (OSError, ValueError):
+        return False
 
 
 def _inside(main: str) -> tuple[str, bool]:

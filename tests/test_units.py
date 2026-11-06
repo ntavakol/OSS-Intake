@@ -3263,3 +3263,96 @@ def test_epss_answer_of_the_wrong_shape_is_a_failed_batch():
     f = _f(vuln_id="CVE-2099-0001")
     stats = epss.enrich(H(), [f])
     assert stats["errors"] == 1 and f.epss is None
+
+
+# --- Audit (7 Nov): untrusted input that crashed the run with a traceback ---------------------------------------
+
+def test_reports_with_odd_values_are_scanner_errors_or_read_not_crashes(tmp_path):
+    from oss_intake.enrich import fixdates
+    from oss_intake.scanners import ScannerError, grype, load_json_bytes
+
+    assert fixdates._system_and_name("pkg:npm") is None and fixdates._system_and_name("npm/x@1") is None
+    with pytest.raises(ScannerError, match="not valid JSON"):
+        load_json_bytes(b'{"SchemaVersion": ' + b"9" * 5000 + b"}", "import")  # longer than int() reads
+    report = {"matches": [{"artifact": {"name": "a", "version": "1", "type": "npm", "purl": "pkg:npm/a@1"},
+                           "vulnerability": {"id": "GHSA-aaaa-bbbb-cccc", "severity": "High",
+                                             "advisories": [{"id": 7}]},
+                           "relatedVulnerabilities": [{"id": 12345}]}], "source": {"type": "image"}}
+    parsed = grype.parse(report)
+    f = parsed[0][0]
+    assert f.aliases == set() and f.vendor_ids == []
+
+
+def test_service_answers_of_the_wrong_type_do_not_crash():
+    from datetime import datetime, timezone
+
+    from oss_intake import likelihood
+    from oss_intake.enrich import exploits
+    from oss_intake.health import releases
+
+    assert likelihood.metrics({}, {}, {"status": "ok", "score": "7.1"})["scorecard_score"] is None
+    assert exploits._count("1.5k") == 0 and exploits._count(12) == 12 and exploits._count(True) == 0
+
+    class GH:
+        def get_json(self, url, params=None):
+            if url.endswith("/releases"):
+                return 200, ["v1.0", None, {"tag_name": "v1.0", "published_at": "2026-01-01T00:00:00Z"}]
+            return 200, {"license": "MIT", "pushed_at": "2026-01-01T00:00:00Z"}
+
+    out = releases.fetch(GH(), "owner/app", datetime(2026, 2, 1, tzinfo=timezone.utc))
+    assert out["license"] is None
+
+
+@pytest.mark.parametrize("answer", [{"urls": {"a": 1}}, {"urls": [{"filename": "x-1.0-py3-none-any.whl",
+                                                                   "digests": {"sha256": 5}}]},
+                                    {"urls": [7]}])
+def test_pypi_answer_of_the_wrong_type_is_an_error(tmp_path, answer):
+    from oss_intake import registry_check
+
+    whl = tmp_path / "x-1.0-py3-none-any.whl"
+    whl.write_bytes(b"wheel")
+
+    class H:
+        def get_json(self, url, params=None):
+            return 200, answer
+
+    assert registry_check.check(H(), whl)["status"] in ("error", "not_published")
+
+
+def test_npm_answer_without_dist_is_an_error(tmp_path):
+    import io
+    import tarfile
+
+    from oss_intake import registry_check
+
+    tgz = tmp_path / "a-1.0.0.tgz"
+    with tarfile.open(tgz, "w:gz") as t:
+        data = b'{"name": "a", "version": "1.0.0"}'
+        info = tarfile.TarInfo("package/package.json")
+        info.size = len(data)
+        t.addfile(info, io.BytesIO(data))
+
+    class H:
+        def get_json(self, url, params=None):
+            return 200, {"dist": ["x"]}
+
+    assert registry_check.check(H(), tgz)["status"] == "error"
+
+
+def test_an_unexpected_error_exits_1_with_a_message_not_a_traceback(tmp_path, fixtures, monkeypatch, capsys):
+    from oss_intake import assessment, cli
+
+    def boom(*a, **k):
+        raise TypeError("something no one expected")
+
+    monkeypatch.delenv("OSS_INTAKE_DEBUG", raising=False)
+    monkeypatch.setattr(assessment, "assess", boom)
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "trivy", "--from-trivy-json", str(fixtures / "trivy.json")])
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_ERROR and "unexpected TypeError: something no one expected" in err
+    assert "Traceback" not in err
+    monkeypatch.setenv("OSS_INTAKE_DEBUG", "1")
+    with pytest.raises(TypeError):
+        cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o2"), "--offline", "--scanners",
+                  "trivy", "--from-trivy-json", str(fixtures / "trivy.json")])

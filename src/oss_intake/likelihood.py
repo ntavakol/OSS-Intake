@@ -109,6 +109,11 @@ def validate(cfg: dict) -> None:
                     raise ConfigError(f"rule {i}: a condition's value must be a number or true/false")
 
 
+def _number(value):
+    """A number from a service answer, or None (unknown) for anything else, such as a score sent as text."""
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
 def _bound(value, checked: bool):
     return value if checked or value else None
 
@@ -139,7 +144,7 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "max_days_fix_available": lag.get("max_days_fix_available"),
         "days_since_latest_release": health.get("days_since_latest_release"),
         "archived": 1 if health.get("archived") else 0,
-        "scorecard_score": scorecard.get("score") if scorecard.get("status") == "ok" else None,
+        "scorecard_score": _number(scorecard.get("score")) if scorecard.get("status") == "ok" else None,
         "fix_date_unknown": lag.get("fix_date_unknown", 0),
         "with_fix": lag.get("with_fix", 0),
         "release_date_known": 1 if lag.get("release_date") else 0,

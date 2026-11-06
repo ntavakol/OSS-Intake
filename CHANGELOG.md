@@ -16,6 +16,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Untrusted input could still end a run with a traceback: a bad package URL in a scanner report, a Grype
+  related ID that is not text, a JSON integer too long for Python to read, a Scorecard score sent as text, a
+  GitHub license or release entry of the wrong type, a proof-of-concept star count such as "1.5k", a PyPI or npm
+  answer of the wrong shape, and a VS Code `main` too long for the file system (which also stopped the other
+  extensions' assessment). Each is now read as missing or reported as an error. Anything else unexpected exits 1
+  with a message asking for a bug report, never 0 and never a traceback (`OSS_INTAKE_DEBUG=1` shows it).
 - The exploit indexes (Metasploit, Nuclei, Exploit-DB) took any 200 answer as the index, so a proxy's block page
   parsed to no entries and the exploit check counted as done; an EPSS answer of the wrong shape (an error object)
   counted as a batch with no scores. Both now count as failed: each index must have its own shape (module

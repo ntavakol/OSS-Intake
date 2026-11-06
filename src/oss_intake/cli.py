@@ -346,6 +346,15 @@ def main(argv: list[str] | None = None, http: Http | None = None) -> int:
     except (ScannerError, integrity.IntegrityError, likelihood.ConfigError, HttpError, OSError) as exc:
         print(f"oss-intake: error: {exc}", file=sys.stderr)
         return EXIT_ERROR
+    except Exception as exc:  # noqa: BLE001 - the last resort: input nothing above expected, never a traceback
+        # A run that fails this way assessed nothing, so it exits 1 like any check that could not run (never 0).
+        # OSS_INTAKE_DEBUG=1 shows the traceback, for a bug report.
+        if os.environ.get("OSS_INTAKE_DEBUG"):
+            raise
+        print(f"oss-intake: error: unexpected {type(exc).__name__}: {exc}. This is a bug in oss-intake: please "
+              "report it at https://github.com/ntavakol/OSS-Intake/issues (OSS_INTAKE_DEBUG=1 shows the details)",
+              file=sys.stderr)
+        return EXIT_ERROR
 
 
 if __name__ == "__main__":

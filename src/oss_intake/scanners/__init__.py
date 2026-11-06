@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -71,7 +70,7 @@ def load_json_bytes(data: bytes, what: str) -> dict:
     encoding = "utf-16" if data[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
     try:
         return jsonsafe.loads(data.decode(encoding))
-    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:  # ValueError: also an integer too long to read
         raise ScannerError(f"{what} is not valid JSON: {exc or 'nested too deeply'}") from None
 
 
