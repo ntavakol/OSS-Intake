@@ -19,6 +19,7 @@ from . import (
     coverage,
     decisions,
     exec_summary,
+    gates,
     inputs,
     integrity,
     inventory_report,
@@ -82,7 +83,6 @@ EXIT_OK, EXIT_ERROR, EXIT_USAGE, EXIT_THRESHOLD = 0, 1, 2, 3
 _FORMATS, _SCANNERS, _labels = FORMATS, SCANNERS, labels
 
 
-
 def prepare_out(path: str) -> Path:
     out = Path(path).expanduser()
     try:
@@ -93,7 +93,6 @@ def prepare_out(path: str) -> Path:
     except OSError as exc:
         raise UsageError(f"--out {out} is not writable: {exc}") from None
     return out
-
 
 
 # ---------------------------------------------------------------- commands
@@ -790,7 +789,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     check_info = checks.compute(len(findings), kev_info, epss_info, exploit_info,
                                 getattr(args, "malicious_check", None) or checks.state(checks.CHECKED), skipped_by)
     n_missing = sum(1 for f in findings if f.details_unavailable)
-    # Findings an assessor (or evidence) set aside do not count for KEV, EPSS and the severity gates, as in _gate;
+    # Findings an assessor (or evidence) set aside do not count for KEV, EPSS and the severity gates, as in gates.met;
     # whether an advisory is malware still matters, since no decision sets a malicious package aside.
     n_missing_live = sum(1 for f in findings if f.details_unavailable and triage.classify(f)[0] != "aside")
     if n_missing:
@@ -815,7 +814,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
                 or SEVERITY_ORDER[f.severity] >= floor]
     if len(findings) < len(all_findings):
         triage_info = triage.apply(findings, check_info)  # the counts the reports show
-        warnings.extend(_hidden_gate_warnings(args, all_findings, findings, age_info))
+        warnings.extend(gates.hidden_warnings(args, all_findings, findings, age_info))
     warnings[flag_at:flag_at] = _flag_warnings(findings, flagged)
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
@@ -928,10 +927,9 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
     for w in warnings:
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
-    tripped = _gate(args.fail_on_set, all_findings, age_info, getattr(args, "registry_result", None),
-                    getattr(args, "extension_info", None))
-    hidden_only = {t for t in tripped if t not in _gate([t], findings, age_info, getattr(args, "registry_result", None),
-                                                          getattr(args, "extension_info", None))}
+    registry, extensions = getattr(args, "registry_result", None), getattr(args, "extension_info", None)
+    tripped = gates.met(args.fail_on_set, all_findings, age_info, registry, extensions)
+    hidden_only = {t for t in tripped if t not in gates.met([t], findings, age_info, registry, extensions)}
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}"
             + (f" (only among findings below --min-severity {args.min_severity}, left out of the reports; "
@@ -940,7 +938,7 @@ def _assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_repor
             listed = (age_info.get("unknown_purls") or []) + (age_info.get("unsupported_purls") or [])
             log("  " + ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else ""),
                 args.quiet, force=True)
-    unknown = _gate_unknown(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info,
+    unknown = gates.not_evaluated(args.fail_on_set, age_info, getattr(args, "registry_result", None), args, check_info,
                             n_missing_live)
     for t, why in unknown:
         log(f"--fail-on {t}: could not be evaluated ({why}); failing rather than passing", args.quiet, force=True)
@@ -1019,50 +1017,6 @@ def _language_purls(args, trivy_report: dict | None) -> list[str]:
     return []
 
 
-def _gate_unknown(wanted: list[str], age_info: dict, registry: dict | None, args,
-                  check_info: dict | None = None, details_missing: int = 0) -> list[tuple[str, str]]:
-    """Gates whose check did not (fully) run: a CI gate must not pass because nothing was looked at."""
-    out: list[tuple[str, str]] = []
-    for gate in ("critical", "high"):
-        if gate in wanted and details_missing:
-            out.append((gate, f"advisory details for {details_missing} finding(s) could not be loaded, so their "
-                              "severity is unknown"))
-    chk = check_info or {}  # state_of treats None and {} alike: every source counts as checked
-    # 'act' comes from malicious package data, CISA KEV and the exploit indexes (unless --no-exploits was chosen).
-    act_sources = ("malicious", "kev") if args.no_exploits else ("malicious", "kev", "exploits")
-    for gate, sources in (("malicious", ("malicious",)), ("kev", ("kev",)), ("act", act_sources)):
-        missing = [n for n in sources if checks.state_of(chk, n) != checks.CHECKED]
-        if gate in wanted and missing:
-            out.append((gate, "; ".join(f"{checks.LABEL[n]} {checks.describe(chk, n)}" for n in missing)))
-    ext = getattr(args, "extension_info", None)
-    if ext and ext["removed_list"]["status"] != "checked":
-        for gate in ("malicious", "act"):
-            if gate in wanted and not any(g == gate for g, _ in out):
-                out.append((gate, f"the VS Code Marketplace removal list was {ext['removed_list']['detail']}"))
-    if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
-        out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
-                                                         f"{age_info.get('skipped_limit', 0)} over the limit"))
-    if "unknown-age" in wanted and age_info.get("status") != "ok" and not _unknown_age(age_info):
-        out.append(("unknown-age", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
-                                                              f"{age_info.get('skipped_limit', 0)} over the limit"))
-    # Only a match or a mismatch is an answer: a file the registry check cannot read or place, or a version the
-    # registry does not have, was not compared, and a gate must not pass on a comparison that did not happen.
-    status = str((registry or {}).get("status") or "")
-    if "mismatch" in wanted and args.path_kind == "artifact" and status not in ("match", "mismatch"):
-        # The registry check's own detail says why (no checksum published, file not in the release, HTTP status);
-        # the status alone can mislead, as a registry outage can look like "not published".
-        why = {"error": "the registry lookup failed", "not_published": "no matching published file was found",
-               "unsupported": "the registry check does not cover this kind of file",
-               "unknown": "the file was not compared"}.get(status, "the file was not compared")
-        detail = (registry or {}).get("detail")
-        out.append(("mismatch", f"{why}{f' ({detail})' if detail else ''}"))
-    return out
-
-
-def _unknown_age(age_info: dict) -> bool:
-    return bool(age_info.get("unknown_purls") or age_info.get("unsupported_purls"))
-
-
 def _flag_warnings(shown: list, flagged: dict[str, set[int]]) -> list[str]:
     """The warnings for findings lag.flag_* marked, counted over the findings the reports show."""
     out = []
@@ -1078,42 +1032,6 @@ def _flag_warnings(shown: list, flagged: dict[str, set[int]]) -> list[str]:
         out.append(f"{n_label} finding(s) have an installed version equal to a listed fix apart from a "
                    "build label (e.g. .jre11); flagged as likely already fixed and excluded from lag")
     return out
-
-
-def _hidden_gate_warnings(args, all_findings: list, shown: list, age_info: dict) -> list[str]:
-    """A --fail-on condition met only by findings --min-severity left out of the reports, named so that exit 3
-    is never left without a finding to explain it."""
-    shown_ids = {id(f) for f in shown}
-    hidden = [f for f in all_findings if id(f) not in shown_ids]
-    out = []
-    for t in args.fail_on_set:
-        if t in _gate([t], all_findings, age_info, None) and t not in _gate([t], shown, age_info, None):
-            names = sorted({f"{f.vuln_id} ({f.package} {f.installed})" for f in hidden
-                            if _gate([t], [f], {}, None)})
-            out.append(f"--fail-on {t} is met by {len(names)} finding(s) below --min-severity {args.min_severity}, "
-                       "which the reports leave out: " + ", ".join(names[:10])
-                       + (f" and {len(names) - 10} more" if len(names) > 10 else ""))
-    return out
-
-
-def _gate(wanted: list[str], findings: list, age_info: dict, registry: dict | None,
-          extensions: dict | None = None) -> list[str]:
-    """The --fail-on conditions met. Findings set aside (evidence or an assessor decision) do not count, except
-    a malicious package, which no decision sets aside. An extension the Marketplace removed as malware counts
-    as malicious."""
-    live = [f for f in findings if f.triage_group != "aside"]
-    removed = any(e["malicious"] for e in (extensions or {}).get("extensions", []))
-    met = {
-        "malicious": removed or any(f.malicious for f in findings),
-        "kev": any(f.kev for f in live),
-        "act": any(f.triage_group == "act" for f in live),
-        "critical": any(f.severity == "CRITICAL" for f in live),
-        "high": any(f.severity in ("CRITICAL", "HIGH") for f in live),
-        "recent": bool(age_info.get("recent")),
-        "unknown-age": _unknown_age(age_info),
-        "mismatch": bool(registry and registry.get("status") == "mismatch"),
-    }
-    return [w for w in wanted if met[w]]
 
 
 def main(argv: list[str] | None = None, http: Http | None = None) -> int:
