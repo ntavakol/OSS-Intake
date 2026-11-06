@@ -164,7 +164,7 @@ class ResponseCache:
                     except FileExistsError:  # another thread made it first
                         continue
                     os.chmod(d, 0o700)
-            tmp = f.with_suffix(f".{threading.get_ident()}.tmp")
+            tmp = f.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")  # unique across runs sharing it
             # Readable and writable by this user only, whatever the umask: get() ignores an entry others could
             # write to.
             fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)

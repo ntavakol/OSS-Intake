@@ -117,7 +117,7 @@ def fetch(http: Http, repo: str) -> dict:
     total = sum(r["uses"] for r in results)
     unpinned = sum(len(r["unpinned"]) for r in results)
     return {
-        "status": "partial" if unread else "ok",
+        "status": "partial" if unread or skipped else "ok",  # a file left unread could hide a known-bad action
         "files": len(results),
         "files_skipped": skipped,
         "files_unread": unread,

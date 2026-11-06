@@ -52,7 +52,10 @@ NATIVE_SUFFIXES = {".node", ".exe", ".dll", ".so", ".dylib", ".wasm"}
 NATIVE_MAGIC = (b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe",
                 b"\0asm")
 MAX_HOSTS = 1000
-_RESERVED = re.compile(r"^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$", re.I)
+# Windows device names, a name that ends in a dot or space included (Windows drops those): COM¹ to COM³ and
+# LPT¹ to LPT³ count as devices too, and so do CONIN$, CONOUT$ and CLOCK$.
+_RESERVED = re.compile(r"^(con|prn|aux|nul|com[0-9\u00b9\u00b2\u00b3]|lpt[0-9\u00b9\u00b2\u00b3]"
+                       r"|conin\$|conout\$|clock\$)(\..*)?[. ]*$", re.I)
 BUNDLE_BYTES = 200_000  # a main file this large with no node_modules folder is taken as bundled
 
 # What a run of an extension is checked for. Each is a signal for a person to look at, not a verdict.

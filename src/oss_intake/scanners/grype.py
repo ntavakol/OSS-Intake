@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..cvss import better, version_of
-from ..models import Finding, normalise_severity
+from ..models import Finding, normalise_severity, safe_url
 from . import ScannerError, load_json_bytes, run
 
 NAME = "grype"
@@ -120,7 +120,7 @@ def _parse(report: dict) -> tuple[list[Finding], dict]:
             # lets Grype-only OS findings be dated like Trivy's.
             vendor_ids=[a["id"] for a in vuln.get("advisories") or []
                         if isinstance(a, dict) and isinstance(a.get("id"), str) and a["id"]],
-            url=vuln.get("dataSource", "") or "",
+            url=safe_url(vuln.get("dataSource")),
             title=(vuln.get("description") or "")[:200],
             description=vuln.get("description") or "",
             sources={NAME},

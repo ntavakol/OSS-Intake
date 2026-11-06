@@ -3428,3 +3428,119 @@ def test_renv_lock_entries_are_checked_like_a_package_list(tmp_path, packages, w
     p.write_text(json.dumps({"R": {"Version": "4.5.1"}, "Packages": packages}), encoding="utf-8")
     with pytest.raises(inputs.InputError, match=why):
         inputs.renv_purls(p)
+
+
+def test_a_tgz_that_expands_hugely_is_not_read_through(tmp_path, monkeypatch):
+    """Audit (7 Nov): reading package.json decompressed every member before it, so a small .tgz expanding to a
+    huge member took minutes and gigabytes. Reading stops past a byte and member limit."""
+    import io
+    import tarfile
+
+    from oss_intake import registry_check
+
+    monkeypatch.setattr(registry_check, "MAX_TAR_SCAN_BYTES", 1024 * 1024)
+    tgz = tmp_path / "a-1.0.0.tgz"
+    with tarfile.open(tgz, "w:gz") as t:
+        big = tarfile.TarInfo("package/big.bin")
+        big.size = 4 * 1024 * 1024
+        t.addfile(big, io.BytesIO(b"\0" * big.size))
+        data = b'{"name": "a", "version": "1.0.0"}'
+        info = tarfile.TarInfo("package/package.json")
+        info.size = len(data)
+        t.addfile(info, io.BytesIO(data))
+
+    class H:
+        def get_json(self, url, params=None):
+            raise AssertionError("never looked up")
+
+    r = registry_check.check(H(), tgz)
+    assert r["status"] == "unknown" and "ValueError" in r["detail"]
+
+
+@pytest.mark.parametrize("name", ["COM¹.js", "lpt³", "CONIN$", "conout$.txt", "CLOCK$", "nul.txt"])
+def test_windows_device_names_are_refused_in_a_vsix(name):
+    from oss_intake import vscode
+
+    with pytest.raises(inputs.InputError):
+        vscode._member_path(f"extension/{name}")
+    assert str(vscode._member_path("extension/console.js")) == "extension/console.js"
+
+
+def test_a_publish_time_just_ahead_of_this_clock_counts_as_new():
+    """Audit (7 Nov): without --as-of, a version published minutes 'in the future' (clock skew with the
+    registry) counted as checked and not recent, so --fail-on recent passed on a release minutes old."""
+    from datetime import datetime, timedelta, timezone
+
+    from oss_intake import release_age
+
+    now = datetime(2026, 11, 7, 12, 0, tzinfo=timezone.utc)
+    ahead = (now + timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+
+    class H:
+        def get_json(self, url, params=None):
+            return 200, {"publishedAt": ahead}
+
+        def prefetch(self, urls, workers=8):
+            return {u: (200, {"publishedAt": ahead}) for u in urls}
+
+    info = release_age.check(H(), ["pkg:npm/fresh@1.0.0"], now, 7, as_of_given=False)
+    assert [r["age_days"] for r in info["recent"]] == [0]
+    info = release_age.check(H(), ["pkg:npm/fresh@1.0.0"], now, 7, as_of_given=True)
+    assert info["recent"] == []  # with --as-of in the past, it did not exist yet
+
+
+def test_workflow_audit_over_the_file_limit_is_partial():
+    import base64
+
+    from oss_intake.health import workflows as wf
+
+    class H:
+        def get_json(self, url, params=None):
+            if url.endswith("/contents/.github/workflows"):
+                return 200, [{"type": "file", "name": f"w{i}.yml", "path": f".github/workflows/w{i}.yml"}
+                             for i in range(wf.MAX_FILES + 3)]
+            return 200, {"encoding": "base64", "content": base64.b64encode(WORKFLOW_GOOD.encode()).decode()}
+
+    r = wf.fetch(H(), "o/r")
+    assert r["status"] == "partial" and r["files_skipped"] == 3 and "3 more not checked" in wf.files_audited(r)
+
+
+def test_inventory_rows_split_only_on_real_line_ends(tmp_path):
+    """str.splitlines() also split rows at \\x85, \\x0b or \\x1c inside a value, refusing a valid CSV."""
+    p = tmp_path / "i.csv"
+    p.write_text("ecosystem,name,version,note\nnpm,lodash,4.17.21,a\x85b\x1cc\n", encoding="utf-8")
+    rows = inputs.inventory(p)
+    assert [r["purl"] for r in rows] == ["pkg:npm/lodash@4.17.21"]
+
+
+@pytest.mark.skipif(not __import__("os").path.exists("/dev/zero"), reason="no /dev/zero")
+def test_path_that_is_a_device_is_refused(tmp_path, capsys):
+    from oss_intake import cli
+
+    code = cli.main(["--path", "/dev/zero", "--out", str(tmp_path / "o"), "--offline"])
+    assert code == cli.EXIT_USAGE and "is not a file or folder" in capsys.readouterr().err
+
+
+def test_reports_load_and_run_nothing_and_links_are_http_only(tmp_path, fixtures):
+    """Audit (7 Nov): the HTML reports had no Content-Security-Policy, and an advisory link of any scheme
+    (javascript:) went into findings.csv and assessment.json."""
+    import json
+
+    from oss_intake import cli
+    from oss_intake.models import safe_url
+
+    assert safe_url("javascript:alert(1)") == "" and safe_url(" https://x/y ") == "https://x/y"
+    assert safe_url(5) == "" and safe_url("data:text/html,x") == ""
+    report = json.loads((fixtures / "trivy.json").read_text(encoding="utf-8"))
+    report["Results"][0]["Vulnerabilities"][0]["PrimaryURL"] = "javascript:alert(document.domain)"
+    rp = tmp_path / "t.json"
+    rp.write_text(json.dumps(report), encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--from-trivy-json", str(rp)]) == cli.EXIT_OK
+    for name in ("findings.csv", "assessment.json", "report.html"):
+        assert "javascript:" not in (out / name).read_text(encoding="utf-8"), name
+    for name in ("report.html", "executive-summary.html"):
+        if (out / name).exists():
+            assert "Content-Security-Policy" in (out / name).read_text(encoding="utf-8"), name
+    assert "default-src 'none'" in (out / "report.html").read_text(encoding="utf-8")

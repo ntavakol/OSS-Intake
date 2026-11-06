@@ -23,6 +23,10 @@ from .triage import ORDER as TRIAGE_ORDER
 from .triage import rank_key
 
 _e = html.escape
+# Nothing in a report runs or loads anything: if an escaping slip ever let advisory text through as markup, it
+# could still do nothing.
+CSP_META = ('<meta http-equiv="Content-Security-Policy" '
+            'content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">')
 
 
 class Raw(str):
@@ -691,6 +695,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     mismatch = mismatch or any(e["malicious"] for e in (a.get("extensions") or {}).get("extensions", []))
     accent = "c" if a["lag"].get("malicious") or mismatch else tone_level(lk["level"]) if lk else "n"
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+             CSP_META,
              '<meta name="viewport" content="width=device-width, initial-scale=1">',
              f"<title>OSS intake: {_e(title)}</title><style>{CSS}</style></head><body><div class=\"page\">",
              f'<header class="{accent}"><h1>OSS intake assessment: <span class="img">{_e(title)}</span></h1>'

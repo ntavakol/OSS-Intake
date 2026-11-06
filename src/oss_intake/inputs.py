@@ -17,6 +17,7 @@ A single file is copied into an empty temporary directory so both scanners see e
 
 from __future__ import annotations
 
+import io
 import re
 import shutil
 import tempfile
@@ -284,7 +285,9 @@ def inventory(path: Path) -> list[dict]:
         text = path.read_text(encoding="utf-8-sig")  # Excel writes a byte order mark
     except (OSError, UnicodeDecodeError) as exc:
         raise InputError(f"cannot read {path.name}: {exc}. Save it from Excel as 'CSV UTF-8'.") from None
-    reader = csv.DictReader(text.splitlines())
+    # newline="": the csv module splits rows itself, so a quoted line break, or a character str.splitlines()
+    # also breaks on (\x85, \x0b, \x1c), stays inside its cell.
+    reader = csv.DictReader(io.StringIO(text, newline=""))
     headers = {h: (h or "").strip().lower() for h in reader.fieldnames or []}
     cols = set(headers.values())
     if "purl" not in cols and not {"ecosystem", "name", "version"} <= cols:

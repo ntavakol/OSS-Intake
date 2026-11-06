@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..cvss import better, version_of
-from ..models import Finding, normalise_severity, parse_datetime
+from ..models import Finding, normalise_severity, parse_datetime, safe_url
 from ..versions import split_fixed
 from . import ScannerError, load_json_bytes, path_arg, run
 
@@ -124,7 +124,7 @@ def _parse(report: dict) -> tuple[list[Finding], dict]:
                 src_name=pkg.get("SrcName", "") if is_os else "",
                 src_version=_src_version(pkg) if is_os else "",
                 os_release=os_release if is_os else "",
-                url=v.get("PrimaryURL", "") or "",
+                url=safe_url(v.get("PrimaryURL")),
                 sources={NAME},
             )
             f.source_severity[NAME] = f.severity

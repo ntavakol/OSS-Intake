@@ -36,9 +36,12 @@ def _url(sn: tuple[str, str], version: str) -> str:
     return f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}/versions/{quote(version, safe='')}"
 
 
-def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int = MAX_LOOKUPS) -> dict:
-    """as_of is the end of the assessment period: a version published after it did not exist yet. Ages are
-    counted in calendar days (published yesterday = 1 day old)."""
+def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int = MAX_LOOKUPS,
+          as_of_given: bool = True) -> dict:
+    """as_of is the end of the assessment period: with --as-of (as_of_given), a version published after it did
+    not exist yet. Without it as_of is now, and a publish time after it is clock skew between this machine and
+    the registry: the version is minutes old, so it counts as new (age 0). Ages are counted in calendar days
+    (published yesterday = 1 day old)."""
     info: dict = {"status": "ok", "days": days, "checked": 0, "unknown": 0, "unsupported": 0, "errors": 0,
                   "skipped_limit": 0, "recent": [], "published": {},
                   # Language package versions with no release date, for --fail-on unknown-age (capped lists).
@@ -89,9 +92,9 @@ def check(http: Http, purls: list[str], as_of: datetime, days: int, limit: int =
             continue
         info["checked"] += 1
         info["published"][purl] = published.isoformat()[:10]
-        if published > as_of:
+        if published > as_of and as_of_given:
             continue  # did not exist yet on the assessment date
-        age = days_between(published, as_of)  # by UTC date, whatever the local time zone
+        age = 0 if published > as_of else days_between(published, as_of)  # by UTC date, whatever the time zone
         if age < days:
             info["recent"].append({"purl": purl, "package": sn[1], "version": version,
                                    "published": published.isoformat(), "age_days": age})

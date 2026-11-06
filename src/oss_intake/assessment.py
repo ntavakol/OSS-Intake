@@ -167,9 +167,9 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
                 sc = {"status": "error", "note": str(exc)}
         if not args.no_workflows:
             health["workflows"] = workflows.fetch(net, args.repo)
-            if health["workflows"].get("files_unread"):
-                warnings.append("Project workflow audit is partial: "
-                                + workflows.files_audited(health["workflows"]).split("; ", 1)[1])
+            if health["workflows"].get("status") == "partial":
+                warnings.append("Project workflow audit is partial (workflow files checked: "
+                                + workflows.files_audited(health["workflows"]) + ")")
             for kb in health["workflows"].get("known_bad", []):
                 warnings.append(f"Project workflow {kb['file']} uses {kb['uses']}, a known-bad action version "
                                 f"({kb['reference']})")
@@ -321,7 +321,8 @@ def _release_age(args, net, trivy_report: dict | None, as_of: datetime, warnings
     elif net and args.release_age_days:
         # A date-only --as-of means the whole of that day.
         as_of_end = as_of + timedelta(days=1, seconds=-1) if args.as_of and "T" not in args.as_of else as_of
-        age_info = release_age.check(net, purls, as_of_end, args.release_age_days, limit=args.release_age_max)
+        age_info = release_age.check(net, purls, as_of_end, args.release_age_days, limit=args.release_age_max,
+                                     as_of_given=bool(args.as_of))
         if unlisted and age_info.get("status") == "ok":
             # Trivy did not list what those results contain, so a version only hours old may be among them unseen.
             age_info["status"] = "partial"

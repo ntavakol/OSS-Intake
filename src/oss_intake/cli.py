@@ -147,6 +147,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         p = Path(args.path).expanduser()
         if not p.exists():
             raise UsageError(f"--path {args.path} not found")
+        if not (p.is_file() or p.is_dir()):  # a device such as /dev/zero would be copied until the disk fills
+            raise UsageError(f"--path {args.path} is not a file or folder")
         args.path = str(p)
         args.path_kind = inputs.classify(p)
     if args.repo:

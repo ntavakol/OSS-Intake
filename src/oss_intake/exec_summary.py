@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import Finding, parse_datetime
-from .report_html import CSS, Raw, _e, _group_pill, _note, _section, _table
+from .report_html import CSP_META, CSS, Raw, _e, _group_pill, _note, _section, _table
 
 STALE_DAYS = 365
 TOP = 10
@@ -149,7 +149,7 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
     tile_html = '<div class="tiles">' + "".join(
         f'<div class="tile {t}"><div class="k">{_e(k)}</div><div class="v">{_e(str(v))}</div>'
         f'<div class="s">{_e(sub)}</div></div>' for t, k, v, sub in tiles) + "</div>"
-    parts = [f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
+    parts = [f'<!doctype html><html lang="en"><head><meta charset="utf-8">{CSP_META}'
              f'<meta name="viewport" content="width=device-width, initial-scale=1">'
              f"<title>Open source risk summary: {_e(title)}</title><style>{CSS}</style></head><body>"
              f'<div class="page"><header class="{"c" if s["act_now"] else "a" if s["with_findings"] else "g"}">'

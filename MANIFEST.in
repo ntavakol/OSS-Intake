@@ -4,4 +4,6 @@ graft examples
 include scripts/readme_sync.py scripts/self_inventory.py scripts/release_sbom.py
 include requirements/runtime.txt requirements/dev.txt requirements/fuzz.txt
 include CHANGELOG.md BACKLOG.md CONTRIBUTING.md SECURITY.md docs/guide.md
+# Says why a secret scanner's hit in tests/fixtures (a key quoted in a published advisory) is not a secret.
+include .gitleaksignore
 global-exclude __pycache__ *.py[cod]

@@ -16,6 +16,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Smaller fixes from the audit: without `--as-of`, a version published a few minutes "in the future" (clock skew
+  with the registry) now counts as new rather than as not yet existing; workflow files beyond the first 20 make
+  the project's workflow audit partial, with a warning, instead of being left out silently; inventory CSV rows
+  are split by the csv module, so a value holding `\x85` or `\x1c` no longer breaks a valid file; two runs
+  sharing a cache no longer write the same temporary file; `--path` must be a file or folder (a device such as
+  `/dev/zero` was copied until the disk filled); reading an npm package or sdist for its registry check stops
+  past 256 MB or 20,000 members, so a small archive that expands hugely cannot hold the run; the Windows device
+  names `COM¹` to `COM³`, `LPT¹` to `LPT³`, `CONIN$`, `CONOUT$` and `CLOCK$` are refused in a .vsix, as the others
+  were; `report.html` and `executive-summary.html` carry a Content-Security-Policy that lets nothing run or load;
+  advisory links other than http and https are dropped.
 - An renv.lock with no packages gave a clean report, and an entry with a wrong-typed name or a placeholder
   version (`latest`, `1.4.*`) became a package URL OSV knows nothing about, so it read as clean. renv.lock entries
   are now checked like a package list's rows, and an empty one is refused (exit 2).

@@ -43,6 +43,20 @@ def _safe(value: str, pattern: re.Pattern) -> bool:
     return bool(pattern.match(value)) and ".." not in value
 
 
+# Reading a member of a compressed tar decompresses everything before it, so a small .tgz that expands to a huge
+# member (a decompression bomb) is not read past this many bytes or members.
+MAX_TAR_SCAN_BYTES = 256 * 1024 * 1024
+MAX_TAR_MEMBERS = 20_000
+
+
+def _tar_members(t: tarfile.TarFile):
+    """The members of t in order, stopping with ValueError past MAX_TAR_SCAN_BYTES or MAX_TAR_MEMBERS."""
+    for n, m in enumerate(t, 1):
+        if n > MAX_TAR_MEMBERS or m.offset_data + m.size > MAX_TAR_SCAN_BYTES:
+            raise ValueError("archive too large to read its metadata")
+        yield m
+
+
 def _read_small(data: bytes | None) -> bytes:
     if data is None or len(data) > MAX_METADATA:
         raise ValueError("metadata file too large")
@@ -149,7 +163,9 @@ def _check_pypi(http: Http, path: Path) -> dict:
 def _check_npm(http: Http, path: Path) -> dict:
     try:
         with tarfile.open(path) as t:
-            info = t.getmember("package/package.json")
+            info = next((m for m in _tar_members(t) if m.name == "package/package.json" and m.isfile()), None)
+            if info is None:
+                raise KeyError("package/package.json")
             if info.size > MAX_METADATA:
                 raise ValueError("package.json too large")
             member = t.extractfile(info)
@@ -197,7 +213,7 @@ def _is_sdist(path: Path) -> bool:
         else:
             with tarfile.open(path) as t:
                 names = []
-                for m in t:
+                for m in _tar_members(t):
                     names.append(m.name)
                     if len(names) >= 5000:
                         break

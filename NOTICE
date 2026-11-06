@@ -7,7 +7,9 @@ Third-party data
 ----------------
 The test fixtures (tests/fixtures) include data from outside sources, kept so the tests run offline:
 - tests/fixtures/recorded-seeds.json: advisory records from the GitHub Advisory Database
-  (https://github.com/github/advisory-database), licensed CC-BY-4.0, as served by OSV.dev.
+  (https://github.com/github/advisory-database), licensed CC-BY-4.0, as served by OSV.dev. One of them, the
+  PyJWT advisory GHSA-ffqj-6fqr-9h24, quotes an example EC private key in its text: it is the advisory's own
+  example, not a secret of this project (.gitleaksignore records it).
 - tests/fixtures/real/: output of Trivy (https://github.com/aquasecurity/trivy) and Grype
   (https://github.com/anchore/grype) for public images, which repeats advisory text from the US National
   Vulnerability Database (public domain), the GitHub Advisory Database (CC-BY-4.0), Red Hat security data

@@ -136,7 +136,7 @@ class Finding:
     sources: set[str] = field(default_factory=set)
     source_severity: dict[str, str] = field(default_factory=dict)
     title: str = ""
-    url: str = ""
+    url: str = ""  # only http(s): scanners set it through safe_url
     description: str = ""  # full advisory text, for the conditions excerpt
     conditions: str = ""  # the advisory's own "affected only if" sentences, verbatim
     exploit_level: str = ""  # kev | weaponised | public | poc | none | "" (not checked)
@@ -217,3 +217,10 @@ def canonical_id(vuln_id: str, aliases: set[str] | None = None) -> str:
             if a.upper().startswith(prefix):
                 return a.upper() if prefix == "CVE-" else a
     return vuln_id
+
+
+def safe_url(value: object) -> str:
+    """An advisory link as given, if it is http or https; anything else (javascript:, data:, file:) is dropped,
+    as the reports and findings.csv pass it on to browsers and other tools."""
+    v = value.strip() if isinstance(value, str) else ""
+    return v if v.lower().startswith(("https://", "http://")) else ""
