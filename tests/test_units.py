@@ -2476,3 +2476,21 @@ def test_release_workflow_attaches_slsa_provenance():
     jobs = yaml.safe_load(text)["jobs"]
     assert jobs["provenance"]["needs"] == "build" and jobs["build"]["outputs"]["hashes"]
     assert jobs["provenance"]["permissions"] == {"actions": "read", "id-token": "write", "contents": "write"}
+
+
+def test_workflow_pip_installs_are_pinned_or_local():
+    """Scorecard (6 Nov): `pip install .` in ci.yml was counted as an unpinned dependency. Every pip install in the
+    workflows uses hashes (-r with --require-hashes), an editable local source (-e .) or a built wheel."""
+    import re
+
+    root = Path(__file__).resolve().parent.parent / ".github" / "workflows"
+    if not root.exists():
+        pytest.skip("workflows are not in the sdist")
+    bad = []
+    for wf in sorted(root.glob("*.yml")):
+        for n, line in enumerate(wf.read_text(encoding="utf-8").splitlines(), 1):
+            if re.search(r"\bpip install\b", line) and not line.lstrip().startswith("#"):
+                args = line.split("pip install", 1)[1].split()
+                if not ("--require-hashes" in args or "-e" in args or any(a.endswith(".whl") for a in args)):
+                    bad.append(f"{wf.name}:{n}: {line.strip()}")
+    assert bad == []

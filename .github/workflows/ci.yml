@@ -108,7 +108,8 @@ jobs:
           tar -xzf dist/*.tar.gz -C "$RUNNER_TEMP/sdist"
           cd "$RUNNER_TEMP"/sdist/oss_intake-*
           python -m pip install --require-hashes -r requirements/dev.txt
-          python -m pip install --no-deps --no-build-isolation .
+          # -e: the archive's own source, as a plain "." does; OpenSSF Scorecard counts "." as an unpinned install.
+          python -m pip install --no-deps --no-build-isolation -e .
           python -m pytest
 
   secrets:

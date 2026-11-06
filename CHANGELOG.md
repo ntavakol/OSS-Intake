@@ -25,6 +25,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - With `--min-severity`, fix dates, KEV, EPSS and exploits are looked up for every finding, not only those shown,
   so such runs make more requests. Findings are looked up most severe first, so lookups that are capped reach
   the severe ones.
+- CI installs the unpacked source archive with `pip install -e .`, which OpenSSF Scorecard accepts as a local
+  install, and a test checks that every `pip install` in the workflows is pinned by hash or local.
 
 ### Fixed
 - `--min-severity` could turn a failing gate into a pass: it removed findings before KEV, exploits and triage were
