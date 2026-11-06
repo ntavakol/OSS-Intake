@@ -54,6 +54,27 @@ class HttpError(Exception):
     """Network or protocol failure. Messages never include request headers."""
 
 
+def _private_group(gid: int) -> bool:
+    """The user's own private group (named as the user, no other members), as Fedora, RHEL, Debian and Ubuntu
+    give each user with umask 002: group write there lets no one else in."""
+    if sys.platform == "win32":
+        return False
+    try:
+        import grp
+        import pwd
+
+        g, u = grp.getgrgid(gid), pwd.getpwuid(os.getuid())
+    except (ImportError, KeyError, OSError):
+        return False
+    return gid == u.pw_gid and g.gr_name == u.pw_name and all(m == u.pw_name for m in g.gr_mem)
+
+
+def _others_can_write(mode: int, gid: int) -> bool:
+    import stat
+
+    return bool(mode & stat.S_IWOTH or (mode & stat.S_IWGRP and not _private_group(gid)))
+
+
 def _trusted(p: Path) -> bool:
     """A cache entry or subfolder only this user (or root) could have written: not a link, not another user's,
     not writable by others. A missing file reads as a miss either way. Always true on Windows (unsafe_reason
@@ -67,7 +88,7 @@ def _trusted(p: Path) -> bool:
     except OSError:
         return True  # missing: the read that follows is a miss
     return (not stat.S_ISLNK(st.st_mode) and st.st_uid in (os.getuid(), 0)
-            and not st.st_mode & (stat.S_IWGRP | stat.S_IWOTH))
+            and not _others_can_write(st.st_mode, st.st_gid))
 
 
 def default_cache_dir() -> Path:
@@ -133,8 +154,15 @@ class ResponseCache:
             return  # a version deps.dev knows but has no date for yet: ask again next time
         f = self._file(url)
         try:
-            self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-            f.parent.mkdir(exist_ok=True, mode=0o700)
+            # Folders it makes, parents included (~/.cache on a first run), are the user's only whatever the
+            # umask: mkdir(parents=True) would give the parents the umask's mode, and unsafe_reason checks them.
+            for d in [*reversed(f.parent.parents), f.parent]:
+                if not d.exists():
+                    try:
+                        d.mkdir(mode=0o700)
+                    except FileExistsError:  # another thread made it first
+                        continue
+                    os.chmod(d, 0o700)
             tmp = f.with_suffix(f".{threading.get_ident()}.tmp")
             # Readable and writable by this user only, whatever the umask: get() ignores an entry others could
             # write to.
@@ -165,7 +193,7 @@ class ResponseCache:
             except OSError as exc:
                 return f"{p} cannot be checked ({exc.strerror or exc})"
             # A shared folder such as /tmp (sticky: only the owner can rename or delete) is fine above the cache.
-            if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH) and (p == self.folder or not st.st_mode & stat.S_ISVTX):
+            if _others_can_write(st.st_mode, st.st_gid) and (p == self.folder or not st.st_mode & stat.S_ISVTX):
                 return f"{p} can be written by other users"
             if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
                 return f"{p} belongs to another user"

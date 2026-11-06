@@ -640,3 +640,31 @@ def test_cache_outside_the_user_profile_on_windows_is_not_used(tmp_path, monkeyp
     assert ResponseCache(tmp_path / "home" / "cache").unsafe_reason(windows=True) is None
     why = ResponseCache(tmp_path / "shared" / "cache").unsafe_reason(windows=True)
     assert why and "outside your user profile" in why
+
+
+@_POSIX
+def test_cache_made_under_umask_002_is_still_trusted_on_the_next_run(tmp_path):
+    """Review (6 Nov): with umask 002 the first run made ~/.cache group-writable, and every later run then refused
+    the cache. Folders it makes are 0700 whatever the umask."""
+    import os
+
+    folder = tmp_path / "home" / ".cache" / "oss-intake"
+    old = os.umask(0o002)
+    try:
+        ResponseCache(folder).put(_CACHE_URL, 200, {"id": "GHSA-test"})
+    finally:
+        os.umask(old)
+    assert (tmp_path / "home" / ".cache").stat().st_mode & 0o777 == 0o700
+    assert ResponseCache(folder).unsafe_reason() is None
+    assert ResponseCache(folder).get(_CACHE_URL) == (200, {"id": "GHSA-test"})
+
+
+def test_group_write_by_the_users_private_group_is_not_others(monkeypatch):
+    import stat
+
+    from oss_intake import http
+
+    monkeypatch.setattr(http, "_private_group", lambda gid: gid == 1000)
+    assert not http._others_can_write(0o775 | stat.S_IFDIR, 1000)
+    assert http._others_can_write(0o775 | stat.S_IFDIR, 50)
+    assert http._others_can_write(0o757 | stat.S_IFDIR, 1000)
