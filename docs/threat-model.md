@@ -142,14 +142,12 @@ memory and time.
 
 **Left open:**
 
-- A decision is matched on the vulnerability ID and the package name only, not the ecosystem: a `fixed`
-  decision for npm `lodash` also sets aside a PyPI package of that name with the same advisory. `fixed` needs no
-  note, and decisions never expire. A set-aside finding does not count for any gate except `malicious`.
+- A decision without an ecosystem (a findings.csv with no `pkg_type`, or one written by hand) is matched on the
+  vulnerability ID and package name only, so it can cover a package of the same name in another ecosystem.
+  `fixed` needs no note, and decisions never expire. A set-aside finding does not count for any gate except `malicious`.
 - One decision can cover more than its row suggests: one without a version applies to every version without a
   review flag, and the `aliases` cell extends it to every ID listed there.
-- Only a few placeholder words are refused as versions (`unknown`, `TBD` or `N/A` are accepted, and OSV finds
-  nothing for them, so they read as clean), and names in CSV inventories and SBOMs are not checked as
-  `--package` names are (`pkg:pypi//@1.0` is accepted).
+- Names in CSV inventories and SBOMs are not checked as `--package` names are (`pkg:pypi//@1.0` is accepted).
 - A single SBOM file over 200 MB is not refused: it is treated as an ordinary file and given to the scanners,
   which find nothing in it.
 - `--fail-on recent` passes for a version deps.dev has no date for, which is likely for a release hours old; only
@@ -288,16 +286,15 @@ indicators, the single maintainer) are limits of the approach rather than defect
    test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
    CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
    which an existing test keeps set aside on purpose; also Ned's call.
-2. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
-3. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
+2. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.
-4. Report a binary checked against an unsigned checksums file as such, not as hash verified.
-5. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-6. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+3. Report a binary checked against an unsigned checksums file as such, not as hash verified.
+4. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
+5. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
    for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-7. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-8. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-9. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-10. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-11. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+6. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+7. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+8. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+9. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+10. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
     leave it), so the bundled check cannot be avoided.

@@ -129,8 +129,11 @@ ECOSYSTEMS = {
     "cran": "cran", "r": "cran",
     "hex": "hex", "pub": "pub",
 }
-# Ranges and placeholders, not an installed version: ^1.2, ~1.2, >=1, 1.*, latest, 4.x, 4.1.X, 31.+ (Gradle).
-_NOT_A_VERSION = re.compile(r"[\s^~<>=*,|]|^(latest|any|x)$|(^|\.)x$|\+$", re.IGNORECASE)
+# Ranges and placeholders, not an installed version: ^1.2, ~1.2, >=1, 1.*, latest, 4.x, 4.1.X, 31.+ (Gradle), and
+# the words a spreadsheet puts where a version is not known (unknown, TBD, N/A, -, ?): OSV knows nothing about
+# them, so the package would read as clean.
+_NOT_A_VERSION = re.compile(r"[\s^~<>=*,|?]|^(latest|any|x|unknown|tbd|n/?a|none|null|undefined|unspecified|-+)$"
+                            r"|(^|\.)x$|\+$", re.IGNORECASE)
 
 
 def _purl_for(ptype: str, name: str, version: str) -> str:

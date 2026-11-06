@@ -12,6 +12,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   malicious package by the kernel-header or build-label rule, so it no longer counted for any gate. Malicious
   packages are never set aside and KEV findings are in Act now, with the evidence noted; an assessor's decision
   still applies, and a kernel header CVE still does not apply in a container.
+- A decision covered a package of the same name in another ecosystem: a `fixed` decision for npm `lodash` also set
+  aside PyPI `lodash`. A decision now applies only in its own ecosystem when it says which (findings.csv's
+  `pkg_type`, OpenVEX's package URL); one that does not still matches by name.
+- Versions such as `unknown`, `TBD`, `N/A`, `none`, `-` or `?` in a package list or `--package` are refused as
+  placeholders, as `latest` was: OSV knows nothing about them, so the package read as clean.
 
 ## [0.16.0] - 2026-11-06
 

@@ -2998,3 +2998,53 @@ def test_an_assessor_decision_still_sets_aside_a_kev_finding():
                 decision_notes="feature not used")
     group, reason = triage.classify(f)
     assert group == "aside" and "listed in CISA KEV" in reason
+
+
+def test_csv_decision_applies_only_in_its_own_ecosystem(tmp_path):
+    """Open item 2: decisions matched on ID and package name only, so a fixed decision for npm lodash also set
+    aside a PyPI package called lodash with the same advisory. A decision from a findings.csv carries pkg_type."""
+    from oss_intake import decisions
+    from oss_intake.models import Finding
+
+    p = tmp_path / "findings.csv"
+    p.write_text("id,package,pkg_type,installed,triage_status,triage_notes\n"
+                 "GHSA-x,lodash,npm,4.0.0,fixed,\n", encoding="utf-8")
+    npm = Finding("GHSA-x", "lodash", "4.0.0", "HIGH", pkg_type="npm")
+    pypi = Finding("GHSA-x", "lodash", "4.0.0", "HIGH", pkg_type="python-pkg")
+    decisions.apply([npm, pypi], decisions.load(p))
+    assert npm.decision_status == "fixed" and pypi.decision_status == ""
+
+
+def test_openvex_decision_applies_only_in_its_own_ecosystem(tmp_path):
+    import json
+
+    from oss_intake import decisions
+    from oss_intake.models import Finding
+
+    p = tmp_path / "v.json"
+    p.write_text(json.dumps({"statements": [{"vulnerability": {"name": "GHSA-x"}, "status": "fixed",
+                                             "products": [{"@id": "pkg:npm/lodash@4.0.0"}]}]}), encoding="utf-8")
+    npm = Finding("GHSA-x", "lodash", "4.0.0", "HIGH", purl="pkg:npm/lodash@4.0.0")
+    pypi = Finding("GHSA-x", "lodash", "4.0.0", "HIGH", purl="pkg:pypi/lodash@4.0.0")
+    decisions.apply([npm, pypi], decisions.load(p))
+    assert npm.decision_status == "fixed" and pypi.decision_status == ""
+
+
+def test_decision_without_an_ecosystem_still_matches_by_name(tmp_path):
+    """Decision files from before (or written by hand) without pkg_type keep working."""
+    from oss_intake import decisions
+    from oss_intake.models import Finding
+
+    p = tmp_path / "findings.csv"
+    p.write_text("id,package,installed,triage_status,triage_notes\nGHSA-x,lodash,4.0.0,fixed,\n", encoding="utf-8")
+    f = Finding("GHSA-x", "lodash", "4.0.0", "HIGH", pkg_type="npm")
+    decisions.apply([f], decisions.load(p))
+    assert f.decision_status == "fixed"
+
+
+@pytest.mark.parametrize("version", ["unknown", "TBD", "N/A", "n/a", "none", "null", "-", "?", "unspecified"])
+def test_more_placeholder_versions_are_refused(version):
+    """Open item 2: only latest, any and x were refused; these read as versions OSV knows nothing about, so the
+    package read as clean."""
+    with pytest.raises(inputs.InputError, match="placeholder"):
+        inputs.packages([f"npm:left-pad@{version}"])

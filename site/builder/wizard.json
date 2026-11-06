@@ -2110,5 +2110,5 @@
   "hex": "hex",
   "pub": "pub"
  },
- "version_not_allowed": "[\\s^~<>=*,|]|^(latest|any|x)$|(^|\\.)x$|\\+$"
+ "version_not_allowed": "[\\s^~<>=*,|?]|^(latest|any|x|unknown|tbd|n/?a|none|null|undefined|unspecified|-+)$|(^|\\.)x$|\\+$"
 }

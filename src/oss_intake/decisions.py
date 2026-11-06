@@ -109,6 +109,7 @@ def _from_csv(path: Path) -> tuple[list[dict], list[str]]:
         elif not justification and status == "not_affected" and reachable in ("no", "n", "false", "not reachable"):
             justification = "vulnerable_code_not_in_execute_path"
         out.append({"ids": _ids(r.get("id"), r.get("aliases")), "package": package,
+                    "pkg_type": (r.get("pkg_type") or "").strip().lower(),
                     "version": unguard((r.get("triage_decided_version") or r.get("installed") or "").strip()),
                     "status": status, "notes": notes, "reachable": reachable,
                     "justification": justification if status == "not_affected" else "",
@@ -135,6 +136,21 @@ def _purl_name_version(purl: str) -> tuple[str, str]:
         if epoch and epoch != "0" and ":" not in version:
             version = f"{epoch}:{version}"
     return name, version
+
+
+def _purl_type(purl: str) -> str:
+    """'npm' from pkg:npm/..., '' for anything that is not a purl."""
+    return purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") and "/" in purl[4:] else ""
+
+
+def _same_ecosystem(d: dict, f: Finding) -> bool:
+    """A decision applies only in its own ecosystem when both it and the finding say which that is (findings.csv
+    has pkg_type, OpenVEX a purl). A decision that does not say still matches by name, as before."""
+    if d.get("pkg_type") and f.pkg_type:
+        return d["pkg_type"] == f.pkg_type.lower()
+    if d.get("purl_type") and _purl_type(f.purl or ""):
+        return d["purl_type"] == _purl_type(f.purl or "")
+    return True
 
 
 def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
@@ -180,6 +196,7 @@ def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
                 errors.append(f"statement {n}: product '{pid}' is not a package URL (pkg:...)")
                 continue
             out.append({"ids": _ids(vuln["name"], *aliases), "package": name,
+                        "purl_type": _purl_type(str(pid or "")),
                         "version": version, "status": status, "notes": notes or justification.replace("_", " "),
                         "reachable": "", "justification": justification, "source": f"{path.name} statement {n}"})
     return out, errors
@@ -227,7 +244,8 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
                   "by_status": {s: 0 for s in STATUSES}, "resolved": []}
     for f in findings:
         pkg = f.package.lower()
-        candidates = [d for i in sorted(_ids(f.vuln_id, *f.aliases)) for d in index.get((i, pkg), [])]
+        candidates = [d for i in sorted(_ids(f.vuln_id, *f.aliases)) for d in index.get((i, pkg), [])
+                      if _same_ecosystem(d, f)]
         if not candidates:
             continue
         matched.update(id(c) for c in candidates)
