@@ -2219,3 +2219,14 @@ def test_a_users_own_file_with_a_report_name_is_kept(tmp_path, fixtures):
     assert _scan_into(out, fixtures, "--formats", "csv") == cli.EXIT_OK
     for name in ("packages.csv", "assessment.json", "report.html"):
         assert (out / name).read_text(encoding="utf-8") == "mine", name
+
+
+def test_path_dot_is_named_by_its_folder(tmp_path, monkeypatch):
+    """Review (6 Nov): Path(".").name is "", so --path . lost the Artifact row."""
+    from oss_intake import assessment
+
+    app = tmp_path / "my-app"
+    (app / "sub").mkdir(parents=True)
+    monkeypatch.chdir(app / "sub")
+    assert assessment._target_name(".") == "sub" and assessment._target_name("..") == "my-app"
+    assert assessment._target_name(str(app / "x.jar")) == "x.jar"

@@ -67,6 +67,15 @@ def shown_path(p: str | Path | None) -> str | None:
         return path.name or str(p)
 
 
+def _target_name(path: str) -> str:
+    """The --path target's name: "." and ".." are named by the folder they stand for."""
+    p = Path(path).expanduser()
+    try:
+        return p.resolve().name or str(p)
+    except (OSError, RuntimeError):
+        return p.name or str(p)
+
+
 def network_info(net) -> dict:
     """Requests made and cache use, so a slow or fast run can be explained."""
     if net is None:
@@ -410,7 +419,7 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
         # The target by its name: the reports describe what was assessed, not where it sat on this machine.
-        "inputs": {"image": args.image, "path": Path(args.path).name if args.path else None,
+        "inputs": {"image": args.image, "path": _target_name(args.path) if args.path else None,
                    "path_kind": args.path_kind, "repo": args.repo,
                    "packages": [e["purl"] for e in args.inventory] if args.package else None,
                    "image_src": args.image_src, "platform": args.platform,
