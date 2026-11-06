@@ -2117,3 +2117,48 @@ def test_signed_checksums_file_is_reported_as_hash_verified(tmp_path, monkeypatc
     s, out = _chain_run(tmp_path, monkeypatch, fixtures, bundle=True)
     assert s["hash_verified"] is True and "hash_unsigned" not in s
     assert ", hash verified" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def _scan_into(out, fixtures, *extra):
+    return cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--no-cache", *extra])
+
+
+def test_report_through_a_symbolic_link_is_refused(tmp_path, fixtures, capsys):
+    """Threat model open item: a link already in the output folder was followed and its target overwritten."""
+    out = tmp_path / "o"
+    out.mkdir()
+    target = tmp_path / "elsewhere.md"
+    target.write_text("keep me", encoding="utf-8")
+    try:
+        (out / "summary.md").symlink_to(target)
+    except OSError:
+        pytest.skip("symbolic links are not available here")
+    assert _scan_into(out, fixtures) == cli.EXIT_USAGE
+    assert "symbolic link where a report is written (summary.md)" in capsys.readouterr().err
+    assert target.read_text(encoding="utf-8") == "keep me"
+
+
+def test_reports_from_an_earlier_run_are_removed(tmp_path, fixtures):
+    """Threat model open item: files an earlier run wrote and this one did not stayed, to be read as current."""
+    out = tmp_path / "o"
+    assert _scan_into(out, fixtures) == cli.EXIT_OK
+    assert (out / "report.html").exists()
+    (out / "raw" / "grype.json").write_text("{}", encoding="utf-8")  # as a live Grype run would have left it
+    (out / "notes.txt").write_text("mine", encoding="utf-8")
+    assert _scan_into(out, fixtures, "--formats", "md") == cli.EXIT_OK
+    assert (out / "summary.md").exists()
+    for gone in ("report.html", "assessment.json", "raw/grype.json"):
+        assert not (out / gone).exists(), gone
+    assert (out / "notes.txt").read_text(encoding="utf-8") == "mine"  # not a report name: never touched
+
+
+def test_a_report_this_run_reads_is_not_removed(tmp_path, fixtures):
+    """Re-importing raw/trivy.json into its own folder must not delete it."""
+    out = tmp_path / "o"
+    (out / "raw").mkdir(parents=True)
+    raw = out / "raw" / "trivy.json"
+    raw.write_bytes((fixtures / "trivy.json").read_bytes())
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--from-trivy-json", str(raw), "--no-cache"])
+    assert code == cli.EXIT_OK and raw.exists()

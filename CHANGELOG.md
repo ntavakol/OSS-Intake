@@ -22,6 +22,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - A scanner checked against its release archive and a checksums file, with no cosign bundle, was reported as
   "hash verified", though nothing had signed that file. It is now reported as "hash NOT verified (matches an
   unsigned checksums file)", with a note to add `--<tool>-cosign-bundle`. The checks themselves still run.
+- A symbolic link already in the output folder where a report goes (`summary.md` pointing elsewhere) was followed
+  and its target overwritten. The run now stops before any work (exit 2).
+- Reports an earlier run left in the output folder that this run did not write (`report.html` when HTML is no
+  longer asked for, `openvex.json`, a scanner's raw output now imported) stayed, to be read as current. They are
+  removed at the end of the run. Only the tool's own report names are touched, never a file the run read.
 
 ## [0.16.0] - 2026-11-06
 

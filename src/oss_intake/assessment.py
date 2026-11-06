@@ -51,7 +51,7 @@ from .enrich import (
 from .health import releases, scorecard, workflows
 from .http import HttpError
 from .models import SEVERITY_ORDER, parse_datetime
-from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, image_tag, log
+from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, OUTPUT_FILES, image_tag, log
 
 
 def network_info(net) -> dict:
@@ -88,6 +88,7 @@ def assess(args, chosen, out, net, scanners_meta, warnings, groups, trivy_report
                               decision_info, age_info, reach_stats, lag_m, release_date_source, health, sc,
                               lk, warnings)
     written = _write_reports(args, out, formats, doc, findings, all_findings, pkg_rows, decision_info, as_of)
+    _remove_stale(args, out, written)
     return _finish(args, out, findings, all_findings, pkg_rows, age_info, check_info, n_missing_live, lag_m, lk,
                    written, warnings)
 
@@ -477,6 +478,34 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
         report.write_html(out / "report.html", assessment, findings, max(args.top, 50))
         written.append("report.html")
     return written
+
+
+def _remove_stale(args, out: Path, written: list[str]) -> None:
+    """Remove the reports an earlier run left in --out that this run did not write again (openvex.json from a run
+    with --decisions, report.html when HTML is no longer asked for, a scanner's raw output when it is now
+    imported), so none of them is taken for a current result. Only OUTPUT_FILES names, only regular files."""
+    current = set(written) | set(getattr(args, "raw_written", None) or [])
+    # A file this run read is never removed (raw/trivy.json re-imported with --from-trivy-json into its folder).
+    given = []
+    for v in vars(args).values():
+        for x in (v if isinstance(v, (list, tuple)) else [v]):
+            if isinstance(x, (str, Path)) and x and not str(x).startswith("-"):
+                try:
+                    given.append(Path(x).expanduser().resolve())
+                except (OSError, RuntimeError, ValueError):
+                    pass
+    removed = []
+    for name in OUTPUT_FILES:
+        p = out / name
+        if name not in current and p.is_file() and not p.is_symlink() and p.resolve() not in given:
+            try:
+                p.unlink()
+                removed.append(name)
+            except OSError as exc:
+                log(f"warning: {name} from an earlier run could not be removed ({exc}); it is not from this run",
+                    args.quiet, force=True)
+    if removed:
+        log(f"removed {', '.join(removed)} from an earlier run, as this run did not write them", args.quiet)
 
 
 def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_info: dict, check_info: dict,

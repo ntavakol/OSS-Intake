@@ -31,6 +31,7 @@ from .options import (  # noqa: F401  (validate_*, image_tag and the _-prefixed 
     EXIT_USAGE,
     FAIL_ON,
     FORMATS,
+    OUTPUT_FILES,
     SCANNERS,
     SUBCOMMANDS,
     UsageError,
@@ -57,6 +58,11 @@ _same_image = scanning.same_image
 
 def prepare_out(path: str) -> Path:
     out = Path(path).expanduser()
+    # A symbolic link where a report goes would be followed and its target overwritten: refused before any work.
+    links = [n for n in ("raw", *OUTPUT_FILES) if (out / n).is_symlink()]
+    if links:
+        raise UsageError(f"--out {out} has a symbolic link where a report is written ({', '.join(links)}); "
+                         "remove it, or choose another folder")
     try:
         out.mkdir(parents=True, exist_ok=True)
         (out / "raw").mkdir(exist_ok=True)
@@ -260,6 +266,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), "vscode")
     try:
         out = prepare_out(args.out)
+        args.raw_written = []  # the raw scanner files this run writes; _remove_stale keeps only these
         if args.path and args.path_kind not in ("renv", "inventory", "vscode") and not scanned_offline:
             args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
         return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)

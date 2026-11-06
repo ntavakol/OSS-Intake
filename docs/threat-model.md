@@ -172,13 +172,12 @@ user's files (where the output is written), and the user's privacy (what the rep
 | Spreadsheet formula injection in CSV | A value starting with `=`, `+`, `-`, `@`, a tab or a carriage return (after any leading apostrophes), or with one after a separator inside it, is prefixed with `'`, header row included; signed numbers after a separator are left alone. Decisions read back undo it. | `report.csv_safe`, `decisions.unguard` |
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |
 | An output folder that cannot be written fails after the work is done | It is created and tested for writing before anything else. | `cli.prepare_out` |
+| A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work. At the end, report files an earlier run left that this run did not write are removed: only the tool's own file names, never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
 
 **Left open:**
 
-- Reports are written with an ordinary open, so a symbolic link already in the output folder (`summary.md`
-  pointing elsewhere) is followed and its target overwritten. Existing files are replaced without warning.
-- Files from an earlier run that this run does not write again (`openvex.json`, `report.html` when HTML is not
-  asked for, raw scanner output) stay in the folder and can be taken for current results.
+- Existing reports are replaced without warning. A symbolic link put in place of a report after the run has
+  started (the folder is checked once, at the start) is still followed.
 - Paths of the user's machine reach the reports: the `--path` value as given (with `~` expanded) in
   `assessment.json` and the HTML scope table, and in `assessment.json` the scanner's path on live runs and the
   cache folder.
@@ -283,12 +282,12 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-4. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+, and remove stale report files the run did not write.
+3. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
    for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-5. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-6. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-7. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-8. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-9. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+4. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+5. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+6. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+7. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+8. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.
