@@ -2445,3 +2445,34 @@ def test_fixtures_and_examples_do_not_look_like_the_projects_dependencies():
         and any(fnmatch(p.name.lower(), pattern.lower()) for pattern in SCANNER_FILE_NAMES)
     )
     assert found == [], f"rename these (see CONTRIBUTING.md, Fixtures): {found}"
+
+
+def test_workflow_audit_accepts_the_slsa_generator_by_its_release_tag():
+    """The SLSA generators must be referenced by an exact vX.Y.Z tag (a SHA breaks them; Scorecard accepts the
+    tag). Any other tag, or a branch, is still unpinned."""
+    from oss_intake.health import workflows as wf
+
+    gen = "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml"
+    text = "\n".join(["jobs:", "  a:", f"    uses: {gen}@v2.1.0", "  b:", f"    uses: {gen}@main",
+                      "  c:", "    uses: someone/reusable/.github/workflows/build.yml@v1.0.0",
+                      "  d:", f"    uses: {gen}@v2"])
+    assert wf.analyse("x.yml", text, [])["unpinned"] == [
+        f"{gen}@main", "someone/reusable/.github/workflows/build.yml@v1.0.0", f"{gen}@v2"]
+
+
+def test_release_workflow_attaches_slsa_provenance():
+    """Scorecard's Signed-Releases gives full marks only with SLSA provenance (*.intoto.jsonl) on the release."""
+    path = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "release.yml"
+    if not path.exists():
+        pytest.skip("workflows are not in the sdist")
+    text = path.read_text(encoding="utf-8")
+    assert "uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v" in text
+    assert 'base64-subjects: "${{ needs.build.outputs.hashes }}"' in text and "upload-assets: true" in text
+    assert 'provenance-name: "oss-intake-${{ needs.build.outputs.version }}.intoto.jsonl"' in text
+    try:
+        import yaml
+    except ImportError:
+        return
+    jobs = yaml.safe_load(text)["jobs"]
+    assert jobs["provenance"]["needs"] == "build" and jobs["build"]["outputs"]["hashes"]
+    assert jobs["provenance"]["permissions"] == {"actions": "read", "id-token": "write", "contents": "write"}

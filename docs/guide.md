@@ -85,6 +85,20 @@ oss-intake --path oss-intake-0.15.0.cdx.json --out sbom-check
 The SBOM lists the versions resolved when the release was built; installing later may resolve newer ones within
 the declared ranges.
 
+From 0.16.0 each release also carries SLSA build provenance (`oss-intake-<version>.intoto.jsonl`, SLSA level 3,
+made by the [SLSA GitHub generator](https://github.com/slsa-framework/slsa-github-generator)) for the wheel, the
+source archive and the SBOM: a signed record of which workflow, commit and tag built them. To check a download
+with [slsa-verifier](https://github.com/slsa-framework/slsa-verifier) (`brew install slsa-verifier`), in the
+folder holding the release files:
+
+```bash
+V=$(oss-intake --version | awk '{print $NF}')
+for f in "oss_intake-$V-py3-none-any.whl" "oss_intake-$V.tar.gz" "oss-intake-$V.cdx.json"; do
+  slsa-verifier verify-artifact "$f" --provenance-path "oss-intake-$V.intoto.jsonl" \
+    --source-uri github.com/ntavakol/OSS-Intake --source-tag "v$V"
+done
+```
+
 Windows PowerShell without pipx:
 
 ```powershell

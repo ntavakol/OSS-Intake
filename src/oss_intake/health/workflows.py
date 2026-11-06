@@ -1,7 +1,8 @@
 """Supply-chain hygiene of the target project's GitHub Actions workflows.
 
 Reads .github/workflows through the GitHub contents API and checks, without a YAML dependency:
-  * third-party actions not pinned to a full 40-character commit SHA (tags can be force-pushed)
+  * third-party actions not pinned to a full 40-character commit SHA (tags can be force-pushed), except the SLSA
+    generators, which must be referenced by an exact vX.Y.Z tag
   * known-bad action versions (from data/known_bad.json, e.g. trivy-action below 0.35.0)
   * no top-level permissions block, or write-all (the token may default to write access)
   * pull_request_target triggers (run with the base repository's secrets), and whether the same file checks
@@ -25,6 +26,10 @@ API = "https://api.github.com/repos"
 MAX_FILES = 20
 _USES = re.compile(r"""^\s*(?:-\s*)?uses:\s*["']?([^"'\s#]+)""", re.MULTILINE)
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+# The SLSA generators must be referenced by an exact release tag: they verify their own reference, and a SHA pin
+# breaks them. OpenSSF Scorecard makes the same exception.
+_SLSA = re.compile(r"^slsa-framework/slsa-github-generator/\.github/workflows/[\w.-]+\.ya?ml$", re.I)
+_SEMVER_TAG = re.compile(r"^v\d+\.\d+\.\d+$")
 _TOP_PERMS = re.compile(r"^permissions:\s*(.*)$", re.MULTILINE)
 _PRT = re.compile(r"\bpull_request_target\b")
 # References to the PR's own code: checkout of the head SHA/ref, the PR merge ref, or gh pr checkout.
@@ -56,7 +61,7 @@ def analyse(name: str, text: str, known_bad: list[dict]) -> dict:
         line = text[m.start():text.find("\n", m.end()) if text.find("\n", m.end()) != -1 else len(text)]
         comment = line.split("#", 1)[1] if "#" in line else ""
         uses.append(ref_full)
-        if not _SHA.match(ref):
+        if not _SHA.match(ref) and not (_SLSA.match(action) and _SEMVER_TAG.match(ref)):
             unpinned.append(ref_full)
         base = "/".join(action.split("/")[:2]).lower()
         for kb in known_bad:

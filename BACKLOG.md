@@ -11,6 +11,11 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 
+## Later: when commits are less frequent (agreed 6 Nov)
+- Branch protection with required status checks: changes reach main only through a pull request whose CI has
+  passed (Scorecard Branch-Protection is 3 with the current ruleset, which blocks force-push and deletion).
+  Means working through pull requests instead of pushing to main, so it waits until changes are less frequent.
+
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
 a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no

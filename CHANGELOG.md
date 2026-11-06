@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Releases carry SLSA build provenance (`oss-intake-<version>.intoto.jsonl`, SLSA level 3) for the wheel, the
+  source archive and the SBOM, made by the SLSA GitHub generator; the guide shows how to check it with
+  slsa-verifier.
+- The GitHub Actions workflow audit accepts the SLSA generators referenced by an exact `vX.Y.Z` tag, as OpenSSF
+  Scorecard does: they cannot be pinned by SHA.
+
 ### Changed
 - The SBOM test fixtures are named `*.cdx-fixture.json` and `*.spdx-fixture.json`, so OSV-Scanner (which OpenSSF
   Scorecard runs over the repository) no longer reads their deliberately vulnerable packages as the project's own.

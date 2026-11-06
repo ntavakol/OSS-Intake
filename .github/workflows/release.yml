@@ -3,7 +3,8 @@ name: release
 # Runs when a GitHub release is published. Builds the package with hash-pinned tools, publishes it to PyPI
 # through trusted publishing (no stored token; PyPI trusts this workflow in this repository and records
 # provenance attestations), writes a CycloneDX SBOM of the release, and signs the files and the SBOM with Sigstore,
-# attaching them and their signatures to the release.
+# attaching them and their signatures to the release. SLSA build provenance for the same files is attached as
+# oss-intake-<version>.intoto.jsonl, verifiable with slsa-verifier.
 on:
   release:
     types: [published]
@@ -16,6 +17,9 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      hashes: ${{ steps.hashes.outputs.hashes }}
+      version: ${{ steps.hashes.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,6 +50,15 @@ jobs:
           "$env/bin/python" -I -c "from pathlib import Path; from oss_intake import sbom; \
           entries, _, _ = sbom.read(Path('sbom')); assert any(e['purl'].startswith('pkg:pypi/requests@') \
           for e in entries), entries; print(len(entries), 'packages read back by oss-intake')"
+      - name: Digests for the SLSA provenance
+        id: hashes
+        # sha256sum lines (digest, two spaces, file name) for the release files, base64 as the generator expects.
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          hashes=$( { (cd dist && sha256sum -- *) && (cd sbom && sha256sum -- *); } | base64 -w0)
+          test -n "$hashes"
+          echo "hashes=$hashes" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
@@ -95,3 +108,18 @@ jobs:
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl ./sbom/*.cdx.json
           release-signing-artifacts: true
+
+  provenance:
+    name: SLSA provenance, attached to the release
+    needs: build
+    # Referenced by tag, not SHA: the generator checks its own reference (Scorecard and oss-intake's workflow
+    # audit both accept this). It runs in its own isolated jobs, which is what makes the provenance SLSA level 3.
+    permissions:
+      actions: read # detect the GitHub Actions environment
+      id-token: write # sign the provenance (Sigstore)
+      contents: write # attach it to the release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      provenance-name: "oss-intake-${{ needs.build.outputs.version }}.intoto.jsonl"
+      upload-assets: true
