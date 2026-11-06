@@ -3118,7 +3118,8 @@ def test_path_starting_with_a_dash_is_not_read_as_a_scanner_option(monkeypatch):
 _WORKFLOWS = Path(__file__).resolve().parent.parent / ".github" / "workflows"
 
 
-@pytest.mark.parametrize("name", sorted(p.name for p in _WORKFLOWS.glob("*.yml")) or ["(none)"])
+@pytest.mark.parametrize("name", sorted(p.name for p in [*_WORKFLOWS.glob("*.yml"), *_WORKFLOWS.glob("*.yaml")])
+                         or ["(none)"])
 def test_every_workflow_is_pinned_with_top_level_permissions(name):
     """Threat model open item: codeql.yml and scorecard.yml had no pinning test, and release.yml's top-level
     permissions were not checked. Every workflow file is now held to the audit oss-intake applies to others, so a
