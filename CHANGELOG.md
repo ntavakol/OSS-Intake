@@ -9,6 +9,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Releases carry SLSA build provenance (`oss-intake-<version>.intoto.jsonl`, SLSA level 3) for the wheel, the
   source archive and the SBOM, made by the SLSA GitHub generator; the guide shows how to check it with
   slsa-verifier.
+- `docs/threat-model.md` covers every trust boundary: scanner binaries, public services, the cache folder, user
+  inputs, reports and GitHub Actions, as well as VS Code extensions, with the mitigations in the code, what is
+  left open, and the open items that could be fixed. SECURITY.md links to it.
 - The GitHub Actions workflow audit accepts the SLSA generators referenced by an exact `vX.Y.Z` tag, as OpenSSF
   Scorecard does: they cannot be pinned by SHA.
 

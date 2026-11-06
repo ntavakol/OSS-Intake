@@ -4,16 +4,13 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: quality and credibility (from the code review of 3 Nov, in this order)
-1. `docs/threat-model.md`: assets, trust boundaries (scanner binaries, public APIs, user inputs, report
-   outputs, the cache folder, GitHub Actions), threats and the existing mitigations; gaps become backlog items.
-   Linked from SECURITY.md. Started: the VS Code extension section (unpacking a .vsix) is written.
-2. Fuzzing with Atheris (agreed 6 Nov): one harness per parser of untrusted input, taken from the threat
+1. Fuzzing with Atheris (agreed 6 Nov): one harness per parser of untrusted input, taken from the threat
    model's user inputs section (.vsix unpacking, the shipped SBOM and lockfile readers, SBOM input, the CSV
    inventory, package.json). A weekly scheduled CI job on Linux and Python 3.13 runs each for a few minutes, with
    Atheris pinned by hash in its own requirements file and crashing inputs kept as job artifacts. Each crash is
    fixed as a bug, with a test that fails without the fix. Linux only (Atheris has no macOS wheels); CONTRIBUTING
    says so. Also satisfies the Scorecard Fuzzing check, which is not the reason for doing it.
-3. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
+2. Split `cli.py` (1,275 lines) after type checking is in place: argument parsing and dispatch stay in `cli.py`,
    the pipeline stages move to their own modules. No behaviour change, exit codes unchanged, existing tests
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 

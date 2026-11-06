@@ -29,6 +29,9 @@ same way so it can be added to `src/oss_intake/data/known_bad.json`.
 
 ## Design notes
 
+The [threat model](docs/threat-model.md) covers each trust boundary in full: what crosses it, the threats, the
+mitigations in the code and what is left open. In short:
+
 - Scanners run as separate processes without a shell; image references are validated and cannot begin with
   `-`, so they cannot be read as options.
 - `GITHUB_TOKEN` is only sent to `api.github.com`, never logged and never written to reports.
