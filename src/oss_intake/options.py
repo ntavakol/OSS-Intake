@@ -45,8 +45,9 @@ _REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}
 
 
 FORMATS = {"csv", "md", "json", "html"}
-# Every file a scan writes into --out. One left from an earlier run that this run did not write is removed at the
-# end, so it cannot be taken for a current result; nothing else in the folder is touched.
+# Every file a scan writes into --out. One the last run wrote (as its manifest, .oss-intake-files.json, says) that
+# this run did not write is removed at the end, so it cannot be taken for a current result; nothing else is
+# touched.
 OUTPUT_FILES = ("findings.csv", "packages.csv", "package-systems.csv", "executive-summary.html", "openvex.json",
                 "vex.cdx.json", "summary.md", "assessment.json", "report.html",
                 "raw/trivy.json", "raw/grype.json", "raw/sbom.cdx.json")

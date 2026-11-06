@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -494,24 +495,41 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
     return written
 
 
+MANIFEST = ".oss-intake-files.json"  # in --out: the files the last run wrote, so the next can tell its own
+
+
 def _remove_stale(args, out: Path, written: list[str]) -> None:
-    """Remove the reports an earlier run left in --out that this run did not write again (openvex.json from a run
+    """Remove the reports the last run left in --out that this run did not write again (openvex.json from a run
     with --decisions, report.html when HTML is no longer asked for, a scanner's raw output when it is now
-    imported), so none of them is taken for a current result. Only OUTPUT_FILES names, only regular files."""
+    imported), so none of them is taken for a current result. Only files the last run's manifest names as its
+    own are touched (a summary.md the user keeps there is not), only regular files, never a file this run read;
+    then this run's manifest replaces it."""
     current = set(written) | set(getattr(args, "raw_written", None) or [])
+    try:
+        before = json.loads((out / MANIFEST).read_text(encoding="utf-8")).get("files")
+    except (OSError, ValueError, AttributeError, RecursionError):
+        before = None
+    earlier = [n for n in before if isinstance(n, str) and n in OUTPUT_FILES] if isinstance(before, list) else []
     # A file this run read is never removed (raw/trivy.json re-imported with --from-trivy-json into its folder).
     given = []
     for v in vars(args).values():
         for x in (v if isinstance(v, (list, tuple)) else [v]):
             if isinstance(x, (str, Path)) and x and not str(x).startswith("-"):
-                try:
-                    given.append(Path(x).expanduser().resolve())
-                except (OSError, RuntimeError, ValueError):
-                    pass
+                given.append(Path(x).expanduser())
+
+    def read_this_run(p: Path) -> bool:
+        for g in given:
+            try:
+                if g.is_file() and os.path.samefile(g, p):
+                    return True
+            except OSError:
+                pass
+        return False
+
     removed = []
-    for name in OUTPUT_FILES:
+    for name in earlier:
         p = out / name
-        if name not in current and p.is_file() and not p.is_symlink() and p.resolve() not in given:
+        if name not in current and p.is_file() and not p.is_symlink() and not read_this_run(p):
             try:
                 p.unlink()
                 removed.append(name)
@@ -520,6 +538,12 @@ def _remove_stale(args, out: Path, written: list[str]) -> None:
                     args.quiet, force=True)
     if removed:
         log(f"removed {', '.join(removed)} from an earlier run, as this run did not write them", args.quiet)
+    kept = sorted(current | {n for n in earlier if (out / n).is_file()} - set(removed))
+    try:
+        (out / MANIFEST).write_text(json.dumps({"tool": "oss-intake", "files": kept}, indent=1), encoding="utf-8")
+    except OSError as exc:
+        log(f"warning: {MANIFEST} could not be written ({exc}), so the next run cannot tell its reports",
+            args.quiet, force=True)
 
 
 def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_info: dict, check_info: dict,

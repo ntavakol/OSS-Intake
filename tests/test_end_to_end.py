@@ -2145,6 +2145,9 @@ def test_reports_from_an_earlier_run_are_removed(tmp_path, fixtures):
     assert _scan_into(out, fixtures) == cli.EXIT_OK
     assert (out / "report.html").exists()
     (out / "raw" / "grype.json").write_text("{}", encoding="utf-8")  # as a live Grype run would have left it
+    manifest = json.loads((out / ".oss-intake-files.json").read_text(encoding="utf-8"))
+    (out / ".oss-intake-files.json").write_text(json.dumps({"files": [*manifest["files"], "raw/grype.json"]}),
+                                                encoding="utf-8")
     (out / "notes.txt").write_text("mine", encoding="utf-8")
     assert _scan_into(out, fixtures, "--formats", "md") == cli.EXIT_OK
     assert (out / "summary.md").exists()
@@ -2204,3 +2207,15 @@ def test_cache_folder_is_shown_from_home_or_by_name(tmp_path, monkeypatch):
     assert assessment.network_info(net)["cache"]["folder"] == "~/.cache/oss-intake"
     net.cache = ResponseCache(tmp_path / "srv" / "shared-cache")
     assert assessment.network_info(net)["cache"]["folder"] == "shared-cache"
+
+
+def test_a_users_own_file_with_a_report_name_is_kept(tmp_path, fixtures):
+    """Review (6 Nov): any file named like a report was removed, the user's own summary.md or packages.csv too.
+    Only files the last run's manifest lists as its own are."""
+    out = tmp_path / "o"
+    out.mkdir()
+    for name in ("packages.csv", "assessment.json", "report.html"):
+        (out / name).write_text("mine", encoding="utf-8")
+    assert _scan_into(out, fixtures, "--formats", "csv") == cli.EXIT_OK
+    for name in ("packages.csv", "assessment.json", "report.html"):
+        assert (out / name).read_text(encoding="utf-8") == "mine", name

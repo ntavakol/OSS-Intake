@@ -26,7 +26,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and its target overwritten. The run now stops before any work (exit 2).
 - Reports an earlier run left in the output folder that this run did not write (`report.html` when HTML is no
   longer asked for, `openvex.json`, a scanner's raw output now imported) stayed, to be read as current. They are
-  removed at the end of the run. Only the tool's own report names are touched, never a file the run read.
+  removed at the end of the run. Only files the last run listed as its own in `.oss-intake-files.json` are
+  touched (a file of the user's with a report's name is not), never a file the run read.
 - A service answer had no size limit, and the timeout bounded each read but not the whole answer, so a slow or
   endless answer could stall or exhaust a run. Answers over 256 MB, or still arriving after 5 minutes, are now a
   failed request, and that source counts as failed.

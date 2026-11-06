@@ -59,7 +59,7 @@ _same_image = scanning.same_image
 def prepare_out(path: str) -> Path:
     out = Path(path).expanduser()
     # A symbolic link where a report goes would be followed and its target overwritten: refused before any work.
-    links = [n for n in ("raw", *OUTPUT_FILES) if (out / n).is_symlink()]
+    links = [n for n in ("raw", ".oss-intake-files.json", *OUTPUT_FILES) if (out / n).is_symlink()]
     if links:
         raise UsageError(f"--out {out} has a symbolic link where a report is written ({', '.join(links)}); "
                          "remove it, or choose another folder")

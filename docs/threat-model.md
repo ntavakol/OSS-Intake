@@ -172,7 +172,7 @@ user's files (where the output is written), and the user's privacy (what the rep
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |
 | A report shared with others gives away the user's name or folders | The target is given by its name, the scanner and the tools used to copy files out of an image by their names (with version and SHA-256), and the cache folder from `~` or by its name; no absolute local path is written. | `assessment.shown_path`, `assessment._document`, `scanning.run_or_load` |
 | An output folder that cannot be written fails after the work is done | It is created and tested for writing before anything else. | `cli.prepare_out` |
-| A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work. At the end, report files an earlier run left that this run did not write are removed: only the tool's own file names, never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
+| A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work. At the end, report files the last run left that this run did not write are removed: only files that run listed as its own in `.oss-intake-files.json` (a `summary.md` of the user's own is never touched), never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
 
 **Left open:**
 

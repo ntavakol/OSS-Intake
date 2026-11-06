@@ -49,8 +49,9 @@ CISA KEV membership).
   collector makes them for laptops and servers), with each package version looked up once and counted per
   system.
 - Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html`, plus the raw
-  scanner output under `raw/` as evidence. Reports an earlier run left in the folder that this run did not write
-  are removed (other files are left alone), and a symbolic link where a report goes stops the run.
+  scanner output under `raw/` as evidence. Reports the last run left in the folder that this run did not write
+  are removed (only files listed in its `.oss-intake-files.json`; other files are left alone), and a symbolic
+  link where a report goes stops the run.
 - Applies integrity checks to the scanners it runs: version pinning, a known-bad version list, SHA-256
   verification and optional Sigstore (cosign) verification.
 - Checks itself: a weekly [self-check](https://github.com/ntavakol/OSS-Intake/blob/main/.github/workflows/self-check.yml)
