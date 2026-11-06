@@ -668,3 +668,47 @@ def test_group_write_by_the_users_private_group_is_not_others(monkeypatch):
     assert not http._others_can_write(0o775 | stat.S_IFDIR, 1000)
     assert http._others_can_write(0o775 | stat.S_IFDIR, 50)
     assert http._others_can_write(0o757 | stat.S_IFDIR, 1000)
+
+
+def test_deadline_holds_against_a_real_server_sending_a_byte_at_a_time(monkeypatch):
+    """Review (6 Nov): with a Content-Length answer, iter_content waited to fill each 64 KiB chunk, and each
+    socket read needed only a byte within the timeout, so the deadline was not checked until the server closed."""
+    import socket
+
+    from oss_intake import http as http_mod
+
+    for var in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1")
+    monkeypatch.setattr(http_mod, "DEADLINE_SECONDS", 1)
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    stop = threading.Event()
+
+    def serve():
+        c, _ = srv.accept()
+        c.recv(65536)
+        c.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100000\r\n\r\n")
+        try:
+            for _ in range(60):  # 6 s, then the connection closes, so code without the deadline fails, not hangs
+                if stop.is_set():
+                    break
+                c.sendall(b" ")
+                time.sleep(0.1)
+        except OSError:
+            pass
+        finally:
+            c.close()
+
+    threading.Thread(target=serve, daemon=True).start()
+    h = RequestsHttp(timeout=0)
+    h._timeout = 0.5  # each read gets a byte well inside this; only the deadline (1 s) can stop the answer
+    t = time.monotonic()
+    try:
+        with pytest.raises(HttpError, match="longer than the deadline"):
+            h.get_json(f"http://127.0.0.1:{srv.getsockname()[1]}/x")
+    finally:
+        stop.set()
+        srv.close()
+    assert time.monotonic() - t < 4

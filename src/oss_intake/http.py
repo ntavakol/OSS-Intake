@@ -300,15 +300,31 @@ class RequestsHttp(Http):
             if len(body) > MAX_RESPONSE_BYTES:
                 raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
             return body
+        import urllib3
+
+        # read1 returns what has arrived (up to 64 KiB) rather than waiting to fill a chunk, so the deadline is
+        # checked at least once per read timeout even against a byte at a time (urllib3 2; with urllib3 1.26
+        # iter_content fills each chunk first).
+        raw = getattr(r, "raw", None)
+        if hasattr(raw, "read1"):
+            def pieces():
+                while True:
+                    piece = raw.read1(1 << 16, decode_content=True)
+                    if not piece:
+                        return
+                    yield piece
+            source = pieces()
+        else:
+            source = chunks(1 << 16)
         buf = bytearray()
         try:
-            for chunk in chunks(1 << 16):
+            for chunk in source:
                 buf += chunk
                 if len(buf) > MAX_RESPONSE_BYTES:
                     raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
                 if time.monotonic() > deadline:
                     raise HttpError(f"{where}: the answer took longer than the deadline to arrive")
-        except self._requests.RequestException as exc:
+        except (self._requests.RequestException, urllib3.exceptions.HTTPError, OSError) as exc:
             raise HttpError(f"{where}: {type(exc).__name__}") from None
         finally:
             close = getattr(r, "close", None)

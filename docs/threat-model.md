@@ -80,7 +80,9 @@ not trust them to be up, or to answer in the right shape.
 **Left open:**
 
 - An answer is held in memory up to its 256 MB limit, and a slow service can take up to the 5 minute deadline
-  per request (lookups run in parallel, so a run is not that times the number of lookups).
+  per request (lookups run in parallel, so a run is not that times the number of lookups). The deadline is
+  checked as data arrives, so it can be passed by up to one read timeout; with urllib3 1.26 (urllib3 2 is
+  pinned) it is checked only once each 64 KiB has arrived.
 - A redirect to plain `http` on another host is followed for data (the token is dropped).
 - Answers are trusted as published: a compromised or mistaken service (a KEV list missing an entry, an advisory
   with the wrong fix version) is passed on. OSV, deps.dev and KEV are not signed.
