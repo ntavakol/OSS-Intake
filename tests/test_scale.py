@@ -450,3 +450,121 @@ def test_dateless_version_answer_not_cached(tmp_path):
     assert c.writes == 0
     c.put(url, 200, {"publishedAt": "2026-10-01T00:00:00Z"})
     assert c.writes == 1
+
+
+# --- Size limits and a total deadline (threat model open item, 6 Nov) -----------------------------------------
+
+class _Streamed:
+    """An answer sent in chunks, as requests gives with stream=True; content is the whole body, as the old
+    non-streaming read took it."""
+    def __init__(self, chunks, delay=0.0):
+        self.status_code, self._chunks, self._delay, self.closed = 200, chunks, delay, False
+
+    @property
+    def content(self):
+        return b"".join(self._chunks)
+
+    def json(self):
+        return json.loads(self.content)
+
+    def iter_content(self, size):
+        for c in self._chunks:
+            time.sleep(self._delay)
+            yield c
+
+    def close(self):
+        self.closed = True
+
+
+def _streamed_client(monkeypatch, resp):
+    import requests
+
+    class S:
+        headers: dict = {}
+
+        def request(self, method, url, **kw):
+            return resp
+
+        def get(self, url, **kw):
+            return resp
+
+    monkeypatch.setattr(requests, "Session", lambda: S())
+    return RequestsHttp(github_token="")
+
+
+def test_service_answer_over_the_size_limit_is_a_failed_request(monkeypatch):
+    from oss_intake import http as http_mod
+
+    monkeypatch.setattr(http_mod, "MAX_RESPONSE_BYTES", 1000)
+    resp = _Streamed([b'{"a": "' + b"x" * 600, b"x" * 600 + b'"}'])
+    h = _streamed_client(monkeypatch, resp)
+    with pytest.raises(HttpError, match="over 0 MB"):
+        h.get_json("https://api.osv.dev/v1/vulns/GHSA-x")
+    assert resp.closed
+    with pytest.raises(HttpError, match="over 0 MB"):
+        h.get_text("https://example.invalid/list")
+
+
+def test_service_answer_past_the_deadline_is_a_failed_request(monkeypatch):
+    """Each read was bounded by the timeout but the whole answer was not: a byte at a time held the run."""
+    from oss_intake import http as http_mod
+
+    monkeypatch.setattr(http_mod, "DEADLINE_SECONDS", 0.05)
+    h = _streamed_client(monkeypatch, _Streamed([b"{", b'"a"', b":", b"1", b"}"], delay=0.03))
+    h._timeout = 0  # so the deadline is DEADLINE_SECONDS, not twice the timeout
+    with pytest.raises(HttpError, match="longer than the deadline"):
+        h.get_json("https://api.osv.dev/v1/vulns/GHSA-x")
+
+
+def test_service_answer_within_the_limits_is_read(monkeypatch):
+    h = _streamed_client(monkeypatch, _Streamed([b'{"a"', b": 1}"]))
+    assert h.get_json("https://api.osv.dev/v1/vulns/GHSA-x") == (200, {"a": 1})
+
+
+@pytest.mark.parametrize("kind", ["inventory", "decisions-csv", "decisions-openvex", "renv"])
+def test_input_file_over_the_size_limit_is_refused(tmp_path, monkeypatch, kind):
+    from oss_intake import decisions, inputs
+
+    monkeypatch.setattr(inputs, "MAX_INPUT_BYTES", 100)
+    monkeypatch.setattr(decisions, "MAX_INPUT_BYTES", 100)
+    if kind == "inventory":
+        p = tmp_path / "p.csv"
+        p.write_text("ecosystem,name,version\n" + "npm,a,1.0.0\n" * 20, encoding="utf-8")
+        call = lambda: inputs.inventory(p)  # noqa: E731
+    elif kind == "decisions-csv":
+        p = tmp_path / "d.csv"
+        p.write_text("vuln_id,package,decision\n" + "CVE-2099-1,a,fixed\n" * 20, encoding="utf-8")
+        call = lambda: decisions.load(p)  # noqa: E731
+    elif kind == "decisions-openvex":
+        p = tmp_path / "d.json"
+        p.write_text(json.dumps({"@context": "https://openvex.dev/ns/v0.2.0", "statements": [{}] * 50}),
+                     encoding="utf-8")
+        call = lambda: decisions.load(p)  # noqa: E731
+    else:
+        p = tmp_path / "renv.lock"
+        p.write_text(json.dumps({"Packages": {f"p{i}": {"Package": f"p{i}"} for i in range(20)}}), encoding="utf-8")
+        call = lambda: inputs.renv_purls(p)  # noqa: E731
+    with pytest.raises(inputs.InputError, match="larger than 0 MB"):
+        call()
+
+
+def test_imported_report_over_the_size_limit_is_refused(tmp_path, fixtures, monkeypatch, capsys):
+    from oss_intake import inputs
+
+    monkeypatch.setattr(inputs, "MAX_REPORT_BYTES", 100)
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "trivy", "--from-trivy-json", str(fixtures / "trivy.json"), "--no-cache"])
+    assert code == cli.EXIT_USAGE and "--from-trivy-json trivy.json is larger than" in capsys.readouterr().err
+
+
+def test_sbom_over_the_size_limit_is_refused_not_scanned(tmp_path, monkeypatch):
+    """It was classified as a plain file and given to the scanners, which found nothing in it."""
+    from oss_intake import inputs, sbom
+
+    p = tmp_path / "big.cdx.json"
+    p.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [
+        {"type": "library", "name": f"p{i}", "purl": f"pkg:npm/p{i}@1.0.0"} for i in range(50)]}), encoding="utf-8")
+    monkeypatch.setattr(sbom, "MAX_FILE_BYTES", 100)
+    assert inputs.classify(p) == "sbom"
+    with pytest.raises(inputs.InputError, match="larger than"):
+        sbom.read(p)

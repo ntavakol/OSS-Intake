@@ -27,6 +27,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Reports an earlier run left in the output folder that this run did not write (`report.html` when HTML is no
   longer asked for, `openvex.json`, a scanner's raw output now imported) stayed, to be read as current. They are
   removed at the end of the run. Only the tool's own report names are touched, never a file the run read.
+- A service answer had no size limit, and the timeout bounded each read but not the whole answer, so a slow or
+  endless answer could stall or exhaust a run. Answers over 256 MB, or still arriving after 5 minutes, are now a
+  failed request, and that source counts as failed.
+- Inventories, decisions files and renv.lock files over 200 MB, and imported scanner reports over 1 GB, are
+  refused (exit 2) before they are read whole into memory.
+- An SBOM over 200 MB was taken for an ordinary file and given to the scanners, which found nothing in it, so it
+  read as clean. It is now recognised by its content and refused (exit 2).
 
 ## [0.16.0] - 2026-11-06
 

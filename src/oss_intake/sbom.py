@@ -51,9 +51,7 @@ def kind_of(data: object) -> str | None:
 
 def _peek(path: Path) -> str | None:
     """Cheap content check used to classify --path: is this file an SBOM?"""
-    try:
-        if path.stat().st_size > MAX_FILE_BYTES:
-            return None
+    try:  # by its first bytes whatever its size, so an SBOM over MAX_FILE_BYTES is refused by _load, not scanned
         with open(path, "rb") as fh:
             head = fh.read(4096).decode("utf-8-sig", errors="replace")
     except OSError:

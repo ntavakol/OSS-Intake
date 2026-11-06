@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
-from .inputs import InputError
+from .inputs import MAX_INPUT_BYTES, InputError, check_size
 from .models import Finding
 
 STATUSES = ("not_affected", "affected", "fixed", "under_investigation")
@@ -57,6 +57,7 @@ def unguard(value: str) -> str:
 
 def _read_csv(path: Path) -> list[dict]:
     # newline="" keeps line breaks inside quoted cells (multi-line notes) instead of splitting the row.
+    check_size(path, MAX_INPUT_BYTES, "decisions file")
     try:
         with open(path, encoding="utf-8-sig", newline="") as fh:
             return list(csv.DictReader(fh))
@@ -154,6 +155,7 @@ def _same_ecosystem(d: dict, f: Finding) -> bool:
 
 
 def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
+    check_size(path, MAX_INPUT_BYTES, "decisions file")
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (ValueError, RecursionError) as exc:  # UnicodeDecodeError is a ValueError

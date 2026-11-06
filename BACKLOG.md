@@ -4,21 +4,18 @@ Open work only, agreed for later versions. "Next" is the planned order; the othe
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order)
-Open items 1 to 8 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+Open items 1 to 7 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
    test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
    CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-, and remove stale report files the run did not write.
-3. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline for
-   each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-4. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-5. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-6. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-7. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-8. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+4. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+5. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+6. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+7. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided (agreed 6 Nov).
 
 ## Later: when commits are less frequent (agreed 6 Nov)

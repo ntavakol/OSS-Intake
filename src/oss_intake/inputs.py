@@ -39,6 +39,20 @@ def version_from_name(path: Path) -> str | None:
     return m.group(1) if m else None
 
 
+MAX_INPUT_BYTES = 200 * 1024 * 1024  # an inventory CSV, renv.lock or decisions file; as an SBOM (sbom.MAX_FILE_BYTES)
+MAX_REPORT_BYTES = 1024 * 1024 * 1024  # an imported Trivy or Grype report: a large image's runs to hundreds of MB
+
+
+def check_size(path: Path, limit: int, what: str) -> None:
+    """Refuse a file over limit before it is read whole into memory."""
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return  # the read that follows reports it
+    if size > limit:
+        raise InputError(f"{what} {path.name} is larger than {limit // (1024 * 1024)} MB; split it or trim it")
+
+
 class InputError(Exception):
     """Raised for an input path or value that cannot be used; the CLI reports it as a usage error."""
     pass
@@ -90,6 +104,7 @@ def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
 def renv_purls(path: Path) -> tuple[list[str], list[str]]:
     """CRAN packages in an renv.lock as purls, plus the names skipped (Bioconductor, GitHub, local sources,
     which OSV's CRAN advisories do not cover)."""
+    check_size(path, MAX_INPUT_BYTES, "renv lockfile")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, RecursionError) as exc:
@@ -252,6 +267,7 @@ def inventory(path: Path) -> list[dict]:
     """
     import csv
 
+    check_size(path, MAX_INPUT_BYTES, "inventory")
     try:
         text = path.read_text(encoding="utf-8-sig")  # Excel writes a byte order mark
     except (OSError, UnicodeDecodeError) as exc:

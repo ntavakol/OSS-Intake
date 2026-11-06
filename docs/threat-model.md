@@ -74,13 +74,14 @@ not trust them to be up, or to answer in the right shape.
 | OSV leaves some packages out of its answer, so they read as clean | An answer must hold one result object per package asked about, each with its vulnerabilities as a list of objects with an id; a page token that repeats, or more than 200 pages for one package, is an error too. Each is handled as an OSV failure. The Ubuntu fix-date lookup uses the same checks. | `scanners.osv.querybatch` |
 | One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" | `scanners.osv` |
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
+| A slow or huge answer stalls or exhausts the run | Every answer is read in chunks: over 256 MB, or still arriving after 5 minutes (or twice the timeout, if longer), it is a failed request, so that source counts as failed, never as clean. | `http.RequestsHttp._body`, `http.MAX_RESPONSE_BYTES`, `http.DEADLINE_SECONDS` |
 | A check that needs the network is trusted offline | With `--offline` oss-intake itself fetches nothing (the scanners may still use the network), the cache is off, and gates that need a lookup are refused (exit 2). | `options.refuse_gates_without_their_check` |
 | Text from a service attacks the report's reader | See "Reports" below: every value is escaped. | `report`, `report_html` |
 
 **Left open:**
 
-- Responses have no size limit, and the timeout applies to each read rather than the whole request, so a slow
-  or huge answer can stall or exhaust a run.
+- An answer is held in memory up to its 256 MB limit, and a slow service can take up to the 5 minute deadline
+  per request (lookups run in parallel, so a run is not that times the number of lookups).
 - A redirect to plain `http` on another host is followed for data (the token is dropped).
 - Answers are trusted as published: a compromised or mistaken service (a KEV list missing an entry, an advisory
   with the wrong fix version) is passed on. OSV, deps.dev and KEV are not signed.
@@ -145,14 +146,13 @@ memory and time.
 - One decision can cover more than its row suggests: one without a version applies to every version without a
   review flag, and the `aliases` cell extends it to every ID listed there.
 - Names in CSV inventories and SBOMs are not checked as `--package` names are (`pkg:pypi//@1.0` is accepted).
-- A single SBOM file over 200 MB is not refused: it is treated as an ordinary file and given to the scanners,
-  which find nothing in it.
 - `--fail-on recent` passes for a version deps.dev has no date for, which is likely for a release hours old; only
   `--fail-on unknown-age` catches it.
 - An SBOM in which most components could not be checked still passes a gate if the rest are clean; the unchecked
   ones are a warning and a list, not a failure.
-- Inventory CSVs, decisions files, imported scanner reports and single files given to `--path` have no size
-  limit; SBOMs are read whole into memory within their 200 MB limit. Inventory label values are not cut.
+- Single files given to `--path` other than SBOMs have no size limit (the scanners read them). Inventories,
+  decisions files, renv.lock files and SBOMs are read whole into memory within their 200 MB limit, and imported
+  scanner reports within 1 GB. Inventory label values are not cut.
 - A file symlink inside an SBOM folder is read (folder symlinks are not followed).
 
 ## Reports
@@ -282,12 +282,9 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-, and remove stale report files the run did not write.
-3. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
-   for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-4. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-5. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-6. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-7. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-8. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+4. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+5. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+6. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+7. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.

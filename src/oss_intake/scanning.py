@@ -55,6 +55,10 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     loaded = getattr(args, f"from_{tool}_json")
     if loaded:
         try:
+            inputs.check_size(Path(loaded), inputs.MAX_REPORT_BYTES, f"--from-{tool}-json")
+        except inputs.InputError as exc:
+            raise UsageError(str(exc)) from None
+        try:
             data = load_json_bytes(Path(loaded).read_bytes(), f"--from-{tool}-json {Path(loaded).name}")
             check_report(data, tool, f"--from-{tool}-json {Path(loaded).name}")
         except (ReportShapeError, ScannerError) as exc:

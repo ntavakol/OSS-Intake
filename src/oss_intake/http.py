@@ -27,6 +27,11 @@ from . import __version__
 
 USER_AGENT = f"oss-intake/{__version__}"
 DEFAULT_TIMEOUT = 30
+# The timeout bounds each connect and each read, not the whole answer: a service sending a byte at a time, or
+# without end, would hold the run. Every answer is read in chunks within a size limit and a total deadline (the
+# largest, the exploit-db index, is tens of MB).
+MAX_RESPONSE_BYTES = 256 * 1024 * 1024
+DEADLINE_SECONDS = 300
 GITHUB_API_HOST = "api.github.com"
 
 
@@ -199,17 +204,45 @@ class RequestsHttp(Http):
     def _do(self, method: str, url: str, **kw: Any) -> tuple[int, Any]:
         with self._count_lock:
             self.requests_made += 1
+        deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * self._timeout)
         try:
-            r = self._session.request(method, url, headers=self._headers(url), timeout=self._timeout, **kw)
+            r = self._session.request(method, url, headers=self._headers(url), timeout=self._timeout, stream=True,
+                                      **kw)
         except self._requests.RequestException as exc:
             # str(exc) can include the URL but not headers; the token is never in the URL.
             raise HttpError(f"{method} {urlparse(url).netloc}{urlparse(url).path}: {type(exc).__name__}") from None
-        if r.status_code == 204 or not r.content:
+        body = self._body(r, method, url, deadline)
+        if r.status_code == 204 or not body:
             return r.status_code, None
         try:
-            return r.status_code, r.json()
+            return r.status_code, json.loads(body)
         except (ValueError, RecursionError):  # not JSON, or nested too deeply to read: the caller sees no data
             return r.status_code, None
+
+    def _body(self, r: Any, method: str, url: str, deadline: float) -> bytes:
+        """The answer's bytes, read in chunks: over MAX_RESPONSE_BYTES or past the deadline is a failed request."""
+        where = f"{method} {urlparse(url).netloc}{urlparse(url).path}"
+        chunks = getattr(r, "iter_content", None)
+        if chunks is None:  # an answer already read whole (as test doubles give)
+            body = r.content or b""
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
+            return body
+        buf = bytearray()
+        try:
+            for chunk in chunks(1 << 16):
+                buf += chunk
+                if len(buf) > MAX_RESPONSE_BYTES:
+                    raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
+                if time.monotonic() > deadline:
+                    raise HttpError(f"{where}: the answer took longer than the deadline to arrive")
+        except self._requests.RequestException as exc:
+            raise HttpError(f"{where}: {type(exc).__name__}") from None
+        finally:
+            close = getattr(r, "close", None)
+            if close is not None:
+                close()
+        return bytes(buf)
 
     def _get_cached(self, url: str) -> tuple[int, Any]:
         hit = self.cache.get(url) if self.cache else None
@@ -266,12 +299,14 @@ class RequestsHttp(Http):
     def get_text(self, url: str) -> tuple[int, str]:
         with self._count_lock:
             self.requests_made += 1
+        timeout = max(self._timeout, 120)
+        deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * timeout)
         try:
-            r = self._session.get(url, headers={"Accept": "text/plain"}, timeout=max(self._timeout, 120))
+            r = self._session.get(url, headers={"Accept": "text/plain"}, timeout=timeout, stream=True)
         except self._requests.RequestException as exc:
             raise HttpError(f"GET {urlparse(url).netloc}{urlparse(url).path}: {type(exc).__name__}") from None
         # Decode explicitly; servers often send text/plain without a charset.
-        return r.status_code, r.content.decode("utf-8", errors="replace")
+        return r.status_code, self._body(r, "GET", url, deadline).decode("utf-8", errors="replace")
 
     def post_json(self, url: str, body: Any) -> tuple[int, Any]:
         return self._do("POST", url, json=body)
