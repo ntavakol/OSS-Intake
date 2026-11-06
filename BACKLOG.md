@@ -9,7 +9,7 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
    unmodified (names they import from `cli` stay importable). Plan agreed before work starts.
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order, after the list above)
-Open items 1 to 11 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
+Open items 1 to 12 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
 1. Refuse an imported Trivy report without `Results`, and a Grype report without its descriptor.
 2. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
    kernel-header rules), and require govulncheck's hash for `--reachability`.
@@ -24,6 +24,8 @@ Open items 1 to 11 of `docs/threat-model.md`. Each fix comes with a test that fa
 9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
 10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
 11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+12. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+    leave it), so the bundled check cannot be avoided (agreed 6 Nov).
 
 ## Later: when commits are less frequent (agreed 6 Nov)
 - Branch protection with required status checks: changes reach main only through a pull request whose CI has

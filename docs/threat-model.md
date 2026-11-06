@@ -269,6 +269,9 @@ machine if the extension ever ran.
 - Trivy reads the unpacked files, so a flaw in Trivy's parsers is exposed to them; pin and verify Trivy as the
   guide describes.
 - The Marketplace signature is not checked, so a `.vsix` repackaged after publication is not detected.
+- The main file named in package.json is joined to the extension's folder as given, so an absolute `main`
+  (`"/extension.js"`) or one with `../` points outside it: the extension's real main file is not found, and
+  the warning that its code is bundled can be avoided (VS Code reads `main` relative to the extension).
 - The indicators are patterns in text: a determined author can avoid them (by fetching code at run time, for
   example). A clean result means none were found, not that the extension is safe.
 - The removal list is fetched over HTTPS from GitHub and trusted as published; it is not signed.
@@ -294,3 +297,5 @@ indicators, the single maintainer) are limits of the approach rather than defect
 9. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
 10. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
 11. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+12. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+    leave it), so the bundled check cannot be avoided.
