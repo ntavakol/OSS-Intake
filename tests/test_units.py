@@ -3157,3 +3157,24 @@ def test_decision_from_one_scanner_still_applies_to_anothers_finding(tmp_path):
     npm = [Finding(vuln_id="CVE-2099-1", package="jackson-databind", installed="2.0", pkg_type="npm")]
     decisions.apply(npm, ds)
     assert not npm[0].decision_status  # still not across ecosystems
+
+
+def test_deep_json_is_refused_on_every_python():
+    """Python 3.15 measures the C stack rather than counting levels, so json.loads parses 50,000 levels, and the
+    parsers here, which treated RecursionError as unreadable input, read a deep report as data
+    (test_deep_scanner_report_is_a_scanner_error failed there). jsonsafe checks the depth itself."""
+    from oss_intake import jsonsafe
+    from oss_intake.scanners import ScannerError, govulncheck
+
+    limit = jsonsafe.MAX_DEPTH
+    assert jsonsafe.loads("[" * limit + "]" * limit) is not None
+    with pytest.raises(RecursionError):
+        jsonsafe.loads("[" * (limit + 1) + "]" * (limit + 1))
+    with pytest.raises(RecursionError):
+        jsonsafe.loads(b'{"a":' * (limit + 1) + b"1" + b"}" * (limit + 1))
+    with pytest.raises(ScannerError, match="nested more than"):
+        govulncheck.parse_stream("[" * 50000 + "]" * 50000)
+    # Brackets inside strings, escaped quotes included, are not nesting.
+    assert jsonsafe.depth('["[[[[", "a\\\\", "b\\"[[{"]') == 1
+    assert jsonsafe.loads('{"t": "' + "[" * 5000 + '"}') == {"t": "[" * 5000}
+    assert jsonsafe.loads('"\\u00e9"'.encode("utf-16")) == "é"

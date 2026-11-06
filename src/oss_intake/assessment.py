@@ -22,6 +22,7 @@ from . import (
     gates,
     inputs,
     inventory_report,
+    jsonsafe,
     lag,
     likelihood,
     merge,
@@ -515,7 +516,7 @@ def _remove_stale(args, out: Path, written: list[str]) -> None:
     then this run's manifest replaces it."""
     current = set(written) | set(getattr(args, "raw_written", None) or [])
     try:
-        before = json.loads((out / MANIFEST).read_text(encoding="utf-8")).get("files")
+        before = jsonsafe.loads((out / MANIFEST).read_text(encoding="utf-8")).get("files")
     except (OSError, ValueError, AttributeError, RecursionError):
         before = None
     earlier = [n for n in before if isinstance(n, str) and n in OUTPUT_FILES] if isinstance(before, list) else []

@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
-from . import __version__
+from . import __version__, jsonsafe
 
 USER_AGENT = f"oss-intake/{__version__}"
 DEFAULT_TIMEOUT = 30
@@ -132,7 +132,7 @@ class ResponseCache:
             f = self._file(url)
             if not (_trusted(f.parent) and _trusted(f)):
                 raise ValueError("an entry or subfolder another user could have written")
-            rec = json.loads(f.read_text(encoding="utf-8"))
+            rec = jsonsafe.loads(f.read_text(encoding="utf-8"))
             if not isinstance(rec, dict):
                 raise ValueError("not an entry")
             elapsed = self._now() - float(rec["fetched"])
@@ -287,7 +287,7 @@ class RequestsHttp(Http):
         if r.status_code == 204 or not body:
             return r.status_code, None
         try:
-            return r.status_code, json.loads(body)
+            return r.status_code, jsonsafe.loads(body)
         except (ValueError, RecursionError):  # not JSON, or nested too deeply to read: the caller sees no data
             return r.status_code, None
 

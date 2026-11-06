@@ -52,6 +52,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   outside it: the real main file was not found and the warning that its code is bundled was avoided. It is now
   read inside the folder, as VS Code does. A `main` that leads out with `../`, which VS Code follows, is now
   reported as an indicator, as that file is not part of what was assessed.
+- On Python 3.15, deeply nested JSON (a scanner report, SBOM, decisions file or service answer 50,000 levels
+  deep) was no longer refused: Python stopped raising RecursionError for it, which the parsers relied on. Every
+  parser now checks the nesting itself (512 levels at most) before parsing, on every Python version.
 
 ## [0.16.0] - 2026-11-06
 

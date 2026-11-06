@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import re
 import tarfile
 import zipfile
@@ -24,6 +23,7 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import quote
 
+from . import jsonsafe
 from .http import Http, HttpError
 
 MAVEN = "https://repo1.maven.org/maven2"
@@ -147,7 +147,7 @@ def _check_npm(http: Http, path: Path) -> dict:
             if info.size > MAX_METADATA:
                 raise ValueError("package.json too large")
             member = t.extractfile(info)
-            pkg = json.loads(_read_small(member.read(MAX_METADATA + 1)).decode("utf-8")) if member else {}
+            pkg = jsonsafe.loads(_read_small(member.read(MAX_METADATA + 1)).decode("utf-8")) if member else {}
             if not isinstance(pkg, dict):
                 raise ValueError("package.json is not an object")
     except (tarfile.TarError, KeyError, OSError, ValueError, EOFError, RuntimeError) as exc:

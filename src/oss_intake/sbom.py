@@ -19,11 +19,10 @@ Two CycloneDX component properties are read, so a collector (examples/osquery) c
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
-from . import os_packages
+from . import jsonsafe, os_packages
 from .inputs import InputError, _row_purl
 from .models import normalise_purl
 
@@ -123,7 +122,7 @@ def _load(path: Path) -> dict:
     if path.stat().st_size > MAX_FILE_BYTES:
         raise InputError(f"{path.name} is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB; split it")
     try:
-        data = json.loads(path.read_bytes().decode("utf-8-sig"))
+        data = jsonsafe.loads(path.read_bytes().decode("utf-8-sig"))
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise InputError(f"{path.name} is not valid JSON: {exc or 'nested too deeply'}") from None
     kind = kind_of(data)

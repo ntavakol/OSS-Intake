@@ -17,12 +17,13 @@ A single file is copied into an empty temporary directory so both scanners see e
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import tempfile
 from pathlib import Path
 from urllib.parse import unquote
+
+from . import jsonsafe
 
 LOCKFILES = re.compile(
     r"^(requirements[\w.-]*\.txt|poetry\.lock|Pipfile\.lock|uv\.lock|pdm\.lock|package-lock\.json|"
@@ -106,7 +107,7 @@ def renv_purls(path: Path) -> tuple[list[str], list[str]]:
     which OSV's CRAN advisories do not cover)."""
     check_size(path, MAX_INPUT_BYTES, "renv lockfile")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = jsonsafe.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, RecursionError) as exc:
         raise InputError(f"cannot read {path.name} as an renv lockfile: {exc}") from None
     pkgs = data.get("Packages") if isinstance(data, dict) else None

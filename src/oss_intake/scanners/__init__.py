@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .. import jsonsafe
+
 # Docker or containerd failing to export a locally stored image (pruned layers, other-platform pulls).
 LOCAL_IMAGE_ERROR = re.compile(r"unable to export the image|content digest sha256:[0-9a-f]+: not found|"
                                r"unable to inspect the image", re.IGNORECASE)
@@ -68,7 +70,7 @@ def load_json_bytes(data: bytes, what: str) -> dict:
     # Windows PowerShell 5.1 redirection (trivy ... > out.json) writes UTF-16 with a byte order mark.
     encoding = "utf-16" if data[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
     try:
-        return json.loads(data.decode(encoding))
+        return jsonsafe.loads(data.decode(encoding))
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ScannerError(f"{what} is not valid JSON: {exc or 'nested too deeply'}") from None
 

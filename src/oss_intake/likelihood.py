@@ -15,6 +15,8 @@ import json
 import operator
 from pathlib import Path
 
+from . import jsonsafe
+
 OPS = {">": operator.gt, ">=": operator.ge, "<": operator.lt, "<=": operator.le, "==": operator.eq,
        "!=": operator.ne}
 
@@ -73,7 +75,7 @@ def load_config(path: str | None) -> dict:
     if not path:
         return DEFAULT_CONFIG
     try:
-        cfg = json.loads(Path(path).read_text(encoding="utf-8"))
+        cfg = jsonsafe.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ConfigError(f"cannot read likelihood config: {exc or 'nested too deeply'}") from None
     if not isinstance(cfg, dict):

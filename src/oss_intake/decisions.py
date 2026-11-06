@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
+from . import jsonsafe
 from .inputs import MAX_INPUT_BYTES, InputError, check_size
 from .models import Finding
 
@@ -182,7 +183,7 @@ def _same_ecosystem(d: dict, f: Finding) -> bool:
 def _from_openvex(path: Path) -> tuple[list[dict], list[str]]:
     check_size(path, MAX_INPUT_BYTES, "decisions file")
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc = jsonsafe.loads(path.read_text(encoding="utf-8"))
     except (ValueError, RecursionError) as exc:  # UnicodeDecodeError is a ValueError
         raise InputError(f"{path.name} is not valid JSON: {exc or 'nested too deeply'}") from None
     if not isinstance(doc, dict) or "statements" not in doc:

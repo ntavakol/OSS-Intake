@@ -22,6 +22,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 
+from .. import jsonsafe
 from . import ScannerError, path_arg, run
 
 NAME = "govulncheck"
@@ -44,6 +45,9 @@ def version_info(binary: str) -> dict:
 
 def parse_stream(text: str) -> list[dict]:
     """govulncheck -format json writes a stream of (indented) JSON objects, not one document."""
+    if jsonsafe.depth(text) > jsonsafe.MAX_DEPTH:  # raw_decode has no limit of its own on Python 3.15
+        raise ScannerError(f"govulncheck output is not a stream of JSON objects: nested more than "
+                           f"{jsonsafe.MAX_DEPTH} levels deep")
     dec = json.JSONDecoder()
     out, i = [], 0
     while i < len(text):

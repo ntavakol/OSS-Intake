@@ -14,7 +14,6 @@ the number of files, their sizes and how far they expand, and with no absolute p
 from __future__ import annotations
 
 import bisect
-import json
 import os
 import re
 import stat
@@ -23,6 +22,7 @@ import zipfile
 import zlib
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+from . import jsonsafe
 from .http import Http, HttpError
 from .inputs import InputError
 
@@ -97,7 +97,7 @@ def _manifest(folder: Path) -> dict | None:
     try:
         if not p.is_file() or p.stat().st_size > 5_000_000:
             return None
-        data = json.loads(p.read_text(encoding="utf-8-sig"))
+        data = jsonsafe.loads(p.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, RecursionError):  # RecursionError: JSON nested deeper than Python can parse
         return None
     if isinstance(data, dict) and data.get("publisher") and isinstance(data.get("engines"), dict) \
@@ -312,7 +312,7 @@ def _note_package(path: Path, packages: set[tuple[str, str]], budget: list[int])
         if size > 1_000_000 or budget[0] <= 0:
             return
         budget[0] -= size
-        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        data = jsonsafe.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, RecursionError):
         return
     if isinstance(data, dict) and isinstance(data.get("name"), str) and isinstance(data.get("version"), str):
@@ -549,7 +549,7 @@ def _obsolete(folder: Path) -> set[str]:
     try:
         if not p.is_file() or p.stat().st_size > 1_000_000:
             return set()
-        data = json.loads(p.read_text(encoding="utf-8-sig"))
+        data = jsonsafe.loads(p.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, RecursionError):
         return set()
     return {str(k).casefold() for k, v in data.items() if v} if isinstance(data, dict) else set()
@@ -596,7 +596,7 @@ def _listed(path: Path, budget: list[int]) -> set[tuple[str, str]] | None:
                 break
         return pairs
     try:
-        data = json.loads(text)
+        data = jsonsafe.loads(text)
     except (ValueError, RecursionError):
         return set()
     stack = [data]
