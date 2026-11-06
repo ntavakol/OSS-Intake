@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from oss_intake import __version__, cli
+from oss_intake import __version__, cli, scanning
 
 ROOT = Path(__file__).resolve().parent.parent
 BUILDER = ROOT / "site" / "builder"
@@ -129,7 +129,7 @@ def test_each_rule_stays_quiet_where_the_cli_accepts(rule, tmp_path, capsys, mon
     f = tmp_path / "exists.json"
     f.write_text("{}", encoding="utf-8")
     argv = [a.replace("{out}", str(tmp_path / "out")).replace("{file}", str(f)) for a in rule["ok_args"]]
-    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    monkeypatch.setattr(scanning, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
     try:
         cli.main([rule["command"], *argv], http=FakeHttp())
     except Exception:  # noqa: BLE001, S110 - anything after validation is past what this test is about
@@ -329,7 +329,7 @@ def test_each_kind_rule_is_what_the_cli_refuses(rule, tmp_path, capsys, monkeypa
         err = capsys.readouterr().err
         assert code == cli.EXIT_USAGE and rule["message"] in err, (args, err)
         assert http.calls == []
-    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    monkeypatch.setattr(scanning, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
     for args in [rule["ok_args"], *rule.get("more_ok_args", [])]:
         cli.main([names.get(a, a) for a in args], http=FakeHttp())
         assert rule["message"] not in capsys.readouterr().err, args
@@ -374,7 +374,7 @@ def test_wizard_commands_are_accepted_by_the_cli(case, tmp_path, capsys, monkeyp
         p.write_text(FILES.get(p.name, "x"), encoding="utf-8")
         argv = [str(p) if a == path else a for a in argv]
     # No scanner is run: finding one stops the run with a runtime error (exit 1), after every usage check.
-    monkeypatch.setattr(cli, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
+    monkeypatch.setattr(scanning, "find_executable", lambda *a, **k: (_ for _ in ()).throw(cli.ScannerError("stop")))
     code = cli.main(argv, http=FakeHttp())
     assert code in (cli.EXIT_OK, cli.EXIT_ERROR, cli.EXIT_THRESHOLD), capsys.readouterr().err
 
