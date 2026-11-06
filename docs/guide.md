@@ -134,7 +134,8 @@ oss-intake doctor
 Or keep the release files and let each run check the whole chain before the scanner executes: the cosign
 signature on the checksums file, the archive's SHA-256 in it, and the executable byte-for-byte against the one in
 the archive. Trivy and Grype both sign their checksums file (Trivy also each archive); neither signs the
-extracted executable.
+extracted executable. Without the bundle, the checks still run, but the report says the hash is not verified:
+whoever could swap the archive could swap a checksums file nothing has signed.
 
 ```bash
 oss-intake --image owner/app:1.2.3 --out ./reports --trivy-version 0.76.1 \

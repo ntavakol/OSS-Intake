@@ -33,17 +33,13 @@ nothing, or output that is not what it seems).
 |---|---|---|
 | A scanner command line is hijacked: shell metacharacters, or an image reference read as an option | Scanners run as an argument list without a shell. Image references must start with a letter or digit and carry a tag or digest, so `-x`, spaces and `;` are refused (exit 2). | `scanners.run`, `options.validate_image` |
 | A known-compromised scanner release runs | Its version is read from the Go build information in the file, without running it, and checked against `known_bad.json`; the version the binary reports is checked again. Either match refuses the run. | `integrity.refuse_known_bad_before_run`, `integrity.check_binary` |
-| A swapped or tampered binary runs | With `--<tool>-sha256`, a cosign bundle, or the release archive and its checksums, the binary is checked before it runs at all. Without them the report says the hash was not verified. | `integrity.verify_before_run`, `scanning.run_or_load` |
+| A swapped or tampered binary runs | With `--<tool>-sha256`, a cosign bundle, or the release archive and its checksums, the binary is checked before it runs at all. Without them the report says the hash was not verified; checked only against a checksums file nothing has signed, it says that, not hash verified. | `integrity.verify_before_run`, `scanning.run_or_load` |
 | A scanner that fails, hangs or prints nothing reads as "no findings" | A non-zero exit, a timeout or output that is not JSON stops the run with exit 1. | `scanners.run`, `scanners.load_json_bytes` |
 | The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused, and one that names nothing it scanned and lists nothing is refused too; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
 | A required scanner is missing | Named scanners must be found. With `--scanners auto`, a missing Grype is a warning in the report, not silence. | `scanners.find_executable`, `cli` |
 
 **Left open:**
 
-: `{"SchemaVersion": 2}` with no `Results`, or `{"matches": []}`, is accepted as a
-  clean Trivy or Grype report, so a truncated or forged import reads as no findings.
-- With `--<tool>-archive` and `--<tool>-checksums` but no signature, the binary is reported as hash verified
-  against a checksums file nothing has signed.
 - The binary is checked by path and then run by path: someone who can write to it or its folder could replace
   it in between. The binary's own folder is not checked for who can write to it.
 - On Windows, `shutil.which` looks in the current folder before the PATH, so a `trivy.exe` there is the one
@@ -144,7 +140,8 @@ memory and time.
 
 - A decision without an ecosystem (a findings.csv with no `pkg_type`, or one written by hand) is matched on the
   vulnerability ID and package name only, so it can cover a package of the same name in another ecosystem.
-  `fixed` needs no note, and decisions never expire. A set-aside finding does not count for any gate except `malicious`.
+  `fixed` needs no note, and decisions never expire. A set-aside finding does not count for any gate except
+  `malicious`.
 - One decision can cover more than its row suggests: one without a version applies to every version without a
   review flag, and the `aliases` cell extends it to every ID listed there.
 - Names in CSV inventories and SBOMs are not checked as `--package` names are (`pkg:pypi//@1.0` is accepted).
@@ -286,13 +283,12 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Report a binary checked against an unsigned checksums file as such, not as hash verified.
-4. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
-5. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
+3. Refuse to write a report through a symbolic link, and remove stale report files the run did not write.
+4. Size limits for inventories, decisions files, imported reports and service responses, and a total deadline
    for each request; refuse an SBOM over its size limit instead of passing it to the scanners.
-6. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
-7. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
-8. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-9. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-10. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
-    leave it), so the bundled check cannot be avoided.
+5. Check the cache folder's subfolders and entries for ownership, and check it on Windows.
+6. Pass `--path` folders to Trivy and govulncheck so a name starting with `-` cannot be read as an option.
+7. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
+8. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+9. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+   leave it), so the bundled check cannot be avoided.

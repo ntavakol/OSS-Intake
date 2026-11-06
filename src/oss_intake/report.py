@@ -359,7 +359,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
             if s.get("db_updated"):
                 detail += f", DB {str(s['db_updated'])[:10]}"
             if "hash_verified" in s:
-                detail += ", hash verified" if s["hash_verified"] else ", hash NOT verified"
+                detail += (", hash verified" if s["hash_verified"]
+                           else ", hash NOT verified (matches an unsigned checksums file)" if s.get("hash_unsigned")
+                           else ", hash NOT verified")
             scope_rows.append([f"Source: {name}", detail])
     secs.append(("Scope", [("table", ["Item", "Value"], scope_rows), ("p", CAVEAT)]))
     ext = extensions_section(a)

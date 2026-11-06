@@ -247,6 +247,11 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
         if not (checksums or cosign_bundle):
             done["note"] = (f"the {tool} executable matches {Path(archive).name}, but nothing vouches for the "
                             f"archive itself; add --{tool}-checksums and --{tool}-cosign-bundle")
+        elif checksums and not done.get("signed"):
+            # Whoever could swap the archive could also swap a checksums file nothing has signed.
+            done["note"] = (f"the {tool} executable matches {Path(archive).name}, which is listed in "
+                            f"{Path(checksums).name}, but nothing has signed {Path(checksums).name}, so the hash "
+                            f"is not verified; add --{tool}-cosign-bundle")
     elif cosign_bundle:
         # A bundle without an archive can only be checked against the executable itself, which the projects do
         # not sign; kept for executables someone signs directly.

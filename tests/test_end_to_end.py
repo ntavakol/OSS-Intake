@@ -2077,3 +2077,43 @@ def test_osv_result_of_the_wrong_shape_stops_a_package_run(tmp_path, capsys):
                        "npm:evil@1.0.0", "--fail-on", "malicious")
     assert code == cli.EXIT_ERROR
     assert "not in OSV's form" in capsys.readouterr().err
+
+
+def _chain_run(tmp_path, monkeypatch, fixtures, bundle: bool):
+    """trivy run from a release archive and its checksums file, with or without a cosign bundle for that file."""
+    from oss_intake import integrity
+
+    fake = tmp_path / "trivy"
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    report = (fixtures / "trivy.json").read_bytes()
+    monkeypatch.setattr(cli.trivy_mod, "run",
+                        lambda cmd, timeout: b'{"Version": "0.76.1"}' if "--version" in cmd else report)
+    monkeypatch.setattr(integrity, "cosign_verify_blob", lambda *a: None)
+    archive = _release_archive(tmp_path, fake)
+    sums = tmp_path / "trivy_0.76.1_checksums.txt"
+    sums.write_text(f"{integrity.sha256_file(archive)}  {archive.name}\n", encoding="utf-8")
+    (tmp_path / "b.json").write_text("{}", encoding="utf-8")
+    extra = ["--trivy-cosign-bundle", str(tmp_path / "b.json")] if bundle else []
+    out = tmp_path / ("signed" if bundle else "unsigned")
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--trivy-path", str(fake), "--trivy-archive", str(archive), "--trivy-checksums", str(sums),
+                     *extra])
+    assert code == cli.EXIT_OK
+    return json.loads((out / "assessment.json").read_text(encoding="utf-8"))["scanners"]["trivy"], out
+
+
+def test_unsigned_checksums_file_is_not_reported_as_hash_verified(tmp_path, monkeypatch, fixtures):
+    """Threat model open item: an archive listed in a checksums file nothing has signed was reported as hash
+    verified, though whoever could swap the archive could swap that file too."""
+    s, out = _chain_run(tmp_path, monkeypatch, fixtures, bundle=False)
+    assert s["hash_verified"] is False and s["hash_unsigned"] is True
+    assert any("nothing has signed trivy_0.76.1_checksums.txt" in n for n in s["notes"])
+    for name in ("summary.md", "report.html"):
+        assert "hash NOT verified (matches an unsigned checksums file)" in (out / name).read_text(encoding="utf-8")
+
+
+def test_signed_checksums_file_is_reported_as_hash_verified(tmp_path, monkeypatch, fixtures):
+    s, out = _chain_run(tmp_path, monkeypatch, fixtures, bundle=True)
+    assert s["hash_verified"] is True and "hash_unsigned" not in s
+    assert ", hash verified" in (out / "summary.md").read_text(encoding="utf-8")

@@ -19,6 +19,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   placeholders, as `latest` was: OSV knows nothing about them, so the package read as clean.
 - The audit of a project's GitHub Actions workflows skipped a file that failed to download and still read as
   complete. It is now reported as partial, in a warning and in both reports, naming the files not read.
+- A scanner checked against its release archive and a checksums file, with no cosign bundle, was reported as
+  "hash verified", though nothing had signed that file. It is now reported as "hash NOT verified (matches an
+  unsigned checksums file)", with a note to add `--<tool>-cosign-bundle`. The checks themselves still run.
 
 ## [0.16.0] - 2026-11-06
 

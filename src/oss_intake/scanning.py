@@ -78,13 +78,19 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
-    if release.get("binary_matches_archive") and (release.get("signed") or release.get("checksums")):
-        # The executable was verified through the release chain; the generic "no pinned hash" note does not apply.
+    unsigned = bool(release.get("binary_matches_archive") and release.get("checksums")
+                    and not release.get("signed") and not check.hash_verified)
+    if release.get("binary_matches_archive") and release.get("signed"):
+        # The executable was verified through a signed release chain; the generic "no pinned hash" note does not
+        # apply. A checksums file nothing signed is not enough: it could have been swapped with the archive.
         check.notes = [n for n in check.notes if "hash not verified" not in n]
         check.hash_verified = True
+    elif unsigned:
+        check.notes = [n for n in check.notes if "hash not verified" not in n]  # the release note says why
     if release.get("note"):
         check.notes.append(release["note"])
-    scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {})}
+    scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {}),
+                           **({"hash_unsigned": True} if unsigned else {})}
     target = args.path if args.path else args.image
     log(f"running {tool} {info['version']} on {target}", args.quiet)
     if args.path:

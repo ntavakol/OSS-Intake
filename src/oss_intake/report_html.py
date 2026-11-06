@@ -480,7 +480,8 @@ def _scope(a: dict) -> str:
             detail += f", DB {_e(str(s['db_updated'])[:10])}"
         if "hash_verified" in s:
             detail += (', <span class="g">hash verified</span>' if s["hash_verified"]
-                       else ', <span class="a">hash NOT verified</span>')
+                       else ', <span class="a">hash NOT verified (matches an unsigned checksums file)</span>'
+                       if s.get("hash_unsigned") else ', <span class="a">hash NOT verified</span>')
         rows.append([f"Source: {name}", Raw(detail)])
     return _section("Scope", _table(["Item", "Value"], rows))
 
