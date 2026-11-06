@@ -16,6 +16,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - The SBOM test fixtures are named `*.cdx-fixture.json` and `*.spdx-fixture.json`, so OSV-Scanner (which OpenSSF
   Scorecard runs over the repository) no longer reads their deliberately vulnerable packages as the project's own.
   A test fails if a fixture or example uses a name dependency scanners recognise.
+- Dependabot updates GitHub Actions only. The pinned test and lint tools are updated with uv, as CONTRIBUTING.md
+  describes, because Dependabot's regenerated `requirements/dev.txt` left out the Windows and Python 3.10 pins.
+  Updated to ruff 0.17.3, mypy 2.4.1 and pytest 9.2.0.
 
 ## [0.15.0] - 2026-11-06
 

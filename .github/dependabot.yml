@@ -8,9 +8,7 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-  - package-ecosystem: pip
-    directories: ["/", "/requirements"]
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
+# No pip entry: requirements/dev.txt is compiled with uv for every platform and Python version
+# (--universal) with hashes, and Dependabot regenerates it for one platform only, dropping the
+# Windows and Python 3.10 pins so CI's --require-hashes install fails. CONTRIBUTING.md shows how
+# to update the pins.

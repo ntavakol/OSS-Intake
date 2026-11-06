@@ -28,6 +28,19 @@ printf '#!/bin/sh\nexec gitleaks git --pre-commit --staged --redact --no-banner\
 chmod +x .git/hooks/pre-commit
 ```
 
+The test and lint tools CI uses are pinned with hashes in `requirements/dev.txt`, compiled from
+`requirements/dev.in` with [uv](https://docs.astral.sh/uv/) for every platform and supported Python version.
+Dependabot does not update them, because it cannot compile them that way. To update one, change its version in
+`requirements/dev.in`, then regenerate, keeping the four comment lines at the top of `dev.txt`:
+
+```bash
+{ head -4 requirements/dev.txt; uv pip compile --universal --generate-hashes --python-version 3.10 --no-header \
+    --no-annotate requirements/dev.in; } > dev.txt.new && mv dev.txt.new requirements/dev.txt
+```
+
+Check that `git diff requirements/dev.txt` changes only what you meant to, and that the Windows (`colorama`) and
+Python 3.10 (`exceptiongroup`, `tomli`) pins are still there.
+
 ## Rules
 
 - **Tests come with the change.** New functionality must add automated tests that cover it, and a bug fix must
