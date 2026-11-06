@@ -11,12 +11,16 @@ import atexit
 import contextlib
 import io
 import json
+import os
 import shutil
 import tempfile
 import zipfile
 from pathlib import Path
 
 from oss_intake import cli, conditions, decisions, inputs, integrity, likelihood, merge, sbom, vscode
+
+# cli.main turns an unexpected exception into exit 1 for users; the fuzzer must see it as the crash it is.
+os.environ["OSS_INTAKE_DEBUG"] = "1"
 from oss_intake.enrich import debian_releases, debian_tracker, exploits, golang_stdlib
 from oss_intake.models import Finding
 from oss_intake.scanners import (

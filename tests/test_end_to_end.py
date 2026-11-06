@@ -2333,3 +2333,41 @@ def test_trivy_report_without_packages_does_not_pass_package_gates(tmp_path, fix
     assert "--fail-on malicious: could not be evaluated" in err and "listed none" in " ".join(a["warnings"])
     # The packages with findings are still queried.
     assert "0 packages queried" not in json.dumps(a["scanners"]["osv"])
+
+
+def test_likelihood_gate_is_not_undecided_by_choices_or_missing_release_health(tmp_path, fixtures, fake_http):
+    """Review (7 Nov): the first version of the fail-closed gate exited 1 on a scan with no findings, on every
+    --offline run and on every run without --repo, so it could not be used. Only a source that failed makes the
+    gate undecided."""
+    empty = {"SchemaVersion": 2, "ArtifactName": "example/webapp:2.0.0", "Results": [
+        {"Target": "example/webapp:2.0.0 (alpine 3.20)", "Class": "os-pkgs", "Type": "alpine", "Packages": [
+            {"Name": "musl", "Version": "1.2.5-r0", "Identifier": {"PURL": "pkg:apk/alpine/musl@1.2.5-r0"}}]}]}
+    rp = tmp_path / "empty.json"
+    rp.write_text(json.dumps(empty), encoding="utf-8")
+    for n in ("2", "3", "4"):
+        code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / f"e{n}"), "--scanners",
+                         "trivy,osv", "--from-trivy-json", str(rp), "--fail-on-likelihood", n], http=fake_http)
+        assert code == cli.EXIT_OK, n
+    for n in ("3", "4", "5"):
+        code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / f"off{n}"), "--offline",
+                         "--scanners", "trivy", "--from-trivy-json", str(fixtures / "trivy.json"),
+                         "--fail-on-likelihood", n])
+        assert code in (cli.EXIT_OK, cli.EXIT_THRESHOLD), n
+        code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / f"norepo{n}"), "--scanners",
+                         "trivy,osv", "--from-trivy-json", str(fixtures / "trivy.json"), "--as-of", AS_OF,
+                         "--fail-on-likelihood", n], http=fake_http)
+        assert code in (cli.EXIT_OK, cli.EXIT_THRESHOLD), n
+
+
+def test_vex_claim_for_a_package_type_without_a_known_ecosystem(tmp_path):
+    """Review (7 Nov): a same-version decision for a type not mapped to an ecosystem (Trivy bitnami, Grype
+    binary) went out as under investigation; written the same way on both sides, it is the same ecosystem."""
+    from oss_intake import decisions
+    from oss_intake.models import Finding
+
+    f = Finding(vuln_id="CVE-2099-1", package="redis", installed="7.2.4", pkg_type="bitnami",
+                purl="pkg:bitnami/redis@7.2.4")
+    d = {"ids": {"CVE-2099-1"}, "package": "redis", "version": "7.2.4", "pkg_type": "bitnami", "purl_type": "",
+         "status": "not_affected", "notes": "checked", "reachable": "", "justification": ""}
+    decisions.apply([f], [d])
+    assert f.decision_exact and decisions.openvex([f], "x", "2026-11-07")["statements"][0]["status"] == "not_affected"

@@ -406,16 +406,20 @@ def _lag_and_likelihood(args, findings: list, all_findings: list, release_date, 
     """Release lag of the findings shown; likelihood from every finding, as it is a gate too."""
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
-    for name in ("kev", "malicious", "epss"):
-        lag_m[f"{name}_checked"] = checks.state_of(check_info, name) == checks.CHECKED  # partial is not enough
+    # For the likelihood gate: a source that failed (or loaded only in part) leaves its metric unknown, so a rule
+    # on it cannot be read as not met. One the user turned off is their choice, already reported: read as before.
+    for name in ("kev", "malicious", "epss", "exploits"):
+        lag_m[f"{name}_ok"] = (checks.state_of(check_info, name) == checks.CHECKED
+                               or checks.turned_off(check_info, name))
     # Likelihood is a gate too (--fail-on-likelihood), so it is worked out from every finding, not only those the
     # reports show.
     lag_all = lag_m
     if lk_cfg and len(findings) < len(all_findings):
         lag_all = lag.compute(all_findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
         lag_all["exploits_checked"] = checks.is_checked(check_info, "exploits")
-        for name in ("kev", "malicious", "epss"):
-            lag_all[f"{name}_checked"] = checks.state_of(check_info, name) == checks.CHECKED
+        for name in ("kev", "malicious", "epss", "exploits"):
+            lag_all[f"{name}_ok"] = (checks.state_of(check_info, name) == checks.CHECKED
+                                     or checks.turned_off(check_info, name))
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_all, health, sc)) if lk_cfg else None
     if lk and lag_all is not lag_m:
         shown_lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc))

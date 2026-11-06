@@ -151,9 +151,13 @@ def _list(value: object, what: str) -> list:
 
 
 def _is_package_subject(purl: str, kind: object) -> bool:
-    """An SBOM's subject that is a package to check: not an image, OS or file."""
+    """An SBOM's subject that is a published package to check: one its producer calls a library or framework
+    (CycloneDX type, SPDX primaryPackagePurpose), as a vendor SBOM for a library does. The project an SBOM tool
+    was run on (cyclonedx-npm, cyclonedx-py, cdxgen: an application, often private) is not looked up: its name
+    would go to OSV and deps.dev, and a public package of the same name could lend it advisories."""
     ptype = purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") else ""
-    return bool(ptype) and ptype not in ("oci", "docker") and kind not in ("container", "operating-system", "file")
+    return (bool(ptype) and ptype not in ("oci", "docker", "github", "generic")
+            and str(kind or "").lower() in ("library", "framework"))
 
 
 def _cyclonedx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
@@ -211,8 +215,9 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
                  and str(r.get("referenceCategory", "")).upper().replace("_", "-") == "PACKAGE-MANAGER"]
         if len(described) == 1 and p.get("SPDXID") in described:
             subject = str(p.get("name") or subject)
-            # A described package with a package URL (a vendor SBOM for one library) is checked like the others.
-            if not (purls and _is_package_subject(str(purls[0]), None)):
+            # A described package with a package URL and the purpose LIBRARY or FRAMEWORK (a vendor SBOM for one
+            # library) is checked like the others.
+            if not (purls and _is_package_subject(str(purls[0]), p.get("primaryPackagePurpose"))):
                 continue
         supplier = str(p.get("supplier") or "").removeprefix("Organization: ").removeprefix("Person: ")
         if supplier.upper() == "NOASSERTION":

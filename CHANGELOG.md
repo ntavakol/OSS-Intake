@@ -31,16 +31,19 @@ and the project uses [Semantic Versioning](https://semver.org/).
   are now checked like a package list's rows, and an empty one is refused (exit 2).
 - An SBOM's own subject was never checked: in a vendor SBOM for a library (the library as CycloneDX's
   `metadata.component`, or SPDX's single described package), the library and the components nested under it
-  were dropped without a word, so the SBOM read as clean for it. A subject that is a package is now checked like
-  any other; an image or OS subject still is not.
+  were dropped without a word, so the SBOM read as clean for it. A subject its producer calls a library or
+  framework (CycloneDX `type`, SPDX `primaryPackagePurpose`) is now checked like any other component, and
+  components nested under CycloneDX's subject are read. The project an SBOM tool was run on (an application,
+  often private), an image and a repository are still not looked up.
 - Reading a CycloneDX SBOM was quadratic in its components, so a small file listing a million empty ones hung
   the run before the 500,000-component limit applied. The walk is linear and stops at the limit.
 - Every program oss-intake starts (Trivy, Grype, govulncheck, docker, crane, cosign) inherited `GITHUB_TOKEN`,
   including binaries that were not verified. They now start without the GitHub token variables.
 - With `--reachability` on an image, `docker cp` copied a link in the image as a link, so an image could point a
   Go binary's path at a file on the machine running the scan; links are now followed inside the image and a copy
-  that is still a link is not analysed. The `crane` path streams binaries instead of reading them whole. A
-  govulncheck scan below symbol level (a binary without symbols) no longer reads as "not reachable".
+  that is still a link is not analysed. The `crane` path streams binaries instead of reading them whole.
+  govulncheck runs at symbol level explicitly, and output that does not say it was a symbol-level scan gives no
+  verdict.
 - Untrusted input could still end a run with a traceback: a bad package URL in a scanner report, a Grype
   related ID that is not text, a JSON integer too long for Python to read, a Scorecard score sent as text, a
   GitHub license or release entry of the wrong type, a proof-of-concept star count such as "1.5k", a PyPI or npm
@@ -57,9 +60,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   queried, both checks are marked partial, and those gates fail with exit 1. Image scans also pass
   `--list-all-pkgs` to Trivy, as folder scans did.
 - `--fail-on-likelihood` passed when the evidence a higher rule needed did not load: with CISA KEV down, a KEV
-  finding with a fix scored 2 instead of 5 and `--fail-on-likelihood 5` passed. A source that did not fully load
-  now counts as unknown (what it did find still counts), and when a rule at or above the threshold depends on
-  unknown evidence the gate fails with exit 1, naming it. `assessment.json` records `could_be` and `unchecked`.
+  finding with a fix scored 2 instead of 5 and `--fail-on-likelihood 5` passed. Evidence from a source that
+  failed on the run (KEV, malicious package data, EPSS, the exploit indexes) now counts as unknown (what it did
+  find still counts), and when a rule at or above the threshold depends on it the gate fails with exit 1, naming
+  it. A source turned off by choice, and missing release health without `--repo`, read as before.
+  `assessment.json` records `could_be` and `unchecked`.
 - `openvex.json` and `vex.cdx.json` stated a decision made for another version, without a version, or matched
   by name alone as a plain `not_affected` (or fixed) for the installed version, and Grype, Trivy and
   Dependency-Track hide a finding on that without review. Such a decision now goes out as under investigation

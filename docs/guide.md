@@ -384,7 +384,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--top` | Number of findings listed in the summary (default 25; all are in findings.csv) |
 | `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
-| `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines. When a rule at N or higher depends on something that was not checked (CISA KEV, malicious package data or EPSS did not load, the exploit indexes, or no matched release for a critical fix), the gate fails with exit 1 rather than passing on the lower result, and names what was missing |
+| `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines. When a rule at N or higher depends on evidence from a source that failed on this run (CISA KEV, malicious package data, EPSS or the exploit indexes did not load), the gate fails with exit 1 rather than passing on the lower result, and names what was missing. A source you turned off (`--offline`, `--no-kev`) is your choice, reported in the run, and does not do this |
 | `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`; a version in a registry deps.dev covers that has no date there yet, as for a release only hours old, fails it with exit 1, while registries deps.dev does not cover are left to `unknown-age`), `unknown-age` (a language package version with no release date on deps.dev: not indexed yet, as for a release only hours old, or a registry deps.dev does not cover, such as RubyGems and CRAN; versions that could not be looked up are named, and components without a usable package URL are listed as not checked instead), `mismatch` (registry checksum: fails with exit 1 when the file could not be compared, and is refused for an image, `--package`, a folder, lockfile, SBOM, renv.lock or package list). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
 | `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to `--release-age-max` |
 | `--release-age-max N` | Release-date lookups for at most N package versions, counted after duplicates across hosts are merged (default 400); the rest are reported as not checked, never as old |
@@ -570,7 +570,9 @@ Off by default. With `--likelihood`, the first matching rule wins:
 | 1 Rare | No high or critical findings with available fixes |
 <!-- /generated:likelihood-rules -->
 
-Unknown signals (no Scorecard score, say) never trigger a rule. To use your own rules, copy
+Unknown signals (no Scorecard score, say) never trigger a rule. With `--fail-on-likelihood`, though, a rule that
+rests on evidence from a source that failed (CISA KEV, malicious package data, EPSS, the exploit indexes) is
+undecided, and the gate fails with exit 1 if that rule is at or above its threshold. To use your own rules, copy
 `DEFAULT_CONFIG` from [likelihood.py](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/likelihood.py) into a JSON file and pass
 `--likelihood-config`.
 <!-- generated:likelihood-metrics -->

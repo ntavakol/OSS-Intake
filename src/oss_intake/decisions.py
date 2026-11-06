@@ -173,10 +173,15 @@ def _ecosystem(kind: str) -> str:
 
 
 def _known_same_ecosystem(d: dict, f: Finding) -> bool:
-    """Both the decision and the finding name an ecosystem, and it is the same one."""
+    """Both the decision and the finding name an ecosystem, and it is the same one: mapped (Trivy jar and Grype
+    java-archive are both maven), or, for a type not mapped (bitnami, conda, generic), written the same way."""
     mine = _ecosystem(d.get("pkg_type") or "") or _ecosystem(d.get("purl_type") or "")
     theirs = _ecosystem(_purl_type(f.purl or "")) or _ecosystem(f.pkg_type or "")
-    return bool(mine and theirs and mine == theirs)
+    if mine and theirs:
+        return mine == theirs
+    raw_mine = {t.strip().lower() for t in (d.get("pkg_type") or "", d.get("purl_type") or "") if t.strip()}
+    raw_theirs = {t.strip().lower() for t in (f.pkg_type or "", _purl_type(f.purl or "")) if t.strip()}
+    return bool(raw_mine & raw_theirs)
 
 
 def _same_ecosystem(d: dict, f: Finding) -> bool:
@@ -315,7 +320,8 @@ def _exported_status(f: Finding) -> tuple[str, str]:
     if f.decision_exact or f.decision_status == "under_investigation":
         return f.decision_status, f.decision_notes
     made_for = (f"version {f.decision_version}" if f.decision_version and f.decision_version != f.installed
-                else "this version, matched by name only" if f.decision_version else "no stated version")
+                else "this version, without a matching package type" if f.decision_version
+                else "no stated version")
     why = (f"assessor decided {f.decision_status.replace('_', ' ')} for {made_for}; not yet confirmed for "
            f"{f.installed or 'the installed version'}")
     return "under_investigation", why + (f". Notes: {f.decision_notes}" if f.decision_notes else "")

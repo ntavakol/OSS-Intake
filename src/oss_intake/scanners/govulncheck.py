@@ -80,8 +80,8 @@ def _analyse(messages: list[dict]) -> dict[str, dict]:
     configs = [m["config"] for m in messages if isinstance(m, dict) and isinstance(m.get("config"), dict)]
     scan_level = configs[0].get("scan_level") if configs else None
     if scan_level != "symbol":
-        # Only a symbol-level scan can show a function is absent; at package or module level (a binary without
-        # symbol information, or an older govulncheck) "not found" is not "not reachable".
+        # Only a symbol-level scan can show a function is absent; at package or module level, or from output that
+        # does not say (an older or unexpected govulncheck), "not found" is not "not reachable".
         raise ScannerError(f"govulncheck did not analyse at symbol level (scan_level {scan_level or 'not given'}), "
                            "so it cannot show a vulnerable function is absent")
     for m in messages:

@@ -50,6 +50,14 @@ def state_of(checks: dict | None, name: str) -> str:
     return (checks or {}).get(name, {}).get("state", CHECKED)
 
 
+def turned_off(checks: dict | None, name: str) -> bool:
+    """The source did not run because the user chose so (--offline, --no-kev, OSV left out of --scanners), as
+    opposed to failing: a choice the run already reports, not missing evidence."""
+    reason = str((checks or {}).get(name, {}).get("reason") or "")
+    return state_of(checks, name) != CHECKED and reason.startswith(
+        ("--", "OSV not in --scanners", "OSV not queried with --offline"))
+
+
 def is_checked(checks: dict | None, name: str) -> bool:
     """True when the source ran at least in part. With no checks recorded (older callers), assume it ran."""
     if not checks or name not in checks:

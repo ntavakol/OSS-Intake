@@ -763,7 +763,8 @@ def test_sbom_subject_package_is_checked_too(tmp_path):
     entries, _, _ = sbom.read(_sbom_file(tmp_path, cdx))
     assert {e["purl"] for e in entries} == {"pkg:npm/lodash@4.17.20", "pkg:npm/minimist@1.2.0", "pkg:npm/x@1.0.0"}
     spdx = {"spdxVersion": "SPDX-2.3", "name": "doc", "documentDescribes": ["SPDXRef-a"], "packages": [
-        {"SPDXID": "SPDXRef-a", "name": "lodash", "versionInfo": "4.17.20", "externalRefs": [
+        {"SPDXID": "SPDXRef-a", "name": "lodash", "versionInfo": "4.17.20", "primaryPackagePurpose": "LIBRARY",
+         "externalRefs": [
             {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
              "referenceLocator": "pkg:npm/lodash@4.17.20"}]},
         {"SPDXID": "SPDXRef-b", "name": "minimist", "versionInfo": "1.2.0", "externalRefs": [
@@ -781,6 +782,31 @@ def test_image_subject_is_not_a_package(tmp_path):
            "components": [{"type": "library", "name": "x", "version": "1.0.0", "purl": "pkg:npm/x@1.0.0"}]}
     entries, _, info = sbom.read(_sbom_file(tmp_path, cdx))
     assert [e["purl"] for e in entries] == ["pkg:npm/x@1.0.0"] and info["not_checked"] == []
+
+
+def test_the_project_an_sbom_was_made_for_is_not_looked_up(tmp_path):
+    """Review (7 Nov): cyclonedx-npm, cyclonedx-py and cdxgen put the project they ran on in metadata.component,
+    usually a private application; looked up, it failed --fail-on recent (no date on deps.dev) and sent its name
+    to OSV and deps.dev. A GitHub dependency-graph export describes the repository (pkg:github)."""
+    from oss_intake import sbom
+
+    cdx = {"bomFormat": "CycloneDX", "specVersion": "1.6",
+           "metadata": {"component": {"type": "application", "name": "my-private-app", "version": "1.0.0",
+                                      "purl": "pkg:npm/my-private-app@1.0.0"}},
+           "components": [{"type": "library", "name": "lodash", "version": "4.17.21",
+                           "purl": "pkg:npm/lodash@4.17.21"}]}
+    entries, _, info = sbom.read(_sbom_file(tmp_path, cdx))
+    assert [e["purl"] for e in entries] == ["pkg:npm/lodash@4.17.21"] and info["not_checked"] == []
+    spdx = {"spdxVersion": "SPDX-2.3", "name": "com.github.owner/app", "documentDescribes": ["SPDXRef-repo"],
+            "packages": [
+                {"SPDXID": "SPDXRef-repo", "name": "com.github.owner/app", "externalRefs": [
+                    {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                     "referenceLocator": "pkg:github/owner/app"}]},
+                {"SPDXID": "SPDXRef-b", "name": "minimist", "versionInfo": "1.2.0", "externalRefs": [
+                    {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                     "referenceLocator": "pkg:npm/minimist@1.2.0"}]}]}
+    entries, _, info = sbom.read(_sbom_file(tmp_path, spdx, "g.spdx.json"))
+    assert [e["purl"] for e in entries] == ["pkg:npm/minimist@1.2.0"] and info["not_checked"] == []
 
 
 def test_huge_component_list_is_refused_quickly(tmp_path, monkeypatch):

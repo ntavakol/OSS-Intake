@@ -9,6 +9,13 @@ from oss_intake.http import Http, HttpError
 FIX = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def _unexpected_errors_raise(monkeypatch):
+    """cli.main turns an unexpected exception into exit 1 for users; in tests it must surface, so a test that
+    expects exit 1 cannot pass because something broke (test_units checks the user-facing behaviour)."""
+    monkeypatch.setenv("OSS_INTAKE_DEBUG", "1")
+
+
 def load(name: str):
     return json.loads((FIX / name).read_text(encoding="utf-8"))
 

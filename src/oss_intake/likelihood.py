@@ -118,6 +118,19 @@ def _bound(value, checked: bool):
     return value if checked or value else None
 
 
+def _evidence(lag: dict, key: str, source: str):
+    """A fix-related signal from a source: 0 when there is no finding with a fix (nothing it could count), what
+    the source found when it ran, and unknown (None) when it failed and found nothing. lag without the
+    <source>_ok key (older callers) reads as before."""
+    if not lag.get("with_fix"):
+        return 0
+    value = lag.get(key)
+    ok_key = f"{source}_ok"
+    if ok_key not in lag:  # as before: the exploit counts are known only when the indexes were checked
+        return (value if lag.get("exploits_checked") else None) if source == "exploits" else value or 0
+    return _bound(value or 0, lag[ok_key])
+
+
 def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
     """Flatten the lag, health and Scorecard results into the metrics the likelihood rules match on (fixes by
     severity, KEV, exploits, EPSS, ages, archived, Scorecard score). Values that were not checked are None."""
@@ -131,16 +144,13 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "high_with_fix": sev_fix.get("HIGH", 0),
         # A count from a source that did not fully load is a lower bound: what it found counts, but a 0 from it
         # is unknown, so a rule on it must not read as not met.
-        "kev_with_fix": _bound(lag.get("kev_with_fix", 0), lag.get("kev_checked", True)),
-        "malicious": _bound(lag.get("malicious", 0), lag.get("malicious_checked", True)),
-        "weaponised_with_fix": lag.get("weaponised_with_fix") if lag.get("exploits_checked") else None,
-        "public_exploit_with_fix": lag.get("public_exploit_with_fix") if lag.get("exploits_checked") else None,
-        "max_epss_with_fix": _bound(lag.get("max_epss_with_fix") or 0, lag["epss_checked"])
-        if "epss_checked" in lag else lag.get("max_epss_with_fix"),
-        # Unknown without a matched release, unless there is nothing it could count (no fix of that severity).
-        "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None
-        else 0 if not sev_fix.get("CRITICAL") else None,
-        "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else 0 if not sev_fix.get("HIGH") else None,
+        "kev_with_fix": _evidence(lag, "kev_with_fix", "kev"),
+        "malicious": _bound(lag.get("malicious", 0), lag.get("malicious_ok", True)),
+        "weaponised_with_fix": _evidence(lag, "weaponised_with_fix", "exploits"),
+        "public_exploit_with_fix": _evidence(lag, "public_exploit_with_fix", "exploits"),
+        "max_epss_with_fix": _evidence(lag, "max_epss_with_fix", "epss"),
+        "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None else None,
+        "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else None,
         "max_days_fix_available": lag.get("max_days_fix_available"),
         "days_since_latest_release": health.get("days_since_latest_release"),
         "archived": 1 if health.get("archived") else 0,
@@ -159,19 +169,18 @@ def _match(cond: dict, m: dict) -> bool:
     return OPS[cond["op"]](val, cond["value"])
 
 
-# Upper bounds for metrics that can be unknown: fixes not shipped are at most the fixes of that severity.
-_AT_MOST = {"critical_fix_unshipped": "critical_with_fix", "high_fix_unshipped": "high_with_fix"}
+# Evidence from sources that can fail on a given run (CISA KEV, malicious packages, EPSS, exploit indexes). When
+# one failed, its metric is unknown and a rule on it is undecided, so --fail-on-likelihood cannot pass on a lower
+# result. Other metrics that can be missing (release health without --repo, a release date) are a standing
+# condition of the run, reported as low confidence: a rule on them reads as not met, as before.
+EVIDENCE = {"kev_with_fix", "malicious", "max_epss_with_fix", "weaponised_with_fix", "public_exploit_with_fix"}
 
 
 def _known(cond: dict, m: dict) -> bool | None:
-    """A condition as True, False, or None when its metric was not checked (False after all when even its upper
-    bound cannot reach the value)."""
+    """A condition as True, False, or None when it rests on evidence that did not load."""
     if m.get(cond["metric"]) is not None:
         return _match(cond, m)
-    most = m.get(_AT_MOST.get(cond["metric"], ""))
-    if most is not None and cond["op"] in (">", ">=") and not OPS[cond["op"]](most, cond["value"]):
-        return False
-    return None
+    return None if cond["metric"] in EVIDENCE else False
 
 
 def _rule(r: dict, m: dict) -> bool | None:
