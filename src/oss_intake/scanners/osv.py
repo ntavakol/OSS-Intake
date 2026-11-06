@@ -18,6 +18,9 @@ from ..versions import split_fixed
 NAME = "osv"
 API = "https://api.osv.dev/v1"
 BATCH = 1000
+# Pages of results followed for one query. OSV pages large answers (and busy batches); a query with more than
+# this many pages, or a page token that repeats, is an error rather than a partial (and so falsely clean) answer.
+MAX_PAGES = 25
 # Language ecosystems where purl queries are well supported. OS packages are left to Trivy/Grype,
 # which understand distro backports.
 SUPPORTED_TYPES = {"maven", "npm", "pypi", "golang", "cargo", "nuget", "gem", "composer", "hex", "pub", "cran"}
@@ -45,29 +48,57 @@ def purls_from_cyclonedx(sbom: dict) -> list[str]:
     return list(seen)
 
 
-def _query_batch(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None) -> dict[str, list[str]]:
-    """Return {purl: [vuln ids]}, following per-query pagination tokens. A purl in os_queries is asked by distro
-    ecosystem, source package name and version instead of by purl (see os_packages)."""
-    out: dict[str, list[str]] = {p: [] for p in purls}
-    pending = [(p, None) for p in purls]
+def querybatch(http: Http, queries: list[dict], labels: list[str] | None = None) -> list[list[str]]:
+    """POST queries to OSV's querybatch, following per-query page tokens. Returns the vulnerability IDs for each
+    query, in order. labels name the queries in errors (default: their position).
+
+    OSV answers with one result object per query, in order. An answer with a different number of results, a
+    result that is not an object, a page token that repeats for a query or more than MAX_PAGES pages for one
+    raise HttpError: a query left without its full result must never read as having no vulnerabilities."""
+    names = labels or [f"query {n + 1}" for n in range(len(queries))]
+    out: list[list[str]] = [[] for _ in queries]
+    pages = [1] * len(queries)
+    seen: list[set[str]] = [set() for _ in queries]
+    pending: list[tuple[int, dict]] = list(enumerate(queries))
     while pending:
         chunk, pending = pending[:BATCH], pending[BATCH:]
-        queries = []
-        for purl, token in chunk:
-            osq = (os_queries or {}).get(purl)
-            q: dict = ({"package": {"name": osq["name"], "ecosystem": osq["ecosystem"]}, "version": osq["version"]}
-                       if osq else {"package": {"purl": purl}})
-            if token:
-                q["page_token"] = token
-            queries.append(q)
-        status, data = http.post_json(f"{API}/querybatch", {"queries": queries})
+        status, data = http.post_json(f"{API}/querybatch", {"queries": [q for _, q in chunk]})
         if status != 200 or not isinstance(data, dict):
             raise HttpError(f"OSV querybatch returned HTTP {status}")
-        for (purl, _), res in zip(chunk, data.get("results") or [], strict=False):
-            out[purl].extend(v["id"] for v in (res or {}).get("vulns") or [] if v.get("id"))
-            if (res or {}).get("next_page_token"):
-                pending.append((purl, res["next_page_token"]))
+        results = data.get("results")
+        if not isinstance(results, list) or len(results) != len(chunk):
+            got = len(results) if isinstance(results, list) else "no"
+            raise HttpError(f"OSV querybatch answered {got} result(s) for {len(chunk)} queries; those without a "
+                            "result were not checked")
+        for (i, q), res in zip(chunk, results, strict=True):
+            if not isinstance(res, dict):
+                raise HttpError(f"OSV querybatch answered something other than an object for {names[i]}; it "
+                                "was not checked")
+            out[i].extend(v["id"] for v in res.get("vulns") or [] if isinstance(v, dict) and v.get("id"))
+            token = res.get("next_page_token")
+            if token:
+                if token in seen[i]:
+                    raise HttpError(f"OSV querybatch repeated a page token for {names[i]}; its results are "
+                                    "incomplete")
+                pages[i] += 1
+                if pages[i] > MAX_PAGES:
+                    raise HttpError(f"OSV querybatch had more than {MAX_PAGES} pages for {names[i]}; its results "
+                                    "are incomplete")
+                seen[i].add(token)
+                pending.append((i, {**q, "page_token": token}))
     return out
+
+
+def _query_batch(http: Http, purls: list[str], os_queries: dict[str, dict] | None = None) -> dict[str, list[str]]:
+    """Return {purl: [vuln ids]} (see querybatch). A purl in os_queries is asked by distro ecosystem, source
+    package name and version instead of by purl (see os_packages). Each purl is asked once."""
+    unique = list(dict.fromkeys(purls))
+    queries = []
+    for purl in unique:
+        osq = (os_queries or {}).get(purl)
+        queries.append({"package": {"name": osq["name"], "ecosystem": osq["ecosystem"]}, "version": osq["version"]}
+                       if osq else {"package": {"purl": purl}})
+    return dict(zip(unique, querybatch(http, queries, unique), strict=True))
 
 
 def _fixed_for_os(vuln: dict, osq: dict) -> list[str]:

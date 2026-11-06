@@ -2494,3 +2494,76 @@ def test_workflow_pip_installs_are_pinned_or_local():
                 if not ("--require-hashes" in args or "-e" in args or any(a.endswith(".whl") for a in args)):
                     bad.append(f"{wf.name}:{n}: {line.strip()}")
     assert bad == []
+
+
+class _BatchHttp:
+    """OSV querybatch answers given in order, recording each request."""
+
+    def __init__(self, *answers):
+        self.answers = list(answers)
+        self.bodies: list = []
+
+    def post_json(self, url, body):
+        self.bodies.append(body)
+        return 200, self.answers.pop(0)
+
+
+@pytest.mark.parametrize("answer", [{"results": []}, {}, {"results": [{"vulns": [{"id": "GHSA-a"}]}]},
+                                    {"results": [{}, "x"]}])
+def test_osv_short_or_malformed_batch_answer_is_an_error(answer):
+    """Threat model (6 Nov): an OSV batch answer with fewer results than queries (or none) read as no
+    vulnerabilities for the packages left without a result; a result that is not an object crashed."""
+    from oss_intake.http import HttpError
+    from oss_intake.scanners import osv
+
+    with pytest.raises(HttpError, match="querybatch"):
+        osv._query_batch(_BatchHttp(answer), ["pkg:npm/a@1.0.0", "pkg:npm/b@1.0.0"])
+
+
+def test_osv_paging_is_followed_and_limited():
+    """Threat model (6 Nov): a page token that kept coming back made the run loop for ever. Pages are followed
+    up to MAX_PAGES a package, and a repeated token or one more page is an error, never a clean result."""
+    from oss_intake.http import HttpError
+    from oss_intake.scanners import osv
+
+    http = _BatchHttp({"results": [{"vulns": [{"id": "GHSA-1"}], "next_page_token": "t1"}, {}]},
+                      {"results": [{"vulns": [{"id": "GHSA-2"}]}]})
+    assert osv._query_batch(http, ["pkg:npm/a@1.0.0", "pkg:npm/b@1.0.0"]) == {
+        "pkg:npm/a@1.0.0": ["GHSA-1", "GHSA-2"], "pkg:npm/b@1.0.0": []}
+    assert http.bodies[1]["queries"] == [{"package": {"purl": "pkg:npm/a@1.0.0"}, "page_token": "t1"}]
+
+    same = {"results": [{"vulns": [{"id": "GHSA-1"}], "next_page_token": "t1"}]}
+    with pytest.raises(HttpError, match="page token"):
+        osv._query_batch(_BatchHttp(same, same, same), ["pkg:npm/a@1.0.0"])
+
+    # MAX_PAGES pages are followed; one more is an error.
+    pages = [{"results": [{"vulns": [{"id": f"GHSA-{i}"}], "next_page_token": f"t{i}"}]} for i in range(osv.MAX_PAGES)]
+    last = {"results": [{"vulns": [{"id": "GHSA-last"}]}]}
+    got = osv._query_batch(_BatchHttp(*pages[:-1], last), ["pkg:npm/a@1.0.0"])
+    assert len(got["pkg:npm/a@1.0.0"]) == osv.MAX_PAGES
+    with pytest.raises(HttpError, match="more than"):
+        osv._query_batch(_BatchHttp(*pages, last), ["pkg:npm/a@1.0.0"])
+
+
+def test_osv_duplicate_packages_are_asked_once():
+    """Review (6 Nov): a purl listed twice (two renv.lock entries for one package version) was asked twice, giving
+    duplicate findings, or a false "repeated page token" error when paged."""
+    from oss_intake.scanners import osv
+
+    http = _BatchHttp({"results": [{"vulns": [{"id": "GHSA-1"}], "next_page_token": "t"}]},
+                      {"results": [{"vulns": [{"id": "GHSA-2"}]}]})
+    assert osv._query_batch(http, ["pkg:cran/x@1", "pkg:cran/x@1"]) == {"pkg:cran/x@1": ["GHSA-1", "GHSA-2"]}
+    assert len(http.bodies[0]["queries"]) == 1
+
+
+def test_ubuntu_fix_date_lookup_is_bounded_too():
+    """Review (6 Nov): the Ubuntu notice lookup had its own querybatch loop, which looped for ever on a repeated
+    page token and took a short answer silently. It now fails as a query failure (fix dates unknown)."""
+    from oss_intake.enrich import ubuntu
+    from oss_intake.http import HttpError
+
+    same = {"results": [{"vulns": [{"id": "USN-1"}], "next_page_token": "T"}]}
+    with pytest.raises(HttpError, match="page token"):
+        ubuntu._query(_BatchHttp(same, same, same), [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "a"}}])
+    with pytest.raises(HttpError, match="0 result"):
+        ubuntu._query(_BatchHttp({"results": []}), [{"package": {"ecosystem": "Ubuntu:24.04:LTS", "name": "a"}}])

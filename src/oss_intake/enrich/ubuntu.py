@@ -12,10 +12,10 @@ import re
 
 from ..http import Http, HttpError, prefetch
 from ..models import Finding, parse_datetime
+from ..scanners.osv import querybatch
 from ..versions import compare
 
 API = "https://api.osv.dev/v1"
-BATCH = 1000
 _REL = re.compile(r"^ubuntu (\d{2})\.(\d{2})")
 
 
@@ -30,20 +30,9 @@ def osv_ecosystem(os_release: str) -> str | None:
 
 
 def _query(http: Http, queries: list[dict]) -> list[list[str]]:
-    """querybatch with per-query pagination. Returns vuln IDs per query, in order."""
-    out: list[list[str]] = [[] for _ in queries]
-    pending = [(i, q) for i, q in enumerate(queries)]
-    while pending:
-        chunk, pending = pending[:BATCH], pending[BATCH:]
-        status, data = http.post_json(f"{API}/querybatch", {"queries": [q for _, q in chunk]})
-        if status != 200 or not isinstance(data, dict):
-            raise HttpError(f"OSV querybatch returned HTTP {status}")
-        for (i, q), res in zip(chunk, data.get("results") or [], strict=False):
-            res = res or {}
-            out[i].extend(v["id"] for v in res.get("vulns") or [] if v.get("id"))
-            if res.get("next_page_token"):
-                pending.append((i, {**q, "page_token": res["next_page_token"]}))
-    return out
+    """querybatch with per-query pagination, checked as for the vulnerability lookup (osv.querybatch). Returns
+    vuln IDs per query, in order."""
+    return querybatch(http, queries)
 
 
 def enrich(http: Http, findings: list[Finding]) -> dict:

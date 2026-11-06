@@ -92,7 +92,11 @@ class FakeHttp(Http):
     def post_json(self, url, body):
         self._check(url)
         if url == "https://api.osv.dev/v1/querybatch":
-            return 200, load("osv_querybatch.json")
+            # One result per query, as OSV answers: the recorded results in order, then none. (The file holds
+            # three, for the image fixture's packages; other runs ask for fewer or more.)
+            recorded = load("osv_querybatch.json")["results"]
+            n = len(body["queries"])
+            return 200, {"results": (recorded + [{}] * n)[:n]}
         raise AssertionError(f"unexpected POST {url}")
 
 

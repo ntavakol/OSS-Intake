@@ -2043,3 +2043,20 @@ def test_min_severity_does_not_lower_the_likelihood_gate(tmp_path):
     full = tmp_path / "full"
     assert cli.main(["--path", str(lock), "--out", str(full), "--from-trivy-json", str(tj), "--scanners", "trivy",
                      "--offline", "--fail-on-likelihood", "2", "--as-of", AS_OF]) == cli.EXIT_THRESHOLD
+
+
+class ShortOsvHttp(PkgHttp):
+    """OSV answers the batch for demo 1.0.0 and evil 1.0.0 with one result only."""
+
+    def post_json(self, url, body):
+        status, data = super().post_json(url, body)
+        return status, {"results": data["results"][:1]}
+
+
+def test_short_osv_answer_stops_a_package_run(tmp_path, capsys):
+    """Threat model (6 Nov): the package left without a result read as having no known vulnerabilities, so
+    malware (evil 1.0.0) passed --fail-on malicious."""
+    code, _ = _pkg_run(tmp_path, ShortOsvHttp(), "--package", "npm:demo@1.0.0", "--package", "npm:evil@1.0.0",
+                       "--fail-on", "malicious")
+    assert code == cli.EXIT_ERROR
+    assert "answered 1 result(s) for 2 queries" in capsys.readouterr().err
