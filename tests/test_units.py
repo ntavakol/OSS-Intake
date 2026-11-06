@@ -2912,3 +2912,33 @@ def test_osv_advisory_of_the_wrong_shape_is_kept_without_its_details(advisory):
 
     (f,) = osv.scan(Http(), ["pkg:npm/left-pad@1.3.0"])
     assert f.vuln_id == "GHSA-x" and f.details_unavailable
+
+
+@pytest.mark.parametrize("result", [{"vulns": {"id": "MAL-1"}}, {"vulns": "MAL-1"}, {"vulns": ["MAL-1"]},
+                                    {"vulns": [{"ID": "MAL-1"}]}, {"vulns": [{"id": 5}]},
+                                    {"vulns": [], "next_page_token": 5}],
+                         ids=["object", "text", "list of text", "no id", "id not text", "token not text"])
+def test_osv_result_of_the_wrong_shape_is_an_error(result):
+    """Pre-release review of 0.16.0: these read as "no vulnerabilities", so a malicious package passed
+    --fail-on malicious; the right number of results is not enough, each must have OSV's shape."""
+    from oss_intake.http import HttpError
+    from oss_intake.scanners import osv
+
+    with pytest.raises(HttpError, match="not in OSV's form"):
+        osv.querybatch(_BatchHttp({"results": [result]}), [{"package": {"purl": "pkg:npm/evil@1.0.0"}}])
+
+
+@pytest.mark.parametrize("doc", [
+    {"spdxVersion": "SPDX-2.3", "packages": {"name": "a"}},
+    {"spdxVersion": "SPDX-2.3", "packages": [{"name": "a", "externalRefs": {"referenceType": "purl"}}]},
+], ids=["packages", "externalRefs"])
+def test_spdx_list_field_of_the_wrong_type_is_an_input_error(tmp_path, doc):
+    """Pre-release review of 0.16.0: read as empty, an SPDX file in a folder added nothing and was not listed."""
+    import json
+
+    from oss_intake import sbom
+
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(inputs.InputError, match="must be a list"):
+        sbom.read(p)

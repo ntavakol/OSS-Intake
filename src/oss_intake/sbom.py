@@ -187,7 +187,7 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
                   and r.get("spdxElementId") == "SPDXRef-DOCUMENT" and isinstance(r.get("relatedSpdxElement"), str)}
     subject = str(data.get("name") or "")
     out: list[tuple[str, str, str, dict]] = []
-    for p in data.get("packages") or []:
+    for p in _list(data.get("packages"), "packages"):
         if not isinstance(p, dict):
             continue
         name = str(p.get("name") or "") + (f" {p.get('versionInfo')}" if p.get("versionInfo") else "")
@@ -196,7 +196,7 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
         if len(described) == 1 and p.get("SPDXID") in described:
             subject = str(p.get("name") or subject)
             continue
-        purls = [r.get("referenceLocator") for r in p.get("externalRefs") or [] if isinstance(r, dict)
+        purls = [r.get("referenceLocator") for r in _list(p.get("externalRefs"), "externalRefs") if isinstance(r, dict)
                  and str(r.get("referenceType", "")).lower() == "purl"
                  and str(r.get("referenceCategory", "")).upper().replace("_", "-") == "PACKAGE-MANAGER"]
         supplier = str(p.get("supplier") or "").removeprefix("Organization: ").removeprefix("Person: ")

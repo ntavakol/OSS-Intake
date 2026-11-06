@@ -2060,3 +2060,20 @@ def test_short_osv_answer_stops_a_package_run(tmp_path, capsys):
                        "--fail-on", "malicious")
     assert code == cli.EXIT_ERROR
     assert "answered 1 result(s) for 2 queries" in capsys.readouterr().err
+
+
+class OsvVulnsAsObjectHttp(PkgHttp):
+    """OSV answers each result's vulns as an object instead of a list."""
+
+    def post_json(self, url, body):
+        status, data = super().post_json(url, body)
+        return status, {"results": [{"vulns": {"items": r.get("vulns") or []}} for r in data["results"]]}
+
+
+def test_osv_result_of_the_wrong_shape_stops_a_package_run(tmp_path, capsys):
+    """Pre-release review of 0.16.0: with the right number of results but vulns of the wrong type, malware
+    (evil 1.0.0) passed --fail-on malicious with exit 0."""
+    code, _ = _pkg_run(tmp_path, OsvVulnsAsObjectHttp(), "--package", "npm:demo@1.0.0", "--package",
+                       "npm:evil@1.0.0", "--fail-on", "malicious")
+    assert code == cli.EXIT_ERROR
+    assert "not in OSV's form" in capsys.readouterr().err

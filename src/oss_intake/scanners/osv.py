@@ -20,7 +20,9 @@ API = "https://api.osv.dev/v1"
 BATCH = 1000
 # Pages of results followed for one query. OSV pages large answers (and busy batches); a query with more than
 # this many pages, or a page token that repeats, is an error rather than a partial (and so falsely clean) answer.
-MAX_PAGES = 25
+# High enough for the largest distro source packages (Linux kernel queries without a version): a loop is stopped
+# by the repeated-token check, so this bounds only a server that keeps making new tokens.
+MAX_PAGES = 200
 # Language ecosystems where purl queries are well supported. OS packages are left to Trivy/Grype,
 # which understand distro backports.
 SUPPORTED_TYPES = {"maven", "npm", "pypi", "golang", "cargo", "nuget", "gem", "composer", "hex", "pub", "cran"}
@@ -71,11 +73,14 @@ def querybatch(http: Http, queries: list[dict], labels: list[str] | None = None)
             raise HttpError(f"OSV querybatch answered {got} result(s) for {len(chunk)} queries; those without a "
                             "result were not checked")
         for (i, q), res in zip(chunk, results, strict=True):
-            if not isinstance(res, dict):
-                raise HttpError(f"OSV querybatch answered something other than an object for {names[i]}; it "
-                                "was not checked")
-            out[i].extend(v["id"] for v in res.get("vulns") or [] if isinstance(v, dict) and v.get("id"))
-            token = res.get("next_page_token")
+            vulns, token = (res.get("vulns"), res.get("next_page_token")) if isinstance(res, dict) else (None, None)
+            if not isinstance(res, dict) or not (vulns is None or isinstance(vulns, list) and all(
+                    isinstance(v, dict) and isinstance(v.get("id"), str) and v["id"] for v in vulns)) \
+                    or not (token is None or isinstance(token, str)):
+                # An entry read as "no vulnerabilities" because of its shape would pass a gate: refused instead.
+                raise HttpError(f"OSV querybatch answered for {names[i]} in a shape that is not in OSV's form (a list "
+                                "of vulnerabilities, each with an id); it was not checked")
+            out[i].extend(v["id"] for v in vulns or [])
             if token:
                 if token in seen[i]:
                     raise HttpError(f"OSV querybatch repeated a page token for {names[i]}; its results are "

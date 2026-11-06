@@ -51,12 +51,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
   The option now only shortens the reports: findings in Act now, malicious ones and those missing their details
   are kept, the gates and likelihood see every finding, and a gate met only by findings left out is named in a
   warning (also under `--quiet`). The per-package rows and verdicts and the VEX files count every finding.
-- An OSV batch answer with fewer results than packages asked about read as no vulnerabilities for those left
-  without one, so a malicious package could pass `--fail-on malicious`, and a page token that kept repeating made
-  the run loop for ever. A short or malformed answer, a repeated page token or more than 25 pages for a package
-  are now an OSV failure: a package-list run stops (exit 1), and for an image the malicious-package check is
-  marked partial. The Ubuntu fix-date lookup, which had the same loop, uses the same checks (a failure leaves
-  those fix dates unknown), and a package listed twice is asked about once.
+- An OSV batch answer with fewer results than packages asked about read as no vulnerabilities for those left without
+  one, so a malicious package could pass `--fail-on malicious`, and a page token that kept repeating made the run
+  loop for ever. A short or malformed answer (a result whose vulnerabilities are not a list of objects each with an
+  id included), a repeated page token or more than 200 pages for a package are now an OSV failure: a package-list
+  run stops (exit 1), and for an image the malicious-package check is marked partial. The Ubuntu fix-date lookup,
+  which had the same loop, uses the same checks (a failure leaves those fix dates unknown), and a package listed
+  twice is asked about once.
 - Malformed input found by fuzzing the parsers no longer stops the run with a Python traceback. Deeply nested
   JSON, fields of the wrong type and text that is not UTF-8 are now input errors (exit 2) in SBOMs (a list field
   of another type is refused, not read as empty), inventories (a purl such as `pkg:a?/b`), decisions files (CSV
