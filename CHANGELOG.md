@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-06
+
+A fix release: upgrade from 0.15.0, especially where oss-intake gates a pipeline. Two bugs could make a gate pass
+when it should fail: `--min-severity` could hide what a gate depends on, and a short answer from OSV read as clean,
+so a malicious package could pass `--fail-on malicious`. Malformed input now gives a clear error instead of a
+Python traceback, the parsers are fuzzed every week, and releases carry SLSA build provenance.
+
 ### Added
 - Releases carry SLSA build provenance (`oss-intake-<version>.intoto.jsonl`, SLSA level 3) for the wheel, the
   source archive and the SBOM, made by the SLSA GitHub generator; the guide shows how to check it with
