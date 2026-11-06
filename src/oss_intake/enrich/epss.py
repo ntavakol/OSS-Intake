@@ -35,8 +35,8 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         except HttpError:
             stats["errors"] += 1
             continue
-        if status != 200 or not isinstance(data, dict):
-            stats["errors"] += 1
+        if status != 200 or not isinstance(data, dict) or not isinstance(data.get("data"), list):
+            stats["errors"] += 1  # an error object ({"status": "error"}) or other shape is a failed batch
             continue
         for row in data.get("data") or []:
             try:

@@ -3230,3 +3230,36 @@ def test_trivy_image_scan_lists_every_package(monkeypatch):
     monkeypatch.setattr(trivy, "run", lambda cmd, timeout: seen.append(cmd) or b"{}")
     trivy.scan("trivy", "owner/app:1.0", None, [], 60)
     assert "--list-all-pkgs" in seen[0] and seen[0][-1] == "owner/app:1.0"
+
+
+def test_exploit_index_of_the_wrong_shape_is_a_failed_load():
+    """Audit (7 Nov): any 200 answer was taken as the index, so a proxy's block page parsed to no entries and the
+    exploit indexes counted as checked."""
+    from oss_intake.enrich import exploits
+
+    page = "<html><body>Blocked by policy</body></html>"
+
+    class H:
+        def get_json(self, url, params=None):
+            return 200, {"blocked": "by policy"}
+
+        def get_text(self, url):
+            return 200, page
+
+    info = {"sources": {}, "failed": []}
+    assert exploits._load(H(), info) == ({}, set(), {})
+    assert sorted(info["failed"]) == ["exploit-db", "metasploit", "nuclei"]
+    assert exploits._looks_like_nuclei('{"ID": "CVE-2099-1", "Info": {}}\n')
+    assert exploits._looks_like_exploitdb("id,file,description,codes,verified\n1,a,b,CVE-2099-1,1\n")
+
+
+def test_epss_answer_of_the_wrong_shape_is_a_failed_batch():
+    from oss_intake.enrich import epss
+
+    class H:
+        def get_json(self, url, params=None):
+            return 200, {"status": "error", "message": "rate limited"}
+
+    f = _f(vuln_id="CVE-2099-0001")
+    stats = epss.enrich(H(), [f])
+    assert stats["errors"] == 1 and f.epss is None

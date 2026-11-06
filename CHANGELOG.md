@@ -16,6 +16,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- The exploit indexes (Metasploit, Nuclei, Exploit-DB) took any 200 answer as the index, so a proxy's block page
+  parsed to no entries and the exploit check counted as done; an EPSS answer of the wrong shape (an error object)
+  counted as a batch with no scores. Both now count as failed: each index must have its own shape (module
+  objects, a JSON line with an ID, a CSV header with id and codes), and an EPSS answer a data list.
 - A Trivy report that lists no packages (made with `--list-all-pkgs=false`, or by an older Trivy) gave OSV
   nothing to query, yet the malicious-package check counted as complete and release age as "no language
   packages", so `--fail-on malicious`, `recent` and `unknown-age` passed. The packages with findings are now
