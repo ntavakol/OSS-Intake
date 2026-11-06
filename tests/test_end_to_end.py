@@ -2291,3 +2291,23 @@ def test_vex_claims_only_decisions_made_for_this_version(tmp_path, fixtures):
         ov, cdx = vex_for(name, version, pkg_type)
         assert ov["status"] == "under_investigation" and cdx["state"] == "in_triage", name
         assert "not yet confirmed for 6.1.10" in ov["status_notes"] and "not yet confirmed" in cdx["detail"], name
+
+
+def test_likelihood_gate_fails_closed_when_its_evidence_did_not_load(tmp_path, fixtures, fake_http, capsys):
+    """Audit (7 Nov): a source that did not load counted as 0 for the likelihood rules, so with CISA KEV down a
+    KEV finding with a fix scored lower and --fail-on-likelihood 5 passed. A rule at or above the threshold that
+    unchecked evidence decides now makes the gate fail with exit 1."""
+    code, out = run(tmp_path / "up", fixtures, fake_http, "--likelihood", "--fail-on-likelihood", "5")
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    level_up = a["likelihood"]["level"]
+    assert level_up == 5 and code == cli.EXIT_THRESHOLD  # the fixture has a KEV finding with a fix
+    capsys.readouterr()
+    code, out = run(tmp_path / "down", fixtures, FakeHttp(fail_hosts=("cisa.gov",)), "--likelihood",
+                    "--fail-on-likelihood", "5")
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["likelihood"]["level"] < 5 and a["likelihood"]["could_be"] == 5
+    assert code == cli.EXIT_ERROR
+    assert "kev_with_fix" in capsys.readouterr().err
+    # A threshold no unchecked rule reaches still passes on the result.
+    code, _ = run(tmp_path / "low", fixtures, FakeHttp(fail_hosts=("cisa.gov",)), "--fail-on-likelihood", "2")
+    assert code == cli.EXIT_THRESHOLD

@@ -109,6 +109,10 @@ def validate(cfg: dict) -> None:
                     raise ConfigError(f"rule {i}: a condition's value must be a number or true/false")
 
 
+def _bound(value, checked: bool):
+    return value if checked or value else None
+
+
 def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
     """Flatten the lag, health and Scorecard results into the metrics the likelihood rules match on (fixes by
     severity, KEV, exploits, EPSS, ages, archived, Scorecard score). Values that were not checked are None."""
@@ -120,13 +124,18 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "high_fix_at_release": sev_at.get("HIGH", 0),
         "critical_with_fix": sev_fix.get("CRITICAL", 0),
         "high_with_fix": sev_fix.get("HIGH", 0),
-        "kev_with_fix": lag.get("kev_with_fix", 0),
-        "malicious": lag.get("malicious", 0),
+        # A count from a source that did not fully load is a lower bound: what it found counts, but a 0 from it
+        # is unknown, so a rule on it must not read as not met.
+        "kev_with_fix": _bound(lag.get("kev_with_fix", 0), lag.get("kev_checked", True)),
+        "malicious": _bound(lag.get("malicious", 0), lag.get("malicious_checked", True)),
         "weaponised_with_fix": lag.get("weaponised_with_fix") if lag.get("exploits_checked") else None,
         "public_exploit_with_fix": lag.get("public_exploit_with_fix") if lag.get("exploits_checked") else None,
-        "max_epss_with_fix": lag.get("max_epss_with_fix"),
-        "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None else None,
-        "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else None,
+        "max_epss_with_fix": _bound(lag.get("max_epss_with_fix") or 0, lag["epss_checked"])
+        if "epss_checked" in lag else lag.get("max_epss_with_fix"),
+        # Unknown without a matched release, unless there is nothing it could count (no fix of that severity).
+        "critical_fix_unshipped": sev_un.get("CRITICAL", 0) if sev_un is not None
+        else 0 if not sev_fix.get("CRITICAL") else None,
+        "high_fix_unshipped": sev_un.get("HIGH", 0) if sev_un is not None else 0 if not sev_fix.get("HIGH") else None,
         "max_days_fix_available": lag.get("max_days_fix_available"),
         "days_since_latest_release": health.get("days_since_latest_release"),
         "archived": 1 if health.get("archived") else 0,
@@ -143,6 +152,30 @@ def _match(cond: dict, m: dict) -> bool:
     if val is None:
         return False  # unknown signals never trigger a rule
     return OPS[cond["op"]](val, cond["value"])
+
+
+# Upper bounds for metrics that can be unknown: fixes not shipped are at most the fixes of that severity.
+_AT_MOST = {"critical_fix_unshipped": "critical_with_fix", "high_fix_unshipped": "high_with_fix"}
+
+
+def _known(cond: dict, m: dict) -> bool | None:
+    """A condition as True, False, or None when its metric was not checked (False after all when even its upper
+    bound cannot reach the value)."""
+    if m.get(cond["metric"]) is not None:
+        return _match(cond, m)
+    most = m.get(_AT_MOST.get(cond["metric"], ""))
+    if most is not None and cond["op"] in (">", ">=") and not OPS[cond["op"]](most, cond["value"]):
+        return False
+    return None
+
+
+def _rule(r: dict, m: dict) -> bool | None:
+    """A rule as True, False, or None when unchecked metrics decide it (it might have matched)."""
+    alls = [_known(c, m) for c in r.get("all", [])]
+    anys = [_known(c, m) for c in r.get("any", [])]
+    all_ok = False if False in alls else None if None in alls else True
+    any_ok = True if not anys or True in anys else None if None in anys else False
+    return False if False in (all_ok, any_ok) else True if all_ok and any_ok else None
 
 
 def confidence(m: dict) -> tuple[str, list[str]]:
@@ -167,6 +200,13 @@ def evaluate(cfg: dict, m: dict) -> dict:
     None."""
     conf, conf_reasons = confidence(m)
     top = max(r["level"] for r in cfg["rules"])
+    # Rules ahead of the one that matches whose metrics were not checked: had they been, one might have matched
+    # instead, so --fail-on-likelihood at their level cannot pass on this result.
+    undecided = [r for r in cfg["rules"][:next((i for i, r in enumerate(cfg["rules"]) if _rule(r, m)),
+                                               len(cfg["rules"]))] if _rule(r, m) is None]
+    could_be = max((r["level"] for r in undecided), default=None)
+    unchecked = sorted({c["metric"] for r in undecided for c in r.get("all", []) + r.get("any", [])
+                        if m.get(c["metric"]) is None})
     for r in cfg["rules"]:
         all_ok = all(_match(c, m) for c in r.get("all", []))
         any_list = r.get("any", [])
@@ -184,6 +224,9 @@ def evaluate(cfg: dict, m: dict) -> dict:
                 "custom_config": cfg is not DEFAULT_CONFIG,
                 "confidence": conf,
                 "confidence_reasons": conf_reasons,
+                "could_be": could_be if could_be and could_be > r["level"] else None,
+                "unchecked": unchecked if could_be and could_be > r["level"] else [],
             }
     return {"level": None, "label": "No rule matched", "reason": "", "metrics": m, "heuristic": True,
-            "custom_config": cfg is not DEFAULT_CONFIG, "confidence": conf, "confidence_reasons": conf_reasons}
+            "custom_config": cfg is not DEFAULT_CONFIG, "confidence": conf, "confidence_reasons": conf_reasons,
+            "could_be": could_be, "unchecked": unchecked}

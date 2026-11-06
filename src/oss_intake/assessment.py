@@ -393,12 +393,16 @@ def _lag_and_likelihood(args, findings: list, all_findings: list, release_date, 
     """Release lag of the findings shown; likelihood from every finding, as it is a gate too."""
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
+    for name in ("kev", "malicious", "epss"):
+        lag_m[f"{name}_checked"] = checks.state_of(check_info, name) == checks.CHECKED  # partial is not enough
     # Likelihood is a gate too (--fail-on-likelihood), so it is worked out from every finding, not only those the
     # reports show.
     lag_all = lag_m
     if lk_cfg and len(findings) < len(all_findings):
         lag_all = lag.compute(all_findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
         lag_all["exploits_checked"] = checks.is_checked(check_info, "exploits")
+        for name in ("kev", "malicious", "epss"):
+            lag_all[f"{name}_checked"] = checks.state_of(check_info, name) == checks.CHECKED
     lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_all, health, sc)) if lk_cfg else None
     if lk and lag_all is not lag_m:
         shown_lk = likelihood.evaluate(lk_cfg, likelihood.metrics(lag_m, health, sc))
@@ -595,9 +599,17 @@ def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_i
         log(f"--fail-on: {len(unchecked)} version(s) were not looked up (lookup failed or over --release-age-max), "
             "so they were not checked for being new: " + ", ".join(unchecked[:5])
             + (f" and {len(unchecked) - 5} more" if len(unchecked) > 5 else ""), args.quiet, force=True)
-    if unknown and not tripped:
+    lk_met = bool(lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood)
+    if lk and args.fail_on_likelihood and not lk_met and (lk.get("could_be") or 0) >= args.fail_on_likelihood:
+        # A rule at or above the threshold could not be decided: its evidence did not load (KEV, malicious
+        # packages, EPSS, exploit indexes, a release, Scorecard), so the gate cannot pass on the lower result.
+        log(f"--fail-on-likelihood {args.fail_on_likelihood}: could not be evaluated (likelihood is "
+            f"{lk['level'] or 'no rule matched'}, but a level {lk['could_be']} rule depends on what was not "
+            f"checked: {', '.join(lk['unchecked'])}); failing rather than passing", args.quiet, force=True)
+        unknown = [*unknown, ("likelihood", "inputs not checked")]
+    if unknown and not tripped and not lk_met:
         return EXIT_ERROR
-    if lk and args.fail_on_likelihood and lk["level"] and lk["level"] >= args.fail_on_likelihood:
+    if lk_met:
         return EXIT_THRESHOLD
     return EXIT_THRESHOLD if tripped else EXIT_OK
 

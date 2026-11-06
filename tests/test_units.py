@@ -3194,3 +3194,29 @@ def test_unverified_govulncheck_does_not_set_a_finding_aside():
     assert group == "review" and "not set aside: the govulncheck executable was not verified" in reason
     reachability.apply([f], {"usr/bin/app": res}, verified=True)
     assert triage.classify(f)[0] == "aside"
+
+
+def test_likelihood_rules_with_unchecked_metrics_are_undecided():
+    """Audit (7 Nov): a source that did not load counted as 0, so a higher rule silently did not fire."""
+    from oss_intake import likelihood
+
+    cfg = likelihood.DEFAULT_CONFIG
+
+    def m(sev, **over):
+        lag = {"with_fix_by_severity": {sev: 1}, "kev_with_fix": 0, "kev_checked": True, "malicious_checked": True,
+               "epss_checked": True, "exploits_checked": True, "weaponised_with_fix": 0,
+               "public_exploit_with_fix": 0, "release_date": "2026-01-01", **over}
+        return likelihood.metrics(lag, {}, {})
+
+    base = m("HIGH", kev_checked=False)
+    assert base["kev_with_fix"] is None and base["max_epss_with_fix"] == 0
+    r = likelihood.evaluate(cfg, base)
+    assert r["level"] == 2 and r["could_be"] == 5 and "kev_with_fix" in r["unchecked"]
+    # What a partly loaded source did find still counts.
+    found = m("HIGH", kev_checked=False, kev_with_fix=1)
+    assert found["kev_with_fix"] == 1 and likelihood.evaluate(cfg, found)["level"] == 5
+    r = likelihood.evaluate(cfg, m("HIGH"))
+    assert r["level"] == 2 and r["could_be"] is None and r["unchecked"] == []  # no critical, so nothing unshipped
+    # A critical fix with no matched release: whether it shipped is unknown, so a level 4 rule is undecided.
+    r = likelihood.evaluate(cfg, m("CRITICAL"))
+    assert r["level"] == 2 and r["could_be"] == 4 and "critical_fix_unshipped" in r["unchecked"]

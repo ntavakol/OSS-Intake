@@ -16,6 +16,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- `--fail-on-likelihood` passed when the evidence a higher rule needed did not load: with CISA KEV down, a KEV
+  finding with a fix scored 2 instead of 5 and `--fail-on-likelihood 5` passed. A source that did not fully load
+  now counts as unknown (what it did find still counts), and when a rule at or above the threshold depends on
+  unknown evidence the gate fails with exit 1, naming it. `assessment.json` records `could_be` and `unchecked`.
 - `openvex.json` and `vex.cdx.json` stated a decision made for another version, without a version, or matched
   by name alone as a plain `not_affected` (or fixed) for the installed version, and Grype, Trivy and
   Dependency-Track hide a finding on that without review. Such a decision now goes out as under investigation
