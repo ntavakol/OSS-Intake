@@ -3113,3 +3113,27 @@ def test_path_starting_with_a_dash_is_not_read_as_a_scanner_option(monkeypatch):
     assert seen[2][-1] == os.path.join(".", "-dir", "app")
     trivy.scan_path("trivy", "fs", "/abs/app", [], 60)
     assert seen[3][-1] == "/abs/app"
+
+
+_WORKFLOWS = Path(__file__).resolve().parent.parent / ".github" / "workflows"
+
+
+@pytest.mark.parametrize("name", sorted(p.name for p in _WORKFLOWS.glob("*.yml")) or ["(none)"])
+def test_every_workflow_is_pinned_with_top_level_permissions(name):
+    """Threat model open item: codeql.yml and scorecard.yml had no pinning test, and release.yml's top-level
+    permissions were not checked. Every workflow file is now held to the audit oss-intake applies to others, so a
+    new one is covered without a test of its own."""
+    import re
+
+    from oss_intake.health import workflows as wf
+
+    if name == "(none)":
+        pytest.skip("workflows are not in the sdist")
+    text = (_WORKFLOWS / name).read_text(encoding="utf-8")
+    res = wf.analyse(name, text, integrity.load_known_bad()["actions"])
+    assert res["uses"] > 0 and res["unpinned"] == [] and res["known_bad"] == [], res
+    assert res["top_level_permissions"] and not res["write_all"] and not res["pull_request_target"], res
+    # Every checkout leaves no token behind for later steps.
+    steps = re.split(r"(?m)^\s+- (?=uses:|name:|run:)", text)
+    checkouts = [s for s in steps if s.startswith("uses: actions/checkout@")]
+    assert checkouts and all("persist-credentials: false" in s for s in checkouts), name

@@ -206,9 +206,8 @@ publishes to PyPI, GitHub releases and GitHub Pages. A compromise here reaches e
 
 **Left open:**
 
-- The tests check pinning in `ci.yml`, `release.yml`, `self-check.yml`, `pages.yml` and the scheduled-rescan
-  example, but not in `codeql.yml` or `scorecard.yml`; the release test does not check its top-level
-  permissions.
+- The pinning test reads the workflow files as text, as the audit of other projects does; it does not check
+  what a pinned action itself pulls in (a container image or a script it downloads).
 - Python and Node come from setup-python and setup-node by version, and CI installs zsh with apt, unpinned.
 - `main` accepts direct pushes from the maintainer, without a pull request or passing checks first (branch
   protection with required checks is in the backlog). With one maintainer, the maintainer's GitHub account is the
@@ -281,7 +280,6 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Extend the workflow pinning tests to `codeql.yml` and `scorecard.yml`.
-4. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-5. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
+4. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.

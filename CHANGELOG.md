@@ -41,6 +41,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   now not used, with a warning.
 - A `--path` folder whose name starts with `-` reached Trivy, and with `--reachability` govulncheck, as an
   option. It is now given as `./-name`.
+- Every workflow in `.github/workflows` is now tested for pinned actions, top-level permissions, no write-all,
+  no `pull_request_target` and checkouts that keep no token; `codeql.yml` and `scorecard.yml` had no such test.
 
 ## [0.16.0] - 2026-11-06
 
