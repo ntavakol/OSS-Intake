@@ -282,9 +282,10 @@ machine if the extension ever ran.
 
 ## Open items that could be fixed
 
-Proposed, not yet agreed: each goes into BACKLOG.md only once agreed. What is not listed here (a service that
-answers wrongly, an extension author determined to avoid the indicators, the single maintainer) are limits of
-the approach rather than defects. The first two can turn a failing gate into a pass.
+All fourteen were agreed for the backlog on 6 Nov; BACKLOG.md has them in order, and each is removed here when
+it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
+indicators, the single maintainer) are limits of the approach rather than defects. The first two can turn a
+failing gate into a pass.
 
 1. Apply `--min-severity` after the gates (or keep findings without a severity, and KEV findings), so it can only
    shorten the report, never pass a gate.
