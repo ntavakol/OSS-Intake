@@ -95,6 +95,7 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
         check.notes.append(release["note"])
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {}),
                            **({"hash_unsigned": True} if unsigned else {})}
+    scanners_meta[tool]["path"] = Path(path).name  # identified by version and SHA-256, not where it is installed
     target = args.path if args.path else args.image
     log(f"running {tool} {info['version']} on {target}", args.quiet)
     if args.path:
@@ -250,6 +251,7 @@ def run_govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: lis
                                                        args.timeout, used)
                 if used.get("path"):
                     used["sha256"] = integrity.sha256_file(used["path"])
+                    used["path"] = Path(used["path"]).name
                     scanners_meta["govulncheck"]["copied_with"] = used
             except ScannerError as exc:
                 warnings.append(f"--reachability skipped: {exc}")

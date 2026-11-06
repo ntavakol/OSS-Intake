@@ -54,13 +54,25 @@ from .models import SEVERITY_ORDER, parse_datetime
 from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, OUTPUT_FILES, image_tag, log
 
 
+def shown_path(p: str | Path | None) -> str | None:
+    """A local path as the reports give it: under the home folder as ~/..., anywhere else by its name only, so a
+    report shared with others does not carry the user's name or folder layout."""
+    if not p:
+        return None
+    path = Path(p).expanduser()
+    try:
+        return "~/" + path.resolve().relative_to(Path.home().resolve()).as_posix()
+    except (ValueError, OSError, RuntimeError):
+        return path.name or str(p)
+
+
 def network_info(net) -> dict:
     """Requests made and cache use, so a slow or fast run can be explained."""
     if net is None:
         return {"status": "offline"}
     out: dict = {"requests": getattr(net, "requests_made", None)}
     cache = getattr(net, "cache", None)
-    out["cache"] = cache.stats() if cache is not None else None
+    out["cache"] = {**cache.stats(), "folder": shown_path(cache.folder)} if cache is not None else None
     return out
 
 
@@ -396,7 +408,9 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
-        "inputs": {"image": args.image, "path": args.path, "path_kind": args.path_kind, "repo": args.repo,
+        # The target by its name: the reports describe what was assessed, not where it sat on this machine.
+        "inputs": {"image": args.image, "path": Path(args.path).name if args.path else None,
+                   "path_kind": args.path_kind, "repo": args.repo,
                    "packages": [e["purl"] for e in args.inventory] if args.package else None,
                    "image_src": args.image_src, "platform": args.platform,
                    "release_tag": args.release_tag, "release_date": args.release_date,

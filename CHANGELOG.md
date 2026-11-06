@@ -43,6 +43,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   option. It is now given as `./-name`.
 - Every workflow in `.github/workflows` is now tested for pinned actions, top-level permissions, no write-all,
   no `pull_request_target` and checkouts that keep no token; `codeql.yml` and `scorecard.yml` had no such test.
+- Reports carried local paths: the `--path` value as given in `assessment.json` and the scope tables, and in
+  `assessment.json` the scanner's path and the cache folder, and with them the user's name. The target is now
+  given by its name (`inputs.path` in `assessment.json` is the file or folder name), the scanner by its name with
+  its version and SHA-256, and the cache folder from `~`.
 
 ## [0.16.0] - 2026-11-06
 

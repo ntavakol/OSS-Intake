@@ -170,6 +170,7 @@ user's files (where the output is written), and the user's privacy (what the rep
 | Markup, links or broken tables in Markdown | Every value is escaped (`` \ ` * _ [ ] ! \| ~ # ``, `<` and `>`), and line breaks become spaces. | `report._md_cell` |
 | Spreadsheet formula injection in CSV | A value starting with `=`, `+`, `-`, `@`, a tab or a carriage return (after any leading apostrophes), or with one after a separator inside it, is prefixed with `'`, header row included; signed numbers after a separator are left alone. Decisions read back undo it. | `report.csv_safe`, `decisions.unguard` |
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |
+| A report shared with others gives away the user's name or folders | The target is given by its name, the scanner and the tools used to copy files out of an image by their names (with version and SHA-256), and the cache folder from `~` or by its name; no absolute local path is written. | `assessment.shown_path`, `assessment._document`, `scanning.run_or_load` |
 | An output folder that cannot be written fails after the work is done | It is created and tested for writing before anything else. | `cli.prepare_out` |
 | A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work. At the end, report files an earlier run left that this run did not write are removed: only the tool's own file names, never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
 
@@ -177,9 +178,9 @@ user's files (where the output is written), and the user's privacy (what the rep
 
 - Existing reports are replaced without warning. A symbolic link put in place of a report after the run has
   started (the folder is checked once, at the start) is still followed.
-- Paths of the user's machine reach the reports: the `--path` value as given (with `~` expanded) in
-  `assessment.json` and the HTML scope table, and in `assessment.json` the scanner's path on live runs and the
-  cache folder.
+- Paths inside the target as the scanners report them (a lockfile's path within the scanned folder) are kept,
+  as they say where a finding is; so are the names of the target, the scanner and, outside the home folder,
+  the cache folder.
 - The CSV guard does not catch a formula after leading spaces or a line break, the full-width `＝`, or `|`.
   Spreadsheets differ in what they treat as a formula.
 - Bare URLs in Markdown are made into links by some viewers (they are not made from data in HTML).
@@ -280,6 +281,5 @@ indicators, the single maintainer) are limits of the approach rather than defect
    which an existing test keeps set aside on purpose; also Ned's call.
 2. Make `--fail-on recent` fail for a version with no known date (an existing test expects it to pass for one,
    so this needs Ned's OK; `--fail-on unknown-age` catches these today).
-3. Write paths relative to the target, not absolute local paths, in `assessment.json` and the HTML report.
-4. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
+3. Resolve a VS Code extension's `main` inside its folder as VS Code does (an absolute path or `../` does not
    leave it), so the bundled check cannot be avoided.

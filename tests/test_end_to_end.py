@@ -2162,3 +2162,45 @@ def test_a_report_this_run_reads_is_not_removed(tmp_path, fixtures):
     code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
                      "--from-trivy-json", str(raw), "--no-cache"])
     assert code == cli.EXIT_OK and raw.exists()
+
+
+def test_reports_do_not_carry_local_paths(tmp_path, monkeypatch, fixtures):
+    """Threat model open item: the --path value as given, and the scanner's path, reached assessment.json and the
+    reports, and with them the user's name and folder layout."""
+    fake = tmp_path / "tools" / "trivy"
+    fake.parent.mkdir()
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    report = (fixtures / "trivy.json").read_bytes()
+    monkeypatch.setattr(cli.trivy_mod, "run",
+                        lambda cmd, timeout: b'{"Version": "0.76.1"}' if "--version" in cmd else report)
+    app = tmp_path / "someone" / "private-project"
+    app.mkdir(parents=True)
+    (app / "requirements.txt").write_text("requests==2.0.0\n", encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(app), "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--trivy-path", str(fake)]) == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["path"] == "private-project" and a["scanners"]["trivy"]["path"] == "trivy"
+    for name in ("assessment.json", "summary.md", "report.html", "findings.csv"):
+        text = (out / name).read_text(encoding="utf-8").replace("\\", "")  # Markdown escapes _ in names
+        assert "someone" not in text and str(tmp_path).replace("\\", "") not in text, name
+    assert "private-project" in (out / "report.html").read_text(encoding="utf-8")
+
+
+def test_cache_folder_is_shown_from_home_or_by_name(tmp_path, monkeypatch):
+    from pathlib import Path as P
+
+    from oss_intake import assessment
+    from oss_intake.http import ResponseCache
+
+    monkeypatch.setattr(P, "home", classmethod(lambda cls: tmp_path / "home" / "ned"))
+
+    class Net:
+        requests_made = 0
+
+    net = Net()
+    net.cache = ResponseCache(tmp_path / "home" / "ned" / ".cache" / "oss-intake")
+    assert assessment.network_info(net)["cache"]["folder"] == "~/.cache/oss-intake"
+    net.cache = ResponseCache(tmp_path / "srv" / "shared-cache")
+    assert assessment.network_info(net)["cache"]["folder"] == "shared-cache"
