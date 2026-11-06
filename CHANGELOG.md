@@ -16,6 +16,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- An renv.lock with no packages gave a clean report, and an entry with a wrong-typed name or a placeholder
+  version (`latest`, `1.4.*`) became a package URL OSV knows nothing about, so it read as clean. renv.lock entries
+  are now checked like a package list's rows, and an empty one is refused (exit 2).
 - An SBOM's own subject was never checked: in a vendor SBOM for a library (the library as CycloneDX's
   `metadata.component`, or SPDX's single described package), the library and the components nested under it
   were dropped without a word, so the SBOM read as clean for it. A subject that is a package is now checked like

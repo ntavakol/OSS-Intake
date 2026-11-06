@@ -113,18 +113,29 @@ def renv_purls(path: Path) -> tuple[list[str], list[str]]:
     pkgs = data.get("Packages") if isinstance(data, dict) else None
     if not isinstance(pkgs, dict):
         raise InputError(f"{path.name} has no 'Packages' section; is it an renv.lock?")
-    purls, skipped = [], []
+    if not pkgs:
+        raise InputError(f"{path.name} lists no packages")  # as an empty package list is refused
+    purls, skipped, errors = [], [], []
     for key, p in sorted(pkgs.items()):
         if not isinstance(p, dict):
+            errors.append(f"{key}: not an object")
             continue
         name, version = p.get("Package") or key, p.get("Version")
+        if not isinstance(name, str) or (version is not None and not isinstance(version, str)):
+            errors.append(f"{key}: Package and Version must be text")
+            continue
         source = str(p.get("Source") or p.get("Repository") or "").lower()
         if not version:
             skipped.append(name)
         elif source in ("repository", "cran", "") or "cran" in str(p.get("Repository", "")).lower():
-            purls.append(f"pkg:cran/{name}@{version}")
+            try:  # the same name and version rules as a package list: "latest" or "1.4.*" is refused
+                purls.append(_row_purl({"ecosystem": "cran", "name": name, "version": version}))
+            except ValueError as exc:
+                errors.append(f"{key}: {exc}")
         else:
             skipped.append(f"{name} ({p.get('Source')})")
+    if errors:
+        raise InputError(f"{path.name}: {len(errors)} package(s) cannot be read: " + "; ".join(errors[:10]))
     return purls, skipped
 
 

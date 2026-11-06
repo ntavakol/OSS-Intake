@@ -3410,3 +3410,21 @@ def test_a_go_binary_copied_out_as_a_link_is_not_analysed(tmp_path):
     (dest / "usr" / "bin" / "real").write_bytes(b"\x7fELF")
     assert not govulncheck._regular_inside(dest / "usr" / "bin" / "app", dest)
     assert govulncheck._regular_inside(dest / "usr" / "bin" / "real", dest)
+
+
+@pytest.mark.parametrize("packages, why", [
+    ({}, "lists no packages"),
+    ({"jsonlite": {"Package": ["jsonlite"], "Version": "1.8.8", "Source": "Repository"}}, "must be text"),
+    ({"httr": {"Package": "httr", "Version": "latest", "Source": "Repository"}}, "placeholder"),
+    ({"httr": {"Package": "httr", "Version": "1.4.*", "Source": "Repository"}}, "range or placeholder"),
+    ({"httr": "1.4.7"}, "not an object"),
+])
+def test_renv_lock_entries_are_checked_like_a_package_list(tmp_path, packages, why):
+    """Audit (7 Nov): an empty lockfile gave a clean report, and a wrong-typed or placeholder entry became a purl
+    OSV knows nothing about, so it read as clean."""
+    import json
+
+    p = tmp_path / "renv.lock"
+    p.write_text(json.dumps({"R": {"Version": "4.5.1"}, "Packages": packages}), encoding="utf-8")
+    with pytest.raises(inputs.InputError, match=why):
+        inputs.renv_purls(p)
