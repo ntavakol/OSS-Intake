@@ -8,6 +8,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Fixed
 - A Trivy or Grype report that names nothing it scanned and lists nothing (`{"SchemaVersion": 2}`,
   `{"matches": []}`) was accepted as a clean scan; it is now refused. Real reports always name their target.
+- A finding listed in CISA KEV was set aside by the build-label rule or govulncheck's "not reachable", and a
+  malicious package by the kernel-header or build-label rule, so it no longer counted for any gate. Malicious
+  packages are never set aside and KEV findings are in Act now, with the evidence noted; an assessor's decision
+  still applies, and a kernel header CVE still does not apply in a container.
 
 ## [0.16.0] - 2026-11-06
 

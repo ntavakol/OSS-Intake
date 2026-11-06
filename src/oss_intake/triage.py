@@ -7,8 +7,10 @@ Groups, first match wins:
   conditions Check conditions: the advisory says it applies only under conditions (quoted in findings.csv);
              the assessor confirms whether they hold in the deployment
   routine    Routine: none of the above; patch in the normal cycle
-  aside      Set aside: only with evidence the tool has (kernel CVEs on kernel header packages, or the
-             installed version already matches a fix apart from a build label)
+  aside      Set aside: only with evidence the tool has (kernel CVEs on kernel header packages, the installed
+             version already matches a fix apart from a build label, govulncheck shows the function is not in
+             the binary) or an assessor's decision; a malicious package is never set aside, and a CISA KEV
+             finding only as a kernel header CVE or by an assessor's decision
 
 This is a reading order, not a risk rating, and never a statement that a finding carries no risk.
 """
@@ -59,23 +61,29 @@ def _routine_reason(f: Finding, checks: dict | None) -> str:
 
 
 def _classify(f: Finding, checks: dict | None = None) -> tuple[str, str]:
-    if f.excluded == "kernel-headers":
-        return "aside", "kernel CVE on a kernel header package; containers use the host kernel"
-    if f.likely_fixed:
-        return "aside", "installed version matches a listed fix apart from a build label"
+    # A malicious package is never set aside. A kernel CVE on a kernel header package does not apply in a
+    # container (it uses the host's kernel), KEV or not. Then the assessor's recorded decision; then CISA KEV,
+    # ahead of the build-label and govulncheck rules, which never set aside a known exploited finding (6 Nov).
     if f.malicious:
         return "act", ("malicious package (OpenSSF malicious packages, or advisory classed CWE-506); "
                        "the package itself is malware")
+    if f.excluded == "kernel-headers":
+        return "aside", "kernel CVE on a kernel header package; containers use the host kernel"
     if f.decision_status in ("not_affected", "fixed"):
         stale = (f" (decided for {f.decision_version}; installed {f.installed}: review)"
                  if f.decision_version and f.installed and f.decision_version != f.installed else "")
         return "aside", (f"assessor: {f.decision_status.replace('_', ' ')}"
                          + (f": {f.decision_notes}" if f.decision_notes else "") + stale
                          + (" (note: listed in CISA KEV)" if f.kev else ""))
-    if f.reachability == "not reachable":
-        return "aside", f.reachability_note + (" (note: listed in CISA KEV)" if f.kev else "")
     if f.kev:
-        return "act", "listed in CISA KEV (exploited in the wild)"
+        evidence = ("installed version matches a listed fix apart from a build label" if f.likely_fixed
+                    else f.reachability_note if f.reachability == "not reachable" else "")
+        return "act", "listed in CISA KEV (exploited in the wild)" + (
+            f"; not set aside although {evidence}, as it is known to be exploited" if evidence else "")
+    if f.likely_fixed:
+        return "aside", "installed version matches a listed fix apart from a build label"
+    if f.reachability == "not reachable":
+        return "aside", f.reachability_note
     if f.details_unavailable:
         return "review", ("advisory details could not be loaded from OSV, so severity, fix, KEV and exploit "
                           "evidence are unknown; re-run later")

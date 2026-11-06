@@ -2967,3 +2967,34 @@ def test_real_clean_scan_report_is_accepted(report, tool):
     from oss_intake.scanners import check_report
 
     check_report(report, tool, "import")
+
+
+@pytest.mark.parametrize("evidence", [{"excluded": "kernel-headers"}, {"likely_fixed": True},
+                                      {"reachability": "not reachable", "reachability_note": "not in the binary"}],
+                         ids=["kernel header", "build label", "not reachable"])
+@pytest.mark.parametrize("signal, group", [({"kev": True}, "act"), ({"malicious_package": True}, "act")],
+                         ids=["kev", "malicious"])
+def test_evidence_rules_do_not_set_aside_kev_or_malicious(evidence, signal, group):
+    """Open item 2: the build-label and govulncheck rules came before KEV, and the kernel-header and build-label
+    rules before malicious, so a known exploited or malicious finding could be set aside and no longer count for
+    any gate. A kernel header CVE stays set aside even in KEV (test_triage_groups: it does not apply in a
+    container); changing that is Ned's call."""
+    if evidence.get("excluded") and signal.get("kev"):
+        pytest.skip("kernel header KEV finding: deliberately set aside (test_triage_groups)")
+    from oss_intake import triage
+    from oss_intake.models import Finding
+
+    f = Finding("CVE-2099-0001", "pkg", "1.0", "LOW", **evidence, **signal)
+    assert triage.classify(f)[0] == group
+
+
+def test_an_assessor_decision_still_sets_aside_a_kev_finding():
+    """A recorded not_affected or fixed decision is the assessor's call and still applies to a KEV finding (noted);
+    only the tool's own evidence rules give way to KEV."""
+    from oss_intake import triage
+    from oss_intake.models import Finding
+
+    f = Finding("CVE-2099-0001", "pkg", "1.0", "LOW", kev=True, decision_status="not_affected",
+                decision_notes="feature not used")
+    group, reason = triage.classify(f)
+    assert group == "aside" and "listed in CISA KEV" in reason

@@ -49,8 +49,9 @@ nothing, or output that is not what it seems).
 - On Windows, `shutil.which` looks in the current folder before the PATH, so a `trivy.exe` there is the one
   found. A pinned hash still stops it.
 - govulncheck has no known-bad list and its hash is checked only with `--govulncheck-sha256`, yet with
-  `--reachability` its "not reachable" verdict sets a finding aside, ahead of KEV, so it no longer counts for
-  any gate. The build-label and kernel-header rules also set findings aside ahead of KEV and malicious packages.
+  `--reachability` its "not reachable" verdict sets a finding aside, so it no longer counts for the severity
+  gates (never a malicious or CISA KEV finding, which come first). A kernel CVE on a kernel header package stays
+  set aside even in KEV, by design: it does not apply in a container.
 - The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
   its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
@@ -283,8 +284,10 @@ All of these were agreed for the backlog on 6 Nov; BACKLOG.md has them in order,
 it ships. What is not listed here (a service that answers wrongly, an extension author determined to avoid the
 indicators, the single maintainer) are limits of the approach rather than defects.
 
-1. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
-   kernel-header rules), and require govulncheck's hash for `--reachability`.
+1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
+   test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
+   CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
+   which an existing test keeps set aside on purpose; also Ned's call.
 2. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
 3. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.

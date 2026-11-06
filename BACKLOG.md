@@ -5,8 +5,10 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 
 ## Next: the threat model's open items (agreed 6 Nov, in this order)
 Open items 1 to 11 of `docs/threat-model.md`. Each fix comes with a test that fails without it.
-1. Set nothing aside ahead of KEV or a malicious package (govulncheck's "not reachable", the build-label and
-   kernel-header rules), and require govulncheck's hash for `--reachability`.
+1. Require govulncheck's hash for `--reachability`, or set nothing aside on its verdict without it (an existing
+   test expects "not reachable" to set a finding aside without a hash, so this needs Ned's OK). Malicious and
+   CISA KEV findings are no longer set aside by the evidence rules (6 Nov), except a kernel header CVE in KEV,
+   which an existing test keeps set aside on purpose; also Ned's call.
 2. Match decisions on the ecosystem as well as the ID and package name, and refuse more placeholder versions.
 3. Make `--fail-on recent` fail for a version with no known date, and report a workflow audit with files missing
    as partial.
