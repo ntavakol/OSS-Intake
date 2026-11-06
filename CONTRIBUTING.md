@@ -40,6 +40,11 @@ chmod +x .git/hooks/pre-commit
 - **Fixtures are synthetic.** Use `CVE-2099-*` and `GHSA-test-*` identifiers and fictional projects so
   fixtures cannot be mistaken for real advisories.
   The exception is `tests/fixtures/real`, which holds trimmed output from public images only.
+- **Fixtures and examples must not use file names that dependency scanners recognise** (`*.cdx.json`,
+  `*.spdx.json`, `bom.json`, `package-lock.json`, `requirements*.txt` and the like). OSV-Scanner, which OpenSSF
+  Scorecard runs over the whole repository, reads them as the project's own dependencies, and the fixtures are
+  vulnerable on purpose. Use `*.cdx-fixture.json`, `*.spdx-fixture.json` or `*.sample.json`; oss-intake reads
+  SBOMs by content. `test_fixtures_and_examples_do_not_look_like_the_projects_dependencies` lists the names.
 - **No secrets, internal hostnames, employer or customer names** in code, fixtures, examples or commit
   messages.
 - **Keep dependencies minimal.** The runtime depends on `requests` only. Discuss new dependencies in an issue

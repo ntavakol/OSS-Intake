@@ -1374,8 +1374,8 @@ def test_sbom_run_checks_os_and_language_packages(tmp_path, fixtures):
 
     sboms = tmp_path / "sboms"
     sboms.mkdir()
-    shutil.copy(fixtures / "sbom" / "trivy-rootfs.cdx.json", sboms / "web-01.cdx.json")
-    shutil.copy(fixtures / "sbom" / "syft-app.spdx.json", sboms / "portal.spdx.json")
+    shutil.copy(fixtures / "sbom" / "trivy-rootfs.cdx-fixture.json", sboms / "web-01.cdx.json")
+    shutil.copy(fixtures / "sbom" / "syft-app.spdx-fixture.json", sboms / "portal.spdx.json")
     out = tmp_path / "o"
     http = SbomHttp()
     code = cli.main(["--path", str(sboms), "--out", str(out), "--no-latest", "--release-age-days", "0",
@@ -1431,8 +1431,8 @@ def test_sbom_with_nothing_checkable_is_refused(tmp_path, capsys):
     (["--label", "critical=0"], "is a column oss-intake fills in"),
 ])
 def test_label_validation(tmp_path, fixtures, capsys, argv, msg):
-    code = cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(tmp_path / "o"), *argv],
-                    http=SbomHttp())
+    sbom = fixtures / "sbom" / "syft-app.cdx-fixture.json"
+    code = cli.main(["--path", str(sbom), "--out", str(tmp_path / "o"), *argv], http=SbomHttp())
     assert code == cli.EXIT_USAGE and msg in capsys.readouterr().err
 
 
@@ -1453,7 +1453,7 @@ def test_label_on_csv_inventory(tmp_path):
 
 def test_label_does_not_overwrite_what_a_package_has(tmp_path, fixtures):
     out = tmp_path / "o"
-    assert cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(out), "--no-latest",
+    assert cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx-fixture.json"), "--out", str(out), "--no-latest",
                      "--release-age-days", "0", "--label", "system=prod", "--label", "owner=Web"],
                     http=SbomHttp()) in (0, 3)
     rows = list(csv.DictReader((out / "packages.csv").open(encoding="utf-8", newline="")))
@@ -1464,7 +1464,7 @@ def test_openvex_round_trip_for_sbom_os_packages_is_not_stale(tmp_path, fixtures
     # Second review of 0.9.0: with the source version stored as 'installed', the exported OpenVEX read back
     # marked every decision on a package with a different source version as stale.
     out1 = tmp_path / "one"
-    sbom = fixtures / "sbom" / "trivy-rootfs.cdx.json"
+    sbom = fixtures / "sbom" / "trivy-rootfs.cdx-fixture.json"
     assert cli.main(["--path", str(sbom), "--out", str(out1), "--no-latest", "--release-age-days", "0"],
                     http=SbomHttp()) == 0
     rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
@@ -1487,7 +1487,7 @@ def test_openvex_round_trip_for_sbom_os_packages_is_not_stale(tmp_path, fixtures
 
 def test_label_that_every_package_has_says_so(tmp_path, fixtures):
     out = tmp_path / "o"
-    cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx.json"), "--out", str(out), "--no-latest",
+    cli.main(["--path", str(fixtures / "sbom" / "syft-app.cdx-fixture.json"), "--out", str(out), "--no-latest",
               "--release-age-days", "0", "--label", "system=prod"], http=SbomHttp())
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert "--label system has no effect: every package already has a system label (from the SBOM)" in a["warnings"]

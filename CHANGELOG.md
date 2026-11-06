@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- The SBOM test fixtures are named `*.cdx-fixture.json` and `*.spdx-fixture.json`, so OSV-Scanner (which OpenSSF
+  Scorecard runs over the repository) no longer reads their deliberately vulnerable packages as the project's own.
+  A test fails if a fixture or example uses a name dependency scanners recognise.
+
 ## [0.15.0] - 2026-11-06
 
 oss-intake checks VS Code extensions: a .vsix before you install it, or everything installed. Each extension is
