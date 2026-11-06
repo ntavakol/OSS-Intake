@@ -151,6 +151,7 @@ class Finding:
     decision_reachable: str = ""
     decision_justification: str = ""
     decision_version: str = ""
+    decision_exact: bool = False  # made for this version in this ecosystem, so VEX may export it as a claim
     # For an OS package from an SBOM: the source package's version, which distro fixes are versions of (cpp
     # 4:13.2.0 is built from gcc-defaults 1.214). 'installed' stays the package's own version, as everywhere.
     source_installed: str = ""  # the installed version the decision was made for

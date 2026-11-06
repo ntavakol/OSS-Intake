@@ -172,6 +172,13 @@ def _ecosystem(kind: str) -> str:
     return _ECOSYSTEM.get(kind.strip().lower(), "")
 
 
+def _known_same_ecosystem(d: dict, f: Finding) -> bool:
+    """Both the decision and the finding name an ecosystem, and it is the same one."""
+    mine = _ecosystem(d.get("pkg_type") or "") or _ecosystem(d.get("purl_type") or "")
+    theirs = _ecosystem(_purl_type(f.purl or "")) or _ecosystem(f.pkg_type or "")
+    return bool(mine and theirs and mine == theirs)
+
+
 def _same_ecosystem(d: dict, f: Finding) -> bool:
     """A decision applies only in its own ecosystem when both it and the finding have a known one (findings.csv
     has pkg_type, OpenVEX a purl; the finding its purl, else its pkg_type). Otherwise it matches by name."""
@@ -288,6 +295,7 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
         f.decision_status, f.decision_notes = d["status"], d["notes"]
         f.decision_reachable, f.decision_justification = d["reachable"], d["justification"]
         f.decision_version = d["version"]
+        f.decision_exact = bool(d["version"] and d["version"] == f.installed and _known_same_ecosystem(d, f))
         info["applied"] += 1
         info["by_status"][d["status"]] += 1
         if d["version"] and f.installed and d["version"] != f.installed:
@@ -300,12 +308,35 @@ def apply(findings: list[Finding], decisions: list[dict]) -> dict:
     return info
 
 
+def _exported_status(f: Finding) -> tuple[str, str]:
+    """The status a VEX file may claim for f, and the notes. Grype, Trivy and Dependency-Track act on a VEX claim
+    without review, so a decision is exported as made only when it was made for this version in this ecosystem;
+    any other (another version, no version, matched by name alone) goes out as under investigation, saying why."""
+    if f.decision_exact or f.decision_status == "under_investigation":
+        return f.decision_status, f.decision_notes
+    made_for = (f"version {f.decision_version}" if f.decision_version and f.decision_version != f.installed
+                else "this version, matched by name only" if f.decision_version else "no stated version")
+    why = (f"assessor decided {f.decision_status.replace('_', ' ')} for {made_for}; not yet confirmed for "
+           f"{f.installed or 'the installed version'}")
+    return "under_investigation", why + (f". Notes: {f.decision_notes}" if f.decision_notes else "")
+
+
+def _with(f: Finding, status: str, notes: str) -> Finding:
+    import dataclasses
+
+    return f if (status, notes) == (f.decision_status, f.decision_notes) else dataclasses.replace(
+        f, decision_status=status, decision_notes=notes)
+
+
 def openvex(findings: list[Finding], tool_version: str, as_of: str) -> dict | None:
-    """An OpenVEX v0.2.0 document of the decisions applied in this run, or None if there are none."""
+    """An OpenVEX v0.2.0 document of the decisions applied in this run, or None if there are none. A decision
+    not made for this exact version goes out as under investigation (_exported_status)."""
     statements = []
     for f in findings:
         if not f.decision_status or not f.purl:
             continue
+        status, notes = _exported_status(f)
+        f = _with(f, status, notes)
         st: dict = {"vulnerability": {"name": f.vuln_id, **({"aliases": sorted(f.aliases)} if f.aliases else {})},
                     "products": [{"@id": f.purl}], "status": f.decision_status}
         if f.decision_status == "not_affected":
@@ -320,7 +351,7 @@ def openvex(findings: list[Finding], tool_version: str, as_of: str) -> dict | No
     if not statements:
         return None
     digest = hashlib.sha256(json.dumps(statements, sort_keys=True).encode()).hexdigest()[:16]
-    return {"@context": "https://openvex.dev/ns/v0.2.0", "@id": f"https://openvex.dev/docs/oss-intake/{digest}",
+    return {"@context": "https://openvex.dev/ns/v0.2.0", "@id": f"urn:oss-intake:openvex:{digest}",
             "author": "oss-intake assessor", "role": "assessor",
             "timestamp": as_of or datetime.now(timezone.utc).isoformat(), "version": 1,
             "tooling": f"oss-intake {tool_version}", "statements": statements}
@@ -356,6 +387,7 @@ def cyclonedx_vex(findings: list[Finding], tool_version: str, as_of: str) -> dic
     components: dict[str, dict] = {}
     vulns = []
     for f in decided:
+        f = _with(f, *_exported_status(f))
         purl = cast(str, f.purl).split("?", 1)[0].split("#", 1)[0]  # decided holds findings with a purl
         if purl not in components:
             try:

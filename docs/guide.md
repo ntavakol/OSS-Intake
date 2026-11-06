@@ -544,7 +544,10 @@ takes it as is and only new findings are blank. Every run with decisions also wr
 (CycloneDX 1.6 VEX) for Dependency-Track. In the CycloneDX file not_affected, affected, fixed and
 under_investigation become `not_affected`, `exploitable`, `resolved` and `in_triage`, and components use the package
 URL as their reference; an import matches only where the receiving project identifies components by the same
-purl. An OpenVEX file is accepted as `--decisions` too.
+purl. An OpenVEX file is accepted as `--decisions` too. Those tools act on a VEX statement without review, so
+a decision goes out as made only when it was made for the installed version in a named ecosystem; one made for
+another version, without a version, or matched by name alone is exported as under investigation (`in_triage`),
+saying why.
 
 ## Likelihood heuristic
 

@@ -2267,3 +2267,27 @@ def test_path_dot_is_named_by_its_folder(tmp_path, monkeypatch):
     monkeypatch.chdir(app / "sub")
     assert assessment._target_name(".") == "sub" and assessment._target_name("..") == "my-app"
     assert assessment._target_name(str(app / "x.jar")) == "x.jar"
+
+
+def test_vex_claims_only_decisions_made_for_this_version(tmp_path, fixtures):
+    """Audit (7 Nov): a decision made for another version, or matched by name alone, went into openvex.json and
+    vex.cdx.json as a plain not_affected for the installed purl, which Grype, Trivy and Dependency-Track act on
+    without review. Only a decision for this version in this ecosystem is exported as made."""
+    def vex_for(name, version, pkg_type):
+        dec = tmp_path / f"{name}.csv"
+        dec.write_text("id,package,pkg_type,installed,triage_status,triage_notes\n"
+                       f"CVE-2099-0001,org.springframework:spring-web,{pkg_type},{version},not_affected,checked\n",
+                       encoding="utf-8")
+        out = tmp_path / name
+        assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--scanners", "trivy",
+                         "--from-trivy-json", str(fixtures / "trivy.json"), "--decisions", str(dec)]) == cli.EXIT_OK
+        ov = json.loads((out / "openvex.json").read_text(encoding="utf-8"))["statements"]
+        cdx = json.loads((out / "vex.cdx.json").read_text(encoding="utf-8"))["vulnerabilities"]
+        return ov[0], cdx[0]["analysis"]
+
+    ov, cdx = vex_for("exact", "6.1.10", "jar")
+    assert ov["status"] == "not_affected" and cdx["state"] == "not_affected"
+    for name, version, pkg_type in (("older", "5.0.0", "jar"), ("noversion", "", "jar"), ("noeco", "6.1.10", "")):
+        ov, cdx = vex_for(name, version, pkg_type)
+        assert ov["status"] == "under_investigation" and cdx["state"] == "in_triage", name
+        assert "not yet confirmed for 6.1.10" in ov["status_notes"] and "not yet confirmed" in cdx["detail"], name

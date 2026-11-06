@@ -16,6 +16,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- `openvex.json` and `vex.cdx.json` stated a decision made for another version, without a version, or matched
+  by name alone as a plain `not_affected` (or fixed) for the installed version, and Grype, Trivy and
+  Dependency-Track hide a finding on that without review. Such a decision now goes out as under investigation
+  (`in_triage` in CycloneDX), saying what it was made for. OpenVEX `@id`s use `urn:oss-intake:openvex:` instead
+  of a domain the project does not control.
 - `--fail-on recent` passed for a version deps.dev had no release date for, which is what a release only hours
   old looks like, so the case the gate is for slipped through. For registries deps.dev covers (npm, PyPI,
   Maven, Go, Cargo, NuGet), such a version now fails the gate with exit 1, naming it. Registries it does not
