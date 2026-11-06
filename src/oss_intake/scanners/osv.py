@@ -29,13 +29,27 @@ SUPPORTED_TYPES = {"maven", "npm", "pypi", "golang", "cargo", "nuget", "gem", "c
 
 
 def purls_from_trivy(report: dict) -> list[str]:
+    """Language package versions in a Trivy report: every listed package, and, for a result that lists none
+    (a report made without --list-all-pkgs), at least the packages with findings."""
     seen: dict[str, None] = {}
     for result in report.get("Results") or []:
-        for p in result.get("Packages") or []:
-            purl = normalise_purl((p.get("Identifier") or {}).get("PURL"))
+        listed = result.get("Packages") or []
+        entries = [(p.get("Identifier") or {}).get("PURL") for p in listed if isinstance(p, dict)]
+        if not listed:
+            entries = [(v.get("PkgIdentifier") or {}).get("PURL") for v in result.get("Vulnerabilities") or []
+                       if isinstance(v, dict)]
+        for raw in entries:
+            purl = normalise_purl(raw) if isinstance(raw, str) else None
             if purl and "@" in purl and purl[4:].split("/", 1)[0] in SUPPORTED_TYPES:
                 seen[purl] = None
     return list(seen)
+
+
+def unlisted_language_results(report: dict) -> list[str]:
+    """Targets of language-package results that list no packages: the report does not say what they contain, so
+    a check over every package (malicious packages, release age) cannot be complete for them."""
+    return [str(r.get("Target") or "?") for r in report.get("Results") or []
+            if isinstance(r, dict) and r.get("Class") == "lang-pkgs" and not r.get("Packages")]
 
 
 def purls_from_cyclonedx(sbom: dict) -> list[str]:

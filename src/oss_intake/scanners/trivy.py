@@ -31,7 +31,10 @@ def _base_cmd(binary: str, image_src: str | None, extra: list[str], platform: st
 
 def scan(binary: str, image: str, image_src: str | None, extra: list[str], timeout: int,
          platform: str | None = None) -> bytes:
-    cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "json", "--scanners", "vuln", image]
+    # --list-all-pkgs: every package, not only those with findings; OSV's malicious-package and the release-age
+    # checks need them all (a compromised release is new and usually has no advisory yet).
+    cmd = _base_cmd(binary, image_src, extra, platform) + ["--format", "json", "--scanners", "vuln",
+                                                           "--list-all-pkgs", image]
     return run(cmd, timeout)
 
 

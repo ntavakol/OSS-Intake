@@ -190,21 +190,27 @@ def run(args, chosen, out, net, scanners_meta, warnings):
         args.reach_results = run_govulncheck(args, trivy_report, scanners_meta, warnings)
     if "osv" in chosen and trivy_report is not None and net:
         purls = osv_mod.purls_from_trivy(trivy_report)
+        unlisted = osv_mod.unlisted_language_results(trivy_report)
         try:
             o = osv_mod.scan(net, purls)
             groups.append(o)
             scanners_meta["osv"] = {"enabled": True, "detail": f"{len(purls)} packages queried"}
             args.malicious_check = checks.state(
+                checks.PARTIAL, f"Trivy listed no packages for {', '.join(unlisted[:3])}"
+                + (f" and {len(unlisted) - 3} more" if len(unlisted) > 3 else "")
+                + " (a report made with --list-all-pkgs=false?), so only packages with findings were queried"
+            ) if unlisted else checks.state(
                 checks.CHECKED, "" if purls else "no language packages; OSV malicious package data covers "
                                                  "language packages")
         except HttpError as exc:
             warnings.append(f"OSV lookup failed, continuing without it: {exc}")
             args.malicious_check = checks.state(checks.PARTIAL, "OSV lookup failed" + without_osv)
-        if not purls:
-            if any(r.get("Class") == "lang-pkgs" for r in trivy_report.get("Results") or []):
-                warnings.append("Trivy found language packages but listed none in the report, so OSV had "
-                                "nothing to query (was the report generated with --list-all-pkgs=false?)")
-            elif args.image:
+        if unlisted:
+            warnings.append(f"Trivy found language packages in {len(unlisted)} place(s) but listed none, so OSV "
+                            "and the release-age check saw only packages with findings (was the report generated "
+                            "with --list-all-pkgs=false?)")
+        elif not purls:
+            if args.image:
                 warnings.append("No language packages in the image (OS packages only), so OSV was not queried; "
                                 "Trivy and Grype cover OS packages")
             else:

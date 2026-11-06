@@ -16,6 +16,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- A Trivy report that lists no packages (made with `--list-all-pkgs=false`, or by an older Trivy) gave OSV
+  nothing to query, yet the malicious-package check counted as complete and release age as "no language
+  packages", so `--fail-on malicious`, `recent` and `unknown-age` passed. The packages with findings are now
+  queried, both checks are marked partial, and those gates fail with exit 1. Image scans also pass
+  `--list-all-pkgs` to Trivy, as folder scans did.
 - `--fail-on-likelihood` passed when the evidence a higher rule needed did not load: with CISA KEV down, a KEV
   finding with a fix scored 2 instead of 5 and `--fail-on-likelihood 5` passed. A source that did not fully load
   now counts as unknown (what it did find still counts), and when a rule at or above the threshold depends on

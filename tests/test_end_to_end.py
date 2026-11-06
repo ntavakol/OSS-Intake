@@ -2311,3 +2311,25 @@ def test_likelihood_gate_fails_closed_when_its_evidence_did_not_load(tmp_path, f
     # A threshold no unchecked rule reaches still passes on the result.
     code, _ = run(tmp_path / "low", fixtures, FakeHttp(fail_hosts=("cisa.gov",)), "--fail-on-likelihood", "2")
     assert code == cli.EXIT_THRESHOLD
+
+
+def test_trivy_report_without_packages_does_not_pass_package_gates(tmp_path, fixtures, fake_http, capsys):
+    """Audit (7 Nov): a Trivy report that lists no packages (made with --list-all-pkgs=false, or by an older
+    Trivy) gave OSV nothing to query, yet the malicious-package check counted as complete and release age as
+    "no language packages", so --fail-on malicious, recent and unknown-age all passed."""
+    report = json.loads((fixtures / "trivy.json").read_text(encoding="utf-8"))
+    for r in report["Results"]:
+        r.pop("Packages", None)
+    stripped = tmp_path / "stripped.json"
+    stripped.write_text(json.dumps(report), encoding="utf-8")
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--scanners", "trivy,osv",
+                     "--from-trivy-json", str(stripped), "--as-of", AS_OF,
+                     "--fail-on", "malicious"], http=fake_http)
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_ERROR, err
+    a = json.loads((tmp_path / "o" / "assessment.json").read_text(encoding="utf-8"))
+    assert a["checks"]["malicious"]["state"] == "partial"
+    assert a["release_age"]["status"] == "partial"  # so --fail-on recent and unknown-age cannot pass on it
+    assert "--fail-on malicious: could not be evaluated" in err and "listed none" in " ".join(a["warnings"])
+    # The packages with findings are still queried.
+    assert "0 packages queried" not in json.dumps(a["scanners"]["osv"])

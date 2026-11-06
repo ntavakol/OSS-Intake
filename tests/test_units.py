@@ -3220,3 +3220,13 @@ def test_likelihood_rules_with_unchecked_metrics_are_undecided():
     # A critical fix with no matched release: whether it shipped is unknown, so a level 4 rule is undecided.
     r = likelihood.evaluate(cfg, m("CRITICAL"))
     assert r["level"] == 2 and r["could_be"] == 4 and "critical_fix_unshipped" in r["unchecked"]
+
+
+def test_trivy_image_scan_lists_every_package(monkeypatch):
+    """OSV's malicious-package check and release age need every package, not only those with findings."""
+    from oss_intake.scanners import trivy
+
+    seen = []
+    monkeypatch.setattr(trivy, "run", lambda cmd, timeout: seen.append(cmd) or b"{}")
+    trivy.scan("trivy", "owner/app:1.0", None, [], 60)
+    assert "--list-all-pkgs" in seen[0] and seen[0][-1] == "owner/app:1.0"

@@ -303,7 +303,14 @@ def _release_age(args, net, trivy_report: dict | None, as_of: datetime, warnings
     age_info: dict = {"status": "skipped", "days": args.release_age_days,
                       "reason": "--offline" if not net else "--release-age-days 0", "recent": []}
     purls = scanning.language_purls(args, trivy_report) if net and args.release_age_days else []
-    if net and args.release_age_days and not purls and trivy_report is not None:
+    unlisted = (scanning.osv_mod.unlisted_language_results(trivy_report)
+                if trivy_report is not None and not (getattr(args, "inventory", None)
+                                                     and args.path_kind == "inventory") else [])
+    if net and args.release_age_days and not purls and unlisted:
+        age_info = {"status": "not checked", "days": args.release_age_days, "recent": [],
+                    "reason": f"Trivy listed no packages for {', '.join(unlisted[:3])} (a report made with "
+                              "--list-all-pkgs=false?), so no package version could be checked"}
+    elif net and args.release_age_days and not purls and trivy_report is not None:
         # The scan ran and found only distro packages: nothing a registry release date applies to.
         age_info = {"status": "ok", "days": args.release_age_days, "recent": [], "checked": 0, "unknown": 0,
                     "unsupported": 0, "errors": 0, "skipped_limit": 0, "published": {}, "unknown_purls": [],
@@ -315,6 +322,11 @@ def _release_age(args, net, trivy_report: dict | None, as_of: datetime, warnings
         # A date-only --as-of means the whole of that day.
         as_of_end = as_of + timedelta(days=1, seconds=-1) if args.as_of and "T" not in args.as_of else as_of
         age_info = release_age.check(net, purls, as_of_end, args.release_age_days, limit=args.release_age_max)
+        if unlisted and age_info.get("status") == "ok":
+            # Trivy did not list what those results contain, so a version only hours old may be among them unseen.
+            age_info["status"] = "partial"
+            age_info["reason"] = (f"Trivy listed no packages for {', '.join(unlisted[:3])} (a report made with "
+                                  "--list-all-pkgs=false?), so only packages with findings were checked")
         age_warning = release_age.warning(age_info)
         if age_warning:
             warnings.append(age_warning)
