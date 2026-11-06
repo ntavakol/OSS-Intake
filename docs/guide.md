@@ -220,7 +220,8 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
   variation selectors or zero-width characters, or tag characters other than an emoji flag (how GlassWorm hid its
   code); text-reordering characters (Trojan Source); base64 or hex strings of 2,000 characters or more (not an
   image or font `data:` URI); `extensionDependencies` and `extensionPack`; and a folder name or `.vsix`
-  manifest that names a different extension from `package.json` (each name is looked up in the removal list).
+  manifest that names a different extension from `package.json` (each name is looked up in the removal list);
+  and a `main` that leads out of the extension's folder with `..`, as that file is not read.
   Every text file of the extension's own is read, whatever its name, except source maps; the top-level
   `node_modules` is left to the scanners. The web addresses in its code are listed too. These are signals for a
   person to read, not verdicts.

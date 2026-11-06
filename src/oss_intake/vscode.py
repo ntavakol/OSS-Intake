@@ -67,6 +67,7 @@ INDICATORS = {
     "blob": "A long encoded string (base64 or hex), which can hide a payload",
     "installs": "Installs other extensions with itself (extensionDependencies or extensionPack)",
     "identity": "Its files do not agree on what it is (package.json, the folder name or the .vsix manifest)",
+    "main-outside": "Its main file is outside its own folder (package.json main leads out with ..), so it is not read",
 }
 
 _PROCESS = re.compile(r"\bchild_process\b|\b(?:execSync|spawnSync|execFileSync)\s*\(")
@@ -372,7 +373,11 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             add("identity", "extension.vsixmanifest", None, f"the manifest says {vsix['id']} {vsix['version']}; "
                                                             f"package.json says {ident['id']} {ident['version']}")
 
-    main_name = _inside(str(data.get("main") or data.get("browser") or ""))
+    given_main = str(data.get("main") or data.get("browser") or "")
+    main_name, leaves = _inside(given_main)
+    if leaves:
+        add("main-outside", "package.json", None, f"main is {given_main!r}, which VS Code loads from outside the "
+                                                   "extension's folder; that file is not part of what was assessed")
     main_files = {c.resolve() for c in (folder / main_name, folder / f"{main_name}.js") if main_name and c.is_file()}
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
@@ -523,14 +528,19 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
                              "source": REMOVED_PAGE, "entries": len(removed or {})}}
 
 
-def _inside(main: str) -> str:
-    """package.json's main as VS Code reads it, inside the extension's folder: an absolute path or '..' does not
-    leave it ("/extension.js" and "../x/extension.js" are the folder's extension.js and x/extension.js)."""
+def _inside(main: str) -> tuple[str, bool]:
+    """package.json's main as a path inside the extension's folder, and whether it leads out of it. VS Code joins
+    main to the folder, so an absolute main ("/extension.js") or a drive is read inside it, but ".." is
+    followed out: that file is not the extension's to read, so ("", True) is returned and it is reported."""
     import posixpath
 
-    main = re.sub(r"^[A-Za-z]:", "", main.replace("\\", "/"))  # a drive (C:/x) is no way out either
-    norm = posixpath.normpath("/" + main) if main else ""
-    return norm.lstrip("/") if norm not in ("", "/") else ""
+    main = re.sub(r"^[A-Za-z]:", "", main.replace("\\", "/")).lstrip("/")
+    if not main:
+        return "", False
+    norm = posixpath.normpath(main)
+    if norm == ".." or norm.startswith("../"):
+        return "", True
+    return ("" if norm == "." else norm), False
 
 
 def _obsolete(folder: Path) -> set[str]:

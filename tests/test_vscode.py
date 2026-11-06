@@ -736,16 +736,25 @@ def test_in_a_folder_of_extensions_other_folders_are_not_credited(tmp_path):
     assert single["extensions"][0]["findings"]["total"] == 1
 
 
-@pytest.mark.parametrize("main", ["/out/extension.js", "../out/extension.js", "../../out/extension",
-                                  "./../out/extension.js", "C:/out/extension.js", "\\out\\extension.js"])
-def test_main_outside_the_folder_is_read_inside_it_as_vs_code_does(tmp_path, main):
-    """Threat model open item: main was joined to the folder as given, so '/x' or '../x' pointed outside it, the
-    real main file was not found and the bundled warning was avoided."""
+@pytest.mark.parametrize("main", ["/out/extension.js", "C:/out/extension.js", "\\out\\extension.js",
+                                  "./out/../out/extension"])
+def test_absolute_main_is_read_inside_the_folder_as_vs_code_does(tmp_path, main):
+    """Threat model open item: main was joined to the folder as given, so an absolute main pointed outside it,
+    the real main file was not found and the bundled warning was avoided."""
     d = make_folder(tmp_path / "exts", pkg=manifest(main=main), files={"out/extension.js": "x" * vscode.BUNDLE_BYTES})
     assert vscode.analyse(d)["bundled"], main
 
 
+@pytest.mark.parametrize("main", ["../out/extension.js", "./../../x", "/../x", ".."])
+def test_main_leading_out_of_the_folder_is_an_indicator(tmp_path, main):
+    """VS Code follows .. out of the folder (it only logs a warning), so that file is not read: it is reported."""
+    d = make_folder(tmp_path / "exts", pkg=manifest(main=main))
+    got = {i["id"]: i["seen"] for i in vscode.analyse(d)["indicators"]}
+    assert "main-outside" in got and main in got["main-outside"][0]["detail"]
+
+
 def test_main_inside_the_folder_still_found():
-    assert vscode._inside("./out/extension.js") == "out/extension.js"
-    assert vscode._inside("out/../dist/main") == "dist/main"
-    assert vscode._inside("") == "" and vscode._inside("/") == "" and vscode._inside("..") == ""
+    assert vscode._inside("./out/extension.js") == ("out/extension.js", False)
+    assert vscode._inside("out/../dist/main") == ("dist/main", False)
+    assert vscode._inside("") == ("", False) and vscode._inside("/") == ("", False)
+    assert vscode._inside("../x") == ("", True)
