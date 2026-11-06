@@ -11,12 +11,18 @@
 // The pointer and captions are drawn over the page for the film only; the page itself is not changed.
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
-const SITE = process.argv[2];
+const SITE = path.resolve(process.argv[2]);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
+// Serves the site folder only, to this machine only: a path that resolves outside SITE (../ or an encoded %2f..)
+// is a 404, and the server listens on the loopback address, not every interface.
 const srv = http.createServer((q, r) => {
-  const p = path.join(SITE, decodeURIComponent(q.url.split('?')[0].split('#')[0]).replace(/\/$/, '/index.html'));
+  let p;
+  try {
+    p = path.resolve(SITE, '.' + path.sep + decodeURIComponent(q.url.split('?')[0].split('#')[0]).replace(/\/$/, '/index.html'));
+  } catch (e) { r.writeHead(400); r.end(); return; }
+  if (!p.startsWith(SITE + path.sep)) { r.writeHead(404); r.end(); return; }
   fs.readFile(p, (e, d) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'content-type': types[path.extname(p)] || 'text/plain' }); r.end(d); });
-}).listen(8131);
+}).listen(8131, '127.0.0.1');
 const W = 1280, H = 800;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -66,7 +72,7 @@ async function click(page, selector) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: 'raw', size: { width: W, height: H } },
     permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
-  await page.goto('http://localhost:8131/builder/');
+  await page.goto('http://127.0.0.1:8131/builder/');
   await page.waitForSelector('#targets button');
   await overlay(page);
   await caption(page, 'oss-intake command builder', 'Check a project for known-compromised packages before you use it');
@@ -99,7 +105,7 @@ async function click(page, selector) {
   await caption(page, 'Run it in your terminal', 'With a malware gate, a run that finds malware exits with code 3');
   await wait(2600);
   // The report: the repo's sample, from a real run of this command on six compromised npm releases.
-  await page.goto('http://localhost:8131/samples/compromised-npm/report.html');
+  await page.goto('http://127.0.0.1:8131/samples/compromised-npm/report.html');
   await overlay(page);
   await caption(page, 'The report: 6 malicious packages', 'Malware, not bugs: remove, do not patch');
   await pointAt(page, '.tile >> nth=0', 900);

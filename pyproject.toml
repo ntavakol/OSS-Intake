@@ -30,7 +30,9 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Security",
 ]
-dependencies = ["requests>=2.31,<3"]
+# 2.33 is the first release without CVE-2024-35195, CVE-2024-47081 (.netrc credentials sent to the wrong host)
+# and CVE-2026-25645; the hash-pinned requirements use a newer one.
+dependencies = ["requests>=2.33,<3"]
 
 [project.urls]
 Homepage = "https://github.com/ntavakol/OSS-Intake"
