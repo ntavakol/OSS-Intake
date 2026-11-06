@@ -145,7 +145,9 @@ def cosign_verify_blob(file_path: str | Path, bundle: str | Path, identity_regex
            "--certificate-identity-regexp", identity_regexp,
            "--certificate-oidc-issuer", oidc_issuer, str(file_path)]
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=COSIGN_TIMEOUT)
+        from .scanners import child_env
+
+        proc = subprocess.run(cmd, capture_output=True, timeout=COSIGN_TIMEOUT, env=child_env())
     except subprocess.TimeoutExpired:
         raise IntegrityError(f"cosign did not finish within {COSIGN_TIMEOUT} seconds, so the signature was not "
                              "verified") from None

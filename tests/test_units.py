@@ -3104,7 +3104,9 @@ def test_path_starting_with_a_dash_is_not_read_as_a_scanner_option(monkeypatch):
 
     seen = []
     for mod in (trivy, grype, govulncheck):
-        monkeypatch.setattr(mod, "run", lambda cmd, timeout: seen.append(cmd) or b"")
+        # govulncheck's output must now say it scanned at symbol level (audit, 7 Nov), so the stand-in does.
+        out = b'{"config": {"scan_level": "symbol"}}'
+        monkeypatch.setattr(mod, "run", lambda cmd, timeout, out=out: seen.append(cmd) or out)
     trivy.scan_path("trivy", "fs", "--config=evil.yaml", [], 60)
     grype.scan_path("grype", "-x", [], 60)
     govulncheck.scan_binary("govulncheck", Path("-dir") / "app", 60)
@@ -3356,3 +3358,55 @@ def test_an_unexpected_error_exits_1_with_a_message_not_a_traceback(tmp_path, fi
     with pytest.raises(TypeError):
         cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o2"), "--offline", "--scanners",
                   "trivy", "--from-trivy-json", str(fixtures / "trivy.json")])
+
+
+def test_programs_oss_intake_starts_do_not_get_the_github_token(monkeypatch):
+    """Audit (7 Nov): every scanner, docker, crane and cosign got GITHUB_TOKEN, unverified binaries included."""
+    import subprocess
+
+    from oss_intake import scanners
+
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_secret")
+    monkeypatch.setenv("GH_TOKEN", "gho_secret")
+    monkeypatch.setenv("SOMETHING_ELSE", "kept")
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen.update(kw.get("env") or {"__inherited__": "yes"})
+        return subprocess.CompletedProcess(cmd, 0, b"{}", b"")
+
+    monkeypatch.setattr(scanners.subprocess, "run", fake_run)
+    scanners.run(["trivy", "--version"], 60)
+    assert "__inherited__" not in seen and "GITHUB_TOKEN" not in seen and "GH_TOKEN" not in seen
+    assert seen["SOMETHING_ELSE"] == "kept"
+
+
+def test_govulncheck_below_symbol_level_gives_no_verdict():
+    """Audit (7 Nov): a package-level scan (a binary without symbols) read as "not reachable"."""
+    from oss_intake.scanners import ScannerError, govulncheck
+
+    msgs = [{"config": {"scan_level": "package"}}, {"osv": {"id": "GO-2099-0001", "aliases": ["CVE-2099-1"]}}]
+    with pytest.raises(ScannerError, match="symbol level"):
+        govulncheck.analyse(msgs)
+    with pytest.raises(ScannerError, match="symbol level"):
+        govulncheck.analyse(msgs[1:])
+    assert govulncheck.analyse([{"config": {"scan_level": "symbol"}}, *msgs[1:]])["CVE-2099-1"]["level"] == 0
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "symlink"), reason="symbolic links")
+def test_a_go_binary_copied_out_as_a_link_is_not_analysed(tmp_path):
+    """Audit (7 Nov): docker cp copies a link as a link, so an image could point a Go binary's path at a file on
+    this machine for govulncheck to analyse instead."""
+    from oss_intake.scanners import govulncheck
+
+    dest = tmp_path / "dest"
+    (dest / "usr" / "bin").mkdir(parents=True)
+    host = tmp_path / "host-binary"
+    host.write_bytes(b"\x7fELF")
+    try:
+        (dest / "usr" / "bin" / "app").symlink_to(host)
+    except OSError:
+        pytest.skip("symbolic links are not available here")
+    (dest / "usr" / "bin" / "real").write_bytes(b"\x7fELF")
+    assert not govulncheck._regular_inside(dest / "usr" / "bin" / "app", dest)
+    assert govulncheck._regular_inside(dest / "usr" / "bin" / "real", dest)

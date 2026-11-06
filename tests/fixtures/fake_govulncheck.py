@@ -6,7 +6,8 @@ if "-version" in sys.argv:
     print("Go: go1.24.7\nScanner: govulncheck@v1.1.4\nDB: https://vuln.go.dev\nDB updated: 2026-10-20 00:00:00")
     sys.exit(0)
 print("""{
-  "config": {"protocol_version": "v1.0.0", "scanner_name": "govulncheck", "scan_mode": "binary"}
+  "config": {"protocol_version": "v1.0.0", "scanner_name": "govulncheck", "scanner_version": "v1.1.4",
+             "scan_level": "symbol", "scan_mode": "binary"}
 }
 {
   "osv": {"id": "GO-2099-0001", "aliases": ["CVE-2099-7777", "GHSA-aaaa-bbbb-cccc"]}

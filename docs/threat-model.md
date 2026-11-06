@@ -37,6 +37,8 @@ nothing, or output that is not what it seems).
 | A `--path` named like an option (`--config=x.yaml`) changes what the scanner does | A path starting with `-` is given to Trivy and govulncheck as `./-...`; Grype gets it after its `dir:` prefix. | `scanners.path_arg` |
 | A scanner that fails, hangs or prints nothing reads as "no findings" | A non-zero exit, a timeout or output that is not JSON stops the run with exit 1. | `scanners.run`, `scanners.load_json_bytes` |
 | The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused, and one that names nothing it scanned and lists nothing is refused too; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
+| A program oss-intake starts (a swapped scanner, docker, crane, cosign) steals the GitHub token | Every program is started without `GITHUB_TOKEN`, `GH_TOKEN` and the other GitHub token variables in its environment. | `scanners.child_env` |
+| govulncheck is pointed at the wrong file, or reads too little to judge | Binaries are copied out of an image following links inside the image (`docker cp -L`), and a copy that is still a link or lands outside the work folder is not analysed. A scan below symbol level gives no verdict, as it cannot show a function is absent. | `scanners.govulncheck.extract_from_image`, `_analyse` |
 | A required scanner is missing | Named scanners must be found. With `--scanners auto`, a missing Grype is a warning in the report, not silence. | `scanners.find_executable`, `cli` |
 
 **Left open:**

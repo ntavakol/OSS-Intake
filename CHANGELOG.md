@@ -16,6 +16,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Every program oss-intake starts (Trivy, Grype, govulncheck, docker, crane, cosign) inherited `GITHUB_TOKEN`,
+  including binaries that were not verified. They now start without the GitHub token variables.
+- With `--reachability` on an image, `docker cp` copied a link in the image as a link, so an image could point a
+  Go binary's path at a file on the machine running the scan; links are now followed inside the image and a copy
+  that is still a link is not analysed. The `crane` path streams binaries instead of reading them whole. A
+  govulncheck scan below symbol level (a binary without symbols) no longer reads as "not reachable".
 - Untrusted input could still end a run with a traceback: a bad package URL in a scanner report, a Grype
   related ID that is not text, a JSON integer too long for Python to read, a Scorecard score sent as text, a
   GitHub license or release entry of the wrong type, a proof-of-concept star count such as "1.5k", a PyPI or npm

@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 
 from .. import jsonsafe
-from . import ScannerError, path_arg, run
+from . import ScannerError, child_env, path_arg, run
 
 NAME = "govulncheck"
 
@@ -77,6 +77,13 @@ def analyse(messages: list[dict]) -> dict[str, dict]:
 def _analyse(messages: list[dict]) -> dict[str, dict]:
     aliases: dict[str, set[str]] = {}
     level: dict[str, int] = {}
+    configs = [m["config"] for m in messages if isinstance(m, dict) and isinstance(m.get("config"), dict)]
+    scan_level = configs[0].get("scan_level") if configs else None
+    if scan_level != "symbol":
+        # Only a symbol-level scan can show a function is absent; at package or module level (a binary without
+        # symbol information, or an older govulncheck) "not found" is not "not reachable".
+        raise ScannerError(f"govulncheck did not analyse at symbol level (scan_level {scan_level or 'not given'}), "
+                           "so it cannot show a vulnerable function is absent")
     for m in messages:
         if not isinstance(m, dict):
             raise TypeError("a message is not an object")
@@ -105,8 +112,20 @@ def _analyse(messages: list[dict]) -> dict[str, dict]:
 
 
 def scan_binary(binary: str, target: Path, timeout: int) -> dict[str, dict]:
-    raw = run([binary, "-mode=binary", "-format", "json", path_arg(target)], timeout)
+    raw = run([binary, "-mode=binary", "-scan", "symbol", "-format", "json", path_arg(target)], timeout)
     return analyse(parse_stream(raw.decode("utf-8", "replace")))
+
+
+MAX_BINARY = 1024 * 1024 * 1024  # a Go binary near 1 GB is not one; never copied out
+
+
+def _regular_inside(p: Path, root: Path) -> bool:
+    """A regular file, not a link, that resolves inside root: what govulncheck may be pointed at."""
+    try:
+        return (not p.is_symlink() and p.is_file()
+                and p.resolve().is_relative_to(root.resolve()))
+    except OSError:
+        return False
 
 
 def safe_relpath(p: str) -> bool:
@@ -126,19 +145,21 @@ def extract_from_image(image: str, paths: list[str], platform: str | None, dest:
         if used is not None:
             used.update(tool="docker", path=docker)
         cmd = [docker, "create"] + (["--platform", platform] if platform else []) + [image, "/nonexistent"]
-        cid = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        cid = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=child_env())
         if cid.returncode == 0:
             container = cid.stdout.strip()
             copied = []
             try:
                 for p in wanted:
                     (dest / p).parent.mkdir(parents=True, exist_ok=True)
-                    r = subprocess.run([docker, "cp", f"{container}:/{p}", str(dest / p)], capture_output=True,
-                                       timeout=timeout)
-                    if r.returncode == 0:
+                    # -L: a link in the image is followed inside the image. Without it docker cp copies the link
+                    # itself, and an image could point a Go binary's path at a file on this machine.
+                    r = subprocess.run([docker, "cp", "-L", f"{container}:/{p}", str(dest / p)],
+                                       capture_output=True, env=child_env(), timeout=timeout)
+                    if r.returncode == 0 and _regular_inside(dest / p, dest):
                         copied.append(p)
             finally:
-                subprocess.run([docker, "rm", container], capture_output=True, timeout=60)
+                subprocess.run([docker, "rm", container], capture_output=True, timeout=60, env=child_env())
             return copied
     crane = shutil.which("crane")
     if crane:
@@ -150,14 +171,16 @@ def extract_from_image(image: str, paths: list[str], platform: str | None, dest:
             run(cmd, timeout)
             copied = []
             with tarfile.open(tar_path) as tar:
-                for member in tar.getmembers():
-                    name = member.name.lstrip("./")
-                    if name in wanted and member.isfile():
+                for member in tar:  # streamed: the export of a large image is never held in memory
+                    name = member.name[2:] if member.name.startswith("./") else member.name.lstrip("/")
+                    if name in wanted and name not in copied and member.isfile() and member.size <= MAX_BINARY:
                         out = dest / name
                         out.parent.mkdir(parents=True, exist_ok=True)
                         src = tar.extractfile(member)
                         if src:
-                            out.write_bytes(src.read())
-                            copied.append(name)
+                            with open(out, "wb") as fh:
+                                shutil.copyfileobj(src, fh, 1 << 20)
+                            if _regular_inside(out, dest):
+                                copied.append(name)
             return copied
     raise ScannerError("--reachability on an image needs Docker or crane to copy the Go binaries out of it")

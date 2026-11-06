@@ -63,7 +63,8 @@ def seeds(name: str) -> list[bytes]:
     if name == "likelihood_config":
         return [json.dumps(likelihood.DEFAULT_CONFIG).encode()]
     if name == "govulncheck_output":
-        return [b'{"config": {"go_version": "go1.22"}}\n{"osv": {"id": "GO-2099-0001", "aliases": ["CVE-2099-1"]}}\n'
+        return [b'{"config": {"go_version": "go1.22", "scan_level": "symbol"}}\n'
+                b'{"osv": {"id": "GO-2099-0001", "aliases": ["CVE-2099-1"]}}\n'
                 b'{"finding": {"osv": "GO-2099-0001", "trace": [{"module": "m", "package": "p", "function": "f"}]}}\n']
     if name == "service_data":
         return [(FIX / n).read_bytes() for n in ("exploitdb.csv", "debian_DLA_list.txt", "vscode_removed.md",

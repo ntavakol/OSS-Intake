@@ -42,10 +42,20 @@ def path_arg(path: str | Path) -> str:
     return os.path.join(".", s) if s.startswith("-") else s
 
 
+# Credentials oss-intake reads for its own requests, which no program it starts needs: a scanner, docker, crane
+# or cosign that was swapped (Trivy 0.69.4 was a release that stole credentials) must not get them.
+SECRET_ENV = ("GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PAT", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
+
+
+def child_env() -> dict[str, str]:
+    """The environment for a program oss-intake starts: this one, without the GitHub tokens."""
+    return {k: v for k, v in os.environ.items() if k.upper() not in SECRET_ENV}
+
+
 def run(cmd: list[str], timeout: int) -> bytes:
     """Run a command without a shell and return stdout bytes. Raises ScannerError on failure."""
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=timeout, check=False)
+        proc = subprocess.run(cmd, capture_output=True, timeout=timeout, check=False, env=child_env())
     except subprocess.TimeoutExpired:
         raise ScannerError(f"{Path(cmd[0]).name} timed out after {timeout}s") from None
     except OSError as exc:
