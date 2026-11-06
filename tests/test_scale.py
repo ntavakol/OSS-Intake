@@ -739,3 +739,58 @@ def test_operator_cannot_vouch_over_permissions_that_are_read(tmp_path):
 def test_trust_cache_dir_needs_cache_dir(tmp_path, capsys):
     code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--trust-cache-dir"])
     assert code == cli.EXIT_USAGE and "--trust-cache-dir needs --cache-dir" in capsys.readouterr().err
+
+
+# --- SBOM subjects and size (audit, 7 Nov) ------------------------------------------------------------------
+
+def _sbom_file(tmp_path, doc, name="s.cdx.json"):
+    p = tmp_path / name
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    return p
+
+
+def test_sbom_subject_package_is_checked_too(tmp_path):
+    """The subject of a vendor SBOM for a library is the library: it, and components nested under it, were
+    dropped silently, so the SBOM read as clean for that library."""
+    from oss_intake import sbom
+
+    cdx = {"bomFormat": "CycloneDX", "specVersion": "1.6",
+           "metadata": {"component": {"type": "library", "name": "lodash", "version": "4.17.20",
+                                      "purl": "pkg:npm/lodash@4.17.20",
+                                      "components": [{"type": "library", "name": "minimist", "version": "1.2.0",
+                                                      "purl": "pkg:npm/minimist@1.2.0"}]}},
+           "components": [{"type": "library", "name": "x", "version": "1.0.0", "purl": "pkg:npm/x@1.0.0"}]}
+    entries, _, _ = sbom.read(_sbom_file(tmp_path, cdx))
+    assert {e["purl"] for e in entries} == {"pkg:npm/lodash@4.17.20", "pkg:npm/minimist@1.2.0", "pkg:npm/x@1.0.0"}
+    spdx = {"spdxVersion": "SPDX-2.3", "name": "doc", "documentDescribes": ["SPDXRef-a"], "packages": [
+        {"SPDXID": "SPDXRef-a", "name": "lodash", "versionInfo": "4.17.20", "externalRefs": [
+            {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+             "referenceLocator": "pkg:npm/lodash@4.17.20"}]},
+        {"SPDXID": "SPDXRef-b", "name": "minimist", "versionInfo": "1.2.0", "externalRefs": [
+            {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+             "referenceLocator": "pkg:npm/minimist@1.2.0"}]}]}
+    entries, _, _ = sbom.read(_sbom_file(tmp_path, spdx, "s.spdx.json"))
+    assert {e["purl"] for e in entries} == {"pkg:npm/lodash@4.17.20", "pkg:npm/minimist@1.2.0"}
+
+
+def test_image_subject_is_not_a_package(tmp_path):
+    from oss_intake import sbom
+
+    cdx = {"bomFormat": "CycloneDX", "specVersion": "1.6",
+           "metadata": {"component": {"type": "container", "name": "app", "purl": "pkg:oci/app@sha256:aa"}},
+           "components": [{"type": "library", "name": "x", "version": "1.0.0", "purl": "pkg:npm/x@1.0.0"}]}
+    entries, _, info = sbom.read(_sbom_file(tmp_path, cdx))
+    assert [e["purl"] for e in entries] == ["pkg:npm/x@1.0.0"] and info["not_checked"] == []
+
+
+def test_huge_component_list_is_refused_quickly(tmp_path, monkeypatch):
+    """The walk took list.pop(0), quadratic: a million empty components hung the run before the limit applied."""
+    from oss_intake import inputs, sbom
+
+    monkeypatch.setattr(sbom, "MAX_COMPONENTS", 100_000)
+    cdx = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [{}] * 300_000}
+    p = _sbom_file(tmp_path, cdx)
+    t = time.monotonic()
+    with pytest.raises(inputs.InputError, match="more than 100000 components"):
+        sbom.read(p)
+    assert time.monotonic() - t < 3  # the quadratic walk took about 10 s here

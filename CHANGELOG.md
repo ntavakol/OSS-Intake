@@ -16,6 +16,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- An SBOM's own subject was never checked: in a vendor SBOM for a library (the library as CycloneDX's
+  `metadata.component`, or SPDX's single described package), the library and the components nested under it
+  were dropped without a word, so the SBOM read as clean for it. A subject that is a package is now checked like
+  any other; an image or OS subject still is not.
+- Reading a CycloneDX SBOM was quadratic in its components, so a small file listing a million empty ones hung
+  the run before the 500,000-component limit applied. The walk is linear and stops at the limit.
 - Every program oss-intake starts (Trivy, Grype, govulncheck, docker, crane, cosign) inherited `GITHUB_TOKEN`,
   including binaries that were not verified. They now start without the GitHub token variables.
 - With `--reachability` on an image, `docker cp` copied a link in the image as a link, so an image could point a

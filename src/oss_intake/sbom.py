@@ -20,6 +20,7 @@ Two CycloneDX component properties are read, so a collector (examples/osquery) c
 from __future__ import annotations
 
 import re
+from collections import deque
 from pathlib import Path
 
 from . import jsonsafe, os_packages
@@ -149,6 +150,12 @@ def _list(value: object, what: str) -> list:
     return value
 
 
+def _is_package_subject(purl: str, kind: object) -> bool:
+    """An SBOM's subject that is a package to check: not an image, OS or file."""
+    ptype = purl[4:].split("/", 1)[0].lower() if purl.startswith("pkg:") else ""
+    return bool(ptype) and ptype not in ("oci", "docker") and kind not in ("container", "operating-system", "file")
+
+
 def _cyclonedx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
     spec = str(data.get("specVersion", ""))
     if spec not in _CDX_SPECS:
@@ -158,12 +165,21 @@ def _cyclonedx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
     meta: dict = component if isinstance(component, dict) else {}
     subject = " ".join(x for x in (str(meta.get("name") or ""), str(meta.get("version") or "")) if x)
     out = []
-    stack = list(_list(data.get("components"), "components"))
-    while stack:
-        c = stack.pop(0)
+    # The subject is checked like any package when it is one (a vendor SBOM for a library names the library
+    # there), and so are the components nested under it; an image or OS subject is not a package.
+    queue = deque(_list(data.get("components"), "components"))
+    queue.extend(_list(meta.get("components"), "metadata.component.components"))
+    if meta.get("purl") and _is_package_subject(str(meta["purl"]), meta.get("type")):
+        queue.appendleft({k: v for k, v in meta.items() if k != "components"})
+    seen = 0
+    while queue:
+        c = queue.popleft()  # a deque: list.pop(0) made the walk quadratic, a hang for a large file
+        seen += 1
+        if seen > MAX_COMPONENTS:
+            raise InputError(f"more than {MAX_COMPONENTS} components; split the SBOMs into smaller sets")
         if not isinstance(c, dict):
             continue
-        stack.extend(_list(c.get("components"), "components"))
+        queue.extend(_list(c.get("components"), "components"))
         if not c.get("purl") and (c.get("type") in ("operating-system", "file")
                                   or any(p.get("name") == "aquasecurity:trivy:Class"
                                          for p in _list(c.get("properties"), "properties") if isinstance(p, dict))):
@@ -190,12 +206,14 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
         name = str(p.get("name") or "") + (f" {p.get('versionInfo')}" if p.get("versionInfo") else "")
         # The document describes one root (a repository, an image) or, as Amazon Inspector writes it, each package.
         # Only a single described element is the subject; several are packages like any other.
-        if len(described) == 1 and p.get("SPDXID") in described:
-            subject = str(p.get("name") or subject)
-            continue
         purls = [r.get("referenceLocator") for r in _list(p.get("externalRefs"), "externalRefs") if isinstance(r, dict)
                  and str(r.get("referenceType", "")).lower() == "purl"
                  and str(r.get("referenceCategory", "")).upper().replace("_", "-") == "PACKAGE-MANAGER"]
+        if len(described) == 1 and p.get("SPDXID") in described:
+            subject = str(p.get("name") or subject)
+            # A described package with a package URL (a vendor SBOM for one library) is checked like the others.
+            if not (purls and _is_package_subject(str(purls[0]), None)):
+                continue
         supplier = str(p.get("supplier") or "").removeprefix("Organization: ").removeprefix("Person: ")
         if supplier.upper() == "NOASSERTION":
             supplier = ""
