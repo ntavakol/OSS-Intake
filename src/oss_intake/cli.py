@@ -300,7 +300,7 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
                         "Use a folder only you can write to (--cache-dir), or --no-cache")
         cache = None
     elif cache is not None and args.trust_cache_dir and cache.unsafe_reason():
-        log(f"using the cache in {cache.folder} on your word (--trust-cache-dir): its permissions were not read",
+        log(f"using the cache in {cache.folder} on your word (--trust-cache-dir): it is outside your user profile",
             args.quiet)
         cache.operator_trusted = True
     net = None if args.offline else (http or RequestsHttp(cache=cache))

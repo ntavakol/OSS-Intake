@@ -777,7 +777,7 @@
      "dest": "trust_cache_dir",
      "exclusive_group": null,
      "flag": "--trust-cache-dir",
-     "help": "Windows: use --cache-dir outside your user profile, confirming that only you can write to it (Windows permissions are not read). Elsewhere permissions are read and not overridden",
+     "help": "Windows: use --cache-dir outside your user profile, confirming that only you can write to it. What the folder's permissions show is not overridden, on Windows or elsewhere",
      "kind": "flag",
      "metavar": null,
      "required": false,

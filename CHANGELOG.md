@@ -9,8 +9,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `--scanner-env NAME` (repeatable, patterns allowed): pass an environment variable on to the scanners and helpers
   oss-intake starts, for registry credentials that come from the environment (`--scanner-env 'AWS_*'` for ECR).
 - `--trust-cache-dir`: on Windows, use a `--cache-dir` outside your user profile (a CI workspace on drive D:, say),
-  confirming that only you can write to it, as Windows permissions are not read. Recorded in `assessment.json`.
-  Elsewhere permissions are read and the switch overrides nothing.
+  confirming that only you can write to it. Recorded in `assessment.json`. What the folder's permissions show is
+  not overridden.
 - `--max-db-age-days N` (off by default): stop the run (exit 1) when Trivy's or Grype's vulnerability database
   is older than N days, or its build date cannot be read, so a pipeline with a stale database does not report
   clean. Refused with an imported scanner report.
@@ -24,6 +24,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- On Windows the cache folder's permissions were not read: a folder in the user's profile was trusted whatever
+  its permissions said. Each folder's security descriptor is now read, and a cache folder that another account
+  can write to, or that a folder above it lets another account move away, is not used, even with
+  `--trust-cache-dir` (external audit SEC-04/13). A folder outside the profile still needs `--trust-cache-dir`.
 - Reports were written with an ordinary open after a one-time check for links, so a link placed in the output
   folder during the run was followed. Each report is now written beside its target and moved into place, which
   replaces a symbolic or hard link instead of writing through it, and a report is never left half written

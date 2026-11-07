@@ -231,7 +231,7 @@ def build_parser() -> argparse.ArgumentParser:
                         "token")
     s.add_argument("--trust-cache-dir", action="store_true",
                    help="Windows: use --cache-dir outside your user profile, confirming that only you can write to "
-                        "it (Windows permissions are not read). Elsewhere permissions are read and not overridden")
+                        "it. What the folder's permissions show is not overridden, on Windows or elsewhere")
     s.add_argument("--no-cache", action="store_true",
                    help="fetch everything fresh and keep nothing; what affects a version is always fetched fresh")
     s.add_argument("--timeout", type=int, default=1800, help="per scanner timeout in seconds (default 1800)")

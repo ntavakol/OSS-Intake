@@ -736,6 +736,85 @@ def test_operator_cannot_vouch_over_permissions_that_are_read(tmp_path):
         (tmp_path / "c").chmod(0o700)
 
 
+ME = "S-1-5-21-1111-2222-3333-1001"
+_PROFILE = f"O:{ME}D:P(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;{ME})"
+_DRIVE_ROOT = ("O:S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464D:PAI(A;OICIIO;SDGXGWGR;;;AU)"
+               "(A;;LC;;;AU)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)")
+
+
+@pytest.mark.parametrize("sddl, mask, why", [
+    (_PROFILE, "FOLDER_WRITE", None),
+    (_DRIVE_ROOT, "PARENT_WRITE", None),  # anyone may add a folder to C:\, but not move one away
+    (_DRIVE_ROOT, "FOLDER_WRITE", "other users (Authenticated Users)"),  # so a folder not made yet is not safe
+    (_PROFILE + "(A;OICI;0x1301bf;;;WD)", "FOLDER_WRITE", "other users (Everyone)"),
+    (_PROFILE + "(A;OICIIO;GA;;;CO)(A;;FR;;;BU)", "FOLDER_WRITE", None),  # inherit-only, and read only
+    (_PROFILE + "(D;OICI;FA;;;S-1-5-21-9-9-9-500)(A;OICI;FW;;;S-1-5-21-9-9-9-500)", "FOLDER_WRITE",
+     "other users (S-1-5-21-9-9-9-500)"),  # a deny entry is not weighed: the allow counts
+    (_PROFILE + '(XA;;FX;;;S-1-1-0;(@User.Title=="PM"))', "FOLDER_WRITE", None),  # a conditional entry, read only
+    (_PROFILE + "(A;;QQ;;;BU)", "PARENT_WRITE", "other users (Users)"),  # a right not known counts as every right
+    ("O:S-1-5-21-9-9-9-1002D:(A;;FA;;;SY)", "FOLDER_WRITE", "belongs to another account (S-1-5-21-9-9-9-1002)"),
+    (f"O:{ME}D:NO_ACCESS_CONTROL", "FOLDER_WRITE", "no access control"),
+])
+def test_windows_folder_permissions_are_read_from_the_descriptor(sddl, mask, why):
+    """Audit SEC-04/13: on Windows the cache folder's permissions were not read, only where it was. Who can write
+    is now read from each folder's security descriptor (here, as the SDDL text the Win32 API gives)."""
+    from oss_intake import winacl
+
+    got = winacl.write_reason(sddl, ME, getattr(winacl, mask))
+    assert (got is None) if why is None else (why in (got or "")), got
+
+
+@pytest.mark.parametrize("sddl", ["", "O:SY", "O:SYD:(A;;FA;;;SY", "O:SYD:A;;FA;;;SY", "O:SYD:(A;;FA)",
+                                  "O:SYD:(A;;0xZZ;;;SY)"])
+def test_a_descriptor_that_cannot_be_read_is_an_error(sddl):
+    from oss_intake import winacl
+
+    with pytest.raises(winacl.SddlError):
+        winacl.write_reason(sddl, ME, winacl.FOLDER_WRITE)
+
+
+def test_windows_cache_others_can_write_to_is_refused_even_on_the_operators_word(tmp_path, monkeypatch):
+    """What the descriptor shows is not overridden, inside the profile or with --trust-cache-dir; when it
+    cannot be read, the profile rule decides as before."""
+    from oss_intake import winacl
+
+    monkeypatch.setattr(__import__("pathlib").Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    (tmp_path / "home" / "cache").mkdir(parents=True)
+    shared = str(tmp_path / "home" / "cache")
+    monkeypatch.setattr(winacl, "user_sid", lambda: ME)
+    monkeypatch.setattr(winacl, "read_sddl", lambda p: _PROFILE + ("(A;OICI;FW;;;BU)" if p == shared else ""))
+    c = ResponseCache(tmp_path / "home" / "cache")
+    for trusted in (False, True):
+        why = c.unsafe_reason(windows=True, operator_trusted=trusted)
+        assert why == f"{shared} can be written by other users (Users)", why
+    monkeypatch.setattr(winacl, "read_sddl", lambda p: _PROFILE)
+    assert c.unsafe_reason(windows=True) is None
+    assert "outside your user profile" in (ResponseCache(tmp_path / "ci").unsafe_reason(windows=True) or "")
+
+    def unreadable(p):
+        raise OSError(5, "Access is denied")
+
+    monkeypatch.setattr(winacl, "read_sddl", unreadable)
+    assert c.unsafe_reason(windows=True) is None
+    assert ResponseCache(tmp_path / "ci").unsafe_reason(windows=True, operator_trusted=True) is None
+
+
+@pytest.mark.skipif(__import__("sys").platform != "win32", reason="reads a real Windows security descriptor")
+def test_a_real_windows_folder_everyone_can_write_to_is_refused(tmp_path):
+    import subprocess
+
+    from oss_intake import winacl
+
+    assert winacl.user_sid().startswith("S-1-5-")
+    folder = tmp_path / "cache"
+    folder.mkdir()
+    c = ResponseCache(folder)
+    assert c._windows_acl_reason() is None, winacl.read_sddl(str(folder))
+    subprocess.run(["icacls", str(folder), "/grant", "*S-1-1-0:(OI)(CI)M"], check=True, capture_output=True)
+    assert "can be written by other users (Everyone)" in (c._windows_acl_reason() or "")
+
+
 def test_trust_cache_dir_needs_cache_dir(tmp_path, capsys):
     code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--trust-cache-dir"])
     assert code == cli.EXIT_USAGE and "--trust-cache-dir needs --cache-dir" in capsys.readouterr().err

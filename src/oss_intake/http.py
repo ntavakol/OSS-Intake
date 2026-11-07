@@ -198,8 +198,11 @@ class ResponseCache:
         and every folder above it are checked: whoever can write to a parent can swap the folder. (Entries and
         their subfolders are checked as they are read: _trusted.)"""
         if windows if windows is not None else sys.platform == "win32":
-            # The operator's word (--trust-cache-dir) stands in for the permissions Windows does not let us read.
-            # Elsewhere permissions are read, and what they show is not overridden.
+            # Who can write is read from each folder's security descriptor where it can be, and what it shows is
+            # not overridden. On top of that, only a folder inside the user's profile is used unless the operator
+            # vouches for it (--trust-cache-dir), as a descriptor judged here may still miss a way in.
+            if why := self._windows_acl_reason():
+                return why
             return None if operator_trusted else self._windows_reason()
         import stat
 
@@ -217,9 +220,34 @@ class ResponseCache:
                 return f"{p} belongs to another user"
         return None
 
+    def _windows_acl_reason(self) -> str | None:
+        """Another account that can write to the folder or replace it (winacl), or None, also when the
+        descriptors cannot be read (not Windows, or the API failed): the profile rule still applies then."""
+        from . import winacl
+
+        try:
+            me = winacl.user_sid()
+        except OSError:
+            return None
+        nearest = True
+        for p in [self.folder, *self.folder.parents]:
+            if not p.exists():
+                continue  # not made yet: whoever can add to the folder above could make it first
+            try:
+                why = winacl.write_reason(winacl.read_sddl(str(p)), me,
+                                          winacl.FOLDER_WRITE if nearest else winacl.PARENT_WRITE)
+            except (OSError, winacl.SddlError):
+                return None
+            if why:
+                return f"{p} {why}"
+            nearest = False
+        return None
+
     def _windows_reason(self) -> str | None:
-        """Windows permissions are not read here, so only a folder inside the user's own profile (where other
-        users cannot write unless someone changed its permissions) is trusted."""
+        """The folders' descriptors (_windows_acl_reason) can miss a way in: an entry or subfolder given other
+        rights, a junction, an account with the backup or restore privilege. So only a folder inside the user's
+        own profile (where other users cannot write unless someone changed its permissions) is trusted unless
+        the operator vouches for it."""
         def inside(p: Path, root: Path) -> bool:
             try:
                 p.resolve().relative_to(root.resolve())
