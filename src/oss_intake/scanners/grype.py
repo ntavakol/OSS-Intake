@@ -18,6 +18,16 @@ def version_info(binary: str) -> dict:
     return {"version": str(version), "syft_version": data.get("syftVersion")}
 
 
+def db_built(binary: str) -> str | None:
+    """When Grype's vulnerability database was built (grype db status), or None if it does not say."""
+    try:
+        data = load_json_bytes(run([binary, "db", "status", "-o", "json"], timeout=60), "grype db status output")
+    except ScannerError:
+        return None
+    built = data.get("built") or data.get("Built") if isinstance(data, dict) else None
+    return str(built) if built else None
+
+
 def source_for(image: str, image_src: str | None) -> str:
     return _SOURCE_PREFIX.get(image_src or "", "") + image
 

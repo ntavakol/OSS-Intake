@@ -85,6 +85,7 @@
     "malicious",
     "mismatch",
     "recent",
+    "unchecked",
     "unknown-age"
    ],
    "message": "unknown value",
@@ -724,6 +725,47 @@
     "{file}",
     "--fail-on",
     "mismatch",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "gate-unchecked-input",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "unchecked"
+      ]
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "package"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on unchecked needs an SBOM or an renv.lock",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "unchecked",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--fail-on",
+    "high",
     "--out",
     "{out}"
    ]

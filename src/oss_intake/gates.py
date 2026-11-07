@@ -80,7 +80,7 @@ def hidden_warnings(args, all_findings: list, shown: list, age_info: dict) -> li
 
 
 def met(wanted: list[str], findings: list, age_info: dict, registry: dict | None,
-          extensions: dict | None = None) -> list[str]:
+          extensions: dict | None = None, unchecked: int = 0) -> list[str]:
     """The --fail-on conditions met. Findings set aside (evidence or an assessor decision) do not count, except
     a malicious package, which no decision sets aside. An extension the Marketplace removed as malware counts
     as malicious."""
@@ -95,5 +95,6 @@ def met(wanted: list[str], findings: list, age_info: dict, registry: dict | None
         "recent": bool(age_info.get("recent")),
         "unknown-age": unknown_age(age_info),
         "mismatch": bool(registry and registry.get("status") == "mismatch"),
+        "unchecked": unchecked > 0,
     }
     return [w for w in wanted if met[w]]

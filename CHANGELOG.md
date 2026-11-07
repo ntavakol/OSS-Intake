@@ -11,6 +11,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `--trust-cache-dir`: on Windows, use a `--cache-dir` outside your user profile (a CI workspace on drive D:, say),
   confirming that only you can write to it, as Windows permissions are not read. Recorded in `assessment.json`.
   Elsewhere permissions are read and the switch overrides nothing.
+- `--max-db-age-days N` (off by default): stop the run (exit 1) when Trivy's or Grype's vulnerability database
+  is older than N days, or its build date cannot be read, so a pipeline with a stale database does not report
+  clean. Refused with an imported scanner report.
+- `--fail-on unchecked`: exit 3 when an SBOM component or an renv.lock package could not be checked (a type no
+  source covers, no usable package URL, a package not from CRAN). Refused for anything else, which lists no such
+  components.
 
 ### Changed
 - CI tests Python 3.14 and 3.15 on Linux, Windows and macOS, as well as 3.10 on all three and 3.11 to 3.13 on

@@ -55,7 +55,8 @@ nothing, or output that is not what it seems).
 - The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
   its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
-- The scanner's vulnerability database age is shown, and enforced only with `--max-db-age-days`.
+- The scanner's vulnerability database age is shown, and enforced only with `--max-db-age-days` (off by default),
+  which stops the run when the database is older or its build date cannot be read.
 - Anything wrong inside a scanner (a parser flaw reached by the files it reads) is the scanner's: pin and verify
   it as the guide describes.
 
@@ -155,8 +156,9 @@ memory and time.
 - `--fail-on recent` passes for a version in a registry deps.dev does not cover at all (RubyGems, CRAN), as it
   would otherwise fail on every run; `--fail-on unknown-age` catches those. A version in a registry deps.dev
   covers but has no date for (as for a release hours old) makes the gate fail with exit 1.
-- An SBOM in which most components could not be checked still passes a gate if the rest are clean; the unchecked
-  ones are a warning and a list, not a failure.
+- An SBOM in which most components could not be checked still passes a gate if the rest are clean, unless
+  `--fail-on unchecked` is given; without it the unchecked ones are a warning and a list, not a failure. The same
+  holds for renv.lock packages not from CRAN. A .csv package list, an image and a folder have no such list.
 - Single files given to `--path` other than SBOMs have no size limit (the scanners read them). Inventories,
   decisions files, renv.lock files and SBOMs are read whole into memory within their 200 MB limit, and imported
   scanner reports within 1 GB. Inventory label values are not cut.

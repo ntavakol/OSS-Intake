@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import checks, inputs, integrity, safewrite
 from .http import HttpError
+from .models import parse_datetime
 from .options import UsageError, log
 from .scanners import ReportShapeError, ScannerError, check_report, find_executable, load_json_bytes
 from .scanners import govulncheck as govuln_mod
@@ -50,6 +51,21 @@ def same_image(a: str, b: str) -> bool:
     return (ta or "latest") == (tb or "latest")
 
 
+def _refuse_old_database(tool: str, built: object, max_days: int) -> None:
+    """--max-db-age-days: a database older than max_days, or of unknown age, stops the run before the scan."""
+    from datetime import datetime, timezone
+
+    when = parse_datetime(str(built)) if built else None
+    if when is None:
+        raise ScannerError(f"{tool} did not say when its vulnerability database was built, so --max-db-age-days "
+                           f"{max_days} cannot be met")
+    age = (datetime.now(timezone.utc) - when).days
+    if age > max_days:
+        raise ScannerError(f"{tool}'s vulnerability database was built {age} days ago ({str(built)[:10]}), older "
+                           f"than --max-db-age-days {max_days}: update it (trivy --download-db-only, grype db "
+                           "update) and run again")
+
+
 def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict,
                  warnings: list[str] | None = None) -> dict:
     loaded = getattr(args, f"from_{tool}_json")
@@ -80,6 +96,10 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
         getattr(args, f"{tool}_checksums"))
     integrity.refuse_known_bad_before_run(tool, path)  # from the file's Go build info, before it runs
     info = mod.version_info(path)
+    if args.max_db_age_days is not None:
+        if tool == "grype":
+            info["db_updated"] = mod.db_built(path)
+        _refuse_old_database(tool, info.get("db_updated"), args.max_db_age_days)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
@@ -163,6 +183,7 @@ def run(args, chosen, out, net, scanners_meta, warnings):
         return None, groups, scan_info
     if args.path_kind == "renv":
         purls, skipped = inputs.renv_purls(Path(args.path))
+        args.renv_unchecked = skipped
         if skipped:
             warnings.append(f"{len(skipped)} renv package(s) not from CRAN were not checked (OSV's R advisories "
                             f"cover CRAN): {', '.join(skipped[:8])}{' ...' if len(skipped) > 8 else ''}")

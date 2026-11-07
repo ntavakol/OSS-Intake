@@ -29,6 +29,8 @@ FAIL_ON = {
     "unknown-age": "a package version whose release date could not be found (not on deps.dev, or not indexed "
                    "yet, as for a release only hours old), so it could not be checked for being new",
     "mismatch": "an artifact that does not match its registry checksum",
+    "unchecked": "an SBOM component or renv.lock package that could not be checked (a type no source covers, no "
+                 "version, or not from CRAN), so a clean result would not cover it",
 }
 
 
@@ -212,6 +214,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"flag package versions published fewer than N days ago (default {release_age.DEFAULT_DAYS}; "
                         "0 turns it off): new releases are when compromised versions are live, before advisories "
                         "exist. One deps.dev request per language package")
+    s.add_argument("--max-db-age-days", type=int, default=None, metavar="N",
+                   help="stop the run (exit 1) when a scanner's vulnerability database is older than N days, or its "
+                        "age cannot be told: findings from an old database miss recent advisories. Off by default; "
+                        "applies to Trivy and Grype runs, not imported reports")
     s.add_argument("--release-age-max", type=int, default=release_age.MAX_LOOKUPS, metavar="N",
                    help=f"look up release dates for at most N package versions, after duplicates are merged "
                         f"(default {release_age.MAX_LOOKUPS}); the rest are reported as not checked")
@@ -307,6 +313,17 @@ def refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]
         what = Path(args.path).name if args.path else ("an image" if args.image else "--package")
         raise UsageError(f"--fail-on mismatch needs a single file to compare with its registry (a JAR, WAR, wheel, "
                          f"sdist or npm .tgz); {what} is not one")
+    if args.max_db_age_days is not None:
+        if args.max_db_age_days < 0:
+            raise UsageError("--max-db-age-days must be zero or more")
+        imported = [f"--from-{t}-json" for t in ("trivy", "grype") if getattr(args, f"from_{t}_json")]
+        if imported:
+            raise UsageError(f"--max-db-age-days cannot be checked for an imported report ({', '.join(imported)}): "
+                             "the report does not say how old the scanner's database was")
+    if "unchecked" in wanted and not (getattr(args, "sbom_info", None) is not None or args.path_kind == "renv"):
+        # Scanners do not say what they could not read in an image or folder, so the gate could never be met.
+        raise UsageError("--fail-on unchecked needs an SBOM or an renv.lock (--path): only they list what could not "
+                         "be checked")
     osv_off = args.path_kind not in ("renv", "inventory") and "osv" not in chosen
     for gate in ("malicious", "act"):
         if gate in wanted and osv_off:

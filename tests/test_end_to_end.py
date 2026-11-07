@@ -2425,3 +2425,81 @@ def test_a_link_placed_after_the_check_is_replaced_not_written_through(tmp_path,
     assert not (out / "summary.md").is_symlink() and "# " in (out / "summary.md").read_text(encoding="utf-8")
     assert (out / "findings.csv").stat().st_ino != target.stat().st_ino
     assert not [p.name for p in out.iterdir() if p.name.endswith(".tmp")]
+
+
+@pytest.mark.parametrize("days_old, ok", [(1, True), (60, False), (None, False)])
+def test_max_db_age_days_stops_a_scan_with_an_old_database(tmp_path, monkeypatch, fixtures, capsys, days_old, ok):
+    """External audit: the scanner's database age was shown but never enforced."""
+    from datetime import datetime, timedelta, timezone
+
+    db = ((datetime.now(timezone.utc) - timedelta(days=days_old)).strftime("%Y-%m-%dT%H:%M:%SZ")
+          if days_old is not None else None)
+    fake = tmp_path / "trivy"
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    report = (fixtures / "trivy.json").read_bytes()
+    version = {"Version": "0.76.1", **({"VulnerabilityDB": {"UpdatedAt": db}} if db else {})}
+    monkeypatch.setattr(cli.trivy_mod, "run",
+                        lambda cmd, timeout: json.dumps(version).encode() if "--version" in cmd else report)
+
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "trivy", "--trivy-path", str(fake), "--max-db-age-days", "7"])
+    err = capsys.readouterr().err
+    if ok:
+        assert code == cli.EXIT_OK, err
+    else:
+        assert code == cli.EXIT_ERROR and "--max-db-age-days 7" in err
+
+
+def test_max_db_age_days_is_refused_for_an_imported_report(tmp_path, fixtures, capsys):
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "trivy", "--from-trivy-json", str(fixtures / "trivy.json"), "--max-db-age-days", "7"])
+    assert code == cli.EXIT_USAGE and "cannot be checked for an imported report" in capsys.readouterr().err
+
+
+def test_grype_database_build_date_is_read(monkeypatch):
+    from oss_intake.scanners import grype
+
+    status = b'{"schemaVersion": "v6.0.2", "built": "2026-11-06T04:00:00Z"}'
+    monkeypatch.setattr(grype, "run", lambda cmd, timeout: status)
+    assert grype.db_built("grype") == "2026-11-06T04:00:00Z"
+    monkeypatch.setattr(grype, "run", lambda cmd, timeout: b'{"schemaVersion": "v6.0.2"}')
+    assert grype.db_built("grype") is None
+
+
+def _bom(tmp_path, components):
+    p = tmp_path / "b.cdx.json"
+    p.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": components}),
+                 encoding="utf-8")
+    return p
+
+
+def test_fail_on_unchecked_trips_on_sbom_components_left_out(tmp_path, capsys):
+    """SBOM components no source covers were reported but did not fail a gate, so a pipeline passed
+    on an SBOM it had only partly checked. --fail-on unchecked fails it (exit 3); a fully checked one passes."""
+    lodash = {"type": "library", "name": "lodash", "purl": "pkg:npm/lodash@4.17.20"}
+    partial = _bom(tmp_path, [lodash, {"type": "library", "name": "mystery", "version": "1"}])
+    argv = ["--out", str(tmp_path / "o"), "--no-latest", "--release-age-days", "0", "--fail-on", "unchecked"]
+    assert cli.main(["--path", str(partial), *argv], http=SbomHttp()) == cli.EXIT_THRESHOLD
+    assert "unchecked" in capsys.readouterr().err
+    full = _bom(tmp_path, [lodash])
+    assert cli.main(["--path", str(full), *argv], http=SbomHttp()) == cli.EXIT_OK
+
+
+def test_fail_on_unchecked_trips_on_renv_packages_not_from_cran(tmp_path):
+    lock = tmp_path / "renv.lock"
+    pkgs = {"jsonlite": {"Package": "jsonlite", "Version": "1.8.0", "Source": "Repository", "Repository": "CRAN"}}
+    argv = ["--path", str(lock), "--out", str(tmp_path / "o"), "--fail-on", "unchecked"]
+    lock.write_text(json.dumps({"R": {"Version": "4.5.1"}, "Packages": pkgs}), encoding="utf-8")
+    assert cli.main(argv, http=FakeHttp()) == cli.EXIT_OK
+    pkgs["mine"] = {"Package": "mine", "Version": "0.1.0", "Source": "GitHub", "RemoteUsername": "someone"}
+    lock.write_text(json.dumps({"R": {"Version": "4.5.1"}, "Packages": pkgs}), encoding="utf-8")
+    assert cli.main(argv, http=FakeHttp()) == cli.EXIT_THRESHOLD
+
+
+@pytest.mark.parametrize("target", [["--image", "example/webapp:2.0.0"], ["--package", "npm:lodash@4.17.20"]])
+def test_fail_on_unchecked_is_refused_where_nothing_lists_what_was_left_out(tmp_path, capsys, target):
+    http = FakeHttp()
+    assert cli.main([*target, "--out", str(tmp_path / "o"), "--fail-on", "unchecked"], http=http) == cli.EXIT_USAGE
+    assert "--fail-on unchecked needs an SBOM or an renv.lock" in capsys.readouterr().err
+    assert http.calls == []

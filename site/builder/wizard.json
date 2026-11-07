@@ -95,7 +95,8 @@
     "critical",
     "high",
     "recent",
-    "unknown-age"
+    "unknown-age",
+    "unchecked"
    ],
    "icon": "list"
   },
@@ -233,6 +234,11 @@
    "id": "mismatch",
    "label": "The file doesn't match the checksum its registry publishes (JAR, wheel, sdist or npm .tgz)",
    "summary": "a file that does not match its registry checksum"
+  },
+  {
+   "id": "unchecked",
+   "label": "An SBOM component that couldn't be checked (SBOMs only, not a .csv)",
+   "summary": "an SBOM component or renv.lock package that could not be checked"
   }
  ],
  "summary": [

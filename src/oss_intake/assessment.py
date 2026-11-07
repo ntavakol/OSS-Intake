@@ -595,8 +595,11 @@ def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_i
         log(f"warning: {w}", args.quiet)
     log(f"wrote {', '.join(written)} to {out}", args.quiet)
     registry, extensions = getattr(args, "registry_result", None), getattr(args, "extension_info", None)
-    tripped = gates.met(args.fail_on_set, all_findings, age_info, registry, extensions)
-    hidden_only = {t for t in tripped if t not in gates.met([t], findings, age_info, registry, extensions)}
+    n_unchecked = (len((getattr(args, "sbom_info", None) or {}).get("not_checked") or [])
+                   + len(getattr(args, "renv_unchecked", None) or []))
+    tripped = gates.met(args.fail_on_set, all_findings, age_info, registry, extensions, n_unchecked)
+    hidden_only = {t for t in tripped
+                   if t not in gates.met([t], findings, age_info, registry, extensions, n_unchecked)}
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}"
             + (f" (only among findings below --min-severity {args.min_severity}, left out of the reports; "
