@@ -231,6 +231,23 @@
   },
   {
    "command": "scan",
+   "dest": "scanner_env",
+   "pattern": "^(?=.*[A-Za-z0-9_()])[A-Za-z0-9_*?()]+$",
+   "message": "name an environment variable or a pattern such as 'AWS_*'",
+   "valid": [
+    "AWS_*",
+    "AZURE_CLIENT_ID",
+    "GOOGLE_?PPLICATION_CREDENTIALS"
+   ],
+   "invalid": [
+    "*",
+    "A-B",
+    "*?",
+    "AWS *"
+   ]
+  },
+  {
+   "command": "scan",
    "dest": "package",
    "pattern": "^\\s*(?:[Pp][Kk][Gg]:[A-Za-z]+/\\S+@\\S+|\\.?[A-Za-z][A-Za-z0-9.-]*:\\S+@\\S+)\\s*$",
    "message": "invalid --package value",
@@ -494,6 +511,102 @@
     "owner/app:1.0",
     "--release-age-days",
     "0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "max-db-age-days",
+   "command": "scan",
+   "when": {
+    "lt": [
+     "max_db_age_days",
+     0
+    ]
+   },
+   "message": "--max-db-age-days must be zero or more",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--max-db-age-days=-1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--max-db-age-days",
+    "0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "max-db-age-days-trivy-import",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "max_db_age_days"
+     },
+     {
+      "set": "from_trivy_json"
+     }
+    ]
+   },
+   "message": "--max-db-age-days cannot be checked for an imported Trivy report",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--from-trivy-json",
+    "{file}",
+    "--max-db-age-days",
+    "7",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--from-grype-json",
+    "{file}",
+    "--max-db-age-days",
+    "7",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "max-db-age-days-needs-a-scanner",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "max_db_age_days"
+     },
+     {
+      "set": "package"
+     }
+    ]
+   },
+   "message": "--max-db-age-days needs Trivy or Grype",
+   "args": [
+    "--package",
+    "npm:chalk@5.6.1",
+    "--max-db-age-days",
+    "7",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--max-db-age-days",
+    "7",
     "--out",
     "{out}"
    ]

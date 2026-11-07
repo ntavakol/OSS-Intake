@@ -215,9 +215,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "0 turns it off): new releases are when compromised versions are live, before advisories "
                         "exist. One deps.dev request per language package")
     s.add_argument("--max-db-age-days", type=int, default=None, metavar="N",
-                   help="stop the run (exit 1) when a scanner's vulnerability database is older than N days, or its "
-                        "age cannot be told: findings from an old database miss recent advisories. Off by default; "
-                        "applies to Trivy and Grype runs, not imported reports")
+                   help="stop the run (exit 1) when the vulnerability database Trivy or Grype used is older than N "
+                        "days, or its age cannot be told: findings from an old database miss recent advisories. "
+                        "Judged after the scan's own update. Off by default; not for an imported Trivy report")
     s.add_argument("--release-age-max", type=int, default=release_age.MAX_LOOKUPS, metavar="N",
                    help=f"look up release dates for at most N package versions, after duplicates are merged "
                         f"(default {release_age.MAX_LOOKUPS}); the rest are reported as not checked")
@@ -316,10 +316,11 @@ def refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]
     if args.max_db_age_days is not None:
         if args.max_db_age_days < 0:
             raise UsageError("--max-db-age-days must be zero or more")
-        imported = [f"--from-{t}-json" for t in ("trivy", "grype") if getattr(args, f"from_{t}_json")]
-        if imported:
-            raise UsageError(f"--max-db-age-days cannot be checked for an imported report ({', '.join(imported)}): "
-                             "the report does not say how old the scanner's database was")
+        if args.from_trivy_json:
+            raise UsageError("--max-db-age-days cannot be checked for an imported Trivy report (--from-trivy-json): "
+                             "the report does not say how old Trivy's database was")
+        if not {"trivy", "grype"} & set(chosen):
+            raise UsageError("--max-db-age-days needs Trivy or Grype: no scanner database is used on this run")
     if "unchecked" in wanted and not (getattr(args, "sbom_info", None) is not None or args.path_kind == "renv"):
         # Scanners do not say what they could not read in an image or folder, so the gate could never be met.
         raise UsageError("--fail-on unchecked needs an SBOM or an renv.lock (--path): only they list what could not "

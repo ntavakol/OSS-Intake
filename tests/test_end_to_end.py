@@ -2451,20 +2451,56 @@ def test_max_db_age_days_stops_a_scan_with_an_old_database(tmp_path, monkeypatch
         assert code == cli.EXIT_ERROR and "--max-db-age-days 7" in err
 
 
-def test_max_db_age_days_is_refused_for_an_imported_report(tmp_path, fixtures, capsys):
+def test_max_db_age_days_judges_trivys_database_after_the_scan_updates_it(tmp_path, monkeypatch, fixtures):
+    """Review (7 Nov): judged before the scan, a database the scan was about to update (or none yet, on a fresh CI
+    runner) stopped the run."""
+    from datetime import datetime, timezone
+
+    fake = tmp_path / "trivy"
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    report, scanned = (fixtures / "trivy.json").read_bytes(), []
+    fresh = {"UpdatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+    def run(cmd, timeout):
+        if "--version" in cmd:  # no database before the scan, a fresh one after it
+            return json.dumps({"Version": "0.76.1", **({"VulnerabilityDB": fresh} if scanned else {})}).encode()
+        scanned.append(cmd)
+        return report
+
+    monkeypatch.setattr(cli.trivy_mod, "run", run)
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "trivy", "--trivy-path", str(fake), "--max-db-age-days", "7"]) == cli.EXIT_OK
+
+
+def test_max_db_age_days_is_refused_where_no_database_age_can_be_told(tmp_path, fixtures, capsys):
+    """Trivy's report does not say how old its database was; and with no Trivy or Grype there is no database."""
     code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
                      "trivy", "--from-trivy-json", str(fixtures / "trivy.json"), "--max-db-age-days", "7"])
-    assert code == cli.EXIT_USAGE and "cannot be checked for an imported report" in capsys.readouterr().err
+    assert code == cli.EXIT_USAGE and "imported Trivy report" in capsys.readouterr().err
+    code = cli.main(["--package", "npm:lodash@4.17.20", "--out", str(tmp_path / "o"), "--max-db-age-days", "7"])
+    assert code == cli.EXIT_USAGE and "needs Trivy or Grype" in capsys.readouterr().err
 
 
-def test_grype_database_build_date_is_read(monkeypatch):
-    from oss_intake.scanners import grype
+@pytest.mark.parametrize("db, ok", [({"status": {"built": "recent"}}, True), ({"built": "recent"}, True),
+                                    ({"status": {"built": "2020-01-01T00:00:00Z"}}, False), (None, False)])
+def test_max_db_age_days_reads_the_database_from_a_grype_report(tmp_path, fixtures, capsys, db, ok):
+    """Review (7 Nov): the database was judged before the scan, which updates a stale one itself; Grype's report
+    names the database its findings came from (v6 under db.status, v5 under db), imported reports included."""
+    from datetime import datetime, timezone
 
-    status = b'{"schemaVersion": "v6.0.2", "built": "2026-11-06T04:00:00Z"}'
-    monkeypatch.setattr(grype, "run", lambda cmd, timeout: status)
-    assert grype.db_built("grype") == "2026-11-06T04:00:00Z"
-    monkeypatch.setattr(grype, "run", lambda cmd, timeout: b'{"schemaVersion": "v6.0.2"}')
-    assert grype.db_built("grype") is None
+    report = json.loads((fixtures / "grype.json").read_text(encoding="utf-8"))
+    if db is not None:
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        report["descriptor"]["db"] = json.loads(json.dumps(db).replace('"recent"', f'"{now}"'))
+    f = tmp_path / "g.json"
+    f.write_text(json.dumps(report), encoding="utf-8")
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners",
+                     "grype", "--from-grype-json", str(f), "--max-db-age-days", "7"])
+    err = capsys.readouterr().err
+    assert code == (cli.EXIT_OK if ok else cli.EXIT_ERROR), err
+    if not ok:
+        assert "grype" in err and "--max-db-age-days 7" in err
 
 
 def _bom(tmp_path, components):

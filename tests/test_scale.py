@@ -800,6 +800,30 @@ def test_windows_cache_others_can_write_to_is_refused_even_on_the_operators_word
     assert ResponseCache(tmp_path / "ci").unsafe_reason(windows=True, operator_trusted=True) is None
 
 
+def test_windows_cache_folder_counts_what_its_entries_inherit_and_resolves_short_names(tmp_path, monkeypatch):
+    """Review (7 Nov): an inherit-only entry on the cache folder itself (other users get write on every entry
+    made in it) passed; a machine-relative short name (LA, the built-in Administrator) never matched the user;
+    and a descriptor that could not be understood fell back to trusting the folder."""
+    from oss_intake import winacl
+
+    inherits = _PROFILE + "(A;OICIIO;FA;;;BU)"
+    assert winacl.write_reason(inherits, ME, winacl.FOLDER_WRITE) is None  # the folder itself
+    assert "Users" in (winacl.write_reason(inherits, ME, winacl.FOLDER_WRITE, inherited=True) or "")
+    assert winacl.write_reason(_PROFILE + "(A;OICIIO;GA;;;CO)", ME, winacl.FOLDER_WRITE, inherited=True) is None
+    mine = "O:LAD:(A;OICI;FA;;;LA)(A;OICI;FA;;;SY)"
+    assert "another account (LA)" in (winacl.write_reason(mine, ME, winacl.FOLDER_WRITE) or "")
+    assert winacl.write_reason(mine, ME, winacl.FOLDER_WRITE, resolve={"LA": ME}.__getitem__) is None
+
+    monkeypatch.setattr(winacl, "user_sid", lambda: ME)
+    monkeypatch.setattr(winacl, "resolve_alias", lambda a: (_ for _ in ()).throw(OSError("not here")))
+    folder = tmp_path / "cache"
+    folder.mkdir()
+    monkeypatch.setattr(winacl, "read_sddl", lambda p: inherits if p == str(folder) else _PROFILE)
+    assert "Users" in (ResponseCache(folder).unsafe_reason(windows=True, operator_trusted=True) or "")
+    monkeypatch.setattr(winacl, "read_sddl", lambda p: "O:SYD:(A;;FA")
+    assert "cannot read" in (ResponseCache(folder).unsafe_reason(windows=True, operator_trusted=True) or "")
+
+
 @pytest.mark.skipif(__import__("sys").platform != "win32", reason="reads a real Windows security descriptor")
 def test_a_real_windows_folder_everyone_can_write_to_is_refused(tmp_path):
     import subprocess

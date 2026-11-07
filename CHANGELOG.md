@@ -12,8 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   confirming that only you can write to it. Recorded in `assessment.json`. What the folder's permissions show is
   not overridden.
 - `--max-db-age-days N` (off by default): stop the run (exit 1) when Trivy's or Grype's vulnerability database
-  is older than N days, or its build date cannot be read, so a pipeline with a stale database does not report
-  clean. Refused with an imported scanner report.
+  the scan used (after the scanner's own update) is older than N days, or its build date cannot be read, so a
+  pipeline with a stale database does not report clean. Read from Grype's report, imported ones included;
+  refused with an imported Trivy report, which does not say, and on a run that uses neither scanner.
 - `--fail-on unchecked`: exit 3 when an SBOM component or an renv.lock package could not be checked (a type no
   source covers, no usable package URL, a package not from CRAN). Refused for anything else, which lists no such
   components.
@@ -26,11 +27,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Fixed
 - The default cosign identity for Trivy and Grype accepted a certificate from any workflow or ref in the
   scanner's repository. It is now the release workflow named in the projects' signing certificates (Trivy's
-  `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main).
+  `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main). The threat model now records the
+  SLSA generator's reference by tag, not commit, as an accepted risk with a review date (external audit CI-01).
 - On Windows the cache folder's permissions were not read: a folder in the user's profile was trusted whatever
   its permissions said. Each folder's security descriptor is now read, and a cache folder that another account
-  can write to, or that a folder above it lets another account move away, is not used, even with
-  `--trust-cache-dir` (external audit SEC-04/13). A folder outside the profile still needs `--trust-cache-dir`.
+  can write to (or that gives another account write access to what is made in it), or that a folder above it
+  lets another account move away, is not used, even with `--trust-cache-dir` (external audit SEC-04/13). A folder outside the profile still needs `--trust-cache-dir`.
 - Reports were written with an ordinary open after a one-time check for links, so a link placed in the output
   folder during the run was followed. Each report is now written beside its target and moved into place, which
   replaces a symbolic or hard link instead of writing through it, and a report is never left half written
@@ -39,15 +41,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `@`, and the fullwidth forms of those characters.
 - A scanner was hashed at its installed path and then run from that path, so whoever could write to its folder
   could swap it in between. Trivy, Grype and govulncheck are now copied into a folder only the run can write to,
-  and that copy is checked and run (external audit SEC-06).
+  and that copy is checked and run (external audit SEC-06). Where the temporary folder is mounted noexec, the run
+  stops and says to set `TMPDIR` to one that allows programs.
 - Programs oss-intake starts inherited the whole environment apart from the GitHub tokens: cloud credentials
   (`AWS_*`, `AZURE_CLIENT_SECRET`), publishing tokens (`NPM_TOKEN`) and the SSH agent reached every scanner. They
   now get only what they need and their own tool's settings; anything else must be named with `--scanner-env`. A
   scan of a private registry image that relied on credentials in the environment now needs that option, and the
   error says so (external audit SEC-14).
-- What a scanner, govulncheck, docker or cosign wrote was collected without limit, so a broken or hostile program
-  could exhaust memory. Output is now collected up to a limit (1 GB of output and 1 MB of error output for a
-  scanner, 1 MB for the helpers); past it the program is stopped and the step fails (external audit SEC-02).
+- What a scanner, govulncheck, crane, docker or cosign wrote was collected without limit, so a broken or hostile
+  program could exhaust memory. Output is now collected up to a limit (1 GB of output and 1 MB of error output
+  for the scanners, govulncheck and crane, 1 MB of output for docker and cosign); past it the program is stopped
+  and the step fails (external audit SEC-02). A program that exits while something it started still holds its
+  output open fails the step too, rather than passing on part of its output, and Ctrl-C stops the program.
 - Redirects were followed by requests on its own: a 307 or 308 would resend the OSV batch query, with the package
   list (internal names included), to wherever it pointed, and a redirect could lead to plain http. A request with a
   body is now never redirected (a redirect is a failed request), and a GET follows at most 5 redirects, only to

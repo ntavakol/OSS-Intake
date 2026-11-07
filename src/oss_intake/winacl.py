@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 
 SYSTEM, ADMINISTRATORS = "S-1-5-18", "S-1-5-32-544"
 TRUSTED_INSTALLER = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"
@@ -38,8 +39,17 @@ class SddlError(ValueError):
     """The descriptor text could not be read."""
 
 
-def _sid(text: str) -> str:
-    return _ALIASES.get(text, text)
+def _sid(text: str, resolve: Callable[[str], str] | None = None) -> str:
+    """A SID as S-1-... text. Short names this module does not know, some of them relative to the machine or
+    domain (LA, the built-in Administrator; DA, Domain Admins), are resolved by Windows when resolve is given."""
+    if text in _ALIASES:
+        return _ALIASES[text]
+    if resolve is not None and not text.startswith("S-1-"):
+        try:
+            return resolve(text)
+        except OSError:
+            pass
+    return text
 
 
 def _rights(text: str) -> int:
@@ -76,7 +86,8 @@ def _aces(text: str) -> list[list[str]]:
     return out
 
 
-def parse(sddl: str) -> tuple[str | None, list[tuple[str, str, int, str]] | None]:
+def parse(sddl: str, resolve: Callable[[str], str] | None = None
+          ) -> tuple[str | None, list[tuple[str, str, int, str]] | None]:
     """(owner SID, [(type, flags, rights, SID)]) from 'O:...D:...'. The list is None for a NULL DACL (no access
     control: everyone has every right)."""
     m = re.fullmatch(r"(?:O:(S-1-[0-9-]+|[A-Z]{2}))?(?:G:(?:S-1-[0-9-]+|[A-Z]{2}))?(?:D:([A-Z_]*)(.*))?", sddl.strip(),
@@ -84,32 +95,36 @@ def parse(sddl: str) -> tuple[str | None, list[tuple[str, str, int, str]] | None
     if not m or m.group(2) is None and m.group(3) is None:
         raise SddlError("no DACL")
     if "NO_ACCESS_CONTROL" in (m.group(2) or ""):
-        return (_sid(m.group(1)) if m.group(1) else None), None
+        return (_sid(m.group(1), resolve) if m.group(1) else None), None
     aces = []
     for parts in _aces(m.group(3) or ""):
         if len(parts) < 6:
             raise SddlError(f"entry {';'.join(parts)!r}")
-        aces.append((parts[0], parts[1], _rights(parts[2]), _sid(parts[5])))
-    return (_sid(m.group(1)) if m.group(1) else None), aces
+        aces.append((parts[0], parts[1], _rights(parts[2]), _sid(parts[5], resolve)))
+    return (_sid(m.group(1), resolve) if m.group(1) else None), aces
 
 
 def name(sid: str) -> str:
     return _NAMES.get(sid, sid)
 
 
-def write_reason(sddl: str, user_sid: str, mask: int) -> str | None:
+def write_reason(sddl: str, user_sid: str, mask: int, inherited: bool = False,
+                 resolve: Callable[[str], str] | None = None) -> str | None:
     """Who other than the user and the system accounts holds one of the rights in mask, or owns the folder;
-    None when no one does."""
+    None when no one does. With inherited, entries that only apply to what is made inside the folder count too
+    (for the cache folder itself, whose entries and subfolders inherit them)."""
     trusted = {user_sid, SYSTEM, ADMINISTRATORS, TRUSTED_INSTALLER}
-    owner, aces = parse(sddl)
+    owner, aces = parse(sddl, resolve)
     if owner is not None and owner not in trusted:
         return f"belongs to another account ({name(owner)})"
     if aces is None:
         return "has no access control, so everyone can write to it"
     others = []
     for kind, flags, rights, sid in aces:
-        applies_here = "IO" not in re.findall("..", flags)  # inherit-only entries apply to what is made inside
-        if kind in _ALLOW_TYPES and applies_here and rights & mask and sid not in trusted | _NOT_AN_ACCOUNT:
+        pairs = re.findall("..", flags)
+        # An inherit-only entry applies to what is made inside, not to the folder itself.
+        applies = "IO" not in pairs or (inherited and ("OI" in pairs or "CI" in pairs))
+        if kind in _ALLOW_TYPES and applies and rights & mask and sid not in trusted | _NOT_AN_ACCOUNT:
             if name(sid) not in others:
                 others.append(name(sid))
     return f"can be written by other users ({', '.join(others)})" if others else None
@@ -189,3 +204,32 @@ def user_sid() -> str:
             kernel32.LocalFree(text)
     finally:
         kernel32.CloseHandle(token)
+
+
+def resolve_alias(alias: str) -> str:
+    """A SDDL short name (LA, DA, ...) as S-1-... text, as Windows resolves it. OSError when it cannot."""
+    if sys.platform != "win32":
+        raise OSError("SDDL short names can only be resolved on Windows")
+    import ctypes
+    from ctypes import wintypes
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.LocalFree.argtypes, kernel32.LocalFree.restype = [ctypes.c_void_p], ctypes.c_void_p
+    advapi32.ConvertStringSidToSidW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
+    advapi32.ConvertStringSidToSidW.restype = wintypes.BOOL
+    advapi32.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    advapi32.ConvertSidToStringSidW.restype = wintypes.BOOL
+    sid = ctypes.c_void_p()
+    if not advapi32.ConvertStringSidToSidW(alias, ctypes.byref(sid)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        text = ctypes.c_void_p()
+        if not advapi32.ConvertSidToStringSidW(sid, ctypes.byref(text)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            return ctypes.wstring_at(text.value or 0)
+        finally:
+            kernel32.LocalFree(text)
+    finally:
+        kernel32.LocalFree(sid)

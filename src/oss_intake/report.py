@@ -89,7 +89,7 @@ def _tri(v: bool | None) -> str:
 # undone exactly: one quote is added, and decisions.unguard removes one (S4, round trip).
 # Leading spaces or line breaks, and the fullwidth forms of = + - @, are guarded too: no common spreadsheet runs
 # them as a formula today, but one that trims a cell or folds wide characters on import would (external audit).
-GUARD_START = re.compile(r"^(\s*'*[=+\-@\t\r\uff1d\uff0b\uff0d\uff20])")
+GUARD_START = re.compile(r"^([\s']*[=+\-@\t\r\uff1d\uff0b\uff0d\uff20])")
 GUARD_JOINED = re.compile(r"([;,\t])(\s*)('*(?:[=@]|[+\-](?!\s|[\d.]*(?:[;,\t]|$))))")
 
 

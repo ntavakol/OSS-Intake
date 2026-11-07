@@ -133,6 +133,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def validate_scanner_env(pat: str) -> None:
+    """A --scanner-env value: a variable name or a pattern of letters, digits, _, * and ?, not wildcards alone."""
+    if not re.fullmatch(r"[A-Za-z0-9_*?()]+", pat or "") or pat.strip("*?") == "":
+        raise UsageError(f"--scanner-env {pat!r}: name an environment variable or a pattern such as 'AWS_*' "
+                         "(letters, digits, _, * and ?; not * alone)")
+
+
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
     if not args.image and not args.repo and not args.path and not args.package:
@@ -174,9 +181,8 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.no_cache and args.cache_dir:
         raise UsageError("--cache-dir and --no-cache cannot be used together")
     for pat in args.scanner_env:
-        if not re.fullmatch(r"[A-Za-z0-9_*?()]+", pat or "") or pat.strip("*?") == "":
-            raise UsageError(f"--scanner-env {pat!r}: name an environment variable or a pattern such as 'AWS_*' "
-                             "(letters, digits, _, * and ?; not * alone)")
+        validate_scanner_env(pat)
+    set_extra_env(args.scanner_env)  # also when cmd_scan is called without main()
     if args.trust_cache_dir and not args.cache_dir:
         raise UsageError("--trust-cache-dir needs --cache-dir: the default cache folder is in your user profile")
     if args.release_age_days < 0:

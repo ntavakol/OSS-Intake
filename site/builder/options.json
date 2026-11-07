@@ -729,7 +729,7 @@
      "dest": "max_db_age_days",
      "exclusive_group": null,
      "flag": "--max-db-age-days",
-     "help": "stop the run (exit 1) when a scanner's vulnerability database is older than N days, or its age cannot be told: findings from an old database miss recent advisories. Off by default; applies to Trivy and Grype runs, not imported reports",
+     "help": "stop the run (exit 1) when the vulnerability database Trivy or Grype used is older than N days, or its age cannot be told: findings from an old database miss recent advisories. Judged after the scan's own update. Off by default; not for an imported Trivy report",
      "kind": "int",
      "metavar": "N",
      "required": false,

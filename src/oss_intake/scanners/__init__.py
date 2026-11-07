@@ -104,6 +104,7 @@ def child_env(cmd0: str = "") -> dict[str, str]:
 # run to hundreds of MB for a large image; its error output is a few lines.
 MAX_STDOUT = 1024 * 1024 * 1024
 MAX_STDERR = 1024 * 1024
+READER_GRACE = 10  # seconds to finish reading once the program has exited
 
 
 class OutputTooLarge(ScannerError):
@@ -122,7 +123,8 @@ def capped_run(cmd: list[str], timeout: float, max_stdout: int = MAX_STDOUT,
     out, err, over = bytearray(), bytearray(), []
 
     def pump(stream, buf: bytearray, limit: int, name: str) -> None:
-        for chunk in iter(lambda: stream.read(1 << 16), b""):
+        # read1: whatever is there now, so output is collected as it comes, not only in whole 64 KiB blocks.
+        for chunk in iter(lambda: stream.read1(1 << 16), b""):
             if len(buf) + len(chunk) > limit:
                 over.append(name)
                 proc.kill()
@@ -136,17 +138,21 @@ def capped_run(cmd: list[str], timeout: float, max_stdout: int = MAX_STDOUT,
         t.start()
     try:
         proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except BaseException:  # a timeout, and Ctrl-C too: the program must not outlive the run
         proc.kill()
         proc.wait()
         raise
     finally:
         for t in readers:
-            t.join(timeout=10)
+            t.join(timeout=READER_GRACE)
     if over:
         limit = max_stdout if over[0] == "output" else max_stderr
         raise OutputTooLarge(f"{Path(cmd[0]).name} wrote more than {limit // (1024 * 1024)} MB of {over[0]}, so "
                              "it was stopped")
+    if any(t.is_alive() for t in readers):
+        # It exited, but something it started still holds its output open: what was collected may be partial.
+        raise ScannerError(f"{Path(cmd[0]).name} exited but left a process holding its output open, so its "
+                           "output may be incomplete")
     return subprocess.CompletedProcess(cmd, proc.returncode, bytes(out), bytes(err))
 
 

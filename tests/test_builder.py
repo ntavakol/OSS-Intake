@@ -177,6 +177,8 @@ def test_field_checks_match_the_cli(field, tmp_path, capsys):
             from oss_intake import inputs
 
             inputs.packages([value])
+        elif dest == "scanner_env":
+            cli.validate_scanner_env(value)
         else:
             pytest.fail(f"no validator for {dest}: add one here")
 

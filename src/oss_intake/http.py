@@ -222,7 +222,8 @@ class ResponseCache:
 
     def _windows_acl_reason(self) -> str | None:
         """Another account that can write to the folder or replace it (winacl), or None, also when the
-        descriptors cannot be read (not Windows, or the API failed): the profile rule still applies then."""
+        descriptors cannot be read (not Windows, or the API failed): the profile rule still applies then. A
+        descriptor that was read but not understood is a reason."""
         from . import winacl
 
         try:
@@ -234,10 +235,14 @@ class ResponseCache:
             if not p.exists():
                 continue  # not made yet: whoever can add to the folder above could make it first
             try:
-                why = winacl.write_reason(winacl.read_sddl(str(p)), me,
-                                          winacl.FOLDER_WRITE if nearest else winacl.PARENT_WRITE)
-            except (OSError, winacl.SddlError):
+                sddl = winacl.read_sddl(str(p))
+            except OSError:
                 return None
+            try:
+                why = winacl.write_reason(sddl, me, winacl.FOLDER_WRITE if nearest else winacl.PARENT_WRITE,
+                                          inherited=nearest, resolve=winacl.resolve_alias)
+            except winacl.SddlError as exc:  # read, but not understood: refused rather than trusted
+                return f"{p} has permissions this check cannot read ({exc})"
             if why:
                 return f"{p} {why}"
             nearest = False

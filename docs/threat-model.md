@@ -54,10 +54,16 @@ nothing, or output that is not what it seems).
   aside even in KEV, by design: it does not apply in a container (decided 7 Nov, to revisit: BACKLOG.md).
 - The default cosign identity is the scanner's release workflow as its signing certificates name it (Trivy's
   `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main); if a project moves its signing to
-  another workflow, verification fails until oss-intake is updated or `--*-cosign-identity` is given. cosign itself, and docker and crane (used to get binaries out of an image for
-  govulncheck), are found on the PATH and not verified.
+  another workflow, verification fails until oss-intake is updated or `--*-cosign-identity` is given. cosign
+  itself, and docker and crane (used to get binaries out of an image for govulncheck), are found on the PATH and
+  not verified.
 - The scanner's vulnerability database age is shown, and enforced only with `--max-db-age-days` (off by default),
-  which stops the run when the database is older or its build date cannot be read.
+  which stops the run when the database the scan used (after its own update) is older, or its build date cannot
+  be read.
+- Each scanner is copied to a private temporary folder to be checked and run. Where the temporary folder does not
+  allow programs to run (`/tmp` mounted noexec, as under CIS hardening) the run stops and says to set `TMPDIR`;
+  on Windows, an application control policy that blocks programs in `%TEMP%` has the same effect and is not
+  detected.
 - Anything wrong inside a scanner (a parser flaw reached by the files it reads) is the scanner's: pin and verify
   it as the guide describes.
 
@@ -85,8 +91,8 @@ not trust them to be up, or to answer in the right shape.
 
 **Left open:**
 
-- An answer is held in memory up to its source's limit (32 MB or 128 MB), and a slow service can take up to the 5 minute deadline
-  per request (lookups run in parallel, so a run is not that times the number of lookups). The deadline is
+- An answer is held in memory up to its source's limit (32 MB or 128 MB), and a slow service can take up to the 5
+  minute deadline per request (lookups run in parallel, so a run is not that times the number of lookups). The deadline is
   checked as data arrives, so it can be passed by up to one read timeout; with urllib3 1.26 (urllib3 2 is
   pinned) it is checked only once each 64 KiB has arrived.
 - Answers are trusted as published: a compromised or mistaken service (a KEV list missing an entry, an advisory

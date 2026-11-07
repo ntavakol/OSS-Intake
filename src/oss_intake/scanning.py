@@ -52,7 +52,7 @@ def same_image(a: str, b: str) -> bool:
 
 
 def _refuse_old_database(tool: str, built: object, max_days: int) -> None:
-    """--max-db-age-days: a database older than max_days, or of unknown age, stops the run before the scan."""
+    """--max-db-age-days: a database older than max_days, or of unknown age, stops the run (exit 1)."""
     from datetime import datetime, timezone
 
     when = parse_datetime(str(built)) if built else None
@@ -62,8 +62,9 @@ def _refuse_old_database(tool: str, built: object, max_days: int) -> None:
     age = (datetime.now(timezone.utc) - when).days
     if age > max_days:
         raise ScannerError(f"{tool}'s vulnerability database was built {age} days ago ({str(built)[:10]}), older "
-                           f"than --max-db-age-days {max_days}: update it (trivy --download-db-only, grype db "
-                           "update) and run again")
+                           f"than --max-db-age-days {max_days}, even after the scan's own update: check that "
+                           "the scanner can reach its database server (or update it with trivy --download-db-only "
+                           "or grype db update) and run again")
 
 
 def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict,
@@ -86,6 +87,8 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
             warnings.append(f"The imported {tool.capitalize()} report is for {named}, but the report is labelled "
                             f"{args.image} (--image); check that the right file was imported")
         scanners_meta[tool] = {"enabled": True, "detail": f"imported from {Path(loaded).name}", "imported": True}
+        if args.max_db_age_days is not None:  # only Grype's report says (Trivy's import is refused up front)
+            _refuse_old_database(tool, _grype_db_built(data), args.max_db_age_days)
         return data
     path = integrity.private_copy(find_executable(tool, getattr(args, f"{tool}_path")))
     # A pinned hash or signature is checked before the binary runs at all, so a swapped binary never executes;
@@ -96,10 +99,6 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
         getattr(args, f"{tool}_checksums"))
     integrity.refuse_known_bad_before_run(tool, path)  # from the file's Go build info, before it runs
     info = mod.version_info(path)
-    if args.max_db_age_days is not None:
-        if tool == "grype":
-            info["db_updated"] = mod.db_built(path)
-        _refuse_old_database(tool, info.get("db_updated"), args.max_db_age_days)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
         getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
@@ -143,7 +142,20 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
         check_report(data, tool, f"{tool} output")
     except ReportShapeError as exc:
         raise ScannerError(str(exc)) from None
+    if args.max_db_age_days is not None:
+        # After the scan, which updates a stale database itself: the database the findings came from is judged.
+        # Grype's report names it; Trivy is asked again, as its report does not.
+        built = _grype_db_built(data) if tool == "grype" else mod.version_info(path).get("db_updated")
+        _refuse_old_database(tool, built, args.max_db_age_days)
     return data
+
+
+def _grype_db_built(report: dict) -> object:
+    db = (report.get("descriptor") or {}).get("db") if isinstance(report.get("descriptor"), dict) else None
+    if not isinstance(db, dict):
+        return None
+    status = db.get("status")
+    return (status if isinstance(status, dict) else db).get("built")
 
 
 def parse_report(tool: str, mod, report: dict, args: argparse.Namespace):
@@ -251,7 +263,7 @@ def run_govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: lis
         return {}
     try:
         gv = integrity.private_copy(govuln_mod.find(args.govulncheck_path))
-    except ScannerError as exc:
+    except (ScannerError, integrity.IntegrityError) as exc:
         warnings.append(f"--reachability skipped: {exc}")
         return {}
     # Pinned like Trivy and Grype: hash before it runs, version after; a mismatch stops the run (S9).

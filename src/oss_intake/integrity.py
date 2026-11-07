@@ -234,7 +234,22 @@ def private_copy(path: str) -> str:
     as before."""
     import atexit
 
-    folder = tempfile.mkdtemp(prefix="oss-intake-bin-")
+    temp = tempfile.gettempdir()
+    flag = getattr(os, "ST_NOEXEC", 0)  # Linux only
+    if flag and hasattr(os, "statvfs"):
+        try:
+            noexec = bool(os.statvfs(temp).f_flag & flag)
+        except OSError:
+            noexec = False
+        if noexec:  # as CIS hardening mounts /tmp: the copy could not run
+            raise IntegrityError(f"{temp} does not allow programs to run (mounted noexec), so {Path(path).name} "
+                                 "cannot be copied there to be checked and run; set TMPDIR to a folder only you "
+                                 "can write to that allows it, such as ~/.cache/oss-intake-tmp")
+    try:
+        folder = tempfile.mkdtemp(prefix="oss-intake-bin-")
+    except OSError as exc:
+        raise IntegrityError(f"could not make a private folder to check and run {Path(path).name} in: "
+                             f"{exc}") from None
     if not _PRIVATE_DIRS:
         atexit.register(_remove_private_dirs)
     _PRIVATE_DIRS.append(folder)

@@ -3649,3 +3649,93 @@ def test_default_cosign_identity_is_the_release_workflow_only(tool, identity, ok
     import re
 
     assert bool(re.search(integrity.DEFAULT_COSIGN_IDENTITY[tool], identity)) is ok
+
+
+def test_a_program_is_killed_when_the_run_is_interrupted(monkeypatch):
+    """Review (7 Nov): only a timeout killed the program; on Ctrl-C it outlived the run."""
+    import subprocess
+    import sys
+
+    from oss_intake import scanners
+
+    started, real_wait = [], subprocess.Popen.wait
+
+    def interrupted(self, timeout=None):
+        started.append(self)
+        if timeout is not None:
+            raise KeyboardInterrupt
+        return real_wait(self)
+
+    monkeypatch.setattr(subprocess.Popen, "wait", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        scanners.capped_run([sys.executable, "-c", "import time; time.sleep(60)"], 60)
+    assert started[0].poll() is not None  # killed, not left running
+
+
+def test_output_held_open_by_a_leftover_process_is_not_taken_as_complete(monkeypatch, tmp_path):
+    """Review (7 Nov): a program that exited 0 while something it started still held its output open was
+    reported as a success with whatever had been read so far (nothing)."""
+    import sys
+
+    from oss_intake import scanners
+
+    monkeypatch.setattr(scanners, "READER_GRACE", 1)
+    child = ("import subprocess, sys; print('EARLY', flush=True); "
+             "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(8)'])")
+    with pytest.raises(scanners.ScannerError, match="holding its output open"):
+        scanners.capped_run([sys.executable, "-c", child], 30)
+    ok = scanners.capped_run([sys.executable, "-c", "import sys; sys.stdout.write('part'); sys.stdout.flush()"], 30)
+    assert ok.stdout == b"part"
+
+
+def test_formula_guard_round_trips_every_short_value():
+    """Review (7 Nov): the widened guard missed a value starting with a quote and then a space ("' =1"), so it
+    was written unguarded and read back without its quote. Every value of up to 4 characters from the
+    characters that matter must read back as written."""
+    import itertools
+
+    from oss_intake import decisions, report
+
+    chars = ["'", " ", "\n", "=", "＝", "@", "a"]
+    bad = [v for n in range(1, 5) for v in map("".join, itertools.product(chars, repeat=n))
+           if decisions.unguard(report.csv_safe(v)) != v]
+    assert bad == []
+
+
+def test_a_private_copy_that_cannot_be_made_is_a_clear_integrity_error(tmp_path, monkeypatch):
+    """Review (7 Nov): a temporary folder mounted noexec (CIS hardening) made the copy fail to run with
+    'Permission denied', and a failure to make the folder escaped as a bare OSError."""
+    import os
+    import tempfile
+    from types import SimpleNamespace
+
+    exe = tmp_path / "trivy"
+    exe.write_bytes(b"x")
+    if hasattr(os, "ST_NOEXEC"):
+        monkeypatch.setattr(os, "statvfs", lambda p: SimpleNamespace(f_flag=os.ST_NOEXEC), raising=False)
+        with pytest.raises(integrity.IntegrityError, match="noexec.*set TMPDIR"):
+            integrity.private_copy(str(exe))
+        monkeypatch.undo()
+
+    def full(*a, **k):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(tempfile, "mkdtemp", full)
+    with pytest.raises(integrity.IntegrityError, match="No space left"):
+        integrity.private_copy(str(exe))
+
+
+def test_reachability_is_skipped_not_fatal_when_govulncheck_cannot_be_copied(monkeypatch):
+    from types import SimpleNamespace
+
+    from oss_intake import scanning
+
+    def cannot(path):
+        raise integrity.IntegrityError("could not copy govulncheck")
+
+    monkeypatch.setattr(scanning.govuln_mod, "find", lambda p: "/x/govulncheck")
+    monkeypatch.setattr(integrity, "private_copy", cannot)
+    warnings: list[str] = []
+    got = scanning.run_govulncheck(SimpleNamespace(govulncheck_path=None),
+                                   {"Results": [{"Type": "gobinary", "Target": "usr/bin/app"}]}, {}, warnings)
+    assert got == {} and warnings == ["--reachability skipped: could not copy govulncheck"]
