@@ -5,6 +5,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-07
+
+A hardening release, from an external security audit: upgrade from 0.16.0. Redirects no longer carry a request
+body or the GitHub token elsewhere, programs oss-intake starts get a bounded output and only the environment they
+need, scanners are checked and run from a private copy, reports are written by rename, and the default cosign
+identity is the scanners' release workflow. Two opt-in gates are new: `--max-db-age-days` and
+`--fail-on unchecked`. Two changes may need action: a scan of a private registry image whose credentials come
+from environment variables now needs `--scanner-env` to pass them on (`--scanner-env 'AWS_*'` for ECR), and a
+cosign bundle signed by any workflow other than the scanner's release workflow needs `--*-cosign-identity`.
+
 ### Added
 - `--grype-cosign-certificate` and `--grype-cosign-signature` (and the `--trivy-` pair): check the release
   checksums file's certificate and signature with cosign, as Grype publishes them (`checksums.txt.pem` and
