@@ -18,6 +18,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Reports were written with an ordinary open after a one-time check for links, so a link placed in the output
+  folder during the run was followed. Each report is now written beside its target and moved into place, which
+  replaces a symbolic or hard link instead of writing through it, and a report is never left half written
+  (external audit SEC-01/11).
+- The spreadsheet formula guard also covers a cell starting with spaces or a line break before `=`, `+`, `-` or
+  `@`, and the fullwidth forms of those characters.
 - A scanner was hashed at its installed path and then run from that path, so whoever could write to its folder
   could swap it in between. Trivy, Grype and govulncheck are now copied into a folder only the run can write to,
   and that copy is checked and run (external audit SEC-06).

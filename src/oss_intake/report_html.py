@@ -15,6 +15,7 @@ import html
 from pathlib import Path
 
 from . import checks as checks_mod
+from . import safewrite
 from .health.workflows import files_audited
 from .models import SEVERITIES, Finding
 from .triage import LABEL as TRIAGE_LABEL
@@ -714,7 +715,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
               f'<div class="grid2">{_coverage(a)}{_agreement(a)}</div>',
               _scope(a), _top(findings, top)]
     parts.append(f'<footer>oss-intake {_e(a["tool"]["version"])} · {_e(title)}</footer></div></body></html>')
-    path.write_text("".join(parts), encoding="utf-8")
+    safewrite.write_text(path, "".join(parts))
 
 
 CSS = """

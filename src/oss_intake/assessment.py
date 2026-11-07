@@ -29,6 +29,7 @@ from . import (
     reachability,
     release_age,
     report,
+    safewrite,
     scanning,
     triage,
     upgrade,
@@ -510,10 +511,10 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
             written.append("executive-summary.html")
     vex = decisions.openvex(all_findings, __version__, as_of.isoformat()) if decision_info else None
     if vex:
-        (out / "openvex.json").write_text(json.dumps(vex, indent=2), encoding="utf-8")
+        safewrite.write_text(out / "openvex.json", json.dumps(vex, indent=2))
         written.append("openvex.json")
         cdx = decisions.cyclonedx_vex(all_findings, __version__, as_of.isoformat())
-        (out / "vex.cdx.json").write_text(json.dumps(cdx, indent=2), encoding="utf-8")
+        safewrite.write_text(out / "vex.cdx.json", json.dumps(cdx, indent=2))
         written.append("vex.cdx.json")
     if "md" in formats:
         report.write_markdown(out / "summary.md", assessment, findings, args.top)
@@ -572,7 +573,7 @@ def _remove_stale(args, out: Path, written: list[str]) -> None:
         log(f"removed {', '.join(removed)} from an earlier run, as this run did not write them", args.quiet)
     kept = sorted(current | {n for n in earlier if (out / n).is_file()} - set(removed))
     try:
-        (out / MANIFEST).write_text(json.dumps({"tool": "oss-intake", "files": kept}, indent=1), encoding="utf-8")
+        safewrite.write_text(out / MANIFEST, json.dumps({"tool": "oss-intake", "files": kept}, indent=1))
     except OSError as exc:
         log(f"warning: {MANIFEST} could not be written ({exc}), so the next run cannot tell its reports",
             args.quiet, force=True)

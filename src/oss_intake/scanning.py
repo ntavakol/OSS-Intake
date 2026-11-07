@@ -10,7 +10,7 @@ import argparse
 import tempfile
 from pathlib import Path
 
-from . import checks, inputs, integrity
+from . import checks, inputs, integrity, safewrite
 from .http import HttpError
 from .options import UsageError, log
 from .scanners import ReportShapeError, ScannerError, check_report, find_executable, load_json_bytes
@@ -108,13 +108,14 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     else:
         raw = mod.scan(path, args.image, args.image_src, getattr(args, f"{tool}_arg"), args.timeout,
                        args.platform or None)
-    (out / "raw" / f"{tool}.json").write_bytes(raw)
+    safewrite.write_bytes(out / "raw" / f"{tool}.json", raw)
     raw_written = getattr(args, "raw_written", None)
     if raw_written is not None:
         raw_written.append(f"raw/{tool}.json")
     if tool == "trivy" and args.sbom and not args.path:
-        (out / "raw" / "sbom.cdx.json").write_bytes(
-            mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout, args.platform or None))
+        safewrite.write_bytes(out / "raw" / "sbom.cdx.json",
+                              mod.sbom(path, args.image, args.image_src, args.trivy_arg, args.timeout,
+                                       args.platform or None))
         if raw_written is not None:
             raw_written.append("raw/sbom.cdx.json")
     data = load_json_bytes(raw, f"{tool} output")

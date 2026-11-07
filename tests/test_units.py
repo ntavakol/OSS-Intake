@@ -3618,3 +3618,13 @@ def test_a_registry_auth_failure_points_to_scanner_env(monkeypatch):
         cmd, 1, b"", b"FATAL unable to pull: GET https://123.dkr.ecr.ap-southeast-2.amazonaws.com: unauthorized"))
     with pytest.raises(scanners.ScannerError, match="--scanner-env 'AWS_\\*'"):
         scanners.run(["trivy", "image", "x"], 60)
+
+
+@pytest.mark.parametrize("value", [" =HYPERLINK(\"http://x\")", "\n=1+1", "  @SUM(A1)", "＝cmd|' /C calc'!A0",
+                                   "＋1", " -2+3", "'=already quoted"])
+def test_formula_guard_covers_leading_space_and_fullwidth_and_round_trips(value):
+    """External audit: a leading space or line break, and fullwidth = + - @, were not guarded."""
+    from oss_intake import decisions, report
+
+    guarded = report.csv_safe(value)
+    assert guarded.startswith("'") and decisions.unguard(guarded) == value

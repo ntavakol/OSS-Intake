@@ -2397,3 +2397,31 @@ def test_the_scanner_that_runs_is_the_copy_that_was_checked(tmp_path, monkeypatc
     assert ran != str(fake) and integrity.sha256_file(ran) == good  # what ran is what was checked
     if os.name == "posix":
         assert st.S_IMODE(os.stat(os.path.dirname(ran)).st_mode) == 0o700
+
+
+def test_a_link_placed_after_the_check_is_replaced_not_written_through(tmp_path, fixtures, monkeypatch):
+    """External audit SEC-01/11: the folder was checked for links once, then reports were written with an
+    ordinary open, so a link placed in between was followed. Each report is now moved into place, which replaces
+    a link (symbolic or hard) at that name instead of writing through it."""
+    import os
+
+    target = tmp_path / "elsewhere.txt"
+    target.write_text("keep me", encoding="utf-8")
+    real_prepare = cli.prepare_out
+
+    def plant_after_check(path):
+        out = real_prepare(path)
+        try:
+            (out / "summary.md").symlink_to(target)
+        except OSError:
+            pytest.skip("symbolic links are not available here")
+        os.link(target, out / "findings.csv")  # a hard link too
+        return out
+
+    monkeypatch.setattr(cli, "prepare_out", plant_after_check)
+    out = tmp_path / "o"
+    assert _scan_into(out, fixtures) == cli.EXIT_OK
+    assert target.read_text(encoding="utf-8") == "keep me"
+    assert not (out / "summary.md").is_symlink() and "# " in (out / "summary.md").read_text(encoding="utf-8")
+    assert (out / "findings.csv").stat().st_ino != target.stat().st_ino
+    assert not [p.name for p in out.iterdir() if p.name.endswith(".tmp")]

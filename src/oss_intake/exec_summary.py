@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from . import safewrite
 from .models import Finding, parse_datetime
 from .report_html import CSP_META, CSS, Raw, _e, _group_pill, _note, _section, _table
 
@@ -203,4 +204,4 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
         "exploitability. Detail for every package is in packages.csv and report.html, and for every finding in "
         "findings.csv, where assessor decisions are recorded and carried to the next run.")))
     parts.append(f'<footer>oss-intake {_e(a["tool"]["version"])} · {_e(title)}</footer></div></body></html>')
-    path.write_text("".join(parts), encoding="utf-8")
+    safewrite.write_text(path, "".join(parts))

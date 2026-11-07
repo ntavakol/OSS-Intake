@@ -45,7 +45,7 @@ MITIGATED = "inline_mitigations_already_exist"
 _MITIGATION_WORDS = ("mitigated", "compensating control")
 
 
-_UNGUARD_START = re.compile(r"^'('*[=+\-@\t\r])")
+_UNGUARD_START = re.compile(r"^'(\s*'*[=+\-@\t\r\uff1d\uff0b\uff0d\uff20])")
 _UNGUARD_JOINED = re.compile(r"([;,\t])(\s*)'('*(?:[=@]|[+\-](?!\s|[\d.]*(?:[;,\t]|$))))")
 
 

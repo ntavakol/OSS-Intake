@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from . import checks as checks_mod
+from . import safewrite
 from .health.workflows import files_audited
 from .models import SEVERITIES, Finding
 from .triage import rank_key
@@ -86,7 +87,9 @@ def _tri(v: bool | None) -> str:
 # that character starts a new cell (S4). After a separator, a plain signed number (-1, +2.5) is left alone; any
 # other + or - is guarded, -2+HYPERLINK(...) included. Quotes already in front are counted, so the guard can be
 # undone exactly: one quote is added, and decisions.unguard removes one (S4, round trip).
-GUARD_START = re.compile(r"^('*[=+\-@\t\r])")
+# Leading spaces or line breaks, and the fullwidth forms of = + - @, are guarded too: no common spreadsheet runs
+# them as a formula today, but one that trims a cell or folds wide characters on import would (external audit).
+GUARD_START = re.compile(r"^(\s*'*[=+\-@\t\r\uff1d\uff0b\uff0d\uff20])")
 GUARD_JOINED = re.compile(r"([;,\t])(\s*)('*(?:[=@]|[+\-](?!\s|[\d.]*(?:[;,\t]|$))))")
 
 
@@ -100,7 +103,7 @@ def csv_safe(value: object) -> object:
 
 def write_csv(path: Path, findings: list[Finding]) -> None:
     """Write one CSV row per finding with the CSV_FIELDS columns, each value passed through csv_safe."""
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    with safewrite.text_file(path, newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
         w.writeheader()
         for f in findings:
@@ -116,7 +119,7 @@ def to_json(a: dict, findings: list[Finding]) -> dict:
 
 def write_json(path: Path, a: dict, findings: list[Finding]) -> None:
     """Write the assessment and findings (to_json) to path as indented JSON."""
-    path.write_text(json.dumps(to_json(a, findings), indent=2, default=str), encoding="utf-8")
+    safewrite.write_text(path, json.dumps(to_json(a, findings), indent=2, default=str))
 
 
 # ---------- Shared summary model used by Markdown and HTML ----------
@@ -605,7 +608,7 @@ def write_markdown(path: Path, a: dict, findings: list[Finding], top: int = 25) 
                 lines.append("|" + "|".join("---" for _ in headers) + "|")
                 lines += ["| " + " | ".join(_md_cell(c) for c in r) + " |" for r in rows]
                 lines.append("")
-    path.write_text("\n".join(lines), encoding="utf-8")
+    safewrite.write_text(path, "\n".join(lines))
 
 
 def write_html(path: Path, a: dict, findings: list[Finding], top: int = 50) -> None:

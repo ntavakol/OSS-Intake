@@ -9,7 +9,7 @@ from functools import cmp_to_key
 from pathlib import Path
 from urllib.parse import unquote
 
-from . import triage, versions
+from . import safewrite, triage, versions
 from .models import Finding
 from .upgrade import describe
 
@@ -143,7 +143,7 @@ def write_systems_csv(path: Path, rows: list[dict], safe) -> bool:
     when some package is on more than one system; False when there was nothing to write."""
     if not any((r.get("systems") or 0) > 1 for r in rows):
         return False
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    with safewrite.text_file(path, newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["system", "ecosystem", "package", "version", "group", "findings", "critical", "purl"])
         for r in rows:
@@ -159,7 +159,7 @@ def write_systems_csv(path: Path, rows: list[dict], safe) -> bool:
 def write_csv(path: Path, rows: list[dict], safe) -> None:
     """packages.csv: every package in the inventory, worst first, with its label columns."""
     label_cols = sorted({k for r in rows for k in r["labels"]})
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    with safewrite.text_file(path, newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=BASE_FIELDS + label_cols)
         # Label columns are named by the inventory's author: the header row is guarded like every cell (S3).
         csv.writer(fh).writerow([safe(c) for c in BASE_FIELDS + label_cols])
