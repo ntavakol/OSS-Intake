@@ -24,7 +24,7 @@ from . import (
     scanning,
     vscode,
 )
-from .http import Http, HttpError, RequestsHttp, ResponseCache, default_cache_dir
+from .http import Http, HttpError, RequestsHttp, ResponseCache, default_cache_dir, folder_write_reason
 from .options import (  # noqa: F401  (validate_*, image_tag and the _-prefixed names: kept importable from cli)
     EXIT_ERROR,
     EXIT_OK,
@@ -321,6 +321,11 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
         log(f"using the cache in {cache.folder} on your word (--trust-cache-dir): it is outside your user profile",
             args.quiet)
         cache.operator_trusted = True
+    if why := folder_write_reason(out):
+        # Warned, not refused (Ned, 8 Nov): reports are written by rename, so nothing is written through a planted
+        # link; what is left is another user replacing or deleting the reports after the run.
+        warnings.append(f"The output folder is not private: {why}, so another user could replace or delete these "
+                        "reports after the run. Use --out with a folder only you can write to")
     net = None if args.offline else (http or RequestsHttp(cache=cache))
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 

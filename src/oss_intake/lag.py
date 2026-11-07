@@ -36,7 +36,8 @@ def flag_kernel_headers(findings: list[Finding]) -> int:
     Scanners attach every Linux kernel CVE to linux-libc-dev (Debian/Ubuntu), kernel-headers (RHEL)
     and similar. These packages only hold headers for compiling; a container runs on the host's
     kernel, so the CVEs cannot be exploited through the image. They are kept in findings.csv with a
-    note but left out of release lag and the likelihood.
+    note but left out of release lag and the likelihood. Called only for a container target
+    (assessment.is_container_target): on a host or VM image the same CVEs may apply to its kernel.
     """
     n = 0
     for f in findings:

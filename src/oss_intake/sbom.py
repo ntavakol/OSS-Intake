@@ -226,6 +226,31 @@ def _spdx(data: dict) -> tuple[str, list[tuple[str, str, str, dict]]]:
     return subject, out
 
 
+def is_container(data: dict) -> bool:
+    """Whether an SBOM's subject is a container image: CycloneDX metadata.component of type container (as
+    Trivy and Syft write for an image), or an SPDX document describing one package whose purpose is CONTAINER or
+    whose package URL is an image (pkg:oci, pkg:docker)."""
+    if data.get("_kind") == "cyclonedx":
+        meta = data.get("metadata")
+        comp = meta.get("component") if isinstance(meta, dict) else None
+        if not isinstance(comp, dict):
+            return False
+        return (str(comp.get("type") or "").lower() == "container"
+                or str(comp.get("purl") or "").startswith(("pkg:oci/", "pkg:docker/")))
+    described = {d for d in (data.get("documentDescribes") or []) if isinstance(d, str)}
+    described |= {r["relatedSpdxElement"] for r in (data.get("relationships") or [])
+                  if isinstance(r, dict) and r.get("relationshipType") == "DESCRIBES"
+                  and r.get("spdxElementId") == "SPDXRef-DOCUMENT" and isinstance(r.get("relatedSpdxElement"), str)}
+    if len(described) != 1:
+        return False
+    for p in data.get("packages") or []:
+        if isinstance(p, dict) and p.get("SPDXID") in described:
+            purls = [str(r.get("referenceLocator") or "") for r in p.get("externalRefs") or [] if isinstance(r, dict)]
+            return (str(p.get("primaryPackagePurpose") or "").upper() == "CONTAINER"
+                    or any(u.startswith(("pkg:oci/", "pkg:docker/")) for u in purls))
+    return False
+
+
 def files_of(path: Path) -> list[Path]:
     if path.is_file():
         return [path]
@@ -245,7 +270,7 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     Every file is read and validated before anything is looked up."""
     found: dict[str, dict[str, set[str]]] = {}
     os_queries: dict[str, dict] = {}
-    info: dict = {"files": 0, "formats": {}, "components": 0, "packages": 0, "not_checked": []}
+    info: dict = {"files": 0, "formats": {}, "components": 0, "packages": 0, "not_checked": [], "containers": 0}
     errors: list[str] = []
     for f in files_of(path):
         try:
@@ -255,6 +280,7 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
             errors.append(str(exc))
             continue
         info["files"] += 1
+        info["containers"] += is_container(data)
         fmt = (f"CycloneDX {data.get('specVersion')}" if data["_kind"] == "cyclonedx"
                else str(data.get("spdxVersion")))
         info["formats"][fmt] = info["formats"].get(fmt, 0) + 1

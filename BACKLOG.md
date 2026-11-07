@@ -3,20 +3,10 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Later: revisit (agreed 7 Nov)
-- Refuse (or warn about) an `--out` folder other users can write to, as the cache does (external audit
-  SEC-01/11; Ned, 7 Nov: assess later). Reports are already written by rename, so a link placed during the run
-  is replaced, not followed; what is left is another user deleting or replacing reports in a shared folder.
-- A kernel CVE on a kernel header package (`linux-libc-dev` and the like) is set aside even when it is in CISA
-  KEV, as a container uses the host's kernel. Kept that way on 7 Nov. To revisit: it is wrong outside containers
-  (a VM image, `--path` on a host), and the options considered were KEV winning (shown in Act now with a "kernel
-  header package; affects the host" note), deciding by target (`--image` set aside, `--path` and SBOM act), or
-  naming the KEV ones in the Set aside group's heading so they stay visible.
-
-## Later: when commits are less frequent (agreed 6 Nov)
+## Scheduled: branch protection (agreed 8 Nov: on 8 Nov after 8 pm, or with the first release after that)
 - Branch protection with required status checks: changes reach main only through a pull request whose CI has
   passed (Scorecard Branch-Protection is 3 with the current ruleset, which blocks force-push and deletion).
-  Means working through pull requests instead of pushing to main, so it waits until changes are less frequent.
+  From then on, changes are delivered as a branch and a pull request instead of a push to main.
 
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is

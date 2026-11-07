@@ -5,6 +5,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Kernel CVEs on kernel header packages (`linux-libc-dev`, `kernel-headers`) are set aside only for a container
+  image: `--image`, or SBOMs that all describe an image (CycloneDX `container`, SPDX `CONTAINER`, or an `oci` or
+  `docker` package URL). For a folder, an artifact or another SBOM, which may be a host or VM image running that
+  kernel, they now count like any finding, including for gates and when in CISA KEV.
+
+### Added
+- A warning when the output folder can be written by other users, or replaced through a folder above it
+  (external audit SEC-01/11): reports are written by rename, but another user could still replace or delete
+  them after the run.
+
 ## [0.17.0] - 2026-11-07
 
 A hardening release, from an external security audit: upgrade from 0.16.0. Redirects no longer carry a request

@@ -172,7 +172,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-image-date", action="store_true",
                    help="do not fall back to the image build date when no release date is known")
     s.add_argument("--include-kernel-headers", action="store_true",
-                   help="count kernel CVEs on kernel header packages (linux-libc-dev...) in lag and likelihood")
+                   help="for a container image, count kernel CVEs on kernel header packages (linux-libc-dev...) in lag "
+                        "and likelihood; for other targets they always count")
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
                    help="leave findings below this severity out of the reports (malicious ones, those in Act now and "

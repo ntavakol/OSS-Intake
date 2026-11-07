@@ -50,8 +50,10 @@ nothing, or output that is not what it seems).
   found. A pinned hash still stops it.
 - govulncheck has no known-bad list, and with `--govulncheck-sha256` its "not reachable" verdict sets a finding
   aside, so it no longer counts for the severity gates (never a malicious or CISA KEV finding, which come first).
-  Without the pin the verdict is shown but sets nothing aside. A kernel CVE on a kernel header package stays set
-  aside even in KEV, by design: it does not apply in a container (decided 7 Nov, to revisit: BACKLOG.md).
+  Without the pin the verdict is shown but sets nothing aside. A kernel CVE on a kernel header package is set
+  aside, even in KEV, only for a container target (`--image`, or SBOMs that all describe an image): a container
+  runs on the host's kernel. For a folder, an artifact or another SBOM (a host or VM image) it counts like any
+  finding (decided 8 Nov).
 - The default cosign identity is the scanner's release workflow as its signing certificates name it (Trivy's
   `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main); if a project moves its signing to
   another workflow, verification fails until oss-intake is updated or `--*-cosign-identity` is given. cosign
@@ -189,12 +191,14 @@ user's files (where the output is written), and the user's privacy (what the rep
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |
 | A report shared with others gives away the user's name or folders | The target is given by its name, the scanner and the tools used to copy files out of an image by their names (with version and SHA-256), and the cache folder from `~` or by its name; no absolute local path is written. | `assessment.shown_path`, `assessment._document`, `scanning.run_or_load` |
 | An output folder that cannot be written fails after the work is done | It is created and tested for writing before anything else. | `cli.prepare_out` |
+| Reports in a folder other users can write to are replaced after the run | A warning in the reports names who can write to it (POSIX permissions, or the Windows security descriptor). | `http.folder_write_reason` |
 | A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work, and each report is written to a new file beside it and moved into place, which replaces a link placed later (symbolic or hard) rather than writing through it, and never leaves half a file (`safewrite`). At the end, report files the last run left that this run did not write are removed: only files that run listed as its own in `.oss-intake-files.json` (a `summary.md` of the user's own is never touched), never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
 
 **Left open:**
 
-- Existing reports are replaced without warning. Whether to refuse an output folder other users can write to,
-  as the cache does, is open (BACKLOG.md).
+- Existing reports are replaced without warning. An output folder other users can write to (or replace through a
+  folder above it) is warned about, not refused (decided 8 Nov): reports are written by rename, so nothing is
+  written through a planted link, but another user can still replace or delete them after the run.
 - Paths inside the target as the scanners report them (a lockfile's path within the scanned folder) are kept,
   as they say where a finding is; so are the names of the target, the scanner and, outside the home folder,
   the cache folder.
@@ -285,7 +289,6 @@ machine if the extension ever ran.
 
 ## Open items that could be fixed
 
-The open items agreed on 6 Nov are all fixed (CHANGELOG.md). One decision is to be revisited (BACKLOG.md): a
-kernel CVE on a kernel header package stays set aside even when it is in CISA KEV. What is not listed here (a
+The open items agreed on 6 Nov are all fixed (CHANGELOG.md). What is not listed here (a
 service that answers wrongly, an extension author determined to avoid the indicators, the single maintainer)
 are limits of the approach rather than defects.

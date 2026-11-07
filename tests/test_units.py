@@ -3739,3 +3739,28 @@ def test_reachability_is_skipped_not_fatal_when_govulncheck_cannot_be_copied(mon
     got = scanning.run_govulncheck(SimpleNamespace(govulncheck_path=None),
                                    {"Results": [{"Type": "gobinary", "Target": "usr/bin/app"}]}, {}, warnings)
     assert got == {} and warnings == ["--reachability skipped: could not copy govulncheck"]
+
+
+@pytest.mark.parametrize("doc, container", [
+    ({"_kind": "cyclonedx", "metadata": {"component": {"type": "container", "name": "app"}}}, True),
+    ({"_kind": "cyclonedx", "metadata": {"component": {"type": "application", "purl": "pkg:oci/app@sha256:ab"}}},
+     True),
+    ({"_kind": "cyclonedx", "metadata": {"component": {"type": "operating-system", "name": "host"}}}, False),
+    ({"_kind": "cyclonedx"}, False),
+    ({"_kind": "spdx", "documentDescribes": ["SPDXRef-a"],
+      "packages": [{"SPDXID": "SPDXRef-a", "primaryPackagePurpose": "CONTAINER"}]}, True),
+    ({"_kind": "spdx", "relationships": [{"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES",
+                                          "relatedSpdxElement": "SPDXRef-a"}],
+      "packages": [{"SPDXID": "SPDXRef-a", "externalRefs": [{"referenceLocator": "pkg:docker/app@1"}]}]}, True),
+    ({"_kind": "spdx", "documentDescribes": ["SPDXRef-a", "SPDXRef-b"],
+      "packages": [{"SPDXID": "SPDXRef-a", "primaryPackagePurpose": "CONTAINER"}]}, False),
+])
+def test_an_sbom_of_a_container_image_is_recognised(doc, container):
+    """Kernel header CVEs are set aside for an SBOM only when it describes a container image (Ned, 8 Nov)."""
+    from types import SimpleNamespace
+
+    from oss_intake import assessment, sbom
+
+    assert sbom.is_container(doc) is container
+    args = SimpleNamespace(image=None, sbom_info={"files": 2, "containers": 2 if container else 1})
+    assert assessment.is_container_target(args) is container

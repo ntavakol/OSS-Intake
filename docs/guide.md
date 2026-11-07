@@ -624,9 +624,13 @@ NOTICE credits them.
 - Trivy and Grype detect packages independently, so their disagreement is informative. OSV is queried with
   Trivy's package list, so it is an independent database check, not an independent detector.
 - Severity is the highest any source reported, which is conservative. Per-source severities are in the CSV.
-- Kernel CVEs reported against kernel header packages (`linux-libc-dev` and similar) are excluded from lag and
-  likelihood, because a container uses the host's kernel. They stay in findings.csv with a note; assess the host
-  kernel separately. Use `--include-kernel-headers` to count them.
+- For a container image (`--image`, or SBOMs that all describe an image), kernel CVEs reported against kernel
+  header packages (`linux-libc-dev` and similar) are set aside and excluded from lag and likelihood, because a
+  container uses the host's kernel. They stay in findings.csv with a note; assess the host kernel separately. Use
+  `--include-kernel-headers` to count them. For a folder, an artifact or any other SBOM, which may be a host or
+  VM image running that kernel, they count like any finding.
+- A warning is added when the output folder can be written by other users (or replaced through a folder above
+  it), as they could replace or delete the reports after the run. Use a folder only you can write to.
 - Version comparison is ecosystem-agnostic and approximate. It only affects which fix date is used. Build
   labels (`.jre11`, `-jre`, `-android`) are ignored when comparing.
 - Scanners can read a JAR's version without its build label and report an already-fixed build as vulnerable

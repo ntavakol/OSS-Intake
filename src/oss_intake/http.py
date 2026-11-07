@@ -117,6 +117,57 @@ def default_cache_dir() -> Path:
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "oss-intake"
 
 
+def folder_write_reason(folder: Path, windows: bool | None = None) -> str | None:
+    """Who other than this user can write to the folder, or replace it through a folder above it, or None. On
+    Windows it is read from the security descriptors, and None also when they cannot be read."""
+    if windows if windows is not None else sys.platform == "win32":
+        return _windows_acl_reason(folder)
+    import stat
+
+    for p in [folder, *folder.parents]:
+        try:
+            st = p.stat()
+        except FileNotFoundError:
+            continue  # not made yet: the folder above it decides
+        except OSError as exc:
+            return f"{p} cannot be checked ({exc.strerror or exc})"
+        # A shared folder such as /tmp (sticky: only the owner can rename or delete) is fine above the folder.
+        if _others_can_write(st.st_mode, st.st_gid) and (p == folder or not st.st_mode & stat.S_ISVTX):
+            return f"{p} can be written by other users"
+        if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
+            return f"{p} belongs to another user"
+    return None
+
+
+def _windows_acl_reason(folder: Path) -> str | None:
+    """Another account that can write to the folder or replace it (winacl), or None, also when the
+    descriptors cannot be read (not Windows, or the API failed): the cache's profile rule still applies then. A
+    descriptor that was read but not understood is a reason."""
+    from . import winacl
+
+    try:
+        me = winacl.user_sid()
+    except OSError:
+        return None
+    nearest = True
+    for p in [folder, *folder.parents]:
+        if not p.exists():
+            continue  # not made yet: whoever can add to the folder above could make it first
+        try:
+            sddl = winacl.read_sddl(str(p))
+        except OSError:
+            return None
+        try:
+            why = winacl.write_reason(sddl, me, winacl.FOLDER_WRITE if nearest else winacl.PARENT_WRITE,
+                                      inherited=nearest, resolve=winacl.resolve_alias)
+        except winacl.SddlError as exc:  # read, but not understood: refused rather than trusted
+            return f"{p} has permissions this check cannot read ({exc})"
+        if why:
+            return f"{p} {why}"
+        nearest = False
+    return None
+
+
 class ResponseCache:
     """Successful (200) JSON responses for the URLs in CACHE_RULES, one file per URL.
 
@@ -204,49 +255,10 @@ class ResponseCache:
             if why := self._windows_acl_reason():
                 return why
             return None if operator_trusted else self._windows_reason()
-        import stat
-
-        for p in [self.folder, *self.folder.parents]:
-            try:
-                st = p.stat()
-            except FileNotFoundError:
-                continue  # not made yet: the folder above it decides
-            except OSError as exc:
-                return f"{p} cannot be checked ({exc.strerror or exc})"
-            # A shared folder such as /tmp (sticky: only the owner can rename or delete) is fine above the cache.
-            if _others_can_write(st.st_mode, st.st_gid) and (p == self.folder or not st.st_mode & stat.S_ISVTX):
-                return f"{p} can be written by other users"
-            if hasattr(os, "getuid") and st.st_uid not in (os.getuid(), 0):
-                return f"{p} belongs to another user"
-        return None
+        return folder_write_reason(self.folder, windows=False)
 
     def _windows_acl_reason(self) -> str | None:
-        """Another account that can write to the folder or replace it (winacl), or None, also when the
-        descriptors cannot be read (not Windows, or the API failed): the profile rule still applies then. A
-        descriptor that was read but not understood is a reason."""
-        from . import winacl
-
-        try:
-            me = winacl.user_sid()
-        except OSError:
-            return None
-        nearest = True
-        for p in [self.folder, *self.folder.parents]:
-            if not p.exists():
-                continue  # not made yet: whoever can add to the folder above could make it first
-            try:
-                sddl = winacl.read_sddl(str(p))
-            except OSError:
-                return None
-            try:
-                why = winacl.write_reason(sddl, me, winacl.FOLDER_WRITE if nearest else winacl.PARENT_WRITE,
-                                          inherited=nearest, resolve=winacl.resolve_alias)
-            except winacl.SddlError as exc:  # read, but not understood: refused rather than trusted
-                return f"{p} has permissions this check cannot read ({exc})"
-            if why:
-                return f"{p} {why}"
-            nearest = False
-        return None
+        return _windows_acl_reason(self.folder)
 
     def _windows_reason(self) -> str | None:
         """The folders' descriptors (_windows_acl_reason) can miss a way in: an entry or subfolder given other

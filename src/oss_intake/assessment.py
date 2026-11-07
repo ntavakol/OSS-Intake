@@ -57,6 +57,16 @@ from .models import SEVERITY_ORDER, parse_datetime
 from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, OUTPUT_FILES, image_tag, log
 
 
+def is_container_target(args) -> bool:
+    """Kernel CVEs on kernel header packages are set aside only for a container image (Ned, 8 Nov: decide by
+    target): --image, or SBOMs that all describe an image. A folder, an artifact or another SBOM may be a host
+    or VM image, whose own kernel the CVEs can apply to, so there they count like any finding."""
+    if getattr(args, "image", None):
+        return True
+    info = getattr(args, "sbom_info", None) or {}
+    return bool(info.get("files")) and info.get("containers") == info.get("files")
+
+
 def shown_path(p: str | Path | None) -> str | None:
     """A local path as the reports give it: under the home folder as ~/..., anywhere else by its name only, so a
     report shared with others does not carry the user's name or folder layout."""
@@ -138,7 +148,7 @@ def _merge(args, groups: list, warnings: list[str]):
                            f"packages, or an advisory classed as embedded malicious code, CWE-506): {listed}. "
                            "Treat the artifact as compromised, not as a patching task")
     lag.flag_label_matches(findings)
-    if not args.include_kernel_headers:
+    if not args.include_kernel_headers and is_container_target(args):
         lag.flag_kernel_headers(findings)
     lag.flag_no_newer_fix(findings)
     flagged = {"kh": {id(f) for f in findings if f.excluded == "kernel-headers"},

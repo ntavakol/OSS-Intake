@@ -2609,3 +2609,49 @@ def test_grype_certificate_needs_the_checksums_it_signs(tmp_path, capsys):
                      str(archive), "--grype-cosign-certificate", str(pem), "--grype-cosign-signature",
                      str(sig)]) == cli.EXIT_USAGE
     assert "needs --grype-checksums" in capsys.readouterr().err
+
+
+def _kernel_header_trivy(tmp_path):
+    v = {"VulnerabilityID": "CVE-2099-3000", "PkgName": "linux-libc-dev", "InstalledVersion": "6.1.0",
+         "FixedVersion": "6.1.1", "Severity": "HIGH",
+         "PkgIdentifier": {"PURL": "pkg:deb/debian/linux-libc-dev@6.1.0?distro=debian-12"}}
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x", "Metadata": {"OS": {"Family": "debian", "Name": "12"}},
+             "Results": [{"Target": "x (debian 12)", "Class": "os-pkgs", "Type": "debian", "Vulnerabilities": [v]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps(trivy), encoding="utf-8")
+    return tj
+
+
+@pytest.mark.parametrize("target, set_aside", [(["--image", "owner/app:1.0"], True), (["--path", "{dir}"], False)],
+                         ids=["image", "folder"])
+def test_kernel_header_cves_are_set_aside_only_for_a_container(tmp_path, target, set_aside):
+    """Ned (8 Nov), decide by target: a container runs on the host's kernel, so kernel CVEs on its kernel header
+    packages are set aside; a folder (a host or VM image) may run that kernel, so there they count and a gate
+    can fail on them."""
+    folder = tmp_path / "rootfs"
+    folder.mkdir()
+    out = tmp_path / "o"
+    code = cli.main([*[a.replace("{dir}", str(folder)) for a in target], "--out", str(out), "--from-trivy-json",
+                     str(_kernel_header_trivy(tmp_path)), "--scanners", "trivy", "--offline", "--as-of", AS_OF,
+                     "--fail-on", "high", "--quiet"])
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["lag"]["excluded_kernel_headers"] == (1 if set_aside else 0)
+    assert code == (cli.EXIT_OK if set_aside else cli.EXIT_THRESHOLD)
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "getuid"), reason="POSIX permissions")
+def test_an_output_folder_others_can_write_to_is_warned_about(tmp_path):
+    """Ned (8 Nov): warn, not refuse. Reports are written by rename, so nothing is written through a planted link;
+    another user could still replace or delete them after the run."""
+    tj = _kernel_header_trivy(tmp_path)
+    for mode, warned in ((0o700, False), (0o777, True)):
+        out = tmp_path / f"o{mode:o}"
+        out.mkdir()
+        out.chmod(mode)
+        cli.main(["--image", "owner/app:1.0", "--out", str(out), "--from-trivy-json", str(tj), "--scanners",
+                  "trivy", "--offline", "--as-of", AS_OF, "--quiet"])
+        a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+        hits = [w for w in a["warnings"] if w.startswith("The output folder is not private")]
+        assert bool(hits) is warned, a["warnings"]
+        if warned:
+            assert f"{out} can be written by other users" in hits[0]
