@@ -29,10 +29,14 @@ from typing import IO, cast
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
-# Release workflows that sign the official binaries (Sigstore keyless, GitHub OIDC).
+# The release workflows that sign the official releases (Sigstore keyless, GitHub OIDC), as the signing
+# certificates name them: Trivy's reusable release workflow run for a version tag, Grype's release workflow on
+# main (read from the certificates of Trivy 0.70.0 and 0.76.1 and Grype 0.80.0 to 0.104.0). Any other workflow or
+# ref in the repository (a branch, or a less guarded workflow that can also get a signing certificate) is refused.
 DEFAULT_COSIGN_IDENTITY = {
-    "trivy": r"^https://github\.com/aquasecurity/trivy/",
-    "grype": r"^https://github\.com/anchore/grype/",
+    "trivy": r"^https://github\.com/aquasecurity/trivy/\.github/workflows/reusable-release\.yaml"
+             r"@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$",
+    "grype": r"^https://github\.com/anchore/grype/\.github/workflows/release\.yaml@refs/heads/main$",
 }
 
 

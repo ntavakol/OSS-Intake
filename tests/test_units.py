@@ -3628,3 +3628,24 @@ def test_formula_guard_covers_leading_space_and_fullwidth_and_round_trips(value)
 
     guarded = report.csv_safe(value)
     assert guarded.startswith("'") and decisions.unguard(guarded) == value
+
+
+@pytest.mark.parametrize("tool, identity, ok", [
+    ("trivy", "https://github.com/aquasecurity/trivy/.github/workflows/reusable-release.yaml@refs/tags/v0.76.1", True),
+    ("trivy", "https://github.com/aquasecurity/trivy/.github/workflows/reusable-release.yaml@refs/heads/main", False),
+    ("trivy", "https://github.com/aquasecurity/trivy/.github/workflows/test.yaml@refs/tags/v0.76.1", False),
+    ("trivy", "https://github.com/aquasecurity/trivy/.github/workflows/reusable-release.yaml@refs/tags/v0.76.1x",
+     False),
+    ("trivy", "https://github.com/aquasecurity/trivy-db/.github/workflows/reusable-release.yaml@refs/tags/v0.1.0",
+     False),
+    ("grype", "https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/main", True),
+    ("grype", "https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/feature", False),
+    ("grype", "https://github.com/anchore/grype/.github/workflows/validations.yaml@refs/heads/main", False),
+])
+def test_default_cosign_identity_is_the_release_workflow_only(tool, identity, ok):
+    """Audit (CI and supply chain): the default identity accepted a certificate from any workflow or ref in the
+    scanner's repository. It now names the release workflow, as the projects' signing certificates do (the
+    accepted values are the identities in the certificates of Trivy 0.76.1 and Grype 0.104.0)."""
+    import re
+
+    assert bool(re.search(integrity.DEFAULT_COSIGN_IDENTITY[tool], identity)) is ok

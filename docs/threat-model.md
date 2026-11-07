@@ -52,8 +52,9 @@ nothing, or output that is not what it seems).
   aside, so it no longer counts for the severity gates (never a malicious or CISA KEV finding, which come first).
   Without the pin the verdict is shown but sets nothing aside. A kernel CVE on a kernel header package stays set
   aside even in KEV, by design: it does not apply in a container (decided 7 Nov, to revisit: BACKLOG.md).
-- The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
-  its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
+- The default cosign identity is the scanner's release workflow as its signing certificates name it (Trivy's
+  `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main); if a project moves its signing to
+  another workflow, verification fails until oss-intake is updated or `--*-cosign-identity` is given. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
 - The scanner's vulnerability database age is shown, and enforced only with `--max-db-age-days` (off by default),
   which stops the run when the database is older or its build date cannot be read.
@@ -206,7 +207,7 @@ publishes to PyPI, GitHub releases and GitHub Pages. A compromise here reaches e
 
 | Threat | Mitigation | Where |
 |---|---|---|
-| A third-party action is changed after it was reviewed | Every action is pinned by full commit SHA with its version as a comment, and the workflow audit flags known-bad action versions. The SLSA generator, which cannot be pinned by SHA, is referenced by an exact release tag. Dependabot proposes updates weekly, after a 7-day cooldown. | `.github/workflows/*.yml`, `health.workflows`, `.github/dependabot.yml` |
+| A third-party action is changed after it was reviewed | Every action is pinned by full commit SHA with its version as a comment, and the workflow audit flags known-bad action versions. The SLSA generator, which cannot be pinned by SHA (it checks that it is called by a release tag, and its provenance does not verify otherwise), is referenced by an exact release tag. That is an accepted risk (external audit CI-01; accepted 7 Nov 2026, to be reviewed by 7 May 2027 or at the generator's next major release, whichever comes first): if the tag were moved to other code, the release job would run it with permission to sign and attach files to the release. The packages on PyPI are built and published by oss-intake's own SHA-pinned jobs, which the generator cannot change. Dependabot proposes updates weekly, after a 7-day cooldown. | `.github/workflows/*.yml`, `health.workflows`, `.github/dependabot.yml` |
 | A workflow can do more than it needs | Workflows start with read-only permissions and grant writes per job, only where needed (PyPI publishing, signing, attaching to the release, Pages, code scanning uploads). Checkouts do not keep the token (`persist-credentials: false`). No workflow uses `pull_request_target`, so a pull request from a fork runs without secrets. | the workflows |
 | A workflow input injects shell commands | Event values (release tag, dispatch input) reach shell steps through environment variables, not `${{ }}` inside the script, and the Pages tag must match `vX.Y.Z`. | `release.yml`, `pages.yml` |
 | Build tools or test tools are tampered with | Every Python package CI and the release install is pinned by version and SHA-256 (`--require-hashes`); gitleaks is downloaded by version and its checksum checked. | `requirements/*.txt`, `ci.yml` |

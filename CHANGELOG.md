@@ -24,6 +24,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- The default cosign identity for Trivy and Grype accepted a certificate from any workflow or ref in the
+  scanner's repository. It is now the release workflow named in the projects' signing certificates (Trivy's
+  `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main).
 - On Windows the cache folder's permissions were not read: a folder in the user's profile was trusted whatever
   its permissions said. Each folder's security descriptor is now read, and a cache folder that another account
   can write to, or that a folder above it lets another account move away, is not used, even with

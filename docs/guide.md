@@ -380,7 +380,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |
-| `--trivy-cosign-identity`, `--grype-cosign-identity` | Certificate identity (regexp) the cosign bundle must match |
+| `--trivy-cosign-identity`, `--grype-cosign-identity` | Certificate identity (regexp) the cosign bundle must match. The default is the project's release workflow: `https://github.com/aquasecurity/trivy/.github/workflows/reusable-release.yaml@refs/tags/v<version>` for Trivy, `https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/main` for Grype |
 | `--max-db-age-days N` | Stop the run with exit 1 when Trivy's or Grype's vulnerability database is older than N days, or its build date cannot be read: findings from an old database miss recent advisories, and a clean report from one would mislead. Off by default. Refused (exit 2) with `--from-trivy-json` or `--from-grype-json`, whose reports do not say how old the database was |
 | `--timeout` | Seconds before a scanner run is abandoned (default 1800) |
 | `--top` | Number of findings listed in the summary (default 25; all are in findings.csv) |
