@@ -16,6 +16,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Redirects were followed by requests on its own: a 307 or 308 would resend the OSV batch query, with the package
+  list (internal names included), to wherever it pointed, and a redirect could lead to plain http. A request with a
+  body is now never redirected (a redirect is a failed request), and a GET follows at most 5 redirects, only to
+  https. Found by the external audit (SEC-08).
+- Each source's answers have their own size limit (32 MB for an API, 128 MB for a bulk index read from a
+  repository) under the 256 MB ceiling (external audit SEC-09).
 - Smaller fixes from the audit: without `--as-of`, a version published a few minutes "in the future" (clock skew
   with the registry) now counts as new rather than as not yet existing; workflow files beyond the first 20 make
   the project's workflow audit partial, with a warning, instead of being left out silently; inventory CSV rows

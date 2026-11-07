@@ -75,17 +75,17 @@ not trust them to be up, or to answer in the right shape.
 | OSV leaves some packages out of its answer, so they read as clean | An answer must hold one result object per package asked about, each with its vulnerabilities as a list of objects with an id; a page token that repeats, or more than 200 pages for one package, is an error too. Each is handled as an OSV failure. The Ubuntu fix-date lookup uses the same checks. | `scanners.osv.querybatch` |
 | One advisory's details fail to load, and its finding reads as complete | That finding is marked as missing details and put in "review" | `scanners.osv` |
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
-| A slow or huge answer stalls or exhausts the run | Every answer is read in chunks: over 256 MB, or still arriving after 5 minutes (or twice the timeout, if longer), it is a failed request, so that source counts as failed, never as clean. | `http.RequestsHttp._body`, `http.MAX_RESPONSE_BYTES`, `http.DEADLINE_SECONDS` |
+| A slow or huge answer stalls or exhausts the run | Every answer is read in chunks: over its source's limit (32 MB for an API, 128 MB for a bulk index read from a repository), or still arriving after 5 minutes (or twice the timeout, if longer), it is a failed request, so that source counts as failed, never as clean. | `http.RequestsHttp._body`, `http.answer_limit`, `http.DEADLINE_SECONDS` |
+| A redirect sends the package list elsewhere, or downgrades to plain http | Redirects are followed by hand. A request with a body (the OSV batch query, which carries the package list) is never redirected: a redirect is a failed request. A GET follows at most 5, and only to https; the GitHub token goes only to api.github.com at each hop. | `http.RequestsHttp._send` |
 | A check that needs the network is trusted offline | With `--offline` oss-intake itself fetches nothing (the scanners may still use the network), the cache is off, and gates that need a lookup are refused (exit 2). | `options.refuse_gates_without_their_check` |
 | Text from a service attacks the report's reader | See "Reports" below: every value is escaped. | `report`, `report_html` |
 
 **Left open:**
 
-- An answer is held in memory up to its 256 MB limit, and a slow service can take up to the 5 minute deadline
+- An answer is held in memory up to its source's limit (32 MB or 128 MB), and a slow service can take up to the 5 minute deadline
   per request (lookups run in parallel, so a run is not that times the number of lookups). The deadline is
   checked as data arrives, so it can be passed by up to one read timeout; with urllib3 1.26 (urllib3 2 is
   pinned) it is checked only once each 64 KiB has arrived.
-- A redirect to plain `http` on another host is followed for data (the token is dropped).
 - Answers are trusted as published: a compromised or mistaken service (a KEV list missing an entry, an advisory
   with the wrong fix version) is passed on. OSV, deps.dev and KEV are not signed.
 - Maven Central answering 5xx or 429 for every checksum reads as "not published" rather than as an error

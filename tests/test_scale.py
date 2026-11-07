@@ -820,3 +820,111 @@ def test_huge_component_list_is_refused_quickly(tmp_path, monkeypatch):
     with pytest.raises(inputs.InputError, match="more than 100000 components"):
         sbom.read(p)
     assert time.monotonic() - t < 3  # the quadratic walk took about 10 s here
+
+
+# --- Redirects (external audit SEC-08/12, 7 Nov) ----------------------------------------------------------------
+
+def _servers(monkeypatch, routes):
+    """Two local HTTP servers; routes maps (server, path) to (status, headers, body). Returns the base URLs and a
+    list of what each server received: (server, method, path, body)."""
+    import http.server
+
+    for var in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1")
+    seen, bases, servers = [], {}, []
+
+    def handler_for(name):
+        class H(http.server.BaseHTTPRequestHandler):
+            def _answer(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                seen.append((name, self.command, self.path, self.rfile.read(n) if n else b""))
+                status, headers, body = routes.get((name, self.path), (404, {}, b""))
+                self.send_response(status)
+                for k, v in headers.items():
+                    self.send_header(k, v.format(**bases))
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            do_GET = do_POST = _answer
+
+            def log_message(self, *a):
+                pass
+        return H
+
+    for name in ("a", "b"):
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler_for(name))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        servers.append(srv)
+        bases[name] = f"http://127.0.0.1:{srv.server_address[1]}"
+    return bases, seen, servers
+
+
+@pytest.mark.parametrize("code", [301, 302, 303, 307, 308])
+def test_a_post_is_never_redirected(monkeypatch, code):
+    """A 307 or 308 resends the body: the OSV batch query carries the package list, internal names included."""
+    bases, seen, servers = _servers(monkeypatch, {("a", "/q"): (code, {"Location": "{b}/stolen"}, b"")})
+    try:
+        h = RequestsHttp(github_token="")
+        with pytest.raises(HttpError, match="never redirected"):
+            h.post_json(f"{bases['a']}/q", {"queries": [{"package": {"name": "internal-app"}}]})
+        assert [s[0] for s in seen] == ["a"]  # the second server heard nothing
+    finally:
+        for s in servers:
+            s.shutdown()
+
+
+def test_a_get_follows_only_https_and_only_so_far(monkeypatch):
+    bases, seen, servers = _servers(monkeypatch, {
+        ("a", "/down"): (302, {"Location": "{b}/plain"}, b""),
+        ("a", "/ok"): (200, {"Content-Type": "application/json"}, b'{"ok": 1}')})
+    try:
+        h = RequestsHttp(github_token="")
+        with pytest.raises(HttpError, match="non-https"):  # http to http counts too: only https is followed
+            h.get_json(f"{bases['a']}/down")
+        assert all(s[0] == "a" for s in seen)
+        assert h.get_json(f"{bases['a']}/ok") == (200, {"ok": 1})
+    finally:
+        for s in servers:
+            s.shutdown()
+
+
+def test_an_https_redirect_is_followed_without_the_token(monkeypatch):
+    from oss_intake import http as http_mod
+
+    calls = []
+
+    class R:
+        def __init__(self, status, headers, body=b""):
+            self.status_code, self.headers, self.content = status, headers, body
+
+    class S:
+        headers: dict = {}
+
+        def request(self, method, url, headers=None, **kw):
+            calls.append((url, dict(headers or {}), kw.get("allow_redirects")))
+            if url.startswith("https://api.github.com/"):
+                return R(301, {"Location": "https://elsewhere.example/x"})
+            if url.startswith("https://loop.example/"):
+                return R(302, {"Location": "/again"})
+            return R(200, {}, b'{"moved": true}')
+
+    import requests
+    monkeypatch.setattr(requests, "Session", lambda: S())
+    h = http_mod.RequestsHttp(github_token="ghp_secret")
+    assert h.get_json("https://api.github.com/repos/o/r") == (200, {"moved": True})
+    assert calls[0][1].get("Authorization") and not calls[1][1].get("Authorization")
+    assert all(c[2] is False for c in calls)  # requests never follows on its own
+    with pytest.raises(HttpError, match="more than 5 redirects"):
+        h.get_text("https://loop.example/start")
+
+
+def test_answer_limits_are_per_source():
+    """External audit SEC-09: one 256 MB limit for every answer; API answers are kilobytes, so they get 32 MB, and
+    only the bulk indexes read from repositories get 128 MB."""
+    from oss_intake import http as http_mod
+
+    assert http_mod.answer_limit("https://api.osv.dev/v1/querybatch") == 32 * 1024 * 1024
+    assert http_mod.answer_limit("https://raw.githubusercontent.com/rapid7/x/db.json") == 128 * 1024 * 1024
+    assert http_mod.answer_limit("https://gitlab.com/exploit-database/exploitdb/-/raw/main/x.csv") == 128 * 1024 * 1024

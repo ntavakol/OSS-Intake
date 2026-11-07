@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 from . import __version__, jsonsafe
 
@@ -30,8 +30,23 @@ DEFAULT_TIMEOUT = 30
 # The timeout bounds each connect and each read, not the whole answer: a service sending a byte at a time, or
 # without end, would hold the run. Every answer is read in chunks within a size limit and a total deadline (the
 # largest, the exploit-db index, is tens of MB).
-MAX_RESPONSE_BYTES = 256 * 1024 * 1024
+MAX_RESPONSE_BYTES = 256 * 1024 * 1024  # the ceiling for any answer
+# Per source, below the ceiling: API answers are kilobytes; the bulk indexes read from repositories (Metasploit's
+# module metadata, the Exploit-DB and Nuclei lists) run to tens of MB.
+MAX_API_BYTES = 32 * 1024 * 1024
+MAX_INDEX_BYTES = 128 * 1024 * 1024
+INDEX_HOSTS = ("raw.githubusercontent.com", "gitlab.com")
 DEADLINE_SECONDS = 300
+# Redirects are followed by hand: a request with a body (the OSV batch query carries the package list) is never
+# redirected, as a 307 or 308 would send the body on to wherever it points; a GET follows at most MAX_REDIRECTS,
+# and only to https.
+MAX_REDIRECTS = 5
+REDIRECT_CODES = (301, 302, 303, 307, 308)
+
+
+def answer_limit(url: str) -> int:
+    host = (urlparse(url).hostname or "").lower()
+    return min(MAX_RESPONSE_BYTES, MAX_INDEX_BYTES if host in INDEX_HOSTS else MAX_API_BYTES)
 GITHUB_API_HOST = "api.github.com"
 
 
@@ -281,12 +296,7 @@ class RequestsHttp(Http):
         with self._count_lock:
             self.requests_made += 1
         deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * self._timeout)
-        try:
-            r = self._session.request(method, url, headers=self._headers(url), timeout=self._timeout, stream=True,
-                                      **kw)
-        except self._requests.RequestException as exc:
-            # str(exc) can include the URL but not headers; the token is never in the URL.
-            raise HttpError(f"{method} {urlparse(url).netloc}{urlparse(url).path}: {type(exc).__name__}") from None
+        r, url = self._send(method, url, None, self._timeout, **kw)
         body = self._body(r, method, url, deadline)
         if r.status_code == 204 or not body:
             return r.status_code, None
@@ -295,14 +305,39 @@ class RequestsHttp(Http):
         except (ValueError, RecursionError):  # not JSON, or nested too deeply to read: the caller sees no data
             return r.status_code, None
 
+    def _send(self, method: str, url: str, accept: str | None, timeout: float, **kw: Any) -> tuple[Any, str]:
+        """One request, following redirects by hand (see MAX_REDIRECTS): the answer, and the URL it came from."""
+        for _ in range(MAX_REDIRECTS + 1):
+            where = f"{method} {urlparse(url).netloc}{urlparse(url).path}"
+            headers = self._headers(url) if accept is None else {"Accept": accept}  # the token: api.github.com only
+            try:
+                r = self._session.request(method, url, headers=headers, timeout=timeout, stream=True,
+                                          allow_redirects=False, **kw)
+            except self._requests.RequestException as exc:
+                # str(exc) can include the URL but not headers; the token is never in the URL.
+                raise HttpError(f"{where}: {type(exc).__name__}") from None
+            location = (getattr(r, "headers", None) or {}).get("Location")
+            if r.status_code not in REDIRECT_CODES or not location:
+                return r, url
+            close = getattr(r, "close", None)
+            if close is not None:
+                close()
+            if method != "GET":
+                raise HttpError(f"{where}: redirected ({r.status_code}); a request with a body is never redirected, "
+                                "as that would send it on")
+            url = urljoin(url, location)
+            if urlparse(url).scheme != "https":
+                raise HttpError(f"{where}: redirected to a non-https address, which is refused")
+        raise HttpError(f"{method} {urlparse(url).netloc}: more than {MAX_REDIRECTS} redirects")
+
     def _body(self, r: Any, method: str, url: str, deadline: float) -> bytes:
         """The answer's bytes, read in chunks: over MAX_RESPONSE_BYTES or past the deadline is a failed request."""
         where = f"{method} {urlparse(url).netloc}{urlparse(url).path}"
         chunks = getattr(r, "iter_content", None)
         if chunks is None:  # an answer already read whole (as test doubles give)
             body = r.content or b""
-            if len(body) > MAX_RESPONSE_BYTES:
-                raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
+            if len(body) > answer_limit(url):
+                raise HttpError(f"{where}: the answer is over {answer_limit(url) // (1024 * 1024)} MB")
             return body
         import urllib3
 
@@ -321,11 +356,12 @@ class RequestsHttp(Http):
         else:
             source = chunks(1 << 16)
         buf = bytearray()
+        limit = answer_limit(url)
         try:
             for chunk in source:
                 buf += chunk
-                if len(buf) > MAX_RESPONSE_BYTES:
-                    raise HttpError(f"{where}: the answer is over {MAX_RESPONSE_BYTES // (1024 * 1024)} MB")
+                if len(buf) > limit:
+                    raise HttpError(f"{where}: the answer is over {limit // (1024 * 1024)} MB")
                 if time.monotonic() > deadline:
                     raise HttpError(f"{where}: the answer took longer than the deadline to arrive")
         except (self._requests.RequestException, urllib3.exceptions.HTTPError, OSError) as exc:
@@ -393,10 +429,7 @@ class RequestsHttp(Http):
             self.requests_made += 1
         timeout = max(self._timeout, 120)
         deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * timeout)
-        try:
-            r = self._session.get(url, headers={"Accept": "text/plain"}, timeout=timeout, stream=True)
-        except self._requests.RequestException as exc:
-            raise HttpError(f"GET {urlparse(url).netloc}{urlparse(url).path}: {type(exc).__name__}") from None
+        r, url = self._send("GET", url, "text/plain", timeout)
         # Decode explicitly; servers often send text/plain without a charset.
         return r.status_code, self._body(r, "GET", url, deadline).decode("utf-8", errors="replace")
 
