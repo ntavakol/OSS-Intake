@@ -52,10 +52,60 @@ def child_env() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k.upper() not in SECRET_ENV}
 
 
+# What a program oss-intake starts may write before it is stopped (external audit SEC-02): a scanner report can
+# run to hundreds of MB for a large image; its error output is a few lines.
+MAX_STDOUT = 1024 * 1024 * 1024
+MAX_STDERR = 1024 * 1024
+
+
+class OutputTooLarge(ScannerError):
+    pass
+
+
+def capped_run(cmd: list[str], timeout: float, max_stdout: int = MAX_STDOUT,
+               max_stderr: int = MAX_STDERR) -> subprocess.CompletedProcess:
+    """subprocess.run without a shell, with child_env(), a timeout, and a limit on what is collected from stdout and
+    stderr: past either, the program is killed and OutputTooLarge raised, so a broken or hostile program cannot
+    exhaust memory. Raises subprocess.TimeoutExpired and OSError as subprocess.run does."""
+    import threading
+
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env=child_env())
+    out, err, over = bytearray(), bytearray(), []
+
+    def pump(stream, buf: bytearray, limit: int, name: str) -> None:
+        for chunk in iter(lambda: stream.read(1 << 16), b""):
+            if len(buf) + len(chunk) > limit:
+                over.append(name)
+                proc.kill()
+                break
+            buf += chunk
+        stream.close()
+
+    readers = [threading.Thread(target=pump, args=(proc.stdout, out, max_stdout, "output"), daemon=True),
+               threading.Thread(target=pump, args=(proc.stderr, err, max_stderr, "error output"), daemon=True)]
+    for t in readers:
+        t.start()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        raise
+    finally:
+        for t in readers:
+            t.join(timeout=10)
+    if over:
+        limit = max_stdout if over[0] == "output" else max_stderr
+        raise OutputTooLarge(f"{Path(cmd[0]).name} wrote more than {limit // (1024 * 1024)} MB of {over[0]}, so "
+                             "it was stopped")
+    return subprocess.CompletedProcess(cmd, proc.returncode, bytes(out), bytes(err))
+
+
 def run(cmd: list[str], timeout: int) -> bytes:
     """Run a command without a shell and return stdout bytes. Raises ScannerError on failure."""
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=timeout, check=False, env=child_env())
+        proc = capped_run(cmd, timeout)
     except subprocess.TimeoutExpired:
         raise ScannerError(f"{Path(cmd[0]).name} timed out after {timeout}s") from None
     except OSError as exc:

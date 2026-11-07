@@ -2348,8 +2348,11 @@ def test_cosign_timeout_is_a_clean_integrity_error(tmp_path, monkeypatch, capsys
     def hang(cmd, **kw):
         raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
 
+    from oss_intake import scanners
+
     monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
-    monkeypatch.setattr(integrity.subprocess, "run", hang)
+    # cosign is started through scanners.capped_run (bounded output) since 7 Nov, not subprocess.run.
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: hang(cmd, timeout=timeout))
     f, bundle = tmp_path / "trivy.tar.gz", tmp_path / "trivy.tar.gz.sigstore.json"
     f.write_bytes(b"x")
     bundle.write_text("{}", encoding="utf-8")
@@ -3366,24 +3369,20 @@ def test_an_unexpected_error_exits_1_with_a_message_not_a_traceback(tmp_path, fi
 
 
 def test_programs_oss_intake_starts_do_not_get_the_github_token(monkeypatch):
-    """Audit (7 Nov): every scanner, docker, crane and cosign got GITHUB_TOKEN, unverified binaries included."""
-    import subprocess
+    """Audit (7 Nov): every scanner, docker, crane and cosign got GITHUB_TOKEN, unverified binaries included.
+    (Changed 7 Nov with the bounded runner: it runs a real child and reads the environment it got, rather than
+    intercepting subprocess.run, which no longer starts these programs.)"""
+    import json
+    import sys
 
     from oss_intake import scanners
 
     monkeypatch.setenv("GITHUB_TOKEN", "ghp_secret")
     monkeypatch.setenv("GH_TOKEN", "gho_secret")
-    monkeypatch.setenv("SOMETHING_ELSE", "kept")
-    seen = {}
-
-    def fake_run(cmd, **kw):
-        seen.update(kw.get("env") or {"__inherited__": "yes"})
-        return subprocess.CompletedProcess(cmd, 0, b"{}", b"")
-
-    monkeypatch.setattr(scanners.subprocess, "run", fake_run)
-    scanners.run(["trivy", "--version"], 60)
-    assert "__inherited__" not in seen and "GITHUB_TOKEN" not in seen and "GH_TOKEN" not in seen
-    assert seen["SOMETHING_ELSE"] == "kept"
+    out = scanners.run([sys.executable, "-c", "import json, os; print(json.dumps(dict(os.environ)))"], 60)
+    seen = json.loads(out)
+    assert "GITHUB_TOKEN" not in seen and "GH_TOKEN" not in seen
+    assert seen.get("PATH")  # what a program needs still reaches it
 
 
 def test_govulncheck_below_symbol_level_gives_no_verdict():
@@ -3549,3 +3548,25 @@ def test_reports_load_and_run_nothing_and_links_are_http_only(tmp_path, fixtures
         if (out / name).exists():
             assert "Content-Security-Policy" in (out / name).read_text(encoding="utf-8"), name
     assert "default-src 'none'" in (out / "report.html").read_text(encoding="utf-8")
+
+
+def test_a_program_writing_too_much_is_stopped():
+    """External audit SEC-02: stdout and stderr were collected without limit; a broken or hostile scanner could
+    exhaust memory. Past the limit the program is killed and the scan fails."""
+    import sys
+    import time
+
+    from oss_intake import scanners
+
+    flood = "import sys\nwhile True: sys.stdout.buffer.write(b'x' * 65536)"
+    t = time.monotonic()
+    with pytest.raises(scanners.OutputTooLarge, match="more than 1 MB of output"):
+        scanners.capped_run([sys.executable, "-c", flood], 60, max_stdout=1024 * 1024)
+    noisy = "import sys\nwhile True: sys.stderr.write('e' * 65536)"
+    with pytest.raises(scanners.OutputTooLarge, match="error output"):
+        scanners.capped_run([sys.executable, "-c", noisy], 60, max_stderr=256 * 1024)
+    assert time.monotonic() - t < 30
+    ok = scanners.capped_run([sys.executable, "-c", "print('fine')"], 60)
+    assert ok.returncode == 0 and ok.stdout.strip() == b"fine"
+    with pytest.raises(scanners.ScannerError, match="timed out"):
+        scanners.run([sys.executable, "-c", "import time; time.sleep(30)"], 1)

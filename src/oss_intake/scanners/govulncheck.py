@@ -17,13 +17,12 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
 import tarfile
 import tempfile
 from pathlib import Path
 
 from .. import jsonsafe
-from . import ScannerError, child_env, path_arg, run
+from . import ScannerError, capped_run, path_arg, run
 
 NAME = "govulncheck"
 
@@ -145,21 +144,21 @@ def extract_from_image(image: str, paths: list[str], platform: str | None, dest:
         if used is not None:
             used.update(tool="docker", path=docker)
         cmd = [docker, "create"] + (["--platform", platform] if platform else []) + [image, "/nonexistent"]
-        cid = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=child_env())
+        cid = capped_run(cmd, timeout, max_stdout=1024 * 1024)
         if cid.returncode == 0:
-            container = cid.stdout.strip()
+            container = cid.stdout.decode("utf-8", errors="replace").strip()
             copied = []
             try:
                 for p in wanted:
                     (dest / p).parent.mkdir(parents=True, exist_ok=True)
                     # -L: a link in the image is followed inside the image. Without it docker cp copies the link
                     # itself, and an image could point a Go binary's path at a file on this machine.
-                    r = subprocess.run([docker, "cp", "-L", f"{container}:/{p}", str(dest / p)],
-                                       capture_output=True, env=child_env(), timeout=timeout)
+                    r = capped_run([docker, "cp", "-L", f"{container}:/{p}", str(dest / p)], timeout,
+                                   max_stdout=1024 * 1024)
                     if r.returncode == 0 and _regular_inside(dest / p, dest):
                         copied.append(p)
             finally:
-                subprocess.run([docker, "rm", container], capture_output=True, timeout=60, env=child_env())
+                capped_run([docker, "rm", container], 60, max_stdout=1024 * 1024)
             return copied
     crane = shutil.which("crane")
     if crane:

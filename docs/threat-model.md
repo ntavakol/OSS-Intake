@@ -37,6 +37,7 @@ nothing, or output that is not what it seems).
 | A `--path` named like an option (`--config=x.yaml`) changes what the scanner does | A path starting with `-` is given to Trivy and govulncheck as `./-...`; Grype gets it after its `dir:` prefix. | `scanners.path_arg` |
 | A scanner that fails, hangs or prints nothing reads as "no findings" | A non-zero exit, a timeout or output that is not JSON stops the run with exit 1. | `scanners.run`, `scanners.load_json_bytes` |
 | The wrong file is imported (an SBOM, another tool's report, `{}`), so it reads as clean | An imported report must have the tool's shape, or it is refused, and one that names nothing it scanned and lists nothing is refused too; one for a different image is warned about. | `scanners.check_report`, `scanners.report_kind` |
+| A broken or hostile program floods its output | What every program oss-intake starts writes is collected up to a limit (1 GB of output, 1 MB of error output for a scanner; 1 MB for docker and cosign); past it the program is killed and the step fails. | `scanners.capped_run` |
 | A program oss-intake starts (a swapped scanner, docker, crane, cosign) steals the GitHub token | Every program is started without `GITHUB_TOKEN`, `GH_TOKEN` and the other GitHub token variables in its environment. | `scanners.child_env` |
 | govulncheck is pointed at the wrong file, or reads too little to judge | Binaries are copied out of an image following links inside the image (`docker cp -L`), and a copy that is still a link or lands outside the work folder is not analysed. Output that does not state a symbol-level scan gives no verdict, as only that level can show a function is absent. | `scanners.govulncheck.extract_from_image`, `_analyse` |
 | A required scanner is missing | Named scanners must be found. With `--scanners auto`, a missing Grype is a warning in the report, not silence. | `scanners.find_executable`, `cli` |
@@ -54,7 +55,7 @@ nothing, or output that is not what it seems).
 - The default cosign identity accepts a signature from any workflow or ref in the scanner's repository, not only
   its release workflow. cosign itself, and docker and crane (used to get binaries out of an image for
   govulncheck), are found on the PATH and not verified.
-- Scanner output size is not limited, and the scanner's vulnerability database age is shown but not enforced.
+- The scanner's vulnerability database age is shown, and enforced only with `--max-db-age-days`.
 - Anything wrong inside a scanner (a parser flaw reached by the files it reads) is the scanner's: pin and verify
   it as the guide describes.
 

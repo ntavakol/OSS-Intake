@@ -144,10 +144,14 @@ def cosign_verify_blob(file_path: str | Path, bundle: str | Path, identity_regex
     cmd = [cosign, "verify-blob", "--bundle", str(bundle),
            "--certificate-identity-regexp", identity_regexp,
            "--certificate-oidc-issuer", oidc_issuer, str(file_path)]
-    try:
-        from .scanners import child_env
+    from .scanners import ScannerError, capped_run
 
-        proc = subprocess.run(cmd, capture_output=True, timeout=COSIGN_TIMEOUT, env=child_env())
+    try:
+        proc = capped_run(cmd, COSIGN_TIMEOUT, max_stdout=1024 * 1024)
+    except ScannerError as exc:  # it wrote far more than a verification ever does
+        raise IntegrityError(f"cosign: {exc}, so the signature was not verified") from None
+    except OSError as exc:
+        raise IntegrityError(f"could not run cosign: {exc}") from None
     except subprocess.TimeoutExpired:
         raise IntegrityError(f"cosign did not finish within {COSIGN_TIMEOUT} seconds, so the signature was not "
                              "verified") from None

@@ -16,6 +16,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- What a scanner, govulncheck, docker or cosign wrote was collected without limit, so a broken or hostile program
+  could exhaust memory. Output is now collected up to a limit (1 GB of output and 1 MB of error output for a
+  scanner, 1 MB for the helpers); past it the program is stopped and the step fails (external audit SEC-02).
 - Redirects were followed by requests on its own: a 307 or 308 would resend the OSV batch query, with the package
   list (internal names included), to wherever it pointed, and a redirect could lead to plain http. A request with a
   body is now never redirected (a redirect is a failed request), and a GET follows at most 5 redirects, only to
