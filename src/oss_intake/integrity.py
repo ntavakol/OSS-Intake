@@ -17,9 +17,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -211,6 +213,34 @@ def archive_member_sha256(archive: str | Path, names: tuple[str, ...]) -> tuple[
     except (tarfile.TarError, zipfile.BadZipFile, OSError, EOFError) as exc:
         raise IntegrityError(f"{archive.name} is not a readable release archive: {exc}") from None
     raise IntegrityError(f"{archive.name} contains no {' or '.join(names)} executable")
+
+
+_PRIVATE_DIRS: list[str] = []
+
+
+def _remove_private_dirs() -> None:
+    for d in _PRIVATE_DIRS:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def private_copy(path: str) -> str:
+    """A copy of the executable at path in a folder only this user can write to (0700, removed at exit), to check
+    and run in its place: whoever can write to the scanner's own folder could otherwise swap the file between
+    its check and its run (external audit SEC-06). The copy keeps the file's name, so the program sees itself
+    as before."""
+    import atexit
+
+    folder = tempfile.mkdtemp(prefix="oss-intake-bin-")
+    if not _PRIVATE_DIRS:
+        atexit.register(_remove_private_dirs)
+    _PRIVATE_DIRS.append(folder)
+    dest = Path(folder) / Path(path).name
+    try:
+        shutil.copyfile(path, dest)
+        os.chmod(dest, 0o700)
+    except OSError as exc:
+        raise IntegrityError(f"could not copy {Path(path).name} to check and run it: {exc}") from None
+    return str(dest)
 
 
 def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_bundle: str | None,

@@ -2371,3 +2371,29 @@ def test_vex_claim_for_a_package_type_without_a_known_ecosystem(tmp_path):
          "status": "not_affected", "notes": "checked", "reachable": "", "justification": ""}
     decisions.apply([f], [d])
     assert f.decision_exact and decisions.openvex([f], "x", "2026-11-07")["statements"][0]["status"] == "not_affected"
+
+
+def test_the_scanner_that_runs_is_the_copy_that_was_checked(tmp_path, monkeypatch):
+    """External audit SEC-06: the binary was hashed at its path, then run from that path, so whoever could write
+    to its folder could swap it in between. A private copy is checked and run instead."""
+    import os
+    import stat as st
+
+    from oss_intake import integrity
+
+    fake, runs = _stub_trivy(tmp_path, monkeypatch)
+    good = integrity.sha256_file(fake)
+    real_verify = integrity.verify_before_run
+
+    def swap_after_check(*a, **k):
+        result = real_verify(*a, **k)
+        fake.write_bytes(b"swapped after the check")  # the original, not the copy that will run
+        return result
+
+    monkeypatch.setattr(integrity, "verify_before_run", swap_after_check)
+    cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--scanners", "trivy",
+              "--trivy-path", str(fake), "--trivy-sha256", good])
+    ran = runs[0][0]
+    assert ran != str(fake) and integrity.sha256_file(ran) == good  # what ran is what was checked
+    if os.name == "posix":
+        assert st.S_IMODE(os.stat(os.path.dirname(ran)).st_mode) == 0o700

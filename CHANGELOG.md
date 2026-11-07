@@ -18,6 +18,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- A scanner was hashed at its installed path and then run from that path, so whoever could write to its folder
+  could swap it in between. Trivy, Grype and govulncheck are now copied into a folder only the run can write to,
+  and that copy is checked and run (external audit SEC-06).
 - Programs oss-intake starts inherited the whole environment apart from the GitHub tokens: cloud credentials
   (`AWS_*`, `AZURE_CLIENT_SECRET`), publishing tokens (`NPM_TOKEN`) and the SSH agent reached every scanner. They
   now get only what they need and their own tool's settings; anything else must be named with `--scanner-env`. A

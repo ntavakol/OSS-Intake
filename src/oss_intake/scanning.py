@@ -71,8 +71,9 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
                             f"{args.image} (--image); check that the right file was imported")
         scanners_meta[tool] = {"enabled": True, "detail": f"imported from {Path(loaded).name}", "imported": True}
         return data
-    path = find_executable(tool, getattr(args, f"{tool}_path"))
-    # A pinned hash or signature is checked before the binary runs at all, so a swapped binary never executes.
+    path = integrity.private_copy(find_executable(tool, getattr(args, f"{tool}_path")))
+    # A pinned hash or signature is checked before the binary runs at all, so a swapped binary never executes;
+    # it is checked on a copy only this run can change, which is also what runs (private_copy).
     release = integrity.verify_before_run(
         tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
         getattr(args, f"{tool}_cosign_identity"), getattr(args, f"{tool}_archive"),
@@ -227,7 +228,7 @@ def run_govulncheck(args, trivy_report: dict, scanners_meta: dict, warnings: lis
         warnings.append("--reachability: no Go binaries in the scan, so govulncheck had nothing to check")
         return {}
     try:
-        gv = govuln_mod.find(args.govulncheck_path)
+        gv = integrity.private_copy(govuln_mod.find(args.govulncheck_path))
     except ScannerError as exc:
         warnings.append(f"--reachability skipped: {exc}")
         return {}
