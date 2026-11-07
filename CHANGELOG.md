@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `--scanner-env NAME` (repeatable, patterns allowed): pass an environment variable on to the scanners and helpers
+  oss-intake starts, for registry credentials that come from the environment (`--scanner-env 'AWS_*'` for ECR).
 - `--trust-cache-dir`: on Windows, use a `--cache-dir` outside your user profile (a CI workspace on drive D:, say),
   confirming that only you can write to it, as Windows permissions are not read. Recorded in `assessment.json`.
   Elsewhere permissions are read and the switch overrides nothing.
@@ -16,6 +18,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
   and CI stopped at 3.13.
 
 ### Fixed
+- Programs oss-intake starts inherited the whole environment apart from the GitHub tokens: cloud credentials
+  (`AWS_*`, `AZURE_CLIENT_SECRET`), publishing tokens (`NPM_TOKEN`) and the SSH agent reached every scanner. They
+  now get only what they need and their own tool's settings; anything else must be named with `--scanner-env`. A
+  scan of a private registry image that relied on credentials in the environment now needs that option, and the
+  error says so (external audit SEC-14).
 - What a scanner, govulncheck, docker or cosign wrote was collected without limit, so a broken or hostile program
   could exhaust memory. Output is now collected up to a limit (1 GB of output and 1 MB of error output for a
   scanner, 1 MB for the helpers); past it the program is stopped and the step fails (external audit SEC-02).

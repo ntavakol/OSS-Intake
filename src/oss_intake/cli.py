@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -47,7 +48,7 @@ from .options import (  # noqa: F401  (validate_*, image_tag and the _-prefixed 
     validate_image,
     validate_repo,
 )
-from .scanners import ScannerError
+from .scanners import ScannerError, set_extra_env
 from .scanners import grype as grype_mod
 from .scanners import trivy as trivy_mod
 
@@ -172,6 +173,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         raise UsageError("--release-age-max must be 1 or more (use --release-age-days 0 to turn the check off)")
     if args.no_cache and args.cache_dir:
         raise UsageError("--cache-dir and --no-cache cannot be used together")
+    for pat in args.scanner_env:
+        if not re.fullmatch(r"[A-Za-z0-9_*?()]+", pat or "") or pat.strip("*?") == "":
+            raise UsageError(f"--scanner-env {pat!r}: name an environment variable or a pattern such as 'AWS_*' "
+                             "(letters, digits, _, * and ?; not * alone)")
     if args.trust_cache_dir and not args.cache_dir:
         raise UsageError("--trust-cache-dir needs --cache-dir: the default cache folder is in your user profile")
     if args.release_age_days < 0:
@@ -333,6 +338,7 @@ def main(argv: list[str] | None = None, http: Http | None = None) -> int:
         argv.insert(0, "scan")  # 'oss-intake --image ...' works without the subcommand
     parser = build_parser()
     args = parser.parse_args(argv)
+    set_extra_env(getattr(args, "scanner_env", None))  # this run's only, also when main() is called again
     if not args.command:
         parser.print_help()
         return EXIT_USAGE

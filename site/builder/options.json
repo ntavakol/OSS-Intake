@@ -749,6 +749,18 @@
     },
     {
      "choices": null,
+     "default": null,
+     "dest": "scanner_env",
+     "exclusive_group": null,
+     "flag": "--scanner-env",
+     "help": "Pass this environment variable on to the scanners and helpers oss-intake starts (a pattern such as 'AWS_*' is allowed; repeatable). They get only what they need otherwise, so registry credentials from the environment (ECR, ACR, GCR) need this. Never the GitHub token",
+     "kind": "repeatable",
+     "metavar": "NAME",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
      "default": false,
      "dest": "trust_cache_dir",
      "exclusive_group": null,

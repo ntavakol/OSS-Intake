@@ -218,6 +218,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cache-dir", metavar="DIR",
                    help="keep slowly changing lookups (advisory details for a day, release dates for 30 days) "
                         "here between runs (default: the user cache folder)")
+    s.add_argument("--scanner-env", action="append", default=[], metavar="NAME",
+                   help="Pass this environment variable on to the scanners and helpers oss-intake starts (a pattern "
+                        "such as 'AWS_*' is allowed; repeatable). They get only what they need otherwise, so "
+                        "registry credentials from the environment (ECR, ACR, GCR) need this. Never the GitHub "
+                        "token")
     s.add_argument("--trust-cache-dir", action="store_true",
                    help="Windows: use --cache-dir outside your user profile, confirming that only you can write to "
                         "it (Windows permissions are not read). Elsewhere permissions are read and not overridden")

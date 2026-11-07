@@ -3570,3 +3570,51 @@ def test_a_program_writing_too_much_is_stopped():
     assert ok.returncode == 0 and ok.stdout.strip() == b"fine"
     with pytest.raises(scanners.ScannerError, match="timed out"):
         scanners.run([sys.executable, "-c", "import time; time.sleep(30)"], 1)
+
+
+def test_programs_get_only_the_environment_they_need(monkeypatch):
+    """External audit SEC-14: cloud credentials, publishing tokens and the SSH agent reached every scanner. Only
+    what a program needs, and its own tool's settings, are passed on, plus what --scanner-env names."""
+    from oss_intake import scanners
+
+    for k, v in {"AWS_ACCESS_KEY_ID": "AKIA", "AWS_SECRET_ACCESS_KEY": "s", "AZURE_CLIENT_SECRET": "s",
+                 "ARM_CLIENT_SECRET": "s", "NPM_TOKEN": "s", "SSH_AUTH_SOCK": "agent.sock", "GITHUB_TOKEN": "g",
+                 "TRIVY_PASSWORD": "t", "GRYPE_DB_CACHE_DIR": "/c", "DOCKER_CONFIG": "/d", "HTTPS_PROXY": "p",
+                 "LC_ALL": "C"}.items():
+        monkeypatch.setenv(k, v)
+    scanners.set_extra_env([])
+    trivy = scanners.child_env("/usr/local/bin/trivy")
+    for gone in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AZURE_CLIENT_SECRET", "ARM_CLIENT_SECRET",
+                 "NPM_TOKEN", "SSH_AUTH_SOCK", "GITHUB_TOKEN", "GRYPE_DB_CACHE_DIR"):
+        assert gone not in trivy, gone
+    assert {"TRIVY_PASSWORD", "DOCKER_CONFIG", "HTTPS_PROXY", "LC_ALL", "PATH"} <= set(trivy)
+    grype = scanners.child_env("C:\\\\tools\\\\grype.exe")
+    assert "TRIVY_PASSWORD" not in grype and "GRYPE_DB_CACHE_DIR" in grype  # a tool's settings are its own
+    assert "DOCKER_CONFIG" not in scanners.child_env("cosign")
+    try:
+        scanners.set_extra_env(["AWS_*", "GITHUB_*"])
+        passed = scanners.child_env("trivy")
+        assert {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"} <= set(passed) and "AZURE_CLIENT_SECRET" not in passed
+        assert "GITHUB_TOKEN" not in passed  # never, whatever is asked
+    finally:
+        scanners.set_extra_env([])
+
+
+@pytest.mark.parametrize("pattern", ["*", "?*", "AWS_$X", "", "A B"])
+def test_scanner_env_patterns_are_checked(tmp_path, capsys, pattern):
+    from oss_intake import cli
+
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline",
+                     "--scanner-env", pattern])
+    assert code == cli.EXIT_USAGE and "--scanner-env" in capsys.readouterr().err
+
+
+def test_a_registry_auth_failure_points_to_scanner_env(monkeypatch):
+    import subprocess
+
+    from oss_intake import scanners
+
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout: subprocess.CompletedProcess(
+        cmd, 1, b"", b"FATAL unable to pull: GET https://123.dkr.ecr.ap-southeast-2.amazonaws.com: unauthorized"))
+    with pytest.raises(scanners.ScannerError, match="--scanner-env 'AWS_\\*'"):
+        scanners.run(["trivy", "image", "x"], 60)

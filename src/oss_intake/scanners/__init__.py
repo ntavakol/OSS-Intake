@@ -11,6 +11,8 @@ from pathlib import Path
 from .. import jsonsafe
 
 # Docker or containerd failing to export a locally stored image (pruned layers, other-platform pulls).
+AUTH_ERROR = re.compile(r"unauthori[sz]ed|authentication required|no basic auth credentials|access denied|"
+                        r"denied: |\b401\b|\b403\b|could not find credentials|NoCredentialProviders", re.I)
 LOCAL_IMAGE_ERROR = re.compile(r"unable to export the image|content digest sha256:[0-9a-f]+: not found|"
                                r"unable to inspect the image", re.IGNORECASE)
 
@@ -47,9 +49,55 @@ def path_arg(path: str | Path) -> str:
 SECRET_ENV = ("GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PAT", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 
 
-def child_env() -> dict[str, str]:
-    """The environment for a program oss-intake starts: this one, without the GitHub tokens."""
-    return {k: v for k, v in os.environ.items() if k.upper() not in SECRET_ENV}
+# What a program oss-intake starts is given of this environment (external audit SEC-14): what any program needs
+# to run, find files and reach the network, and each tool's own settings, nothing else. Cloud credentials,
+# publishing tokens, SSH agents and anything unlisted stay out unless the user passes them on (--scanner-env).
+# This keeps secrets held in environment variables (as on CI) from a swapped scanner; it is not a sandbox, as
+# the program still runs as the user and can read their files.
+BASE_ENV = (
+    "PATH", "HOME", "USER", "USERNAME", "LOGNAME", "SHELL", "TERM", "TZ", "LANG", "LANGUAGE", "LC_*",
+    "TMPDIR", "TMP", "TEMP", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_RUNTIME_DIR",
+    "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE",
+    # Windows needs these to start a program at all
+    "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "PATHEXT", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+    "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432",
+    "COMMONPROGRAMFILES", "COMMONPROGRAMFILES(X86)", "PUBLIC", "OS", "PROCESSOR_ARCHITECTURE",
+    "NUMBER_OF_PROCESSORS",
+)
+TOOL_ENV = {  # each tool's own settings, given to that tool only (TRIVY_PASSWORD is Trivy's, not Grype's)
+    "trivy": ("TRIVY_*", "DOCKER_HOST", "DOCKER_CONFIG", "DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY", "DOCKER_CONTEXT",
+              "CONTAINER_HOST", "REGISTRY_AUTH_FILE"),
+    "grype": ("GRYPE_*", "SYFT_*", "DOCKER_HOST", "DOCKER_CONFIG", "DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY",
+              "DOCKER_CONTEXT", "CONTAINER_HOST", "REGISTRY_AUTH_FILE"),
+    "docker": ("DOCKER_HOST", "DOCKER_CONFIG", "DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY", "DOCKER_CONTEXT"),
+    "crane": ("DOCKER_CONFIG", "REGISTRY_AUTH_FILE"),
+    "govulncheck": ("GOPATH", "GOROOT", "GOCACHE", "GOTOOLCHAIN", "GOPROXY", "GONOPROXY", "GOPRIVATE", "GOFLAGS"),
+    "cosign": ("COSIGN_*", "SIGSTORE_*", "TUF_ROOT"),
+}
+_extra_env: list[str] = []  # --scanner-env patterns for this run
+
+
+def set_extra_env(patterns: list[str] | None) -> None:
+    """The --scanner-env patterns: more variables to pass on to every program started (never the GitHub
+    tokens)."""
+    _extra_env[:] = list(patterns or [])
+
+
+def _tool(cmd0: str) -> str:
+    name = re.split(r"[\\/]", cmd0)[-1].lower()  # either separator: a Windows path read anywhere
+    for suffix in (".exe", ".cmd", ".bat"):
+        name = name.removesuffix(suffix)
+    return next((t for t in TOOL_ENV if name == t or name.startswith(t + "-") or name.startswith(t + "_")), name)
+
+
+def child_env(cmd0: str = "") -> dict[str, str]:
+    """The environment for a program oss-intake starts: BASE_ENV, the tool's own settings (TOOL_ENV, from the
+    program's name), and the --scanner-env patterns; never the GitHub tokens."""
+    from fnmatch import fnmatchcase
+
+    keep = (*BASE_ENV, *TOOL_ENV.get(_tool(cmd0), ()), *_extra_env)
+    return {k: v for k, v in os.environ.items()
+            if k.upper() not in SECRET_ENV and any(fnmatchcase(k.upper(), p.upper()) for p in keep)}
 
 
 # What a program oss-intake starts may write before it is stopped (external audit SEC-02): a scanner report can
@@ -70,7 +118,7 @@ def capped_run(cmd: list[str], timeout: float, max_stdout: int = MAX_STDOUT,
     import threading
 
     proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            env=child_env())
+                            env=child_env(cmd[0]))
     out, err, over = bytearray(), bytearray(), []
 
     def pump(stream, buf: bytearray, limit: int, name: str) -> None:
@@ -116,6 +164,10 @@ def run(cmd: list[str], timeout: int) -> bytes:
             err = proc.stdout.decode("utf-8", errors="replace").strip() or "(no output; rerun the scanner by hand)"
         tail = err.splitlines()[-5:]
         msg = f"{Path(cmd[0]).name} exited {proc.returncode}: " + " | ".join(tail)
+        if AUTH_ERROR.search(err):
+            msg += (" (if the registry's credentials come from your environment, as for ECR, ACR or GCR, pass "
+                    "them on with --scanner-env, for example --scanner-env 'AWS_*'; programs oss-intake starts "
+                    "get only the variables they need)")
         if LOCAL_IMAGE_ERROR.search(err):
             msg += (" (the local container engine could not export the image; rerun with --image-src remote to pull "
                     "it from the registry, or remove and re-pull the local copy)")
