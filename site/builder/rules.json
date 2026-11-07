@@ -516,6 +516,420 @@
    ]
   },
   {
+   "id": "trivy-cosign-certificate-pair",
+   "command": "scan",
+   "when": {
+    "any": [
+     {
+      "all": [
+       {
+        "set": "trivy_cosign_certificate"
+       },
+       {
+        "not": {
+         "set": "trivy_cosign_signature"
+        }
+       }
+      ]
+     },
+     {
+      "all": [
+       {
+        "set": "trivy_cosign_signature"
+       },
+       {
+        "not": {
+         "set": "trivy_cosign_certificate"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--trivy-cosign-certificate and --trivy-cosign-signature go together",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "trivy-cosign-certificate-or-bundle",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trivy_cosign_certificate"
+     },
+     {
+      "set": "trivy_cosign_bundle"
+     }
+    ]
+   },
+   "message": "--trivy-cosign-bundle or --trivy-cosign-certificate with a signature, not both",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--trivy-cosign-bundle",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "trivy-cosign-certificate-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trivy_cosign_certificate"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "--trivy-cosign-certificate is checked against the Sigstore transparency log, which --offline does not reach",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "trivy-cosign-certificate-needs-checksums",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "trivy_cosign_certificate"
+     },
+     {
+      "not": {
+       "set": "trivy_checksums"
+      }
+     }
+    ]
+   },
+   "message": "--trivy-cosign-certificate needs --trivy-checksums and --trivy-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "trivy",
+    "--trivy-archive",
+    "{file}",
+    "--trivy-checksums",
+    "{file}",
+    "--trivy-cosign-certificate",
+    "{file}",
+    "--trivy-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-cosign-certificate-pair",
+   "command": "scan",
+   "when": {
+    "any": [
+     {
+      "all": [
+       {
+        "set": "grype_cosign_certificate"
+       },
+       {
+        "not": {
+         "set": "grype_cosign_signature"
+        }
+       }
+      ]
+     },
+     {
+      "all": [
+       {
+        "set": "grype_cosign_signature"
+       },
+       {
+        "not": {
+         "set": "grype_cosign_certificate"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--grype-cosign-certificate and --grype-cosign-signature go together",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-cosign-certificate-or-bundle",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "grype_cosign_certificate"
+     },
+     {
+      "set": "grype_cosign_bundle"
+     }
+    ]
+   },
+   "message": "--grype-cosign-bundle or --grype-cosign-certificate with a signature, not both",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--grype-cosign-bundle",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-cosign-certificate-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "grype_cosign_certificate"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "--grype-cosign-certificate is checked against the Sigstore transparency log, which --offline does not reach",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "grype-cosign-certificate-needs-checksums",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "grype_cosign_certificate"
+     },
+     {
+      "not": {
+       "set": "grype_checksums"
+      }
+     }
+    ]
+   },
+   "message": "--grype-cosign-certificate needs --grype-checksums and --grype-archive",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--scanners",
+    "grype",
+    "--grype-archive",
+    "{file}",
+    "--grype-checksums",
+    "{file}",
+    "--grype-cosign-certificate",
+    "{file}",
+    "--grype-cosign-signature",
+    "{file}",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
    "id": "max-db-age-days",
    "command": "scan",
    "when": {

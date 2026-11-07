@@ -2539,3 +2539,73 @@ def test_fail_on_unchecked_is_refused_where_nothing_lists_what_was_left_out(tmp_
     assert cli.main([*target, "--out", str(tmp_path / "o"), "--fail-on", "unchecked"], http=http) == cli.EXIT_USAGE
     assert "--fail-on unchecked needs an SBOM or an renv.lock" in capsys.readouterr().err
     assert http.calls == []
+
+
+def _grype_release(tmp_path):
+    import io
+    import tarfile
+
+    from oss_intake import integrity
+
+    exe = tmp_path / "grype"
+    exe.write_bytes(b"grype binary")
+    archive = tmp_path / "grype_0.104.0_linux_amd64.tar.gz"
+    with tarfile.open(archive, "w:gz") as t:
+        ti = tarfile.TarInfo("grype")
+        ti.size = len(b"grype binary")
+        t.addfile(ti, io.BytesIO(b"grype binary"))
+    sums = tmp_path / "grype_0.104.0_checksums.txt"
+    sums.write_text(f"{integrity.sha256_file(archive)}  {archive.name}\n", encoding="utf-8")
+    pem, sig = tmp_path / f"{sums.name}.pem", tmp_path / f"{sums.name}.sig"
+    pem.write_text("cert", encoding="utf-8")
+    sig.write_text("sig", encoding="utf-8")
+    return exe, archive, sums, pem, sig
+
+
+def test_grype_certificate_and_signature_sign_the_checksums(tmp_path, monkeypatch):
+    """Ned (7 Nov): Grype publishes checksums.txt.pem and .sig, not a Sigstore bundle, so its releases could not
+    be signature-checked. The certificate and signature are checked with cosign against the checksums file."""
+    from oss_intake import integrity, scanners
+
+    exe, archive, sums, pem, sig = _grype_release(tmp_path)
+    ran: list[list[str]] = []
+
+    def cosign(cmd, timeout, **kw):
+        ran.append(cmd)
+        return __import__("subprocess").CompletedProcess(cmd, 0, b"", b"Verified OK")
+
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(scanners, "capped_run", cosign)
+    done = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums),
+                                       str(pem), str(sig))
+    assert done["signed"] == sums.name and done["binary_matches_archive"] and "note" not in done
+    cmd = ran[0]
+    assert cmd[cmd.index("--certificate") + 1] == str(pem) and cmd[cmd.index("--signature") + 1] == str(sig)
+    assert "--bundle" not in cmd and cmd[-1] == str(sums)
+    assert cmd[cmd.index("--certificate-identity-regexp") + 1] == integrity.DEFAULT_COSIGN_IDENTITY["grype"]
+    unsigned = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums))
+    assert "add --grype-cosign-certificate and --grype-cosign-signature" in unsigned["note"]
+
+
+@pytest.mark.parametrize("extra, message", [
+    (["--grype-cosign-certificate", "{pem}"], "go together"),
+    (["--grype-cosign-certificate", "{pem}", "--grype-cosign-signature", "{sig}", "--grype-cosign-bundle", "{sig}"],
+     "not both"),
+    (["--grype-cosign-certificate", "{pem}", "--grype-cosign-signature", "{sig}", "--offline"],
+     "--offline does not reach"),
+])
+def test_grype_certificate_options_are_checked(tmp_path, capsys, extra, message):
+    _, archive, sums, pem, sig = _grype_release(tmp_path)
+    names = {"{pem}": str(pem), "{sig}": str(sig)}
+    argv = ["--image", "a/b:1", "--out", str(tmp_path / "o"), "--scanners", "grype", "--grype-archive", str(archive),
+            "--grype-checksums", str(sums), *[names.get(a, a) for a in extra]]
+    assert cli.main(argv) == cli.EXIT_USAGE
+    assert message in capsys.readouterr().err
+
+
+def test_grype_certificate_needs_the_checksums_it_signs(tmp_path, capsys):
+    _, archive, _, pem, sig = _grype_release(tmp_path)
+    assert cli.main(["--image", "a/b:1", "--out", str(tmp_path / "o"), "--scanners", "grype", "--grype-archive",
+                     str(archive), "--grype-cosign-certificate", str(pem), "--grype-cosign-signature",
+                     str(sig)]) == cli.EXIT_USAGE
+    assert "needs --grype-checksums" in capsys.readouterr().err

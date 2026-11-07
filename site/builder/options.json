@@ -210,6 +210,30 @@
     {
      "choices": null,
      "default": null,
+     "dest": "trivy_cosign_certificate",
+     "exclusive_group": null,
+     "flag": "--trivy-cosign-certificate",
+     "help": "instead of a bundle: the signing certificate for --trivy-checksums (Grype publishes checksums.txt.pem), with --trivy-cosign-signature; checked against the Sigstore transparency log, so it needs the network",
+     "kind": "value",
+     "metavar": "FILE",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
+     "dest": "trivy_cosign_signature",
+     "exclusive_group": null,
+     "flag": "--trivy-cosign-signature",
+     "help": "the signature that goes with --trivy-cosign-certificate (Grype publishes checksums.txt.sig)",
+     "kind": "value",
+     "metavar": "FILE",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
      "dest": "trivy_cosign_identity",
      "exclusive_group": null,
      "flag": "--trivy-cosign-identity",
@@ -312,6 +336,30 @@
      "help": "Sigstore bundle for the grype release archive, or for --grype-checksums (requires cosign on PATH)",
      "kind": "value",
      "metavar": null,
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
+     "dest": "grype_cosign_certificate",
+     "exclusive_group": null,
+     "flag": "--grype-cosign-certificate",
+     "help": "instead of a bundle: the signing certificate for --grype-checksums (Grype publishes checksums.txt.pem), with --grype-cosign-signature; checked against the Sigstore transparency log, so it needs the network",
+     "kind": "value",
+     "metavar": "FILE",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
+     "dest": "grype_cosign_signature",
+     "exclusive_group": null,
+     "flag": "--grype-cosign-signature",
+     "help": "the signature that goes with --grype-cosign-certificate (Grype publishes checksums.txt.sig)",
+     "kind": "value",
+     "metavar": "FILE",
      "required": false,
      "upper": false
     },

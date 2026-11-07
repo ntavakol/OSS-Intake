@@ -139,15 +139,24 @@ def known_bad_entry(tool: str, version: str) -> dict | None:
 COSIGN_TIMEOUT = 120  # seconds
 
 
-def cosign_verify_blob(file_path: str | Path, bundle: str | Path, identity_regexp: str,
-                       oidc_issuer: str = "https://token.actions.githubusercontent.com") -> None:
-    """Verify a file against a Sigstore bundle by running cosign verify-blob with the certificate identity regexp and
-    OIDC issuer (default GitHub Actions), COSIGN_TIMEOUT seconds at most. Returns None on success; raises
-    IntegrityError if cosign is not on PATH, does not finish in time, or verification fails."""
+def cosign_verify_blob(file_path: str | Path, bundle: str | Path | None, identity_regexp: str,
+                       oidc_issuer: str = "https://token.actions.githubusercontent.com",
+                       certificate: str | Path | None = None, signature: str | Path | None = None) -> None:
+    """Verify a file against a Sigstore bundle, or a certificate and signature (as Grype publishes:
+    checksums.txt.pem and .sig, checked against the transparency log, so this needs the network), by running
+    cosign verify-blob with the certificate identity regexp and OIDC issuer (default GitHub Actions),
+    COSIGN_TIMEOUT seconds at most. Returns None on success; raises IntegrityError if cosign is not on PATH, does
+    not finish in time, or verification fails."""
     cosign = shutil.which("cosign")
     if not cosign:
-        raise IntegrityError("cosign was requested (--cosign-bundle) but is not on PATH")
-    cmd = [cosign, "verify-blob", "--bundle", str(bundle),
+        raise IntegrityError("cosign was requested (a cosign bundle or signature) but is not on PATH")
+    if bundle:
+        material = ["--bundle", str(bundle)]
+    elif certificate and signature:
+        material = ["--certificate", str(certificate), "--signature", str(signature)]
+    else:
+        raise IntegrityError("a cosign check needs a bundle, or a certificate and a signature")
+    cmd = [cosign, "verify-blob", *material,
            "--certificate-identity-regexp", identity_regexp,
            "--certificate-oidc-issuer", oidc_issuer, str(file_path)]
     from .scanners import ScannerError, capped_run
@@ -264,7 +273,8 @@ def private_copy(path: str) -> str:
 
 def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_bundle: str | None,
                       cosign_identity: str | None, archive: str | None = None,
-                      checksums: str | None = None) -> dict:
+                      checksums: str | None = None, cosign_certificate: str | None = None,
+                      cosign_signature: str | None = None) -> dict:
     """Checks that need nothing from the binary itself, done before it is executed even once (its --version
     included). Raises IntegrityError on any mismatch. Returns what was verified, for the report.
 
@@ -274,10 +284,21 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
     if expected_sha256:
         verify_sha256(path, expected_sha256)
     identity = cosign_identity or DEFAULT_COSIGN_IDENTITY[tool]
+    signed_with = cosign_bundle or cosign_certificate  # a bundle, or a certificate and signature (Grype)
+
+    def cosign(file: str) -> None:
+        if cosign_bundle:
+            cosign_verify_blob(file, cosign_bundle, identity)
+        else:
+            cosign_verify_blob(file, None, identity, certificate=cosign_certificate, signature=cosign_signature)
+
+    # What to add to sign the chain: Trivy publishes bundles, Grype a certificate and signature.
+    sign_hint = (f"--{tool}-cosign-certificate and --{tool}-cosign-signature" if tool == "grype"
+                 else f"--{tool}-cosign-bundle")
     if archive:
         if checksums:
-            if cosign_bundle:
-                cosign_verify_blob(checksums, cosign_bundle, identity)
+            if signed_with:
+                cosign(checksums)
                 done["signed"] = Path(checksums).name
             with open(checksums, "rb") as fh:
                 table = parse_checksums(fh.read())
@@ -289,8 +310,8 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
                                      f"{Path(checksums).name}")
             done["archive_sha256"] = actual_archive
             done["checksums"] = Path(checksums).name
-        elif cosign_bundle:
-            cosign_verify_blob(archive, cosign_bundle, identity)
+        elif signed_with:
+            cosign(archive)
             done["signed"] = Path(archive).name
             done["archive_sha256"] = sha256_file(archive)
         member, member_hash = archive_member_sha256(archive, (tool, f"{tool}.exe"))
@@ -299,18 +320,18 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
             raise IntegrityError(f"{Path(path).name} is not the {tool} executable in {Path(archive).name}: "
                                  f"{actual} here, {member_hash} in the archive ({member})")
         done.update(archive=Path(archive).name, binary_matches_archive=True)
-        if not (checksums or cosign_bundle):
+        if not (checksums or signed_with):
             done["note"] = (f"the {tool} executable matches {Path(archive).name}, but nothing vouches for the "
-                            f"archive itself; add --{tool}-checksums and --{tool}-cosign-bundle")
+                            f"archive itself; add --{tool}-checksums and {sign_hint}")
         elif checksums and not done.get("signed"):
             # Whoever could swap the archive could also swap a checksums file nothing has signed.
             done["note"] = (f"the {tool} executable matches {Path(archive).name}, which is listed in "
                             f"{Path(checksums).name}, but nothing has signed {Path(checksums).name}, so the hash "
-                            f"is not verified; add --{tool}-cosign-bundle")
-    elif cosign_bundle:
+                            f"is not verified; add {sign_hint}")
+    elif signed_with:
         # A bundle without an archive can only be checked against the executable itself, which the projects do
         # not sign; kept for executables someone signs directly.
-        cosign_verify_blob(path, cosign_bundle, identity)
+        cosign(path)
         done["signed"] = Path(path).name
     return done
 

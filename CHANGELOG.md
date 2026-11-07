@@ -6,6 +6,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `--grype-cosign-certificate` and `--grype-cosign-signature` (and the `--trivy-` pair): check the release
+  checksums file's certificate and signature with cosign, as Grype publishes them (`checksums.txt.pem` and
+  `.sig`) instead of a Sigstore bundle. Until now an official Grype release could not be signature-checked, as
+  `--grype-cosign-bundle` needs a bundle Grype does not publish. Checked against the Sigstore transparency log,
+  so it needs the network and is refused with `--offline`.
 - `--scanner-env NAME` (repeatable, patterns allowed): pass an environment variable on to the scanners and helpers
   oss-intake starts, for registry credentials that come from the environment (`--scanner-env 'AWS_*'` for ECR).
 - `--trust-cache-dir`: on Windows, use a `--cache-dir` outside your user profile (a CI workspace on drive D:, say),

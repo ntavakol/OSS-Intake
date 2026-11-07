@@ -151,6 +151,13 @@ def build_parser() -> argparse.ArgumentParser:
                             "that signs the checksums file (Grype publishes only this)")
         s.add_argument(f"--{tool}-cosign-bundle", help=f"Sigstore bundle for the {tool} release archive, or for "
                                                       f"--{tool}-checksums (requires cosign on PATH)")
+        s.add_argument(f"--{tool}-cosign-certificate", metavar="FILE",
+                       help=f"instead of a bundle: the signing certificate for --{tool}-checksums (Grype publishes "
+                            f"checksums.txt.pem), with --{tool}-cosign-signature; checked against the Sigstore "
+                            "transparency log, so it needs the network")
+        s.add_argument(f"--{tool}-cosign-signature", metavar="FILE",
+                       help=f"the signature that goes with --{tool}-cosign-certificate (Grype publishes "
+                            "checksums.txt.sig)")
         s.add_argument(f"--{tool}-cosign-identity", help="certificate identity regexp override")
         s.add_argument(f"--{tool}-arg", action="append", default=[], metavar="ARG",
                        help=f"extra argument passed to {tool} (repeatable), e.g. --{tool}-arg=--db-repository=...")
@@ -286,7 +293,8 @@ def ineffective_options(args, chosen: list[str]) -> list[str]:
     if args.release_tag and not args.repo:
         out.append("--release-tag has no effect without --repo")
     for t in ("trivy", "grype"):
-        pins = [f"--{t}-{o.replace('_', '-')}" for o in ("sha256", "version", "archive", "checksums", "cosign_bundle")
+        pins = [f"--{t}-{o.replace('_', '-')}" for o in ("sha256", "version", "archive", "checksums", "cosign_bundle",
+                                                             "cosign_certificate", "cosign_signature")
                 if getattr(args, f"{t}_{o}")]
         if pins and t not in run_live:
             out.append(f"{', '.join(pins)} {'has' if len(pins) == 1 else 'have'} no effect: {t} does not run")

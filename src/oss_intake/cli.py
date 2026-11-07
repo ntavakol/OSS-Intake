@@ -209,12 +209,24 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     for tool in ("trivy", "grype"):
         if getattr(args, f"{tool}_checksums") and not getattr(args, f"{tool}_archive"):
             raise UsageError(f"--{tool}-checksums needs --{tool}-archive (the archive it lists)")
+        cert, sig = getattr(args, f"{tool}_cosign_certificate"), getattr(args, f"{tool}_cosign_signature")
+        if bool(cert) != bool(sig):
+            raise UsageError(f"--{tool}-cosign-certificate and --{tool}-cosign-signature go together")
+        if cert and getattr(args, f"{tool}_cosign_bundle"):
+            raise UsageError(f"--{tool}-cosign-bundle or --{tool}-cosign-certificate with a signature, not both")
+        if cert and args.offline:
+            raise UsageError(f"--{tool}-cosign-certificate is checked against the Sigstore transparency log, which "
+                             "--offline does not reach; use a bundle, which holds its own log entry")
+        if cert and not getattr(args, f"{tool}_checksums"):
+            raise UsageError(f"--{tool}-cosign-certificate needs --{tool}-checksums and --{tool}-archive: the "
+                             "certificate and signature are for the release checksums file")
         if getattr(args, f"{tool}_cosign_bundle") and not getattr(args, f"{tool}_archive"):
             raise UsageError(f"--{tool}-cosign-bundle needs --{tool}-archive: {tool} signs its release archive "
                              "or checksums file, not the extracted executable, so the signature is checked on the "
                              "archive and the executable compared with the one inside it")
     for flag in ("from_trivy_json", "from_grype_json", "trivy_cosign_bundle", "grype_cosign_bundle",
-                 "trivy_archive", "grype_archive", "trivy_checksums", "grype_checksums"):
+                 "trivy_archive", "grype_archive", "trivy_checksums", "grype_checksums", "trivy_cosign_certificate",
+                 "grype_cosign_certificate", "trivy_cosign_signature", "grype_cosign_signature"):
         val = getattr(args, flag)
         if val and not Path(val).is_file():
             raise UsageError(f"--{flag.replace('_', '-')} {val} not found")

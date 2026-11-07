@@ -56,7 +56,7 @@ oss_intake = ["data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -rs"  # -rs: name each skipped test and why, so CI shows what did not run
 
 [tool.coverage.run]
 source = ["oss_intake"]

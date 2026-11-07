@@ -96,12 +96,14 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     release = integrity.verify_before_run(
         tool, path, getattr(args, f"{tool}_sha256"), getattr(args, f"{tool}_cosign_bundle"),
         getattr(args, f"{tool}_cosign_identity"), getattr(args, f"{tool}_archive"),
-        getattr(args, f"{tool}_checksums"))
+        getattr(args, f"{tool}_checksums"), getattr(args, f"{tool}_cosign_certificate"),
+        getattr(args, f"{tool}_cosign_signature"))
     integrity.refuse_known_bad_before_run(tool, path)  # from the file's Go build info, before it runs
     info = mod.version_info(path)
     check = integrity.check_binary(
         tool, path, info["version"], getattr(args, f"{tool}_version"), getattr(args, f"{tool}_sha256"),
-        getattr(args, f"{tool}_cosign_bundle"), getattr(args, f"{tool}_cosign_identity"), verified=True)
+        getattr(args, f"{tool}_cosign_bundle") or getattr(args, f"{tool}_cosign_certificate"),
+        getattr(args, f"{tool}_cosign_identity"), verified=True)
     unsigned = bool(release.get("binary_matches_archive") and release.get("checksums")
                     and not release.get("signed") and not check.hash_verified)
     if release.get("binary_matches_archive") and release.get("signed"):
