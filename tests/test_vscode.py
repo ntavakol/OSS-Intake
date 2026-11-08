@@ -2,9 +2,11 @@
 through the CLI. Every extension here is built by the test; nothing is downloaded or run."""
 
 import json
+import re
 import stat
 import time
 import zipfile
+from urllib.parse import urlparse
 
 import pytest
 
@@ -788,7 +790,7 @@ def test_compare_with_an_older_version_shows_what_the_update_adds(tmp_path, fixt
     assert any("adds since 1.0.0" in w and "new web address" in w for w in a["warnings"])
     assert any("changes its repository since 1.0.0" in w for w in a["warnings"])
     md = (out / "summary.md").read_text(encoding="utf-8")
-    assert "What the update from 1.0.0 to 1.0.1 changed" in md and "drop.example.net" in md
+    assert "What the update from 1.0.0 to 1.0.1 changed" in md and re.search(r"\bdrop\.example\.net\b", md)
     assert "What the update from 1.0.0 to 1.0.1 changed" in (out / "report.html").read_text(encoding="utf-8")
 
 
@@ -935,7 +937,7 @@ def test_an_open_vsx_failure_is_not_reported_as_not_on_open_vsx(tmp_path):
 
     class H(FakeHttp):
         def get_json(self, url, params=None):
-            return (503, None) if "open-vsx.org" in url else super().get_json(url, params)
+            return (503, None) if urlparse(url).hostname == "open-vsx.org" else super().get_json(url, params)
 
     exts = [{"id": "example.ext", "version": "1.2.3"}, {"id": "noid", "version": "1.0.0"}]
     stats = openvsx.lookup(H(), exts)
@@ -947,7 +949,7 @@ def test_extension_download_when_open_vsx_fails_is_an_error_not_a_bad_input(tmp_
     """Review: an outage said "not found" and exited 2 (bad input) rather than 1."""
     class H(FakeHttp):
         def get_json(self, url, params=None):
-            return (503, None) if "open-vsx.org" in url else super().get_json(url, params)
+            return (503, None) if urlparse(url).hostname == "open-vsx.org" else super().get_json(url, params)
 
     code, _ = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", H())
     err = capsys.readouterr().err
@@ -960,7 +962,7 @@ def test_extension_is_downloaded_only_after_every_option_is_checked(tmp_path, fi
     _openvsx(http, tmp_path)
     code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http, "--fail-on", "bogus")
     assert code == cli.EXIT_USAGE and "--fail-on" in capsys.readouterr().err
-    assert not [u for u in http.calls if "open-vsx.org" in u]
+    assert not [u for u in http.calls if urlparse(u).hostname == "open-vsx.org"]
 
 
 def test_extension_download_names_the_platform_build(tmp_path, fixtures):

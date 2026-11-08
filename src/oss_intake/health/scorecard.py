@@ -7,6 +7,7 @@ The API only serves repositories in Scorecard's scheduled scan set, so a 404 mea
 from __future__ import annotations
 
 from ..http import Http
+from ..options import forge_of
 
 API = "https://api.securityscorecards.dev/projects/github.com"
 API_ROOT = "https://api.securityscorecards.dev/projects"
@@ -16,10 +17,11 @@ def fetch(http: Http, repo: str) -> dict:
     """OpenSSF Scorecard result for owner/name (GitHub) or gitlab.com/group/name from api.securityscorecards.dev:
     status ok with score, date, checks and low_checks (scored 0 to 3), not_scored (404, or a forge Scorecard does
     not cover) or error. HttpError propagates."""
-    if repo.startswith("codeberg.org/"):
+    forge = forge_of(repo)
+    if forge == "codeberg":
         return {"status": "not_scored", "note": "OpenSSF Scorecard does not cover Codeberg. This is not a negative "
                                                 "signal."}
-    url = f"{API_ROOT}/{repo}" if repo.startswith("gitlab.com/") else f"{API}/{repo}"
+    url = f"{API_ROOT}/{repo}" if forge == "gitlab" else f"{API}/{repo}"
     status, data = http.get_json(url)
     if status == 404:
         return {"status": "not_scored",
