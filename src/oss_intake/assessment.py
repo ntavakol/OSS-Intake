@@ -543,6 +543,12 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
     """5. Reports: the files asked for with --formats, packages.csv for an inventory, VEX with --decisions."""
     # 5. Reports.
     written = []
+    pdf = None
+    if "pdf" in formats:
+        # Rendered before any report is written: a renderer that fails leaves no mix of new reports and an old PDF.
+        from . import report_pdf
+
+        pdf = report_pdf.render(report.render_html(assessment, findings, max(args.top, 50)))
     if "csv" in formats:
         report.write_csv(out / "findings.csv", findings)
         written.append("findings.csv")
@@ -571,10 +577,8 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
     if "html" in formats:
         report.write_html(out / "report.html", assessment, findings, max(args.top, 50))
         written.append("report.html")
-    if "pdf" in formats:
-        from . import report_pdf
-
-        report_pdf.write(out / "report.pdf", report.render_html(assessment, findings, max(args.top, 50)))
+    if pdf is not None:
+        safewrite.write_bytes(out / "report.pdf", pdf)
         written.append("report.pdf")
     if "sarif" in formats:
         doc = sarif.build(findings, __version__, report.report_title(assessment))

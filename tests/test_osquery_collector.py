@@ -263,3 +263,49 @@ def test_fleet_extensions_with_the_removal_list_unavailable_fail_the_gate(tmp_pa
     code = cli.main(["--path", str(out), "--out", str(tmp_path / "r"), "--fail-on", "malicious"],
                     http=FakeHttp(fail_hosts=("raw.githubusercontent.com",)))
     assert code == cli.EXIT_ERROR
+
+
+def test_fleet_malware_extensions_reach_the_executive_summary(tmp_path):
+    """Second review: the executive summary showed Act now 0 with an extension removed as malware on a machine."""
+    from oss_intake import cli
+
+    from .conftest import FakeHttp
+
+    out = _host_sbom(tmp_path, "dev-01", [{"name": "badpub.evil-theme", "version": "0.0.1"}],
+                     {"npm_packages": [{"name": "left-pad", "version": "1.3.0", "directory": "/usr/lib/node_modules"}]})
+    reports = tmp_path / "reports"
+    cli.main(["--path", str(out), "--out", str(reports), "--as-of", "2026-11-08"], http=FakeHttp())
+    html = (reports / "executive-summary.html").read_text(encoding="utf-8")
+    assert "VS Code extensions removed from the Marketplace" in html and "badpub.evil-theme" in html
+    assert '<div class="k">Act now</div><div class="v">1</div>' in html
+    assert "1 removed as malware" in html
+
+
+def test_fleet_extensions_with_the_list_unavailable_say_so_in_the_executive_summary(tmp_path):
+    from oss_intake import cli
+
+    from .conftest import FakeHttp
+
+    out = _host_sbom(tmp_path, "dev-01", [{"name": "example.ext", "version": "1.2.3"}],
+                     {"npm_packages": [{"name": "left-pad", "version": "1.3.0", "directory": "/usr/lib/node_modules"}]})
+    reports = tmp_path / "reports"
+    cli.main(["--path", str(out), "--out", str(reports)], http=FakeHttp(fail_hosts=("raw.githubusercontent.com",)))
+    assert "NOT checked against the Marketplace removal list" in (
+        reports / "executive-summary.html").read_text(encoding="utf-8")
+
+
+def test_vscode_extension_purls_are_checked_after_decoding_and_merged_by_id(tmp_path):
+    """Second review: decoded parts were not checked (a space, '..', a newline reached the reports and Open VSX
+    URLs), and IDs differing only in case were two rows with their systems split."""
+    bad = ["pkg:vscode-extension/%20/%20@%20", "pkg:vscode-extension/%2E%2E/%2E%2E@1",
+           "pkg:vscode-extension/a/b@1%0Aevil", "pkg:vscode-extension/name@1", "pkg:vscode-extension/ns/name"]
+    good = [("pkg:vscode-extension/MS-Python/Python@2026.1.0", "h1"), ("pkg:vscode-extension/ms-python/python@2026.1.0",
+                                                                      "h2")]
+    for i, (purl, host) in enumerate([*[(b, "h1") for b in bad], *good]):
+        doc = {"bomFormat": "CycloneDX", "specVersion": "1.5", "metadata": {"component": {"name": host}},
+               "components": [{"type": "application", "name": f"c{i}", "version": "1", "purl": purl}]}
+        (tmp_path / f"{i}.cdx.json").write_text(json.dumps(doc), encoding="utf-8")
+    entries, _, info = sbom.read(tmp_path)
+    assert info["vscode_extensions"] == [{"id": "MS-Python.Python", "version": "2026.1.0", "systems": ["h1", "h2"]}]
+    assert len(info["not_checked"]) == 5
+    assert all("needs publisher/name@version" in n["reason"] for n in info["not_checked"])

@@ -127,6 +127,14 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
     from .report import packages_title
 
     inp = a["inputs"]
+    # VS Code extensions an SBOM lists (a fleet's osquery data): one removed as malware is an act-now item, as a
+    # malicious package is, and an unchecked removal list must not read as none removed.
+    ext = a.get("extensions") or {}
+    exts = ext.get("extensions", [])
+    ext_bad = [e for e in exts if e.get("malicious")]
+    ext_removed = [e for e in exts if e.get("removed") and not e.get("malicious")]
+    ext_unchecked = bool(exts) and (ext.get("removed_list") or {}).get("status") != "checked"
+    s = {**s, "act_now": s["act_now"] + len(ext_bad), "malicious": s["malicious"] + len(ext_bad)}
     title = (packages_title(inp["packages"]) + (f" ({inp['repo']})" if inp.get("repo") else "")
              if inp.get("packages") else Path(inp.get("path") or "inventory").name)
     lead = (f"{_n(s['packages'], 'open source package', 'open source packages')} checked. "
@@ -134,7 +142,12 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
             + (f" ({s['malicious']} malicious)" if s["malicious"] else "")
             + ", " + _n(s["with_critical"], "has", "have") + " critical vulnerabilities"
             + (", and " + _n(s["stale"], "has", "have") + " had no release for over a year"
-               if s["stale"] is not None else "") + ".")
+               if s["stale"] is not None else "") + "."
+            + (f" {_n(len(exts), 'VS Code extension', 'VS Code extensions')} checked against the Marketplace "
+               f"removal list: {len(ext_bad)} removed as malware, {len(ext_removed)} removed for other reasons."
+               if exts and not ext_unchecked else "")
+            + (f" {_n(len(exts), 'VS Code extension was', 'VS Code extensions were')} NOT checked against the "
+               "Marketplace removal list (it could not be read)." if ext_unchecked else ""))
     from .checks import is_checked
 
     kev_note = "" if is_checked(a.get("checks"), "kev") else "; CISA KEV not checked"
@@ -157,6 +170,14 @@ def write(path: Path, a: dict, rows: list[dict], s: dict) -> None:
              f"<h1>Open source risk summary</h1><div class=\"meta\">{_e(title)} · assessed {_e(a['as_of'][:10])}"
              f" · oss-intake {_e(a['tool']['version'])}</div></header>",
              tile_html, _section("In one line", f"<p>{_e(lead)}</p>")]
+    if ext_bad or ext_removed:
+        erows = [["removed as malware: uninstall" if e.get("malicious") else f"removed for {e['removed']['type']}",
+                  Raw(f'<span class="mono">{_e(e["id"])}</span> <span class="mono">{_e(e["version"])}</span>'),
+                  ", ".join(e.get("systems", [])[:10]) + (f" and {len(e['systems']) - 10} more"
+                                                          if len(e.get("systems", [])) > 10 else "")]
+                 for e in (ext_bad + ext_removed)[:TOP]]
+        parts.append(_section("VS Code extensions removed from the Marketplace", _table(
+            ["Verdict", "Extension", "Systems"], erows)))
     upg = [["Now", s["now"][0], s["now"][1]]]
     if s["at_fix"]:
         upg.append(["After upgrading to the minimum fix versions", *s["at_fix"]])

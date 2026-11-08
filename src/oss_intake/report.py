@@ -327,8 +327,8 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
              + ("; not compared, too many in each: " + ", ".join(ch["indicators_not_compared"])
                 if ch.get("indicators_not_compared") else "")],
             ["New native files", listed(ch["native_added"], total=ch.get("native_added_total"))],
-            ["New web addresses", "not compared (too many in a version to list them all)" if ch["hosts_not_compared"]
-             else listed(ch["hosts_added"], 15, total=ch.get("hosts_added_total"))],
+            ["New web addresses", "not compared (too many in a version, or files of the new version not read)"
+             if ch["hosts_not_compared"] else listed(ch["hosts_added"], 15, total=ch.get("hosts_added_total"))],
             ["New npm packages", listed(ch["packages_added"])],
             ["Packages at a new version", listed(ch["packages_changed"])],
             ["Publisher", "CHANGED" if ch["publisher_changed"] else "same"],

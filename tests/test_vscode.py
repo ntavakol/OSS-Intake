@@ -971,3 +971,30 @@ def test_extension_download_names_the_platform_build(tmp_path, fixtures):
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert a["extensions"]["download"]["target_platform"] == "linux-x64"
     assert "the linux-x64 build" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_compare_with_counts_distinct_web_addresses_not_occurrences(tmp_path, fixtures):
+    """Second review: hosts were taken from the first 1,000 URLs in a file, so one host written 1,000 times hid a
+    new one after it, and the comparison still claimed to be complete."""
+    same = "fetch('https://a.example.com/');\n" * 1000
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0"), files={"extension/out/extension.js": same})
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1"),
+                    files={"extension/out/extension.js": same + "fetch('https://evil.example.net/')"})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    ch = json.loads((out / "assessment.json").read_text(encoding="utf-8"))["extensions"]["changes"]
+    assert ch["hosts_added"] == ["evil.example.net"] and not ch["hosts_not_compared"]
+
+
+def test_compare_with_says_so_when_files_of_the_new_version_were_not_read(tmp_path, fixtures, monkeypatch):
+    """Second review: a file of the new version too large to read could hold what the update adds, and the
+    comparison reported nothing new."""
+    monkeypatch.setattr(vscode, "READ_FILE_BYTES", 5000)
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0"))
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1"),
+                    files={"extension/out/extension.js": "x", "extension/out/big.js":
+                           "// pad\n" * 1000 + "fetch('https://evil.example.net/')"})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    ch = a["extensions"]["changes"]
+    assert ch["new_files_not_read"] == 1 and ch["hosts_not_compared"]
+    assert any("could not compare what is in 1 file(s) of the new version" in w for w in a["warnings"])

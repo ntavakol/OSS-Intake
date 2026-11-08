@@ -31,6 +31,7 @@ from urllib.parse import unquote
 from . import jsonsafe, os_packages
 from .inputs import InputError, _row_purl
 from .models import normalise_purl
+from .vscode import _key
 
 MAX_FILE_BYTES = 200 * 1024 * 1024
 MAX_FILES = 5000
@@ -41,6 +42,10 @@ _LABEL_KEY = re.compile(r"^[a-z][a-z0-9_ -]{0,39}$")
 MAX_EXTENSIONS = 50_000  # distinct extension versions across the SBOMs
 _VSCODE = re.compile(r"^pkg:vscode-extension/(?P<ns>[^/@?#]{1,200})/(?P<name>[^/@?#]{1,200})"
                      r"@(?P<version>[^/@?#]{1,100})(?:[?#].*)?$", re.IGNORECASE)
+# After percent-decoding, the parts must look like an extension ID and version as VS Code writes them.
+_EXT_NS = re.compile(r"^[A-Za-z0-9][\w-]{0,99}$")
+_EXT_NAME = re.compile(r"^[A-Za-z0-9][\w.-]{0,199}$")
+_EXT_VERSION = re.compile(r"^\d[\w.+-]{0,99}$")
 _CDX_SPECS = ("1.2", "1.3", "1.4", "1.5", "1.6", "1.7")
 
 
@@ -279,7 +284,8 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     found: dict[str, dict[str, set[str]]] = {}
     os_queries: dict[str, dict] = {}
     info: dict = {"files": 0, "formats": {}, "components": 0, "packages": 0, "not_checked": [], "containers": 0}
-    extensions: dict[tuple[str, str], set[str]] = {}
+    extensions: dict[tuple[str, str], set[str]] = {}  # (_key(id), version): systems
+    ext_shown: dict[tuple[str, str], str] = {}  # the ID as first written
     errors: list[str] = []
     for f in files_of(path):
         try:
@@ -298,13 +304,21 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
             info["components"] += 1
             if info["components"] > MAX_COMPONENTS:
                 raise InputError(f"more than {MAX_COMPONENTS} components; split the SBOMs into smaller sets")
-            ext = _VSCODE.match(raw_purl or "")
-            if ext:
-                ident = f"{unquote(ext['ns'])}.{unquote(ext['name'])}"
-                key = (ident, unquote(ext["version"]))
-                if key not in extensions and len(extensions) >= MAX_EXTENSIONS:
+            if (raw_purl or "").lower().startswith("pkg:vscode-extension/"):
+                ext = _VSCODE.match(raw_purl)
+                ns, nm, ver = ((unquote(ext["ns"]), unquote(ext["name"]), unquote(ext["version"])) if ext
+                               else ("", "", ""))
+                if not (_EXT_NS.match(ns) and _EXT_NAME.match(nm) and _EXT_VERSION.match(ver)):
+                    info["not_checked"].append({
+                        "component": (name or raw_purl)[:200], "system": system,
+                        "reason": "a VS Code extension purl needs publisher/name@version "
+                                  "(pkg:vscode-extension/ms-python/python@2026.1.0)"})
+                    continue
+                ext_key = (_key(f"{ns}.{nm}"), ver)
+                if ext_key not in extensions and len(extensions) >= MAX_EXTENSIONS:
                     raise InputError(f"more than {MAX_EXTENSIONS} VS Code extension versions; split the SBOMs")
-                extensions.setdefault(key, set()).add(system)
+                ext_shown.setdefault(ext_key, f"{ns}.{nm}")
+                extensions.setdefault(ext_key, set()).add(system)
                 continue
             purl, why = _purl(raw_purl, props, os_queries)
             if not raw_purl and props.get(NOT_CHECKED_PROP):
@@ -325,8 +339,8 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     if not found and not info["not_checked"] and not extensions:
         raise InputError(f"{path.name} lists no components")
     info["packages"] = len(found)
-    info["vscode_extensions"] = [{"id": i, "version": v, "systems": sorted(s)}
-                                 for (i, v), s in sorted(extensions.items())]
+    info["vscode_extensions"] = [{"id": ext_shown[(k, v)], "version": v, "systems": sorted(s)}
+                                 for (k, v), s in sorted(extensions.items())]
     entries = [{"purl": p, "labels": {k: "; ".join(sorted(v)) for k, v in sorted(lb.items())}}
                for p, lb in sorted(found.items())]
     return entries, os_queries, info

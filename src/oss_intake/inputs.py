@@ -282,6 +282,32 @@ MAX_XLSX_PARTS = 10_000
 MAX_XLSX_STRINGS = 64 * 1024 * 1024
 
 
+_SST_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"
+
+
+def _shared_strings_parts(z, parts: list, name: str) -> list:
+    """The parts openpyxl would read as shared strings: found, as openpyxl finds them, by content type in
+    [Content_Types].xml (an Override for a part name, or a Default for an extension), not by file name."""
+    import xml.etree.ElementTree as ET  # noqa: S405 - expat limits entity expansion; the part is size-checked
+
+    ct = next((p for p in parts if p.filename == "[Content_Types].xml"), None)
+    if ct is None or ct.file_size > 1024 * 1024:
+        raise InputError(f"cannot read {name} as an Excel workbook: its [Content_Types].xml is missing or over 1 MB")
+    try:
+        root = ET.fromstring(z.read(ct))  # noqa: S314
+    except ET.ParseError:
+        raise InputError(f"cannot read {name} as an Excel workbook: its [Content_Types].xml is not XML") from None
+    names, exts = set(), set()
+    for el in root:
+        if el.get("ContentType") == _SST_TYPE:
+            if el.tag.endswith("Override") and el.get("PartName"):
+                names.add(el.get("PartName", "").lstrip("/").casefold())
+            elif el.tag.endswith("Default") and el.get("Extension"):
+                exts.add(el.get("Extension", "").casefold())
+    return [p for p in parts if p.filename.casefold() in names
+            or p.filename.casefold().rpartition(".")[2] in exts or p.filename.casefold().endswith("sharedstrings.xml")]
+
+
 def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[dict]]:
     """The first worksheet of an .xlsx as a header row and dict rows of text, read with openpyxl (an optional
     extra: pip install 'oss-intake[xlsx]'). Cells are read as their stored values, never as formulas run."""
@@ -295,12 +321,12 @@ def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[dict]]:
     try:
         with zipfile.ZipFile(path) as z:
             parts = z.infolist()
-        if len(parts) > MAX_XLSX_PARTS or sum(p.file_size for p in parts) > MAX_XLSX_UNPACKED:
-            raise InputError(f"{path.name} unpacks to more than {MAX_XLSX_UNPACKED // (1024 * 1024)} MB or "
-                             f"{MAX_XLSX_PARTS} parts; save it as CSV instead")
-        if any(p.filename.casefold().endswith("sharedstrings.xml") and p.file_size > MAX_XLSX_STRINGS for p in parts):
-            raise InputError(f"{path.name} holds more than {MAX_XLSX_STRINGS // (1024 * 1024)} MB of text in its "
-                             "shared strings; save it as CSV instead")
+            if len(parts) > MAX_XLSX_PARTS or sum(p.file_size for p in parts) > MAX_XLSX_UNPACKED:
+                raise InputError(f"{path.name} unpacks to more than {MAX_XLSX_UNPACKED // (1024 * 1024)} MB or "
+                                 f"{MAX_XLSX_PARTS} parts; save it as CSV instead")
+            if any(p.file_size > MAX_XLSX_STRINGS for p in _shared_strings_parts(z, parts, path.name)):
+                raise InputError(f"{path.name} holds more than {MAX_XLSX_STRINGS // (1024 * 1024)} MB of text in its "
+                                 "shared strings; save it as CSV instead")
         book = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except InputError:
         raise
