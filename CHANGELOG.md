@@ -36,6 +36,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   extra, the option is refused before any work, saying how to add it. The renderer fetches nothing.
 
 ### Changed
+- An OpenSSF Scorecard result more than a year older than the assessment date is shown with its age and a
+  warning, and its tile is grey rather than coloured as a current rating. The Scorecard service rescans on its
+  own schedule, rarely for GitLab projects (a live check found a 2023 result).
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
   oss-intake does not download scanners. A scanner downloader is no longer planned (decided 8 Nov).
 
