@@ -737,7 +737,11 @@ def _exploit_pill(f: Finding) -> object:
 
 def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str,
           lag_note: str) -> None:
-    """Write the full HTML report: header, tiles, warnings, then the packages, severity, triage, likelihood, lag,
+    safewrite.write_text(path, render(a, findings, top, caveat, heuristic_note, lag_note))
+
+
+def render(a: dict, findings: list[Finding], top: int, caveat: str, heuristic_note: str, lag_note: str) -> str:
+    """The full HTML report: header, tiles, warnings, then the packages, severity, triage, likelihood, lag,
     health, CI, coverage, scope and top findings sections."""
     title = _title(a) or "assessment"
     lk = a.get("likelihood")
@@ -765,7 +769,7 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
               f'<div class="grid2">{_coverage(a)}{_agreement(a)}</div>',
               _scope(a), _top(findings, top)]
     parts.append(f'<footer>oss-intake {_e(a["tool"]["version"])} · {_e(title)}</footer></div></body></html>')
-    safewrite.write_text(path, "".join(parts))
+    return "".join(parts)
 
 
 CSS = """

@@ -31,6 +31,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (`pkg:vscode-extension/publisher/name@version`) against the Marketplace removal list and Open VSX, naming the
   systems that have each. One removed as malware fails `--fail-on malicious`; if the list cannot be read, that
   gate fails rather than passing.
+- `--formats pdf` writes `report.pdf`, the HTML report laid out for A4, with the optional `pdf` extra
+  (`pip install 'oss-intake[pdf]'`, which adds WeasyPrint; it also needs Pango from the system). Without the
+  extra, the option is refused before any work, saying how to add it. The renderer fetches nothing.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says

@@ -49,7 +49,7 @@ CISA KEV membership).
   collector makes them for laptops and servers), with each package version looked up once and counted per
   system.
 - Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html` (and, on request,
-  `findings.sarif` for code-scanning dashboards), plus the raw
+  `findings.sarif` for code-scanning dashboards and `report.pdf`), plus the raw
   scanner output under `raw/` as evidence. Reports the last run left in the folder that this run did not write
   are removed (only files listed in its `.oss-intake-files.json`; other files are left alone), and a symbolic
   link where a report goes stops the run.
@@ -413,7 +413,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--as-of` | Fix the assessment date for reproducible reports |
 | `--utc` | Date the assessment by today in UTC rather than your local date, for a team across time zones or a pipeline comparing runs. The time a report was generated is always shown in UTC. No effect with `--as-of` |
 | `--min-severity` | Leave findings below a severity out of the reports. Findings in Act now, malicious ones and those whose details could not be loaded are kept, and `--fail-on` and likelihood still see every finding: a gate met only by findings left out is named in a warning |
-| `--formats` | Any of `csv,md,json,html,sarif` (default `csv,md,json,html`; `findings.csv` is always written). `sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code scanning: one result per finding at the file the package was found in, with decisions and set-aside findings carried as suppressions. A dashboard closes an alert that is missing from the next upload, so upload without `--min-severity`, and give each target its own category (`github/codeql-action/upload-sarif` with `category:`) so an image's results do not replace a lockfile's |
+| `--formats` | Any of `csv,md,json,html,sarif,pdf` (default `csv,md,json,html`; `findings.csv` is always written). `pdf` writes `report.pdf`, the HTML report laid out for A4, with the optional `pdf` extra (`pip install 'oss-intake[pdf]'`, which adds WeasyPrint; WeasyPrint also needs the Pango library from the system, see [its install guide](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)). Without it, `--formats pdf` is refused before any work. The renderer fetches nothing: only `data:` URIs are read. `sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code scanning: one result per finding at the file the package was found in, with decisions and set-aside findings carried as suppressions. A dashboard closes an alert that is missing from the next upload, so upload without `--min-severity`, and give each target its own category (`github/codeql-action/upload-sarif` with `category:`) so an image's results do not replace a lockfile's |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
 | `--no-latest` | Skip the latest-release lookup for the upgrade comparison, one deps.dev request per vulnerable package (the minimum fix is still checked) |

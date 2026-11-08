@@ -195,6 +195,11 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.repo = validate_repo(args.repo)
     # findings.csv is always written: the reports point to it and the assessor records decisions in it.
     formats = list(dict.fromkeys(["csv", *csv_set(args.formats, FORMATS, "--formats")]))
+    if "pdf" in formats:
+        from . import report_pdf
+
+        if pdf_missing := report_pdf.missing():
+            raise UsageError(pdf_missing)
     # Without --as-of, today is the assessor's local date (the report shows as_of's date), not UTC's, unless --utc
     # asks for UTC throughout (a team across time zones, or a pipeline comparing runs).
     now = datetime.now(timezone.utc)

@@ -571,6 +571,11 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
     if "html" in formats:
         report.write_html(out / "report.html", assessment, findings, max(args.top, 50))
         written.append("report.html")
+    if "pdf" in formats:
+        from . import report_pdf
+
+        report_pdf.write(out / "report.pdf", report.render_html(assessment, findings, max(args.top, 50)))
+        written.append("report.pdf")
     if "sarif" in formats:
         doc = sarif.build(findings, __version__, report.report_title(assessment))
         safewrite.write_text(out / "findings.sarif", json.dumps(doc, indent=2))
