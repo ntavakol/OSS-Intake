@@ -18,6 +18,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   under the same tag), the OS packages are also measured against the build: how many of their fixes were public
   before the image was rebuilt, beside the lag against the release (`assessment.json` `lag.os_at_build`, and a
   row in the release lag table).
+- `--compare-with OLD`: for a VS Code extension, what an update changed since an older version (a `.vsix` or its
+  folder): new indicators, native files, web addresses and npm packages, and a publisher or repository change,
+  with a warning when it adds any.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says

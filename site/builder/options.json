@@ -461,6 +461,18 @@
     },
     {
      "choices": null,
+     "default": null,
+     "dest": "compare_with",
+     "exclusive_group": null,
+     "flag": "--compare-with",
+     "help": "with --path to one VS Code extension (.vsix or its folder): an older version of it, to show what the update changed (new indicators, native files, web addresses, packages, publisher)",
+     "kind": "value",
+     "metavar": "PATH",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
      "default": false,
      "dest": "include_kernel_headers",
      "exclusive_group": null,
