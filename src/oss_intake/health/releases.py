@@ -1,4 +1,5 @@
-"""Release cadence from the GitHub REST API. GITHUB_TOKEN is optional (rate limits only)."""
+"""Release cadence from the project's forge: the GitHub REST API (GITHUB_TOKEN optional, rate limits only), GitLab's
+(gitlab.com) or Forgejo's (codeberg.org), both public and asked without a token."""
 
 from __future__ import annotations
 
@@ -11,6 +12,11 @@ from ..http import Http, HttpError
 from ..models import days_between, parse_datetime
 
 API = "https://api.github.com"
+GITLAB_API = "https://gitlab.com/api/v4/projects"
+CODEBERG_API = "https://codeberg.org/api/v1/repos"
+FORGE_NAMES = {"github": "GitHub", "gitlab": "GitLab", "codeberg": "Codeberg"}
+# GitLab releases carry no pre-release flag: a tag that says so is taken as one.
+_PRE = re.compile(r"(?i)(?:^|[.\-_+\d])(?:alpha|beta|rc|pre|preview|dev|snapshot)(?:[.\-_]?\d+)?$")
 
 
 def _candidates(tag: str, repo_name: str) -> list[str]:
@@ -38,45 +44,109 @@ def _version_core(tag: str) -> str:
     return m.group(1) if m else ""
 
 
+def _forge(repo: str) -> tuple[str, str]:
+    """('github' | 'gitlab' | 'codeberg', the path on that forge) for a validated --repo."""
+    for host, forge in (("gitlab.com/", "gitlab"), ("codeberg.org/", "codeberg")):
+        if repo.startswith(host):
+            return forge, repo[len(host):]
+    return "github", repo
+
+
+def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:
+    """The repository's status code and its archived, pushed_at and license, as GitHub names them."""
+    if forge == "gitlab":
+        status, data = http.get_json(f"{GITLAB_API}/{quote(path, safe='')}", params={"license": "true"})
+        if status != 200 or not isinstance(data, dict):
+            return status, {}
+        lic = data.get("license")
+        return status, {"archived": data.get("archived"), "pushed_at": data.get("last_activity_at"),
+                        "license": lic.get("key") if isinstance(lic, dict) and isinstance(lic.get("key"), str)
+                        else None}
+    if forge == "codeberg":
+        status, data = http.get_json(f"{CODEBERG_API}/{path}")
+        if status != 200 or not isinstance(data, dict):
+            return status, {}
+        lics = data.get("licenses")
+        return status, {"archived": data.get("archived"), "pushed_at": data.get("updated_at"),
+                        "license": "; ".join(x for x in lics if isinstance(x, str)) or None
+                        if isinstance(lics, list) else None}
+    status, data = http.get_json(f"{API}/repos/{path}")
+    if status != 200 or not isinstance(data, dict):
+        return status, {}
+    lic = data.get("license")
+    return status, {"archived": data.get("archived"), "pushed_at": data.get("pushed_at"),
+                    "license": lic.get("spdx_id") if isinstance(lic, dict) and isinstance(lic.get("spdx_id"), str)
+                    else None}
+
+
+def _release(forge: str, r: object) -> dict | None:
+    """A release as {"tag", "date", "prerelease"}, or None for a draft, an upcoming one or one with no date."""
+    if not isinstance(r, dict) or r.get("draft") or r.get("upcoming_release"):
+        return None
+    tag = r["tag_name"] if isinstance(r.get("tag_name"), str) else ""
+    when = r.get("released_at") if forge == "gitlab" else r.get("published_at") or r.get("created_at")
+    dt = parse_datetime(when)
+    if not dt:
+        return None
+    pre = bool(_PRE.search(tag)) if forge == "gitlab" else bool(r.get("prerelease"))
+    return {"tag": tag, "date": dt, "prerelease": pre}
+
+
+def _releases(http: Http, forge: str, path: str) -> tuple[int, list]:
+    if forge == "gitlab":
+        return http.get_json(f"{GITLAB_API}/{quote(path, safe='')}/releases",
+                             params={"per_page": 100, "order_by": "released_at", "sort": "desc"})
+    if forge == "codeberg":
+        return http.get_json(f"{CODEBERG_API}/{path}/releases", params={"limit": 50})
+    return http.get_json(f"{API}/repos/{path}/releases", params={"per_page": 100})
+
+
+def _release_by_tag(http: Http, forge: str, path: str, tag: str) -> tuple[int, object]:
+    t = quote(tag, safe="")
+    if forge == "gitlab":
+        return http.get_json(f"{GITLAB_API}/{quote(path, safe='')}/releases/{t}")
+    if forge == "codeberg":
+        return http.get_json(f"{CODEBERG_API}/{path}/releases/tags/{t}")
+    return http.get_json(f"{API}/repos/{path}/releases/tags/{t}")
+
+
 def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
           release_tag: str | None = None) -> dict:
-    """Repository and release data from api.github.com: archived, last push, licence, latest release, cadence, and
-    the release matching release_tag or image_tag. Returns a dict with status (ok, not_found, rate_limited or
-    no_releases) and warnings; raises HttpError if the repository lookup fails otherwise."""
-    owner, name = repo.split("/", 1)
-    out: dict = {"repo": repo, "status": "ok", "warnings": []}
+    """Repository and release data from the project's forge (GitHub, GitLab or Codeberg): archived, last push,
+    licence, latest release, cadence, and the release matching release_tag or image_tag. Returns a dict with
+    status (ok, not_found, rate_limited or no_releases) and warnings; raises HttpError if the repository lookup
+    fails otherwise."""
+    forge, path = _forge(repo)
+    host = FORGE_NAMES[forge]
+    name = path.rsplit("/", 1)[-1]
+    out: dict = {"repo": repo, "forge": forge, "status": "ok", "warnings": []}
 
-    status, meta = http.get_json(f"{API}/repos/{owner}/{name}")
+    status, meta = _meta(http, forge, path)
     if status == 404:
-        return {"repo": repo, "status": "not_found", "warnings": [f"GitHub repository {repo} not found"]}
-    if status == 403:
-        return {"repo": repo, "status": "rate_limited",
-                "warnings": ["GitHub API returned 403 (rate limit?). Set GITHUB_TOKEN to raise the limit."]}
-    if status != 200 or not isinstance(meta, dict):
-        raise HttpError(f"GitHub repo lookup returned HTTP {status}")
+        return {"repo": repo, "forge": forge, "status": "not_found",
+                "warnings": [f"{host} repository {repo} not found"]}
+    if status in (403, 429):
+        return {"repo": repo, "forge": forge, "status": "rate_limited",
+                "warnings": [f"{host} API returned {status} (rate limit?)."
+                             + (" Set GITHUB_TOKEN to raise the limit." if forge == "github" else "")]}
+    if status != 200 or not meta:
+        raise HttpError(f"{host} repo lookup returned HTTP {status}")
     out["archived"] = bool(meta.get("archived"))
     out["pushed_at"] = meta.get("pushed_at")
     out["days_since_push"] = days_between(parse_datetime(meta.get("pushed_at")), as_of)
-    lic = meta.get("license")
-    out["license"] = lic.get("spdx_id") if isinstance(lic, dict) and isinstance(lic.get("spdx_id"), str) else None
+    out["license"] = meta.get("license")
 
-    status, rels = http.get_json(f"{API}/repos/{owner}/{name}/releases", params={"per_page": 100})
+    status, rels = _releases(http, forge, path)
     if status != 200 or not isinstance(rels, list):
         out["status"] = "no_releases"
-        out["warnings"].append(f"GitHub releases lookup returned HTTP {status}")
+        out["warnings"].append(f"{host} releases lookup returned HTTP {status}")
         rels = []
-    releases = []
-    for r in rels:
-        if not isinstance(r, dict) or r.get("draft"):
-            continue
-        dt = parse_datetime(r.get("published_at") or r.get("created_at"))
-        if dt:
-            releases.append({"tag": r.get("tag_name", ""), "date": dt, "prerelease": bool(r.get("prerelease"))})
+    releases = [r for r in (_release(forge, x) for x in rels) if r]
     stable = sorted((r for r in releases if not r["prerelease"]), key=lambda r: r["date"], reverse=True)
     if not stable:
         if out["status"] == "ok":
             out["status"] = "no_releases"
-        out["warnings"].append("No published GitHub releases; release cadence cannot be measured")
+        out["warnings"].append(f"No published {host} releases; release cadence cannot be measured")
         return out
 
     latest = stable[0]
@@ -105,17 +175,17 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
             if len(hits) == 1:
                 scanned = hits[0]
         if scanned is None:
-            # The list above is the newest 100 releases only. Projects with many patch and backport
+            # The list above is the newest 100 (Codeberg: 50) releases only. Projects with many patch and backport
             # releases (Grafana, for example) push older tags off it, so ask for each candidate directly.
             for c in candidates:
-                st, rel = http.get_json(f"{API}/repos/{owner}/{name}/releases/tags/{quote(c, safe='')}")
-                dt = parse_datetime((rel or {}).get("published_at")) if st == 200 and isinstance(rel, dict) else None
-                if dt and not rel.get("draft"):
-                    scanned = {"tag": rel.get("tag_name", c), "date": dt, "prerelease": bool(rel.get("prerelease"))}
+                st, rel = _release_by_tag(http, forge, path, c)
+                got = _release(forge, rel) if st == 200 else None
+                if got:
+                    scanned = {**got, "tag": got["tag"] or c}
                     break
         if scanned is None:
             out["warnings"].append(
-                f"No GitHub release matches '{wanted}', so release-lag metrics are not computed (using the "
+                f"No {host} release matches '{wanted}', so release-lag metrics are not computed (using the "
                 "latest release date instead would overstate lag). Pass --release-tag or --release-date."
             )
     if scanned is None:

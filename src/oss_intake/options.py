@@ -85,12 +85,27 @@ def image_tag(image: str) -> str | None:
     return last.split(":", 1)[1] if ":" in last else None
 
 
+_SEGMENT = r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})"
+_GITLAB_RE = re.compile(rf"^gitlab\.com/{_SEGMENT}(?:/{_SEGMENT}){{1,19}}$")
+_CODEBERG_RE = re.compile(rf"^codeberg\.org/{_SEGMENT}/{_SEGMENT}$")
+
+
 def validate_repo(value: str) -> str:
-    v = value.strip()
-    v = re.sub(r"^(https?://)?(www\.)?github\.com/", "", v).removesuffix(".git").strip("/")
+    """--repo as owner/name for GitHub (with or without github.com/), or gitlab.com/group[/subgroup]/name or
+    codeberg.org/owner/name, which keep their host (forge_of tells them apart)."""
+    v = re.sub(r"^https?://", "", value.strip()).removesuffix(".git").strip("/")
+    v = re.sub(r"^(www\.)?github\.com/", "", v)
+    if _GITLAB_RE.match(v) or _CODEBERG_RE.match(v):
+        return v
     if not _REPO_RE.match(v):
-        raise UsageError(f"--repo '{value}' must be a GitHub repository as owner/name")
+        raise UsageError(f"--repo '{value}' must be a repository as owner/name (GitHub), gitlab.com/group/name or "
+                         "codeberg.org/owner/name")
     return v
+
+
+def forge_of(repo: str) -> str:
+    """'github', 'gitlab' or 'codeberg' for a --repo value validate_repo accepted."""
+    return "gitlab" if repo.startswith("gitlab.com/") else "codeberg" if repo.startswith("codeberg.org/") else "github"
 
 
 def validate_date(value: str | None, flag: str) -> datetime | None:
@@ -129,7 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")
-    s.add_argument("--repo", help="GitHub repository owner/name for release cadence and Scorecard")
+    s.add_argument("--repo", help="the project's repository for release cadence and Scorecard: owner/name on "
+                                  "GitHub, or gitlab.com/group/name, or codeberg.org/owner/name")
     s.add_argument("--out", required=True, help="output directory")
     s.add_argument("--scanners", default="auto",
                    help="comma list of trivy,grype,osv. 'auto' (default) = trivy + osv, plus grype if found")
@@ -163,7 +179,7 @@ def build_parser() -> argparse.ArgumentParser:
                        help=f"extra argument passed to {tool} (repeatable), e.g. --{tool}-arg=--db-repository=...")
         s.add_argument(f"--from-{tool}-json", metavar="FILE",
                        help=f"use an existing {tool} JSON report instead of running {tool}")
-    s.add_argument("--release-tag", help="GitHub release tag that the image corresponds to")
+    s.add_argument("--release-tag", help="the release tag (on GitHub, GitLab or Codeberg) the input corresponds to")
     s.add_argument("--release-date", help="release date (YYYY-MM-DD) to use for lag, overrides GitHub")
     s.add_argument("--grace-days", type=int, default=lag.DEFAULT_GRACE_DAYS,
                    help="a fix must predate the release by this many days to count as missed (default 14)")

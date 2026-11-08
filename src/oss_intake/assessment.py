@@ -172,13 +172,15 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
                                     args.release_tag)
             warnings += health.get("warnings", [])
         except HttpError as exc:
-            warnings.append(f"GitHub lookup failed: {exc}")
+            warnings.append(f"Repository lookup failed: {exc}")
         if not args.no_scorecard:
             try:
                 sc = scorecard.fetch(net, args.repo)
             except HttpError as exc:
                 sc = {"status": "error", "note": str(exc)}
-        if not args.no_workflows:
+        if not args.no_workflows and "/" in args.repo and args.repo.split("/", 1)[0] in ("gitlab.com", "codeberg.org"):
+            health["workflows"] = {"status": "skipped", "note": "the workflow audit reads GitHub Actions only"}
+        elif not args.no_workflows:
             health["workflows"] = workflows.fetch(net, args.repo)
             if health["workflows"].get("status") == "partial":
                 warnings.append("Project workflow audit is partial (workflow files checked: "
@@ -194,7 +196,8 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
 def _release_date(args, findings: list, health: dict, scan_info: dict, release_override, warnings: list[str]):
     """The date release lag is measured against: --release-date, the matched GitHub release or the image build."""
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
-    release_date_source = "--release-date" if release_override else ("GitHub release" if release_date else None)
+    forge = {"gitlab": "GitLab", "codeberg": "Codeberg"}.get(health.get("forge", ""), "GitHub")
+    release_date_source = "--release-date" if release_override else (f"{forge} release" if release_date else None)
     if release_override:
         if not health.get("scanned_release"):
             health["scanned_release"] = {}

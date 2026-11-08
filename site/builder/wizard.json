@@ -1311,7 +1311,9 @@
   {
    "name": "GitHub",
    "hosts": [
-    "api.github.com"
+    "api.github.com",
+    "gitlab.com",
+    "codeberg.org"
    ],
    "sends": "the repository name, and your GITHUB_TOKEN if it is set",
    "when": {

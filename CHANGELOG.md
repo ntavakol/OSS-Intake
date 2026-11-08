@@ -11,6 +11,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   what the workbook may unpack to is limited before it is opened.
 - A folder (`--path`) is scanned by Trivy in both modes, `rootfs` for JARs and binaries and `fs` for lockfiles,
   and the two are put together, so a whole source checkout can be passed instead of its lockfile.
+- `--repo` may name a project on GitLab (`gitlab.com/group/name`, subgroups too) or Codeberg
+  (`codeberg.org/owner/name`) as well as GitHub, for release cadence, release lag and Scorecard (GitHub and GitLab
+  only); both are asked without a token. The workflow audit stays GitHub-only.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
