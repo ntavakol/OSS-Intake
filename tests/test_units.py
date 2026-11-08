@@ -3788,3 +3788,14 @@ def test_upgrade_never_says_0_known_for_a_version_osv_was_not_asked_about():
     upgrade.enrich(Http(), rows, latest=False)
     assert rows[0]["upgrade_left"] is None
     assert rows[1]["upgrade_left"] == {"total": 0, "critical": 0, "malicious": False}
+
+
+def test_sarif_known_exploited_is_at_least_critical_and_links_are_web_only():
+    """Review (8 Nov): a CISA KEV finding rated LOW was level error but security severity 2.0, so a dashboard
+    severity gate passed it; and the help link was taken as the advisory gave it."""
+    from oss_intake import sarif
+    from oss_intake.models import Finding
+
+    doc = sarif.build([Finding("CVE-2099-1", "p", "1", severity="LOW", kev=True, url="javascript:alert(1)")], "0", "t")
+    rule = doc["runs"][0]["tool"]["driver"]["rules"][0]
+    assert float(rule["properties"]["security-severity"]) >= 9.0 and "helpUri" not in rule

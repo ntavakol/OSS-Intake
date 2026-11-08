@@ -53,7 +53,8 @@ nothing, or output that is not what it seems).
   Without the pin the verdict is shown but sets nothing aside. A kernel CVE on a kernel header package is set
   aside, even in KEV, only for a container target (`--image`, or SBOMs that all describe an image): a container
   runs on the host's kernel. For a folder, an artifact or another SBOM (a host or VM image) it counts like any
-  finding (decided 8 Nov).
+  finding (decided 8 Nov). The image claim comes from the SBOM itself, so an SBOM from an untrusted source that
+  calls itself an image has those findings set aside; `--include-kernel-headers` counts them.
 - The default cosign identity is the scanner's release workflow as its signing certificates name it (Trivy's
   `reusable-release.yaml` for a version tag, Grype's `release.yaml` on main); if a project moves its signing to
   another workflow, verification fails until oss-intake is updated or `--*-cosign-identity` is given. cosign
@@ -192,7 +193,7 @@ user's files (where the output is written), and the user's privacy (what the rep
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |
 | A report shared with others gives away the user's name or folders | The target is given by its name, the scanner and the tools used to copy files out of an image by their names (with version and SHA-256), and the cache folder from `~` or by its name; no absolute local path is written. | `assessment.shown_path`, `assessment._document`, `scanning.run_or_load` |
 | An output folder that cannot be written fails after the work is done | It is created and tested for writing before anything else. | `cli.prepare_out` |
-| Reports in a folder other users can write to are replaced after the run | A warning in the reports names who can write to it (POSIX permissions, or the Windows security descriptor). | `http.folder_write_reason` |
+| Reports in a folder other users can write to are replaced after the run | A warning in the reports names the folder (as the reports give paths) and why (POSIX permissions, or the Windows security descriptor); the folders above it are checked too. | `http.folder_write_reason` |
 | A report is written through a symbolic link, or an old report is read as current | A symbolic link where a report or `raw/` goes stops the run (exit 2) before any work, and each report is written to a new file beside it and moved into place, which replaces a link placed later (symbolic or hard) rather than writing through it, and never leaves half a file (`safewrite`). At the end, report files the last run left that this run did not write are removed: only files that run listed as its own in `.oss-intake-files.json` (a `summary.md` of the user's own is never touched), never a file this run read (a re-imported `raw/trivy.json`). | `cli.prepare_out`, `assessment._remove_stale`, `options.OUTPUT_FILES` |
 
 **Left open:**

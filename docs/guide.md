@@ -387,10 +387,10 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--as-of` | Fix the assessment date for reproducible reports |
 | `--utc` | Date the assessment by today in UTC rather than your local date, for a team across time zones or a pipeline comparing runs. The time a report was generated is always shown in UTC. No effect with `--as-of` |
 | `--min-severity` | Leave findings below a severity out of the reports. Findings in Act now, malicious ones and those whose details could not be loaded are kept, and `--fail-on` and likelihood still see every finding: a gate met only by findings left out is named in a warning |
-| `--formats` | Any of `csv,md,json,html,sarif` (default `csv,md,json,html`; `findings.csv` is always written). `sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code scanning: one result per finding at the file the package was found in, with decisions and set-aside findings carried as suppressions |
+| `--formats` | Any of `csv,md,json,html,sarif` (default `csv,md,json,html`; `findings.csv` is always written). `sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code scanning: one result per finding at the file the package was found in, with decisions and set-aside findings carried as suppressions. A dashboard closes an alert that is missing from the next upload, so upload without `--min-severity`, and give each target its own category (`github/codeql-action/upload-sarif` with `category:`) so an image's results do not replace a lockfile's |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
-| `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |
+| `--no-latest` | Skip the latest-release lookup for the upgrade comparison, one deps.dev request per vulnerable package (the minimum fix is still checked) |
 | `--no-registry-check` | Skip comparing a JAR, wheel, sdist or npm `.tgz` with its registry's published checksum |
 | `--label KEY=VALUE` | Inventories and SBOMs: label every package that has no such label yet (repeatable), e.g. `--label owner="Web team"`; labels group packages.csv and the executive summary |
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
@@ -527,7 +527,7 @@ This covers Go only; for other languages the advisory conditions are the assesso
 Each finding is placed in one group, with its reason, as a reading order for the engineer: **Act now** (a known
 malicious package, CISA KEV, or a Metasploit or Nuclei exploit), **Review** (an Exploit-DB exploit, EPSS 0.1 or more, or a critical whose
 advisory states no conditions), **Check conditions** (the advisory says when it applies; confirm against the
-deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package, the
+deployment), **Routine** (none of these) and **Set aside** (only with evidence: a kernel header package in a container image, the
 installed version already matches a fix, govulncheck shows the vulnerable function is not in the binary, or the
 assessor recorded the finding as not affected or fixed). No group says a finding carries no risk.
 

@@ -2654,7 +2654,7 @@ def test_an_output_folder_others_can_write_to_is_warned_about(tmp_path):
         hits = [w for w in a["warnings"] if w.startswith("The output folder is not private")]
         assert bool(hits) is warned, a["warnings"]
         if warned:
-            assert f"{out} can be written by other users" in hits[0]
+            assert f"{out.name} can be written by other users" in hits[0] and str(tmp_path) not in hits[0]
 
 
 @pytest.mark.skipif(not hasattr(__import__("time"), "tzset"), reason="needs time.tzset to change the time zone")
@@ -2778,3 +2778,40 @@ def test_upgrade_options_offline_give_the_fixes_without_lookups(tmp_path, fixtur
     a = json.loads((tmp_path / "o" / "assessment.json").read_text(encoding="utf-8"))
     assert a["upgrades"]["upgrade"] == {"status": "skipped"} and a["upgrades"]["rows"]
     assert all(r["upgrade_left"] is None and not r["latest"] for r in a["upgrades"]["rows"])
+
+
+def test_a_package_url_without_a_slash_does_not_stop_the_run(tmp_path):
+    """Review (8 Nov): the upgrade comparison for image scans read every finding's package URL, and one a scanner
+    report gave as 'pkg:foo@1.0.0' stopped the run with a bug message. It is left out of the comparison."""
+    v = {"VulnerabilityID": "CVE-2099-4000", "PkgName": "odd", "InstalledVersion": "1.0.0", "FixedVersion": "1.0.1",
+         "Severity": "HIGH", "PkgIdentifier": {"PURL": "pkg:foo@1.0.0"}}
+    trivy = {"SchemaVersion": 2, "ArtifactName": "x",
+             "Results": [{"Target": "app", "Class": "lang-pkgs", "Type": "npm", "Vulnerabilities": [v]}]}
+    tj = tmp_path / "t.json"
+    tj.write_text(json.dumps(trivy), encoding="utf-8")
+    assert cli.main(["--image", "owner/app:1.0", "--out", str(tmp_path / "o"), "--from-trivy-json", str(tj),
+                     "--scanners", "trivy", "--offline", "--quiet"]) == cli.EXIT_OK
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "getuid"), reason="POSIX permissions")
+def test_a_relative_out_folder_is_checked_with_the_folders_above_it(tmp_path, monkeypatch):
+    """Review (8 Nov): a relative --out was checked as given, so only '.' and not the shared folder above it."""
+    shared = tmp_path / "shared"
+    (shared / "proj").mkdir(parents=True)
+    shared.chmod(0o777)
+    (shared / "proj").chmod(0o755)
+    monkeypatch.chdir(shared / "proj")
+    tj = _kernel_header_trivy(tmp_path)
+    cli.main(["--image", "owner/app:1.0", "--out", "o", "--from-trivy-json", str(tj), "--scanners", "trivy",
+              "--offline", "--quiet"])
+    a = json.loads((shared / "proj" / "o" / "assessment.json").read_text(encoding="utf-8"))
+    hits = [w for w in a["warnings"] if w.startswith("The output folder is not private")]
+    assert hits and "shared can be written by other users" in hits[0] and str(tmp_path) not in hits[0]
+
+
+def test_include_kernel_headers_says_when_it_has_no_effect(tmp_path, capsys):
+    folder = tmp_path / "rootfs"
+    folder.mkdir()
+    cli.main(["--path", str(folder), "--out", str(tmp_path / "o"), "--from-trivy-json",
+              str(_kernel_header_trivy(tmp_path)), "--scanners", "trivy", "--offline", "--include-kernel-headers"])
+    assert "--include-kernel-headers has no effect" in capsys.readouterr().err

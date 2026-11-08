@@ -675,7 +675,7 @@
      "dest": "no_latest",
      "exclusive_group": null,
      "flag": "--no-latest",
-     "help": "package inventories: skip looking up each package's latest release on deps.dev (one request per package); the minimum fix version is still checked",
+     "help": "skip looking up each vulnerable package's latest release on deps.dev for the upgrade comparison (one request per package); the minimum fix version is still checked",
      "kind": "flag",
      "metavar": null,
      "required": false,

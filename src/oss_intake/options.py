@@ -208,8 +208,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="--path on a JAR, wheel, sdist or npm .tgz: skip comparing its hash with the checksum the "
                         "registry (Maven Central, PyPI, npm) publishes for that version")
     s.add_argument("--no-latest", action="store_true",
-                   help="package inventories: skip looking up each package's latest release on deps.dev (one "
-                        "request per package); the minimum fix version is still checked")
+                   help="skip looking up each vulnerable package's latest release on deps.dev for the upgrade "
+                        "comparison (one request per package); the minimum fix version is still checked")
     s.add_argument("--no-exploits", action="store_true",
                    help="skip public exploit availability (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept)")
     s.add_argument("--no-workflows", action="store_true",
@@ -306,6 +306,9 @@ def ineffective_options(args, chosen: list[str]) -> list[str]:
     gv = [f"--govulncheck-{o}" for o in ("path", "sha256", "version") if getattr(args, f"govulncheck_{o}")]
     if gv and not args.reachability:
         out.append(f"{', '.join(gv)} {'has' if len(gv) == 1 else 'have'} no effect without --reachability")
+    if args.include_kernel_headers and not args.image and getattr(args, "path_kind", "") != "inventory":
+        out.append("--include-kernel-headers has no effect: kernel header CVEs are set aside only for a container "
+                   "image, so on this target they already count")
     if args.trust_cache_dir and sys.platform != "win32":
         out.append("--trust-cache-dir has no effect here: folder permissions are read on this system, and what "
                    "they show is not overridden")
