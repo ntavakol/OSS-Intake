@@ -61,6 +61,18 @@
     {
      "choices": null,
      "default": null,
+     "dest": "extension",
+     "exclusive_group": null,
+     "flag": "--extension",
+     "help": "download one exact version of a VS Code extension from Open VSX (e.g. redhat.java@1.36.0), check it against the SHA-256 Open VSX publishes, and assess it like --path on its .vsix",
+     "kind": "value",
+     "metavar": "PUBLISHER.NAME@VERSION",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
      "dest": "package",
      "exclusive_group": null,
      "flag": "--package",

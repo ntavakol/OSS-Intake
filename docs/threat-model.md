@@ -273,6 +273,8 @@ machine if the extension ever ran.
 | The extension claims a trusted project's repository, to borrow its health score | The `repository` field is shown as the publisher's claim and never checked automatically; `--repo` is the user's choice. | `report.extensions_section` |
 | The extension claims another extension's identity, or rewrites its own to dodge the removal list | A folder name or `.vsix` manifest that disagrees with `package.json` is reported, and every one of those names is looked up in the list. IDs are compared after case folding and Unicode compatibility normalisation, with spaces and invisible format characters removed. | `vscode.analyse`, `vscode._key` |
 | The removal list is unavailable, so a malicious extension passes a CI gate | The report says the list was not checked, and `--fail-on malicious` and `act` exit 1 rather than passing. A response with fewer than 100 rows is not taken as the list. | `vscode.load_removed`, `gates.not_evaluated` |
+| A `--extension` download is corrupted or swapped on the way | The file is checked against the SHA-256 Open VSX publishes for it before anything is unpacked; a mismatch, a missing hash or a link that is not https stops the run (exit 2) with nothing assessed. The ID must be `publisher.name@version` with an exact version, so the file name made from it cannot leave the temporary folder. The download is capped at 500 MB and removed after the run. | `openvsx.download`, `cli.cmd_scan` |
+| Open VSX metadata makes an extension look trusted | Verification, publisher and downloads are shown as Open VSX states them, next to the indicators; they change no verdict and no gate. | `openvsx.summary`, `report.extensions_section` |
 | The report itself is used to attack its reader (a name or path with markup) | Extension names, paths and details go through the same escaping as every other report value. | `report._md_cell`, `report_html` |
 
 **Left open:**
@@ -289,6 +291,8 @@ machine if the extension ever ran.
 - The indicators are patterns in text: a determined author can avoid them (by fetching code at run time, for
   example). A clean result means none were found, not that the extension is safe.
 - The removal list is fetched over HTTPS from GitHub and trusted as published; it is not signed.
+- A `--extension` download's SHA-256 comes from Open VSX too, so it shows the file is the one Open VSX serves,
+  not that Open VSX itself was not compromised. Open VSX's own signature (`.sigzip`) is not checked.
 - Bundled code is read for indicators but its dependencies cannot be named, so they are not checked.
 
 ## Open items that could be fixed

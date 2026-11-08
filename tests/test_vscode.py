@@ -800,3 +800,86 @@ def test_compare_with_needs_one_extension_on_each_side(tmp_path, fixtures, capsy
     assert code == cli.EXIT_USAGE and "--compare-with needs --path to one VS Code extension" in capsys.readouterr().err
     code, _ = scan(tmp_path, fixtures, vsix, FakeHttp(), "--compare-with", str(tmp_path / "nope"))
     assert code == cli.EXIT_USAGE and "not a VS Code extension" in capsys.readouterr().err
+
+
+def _openvsx(http, tmp_path, ns="example", name="ext", version="1.2.3", sha=None, **meta):
+    """Open VSX as the fake answers it: the version's metadata, its .vsix and the SHA-256 file."""
+    import hashlib
+
+    body = make_vsix(tmp_path / f"served-{ns}.{name}.vsix", pkg=manifest(ns, name, version)).read_bytes()
+    base = f"https://open-vsx.org/api/{ns}/{name}/{version}"
+    dl, sha_url = f"https://open-vsx.org/api/{ns}/{name}/{version}/file/x.vsix", f"{base}/file/x.sha256"
+    http.openvsx[base] = {"namespace": ns, "name": name, "version": version, "verified": True,
+                          "downloadCount": 12345, "timestamp": "2026-10-01T10:00:00.000Z",
+                          "publishedBy": {"loginName": "someone"}, "files": {"download": dl, "sha256": sha_url},
+                          **meta}
+    http.files[dl] = body
+    http.files[sha_url] = f"{sha or hashlib.sha256(body).hexdigest()}  x.vsix\n".encode()
+    return body
+
+
+def _ext_scan(tmp_path, fixtures, ident, http, *extra):
+    out = tmp_path / "reports"
+    argv = ["--extension", ident, "--out", str(out), "--from-trivy-json", str(fixtures / "trivy.json"),
+            "--from-grype-json", str(fixtures / "grype.json"), "--as-of", AS_OF, *extra]
+    return cli.main(argv, http=http), out
+
+
+def test_an_extension_is_downloaded_from_open_vsx_checked_and_assessed(tmp_path, fixtures, monkeypatch):
+    """Backlog (done 8 Nov): --extension publisher.name@version downloads that version from Open VSX, checks it
+    against the SHA-256 Open VSX publishes, assesses it like a .vsix and shows its Open VSX metadata."""
+    import tempfile
+
+    http = FakeHttp()
+    _openvsx(http, tmp_path)
+    (tmp_path / "t").mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path / "t"))
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["path_kind"] == "vscode"
+    info = a["extensions"]
+    assert info["download"]["sha256"] and info["download"]["source"].endswith("/example/ext/1.2.3")
+    (e,) = info["extensions"]
+    assert e["open_vsx"]["verified"] and e["open_vsx"]["published"] == "2026-10-01"
+    assert info["open_vsx"]["found"] == 1
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "Downloaded from Open VSX" in md and "someone" in md and "12,345" in md
+    assert not list((tmp_path / "t").iterdir())  # the download and its unpacked copy are removed
+
+
+def test_an_extension_whose_download_does_not_match_is_refused(tmp_path, fixtures, capsys):
+    http = FakeHttp()
+    _openvsx(http, tmp_path, sha="0" * 64)
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    assert code == cli.EXIT_USAGE and "does not match Open VSX's SHA-256" in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("ident, extra, msg", [
+    ("example.ext", (), "publisher.name@version"),
+    ("example.ext@latest", (), "publisher.name@version"),
+    ("example.ext@1.2.3", ("--offline",), "needs the network"),
+    ("example.ext@1.2.3", ("--package", "npm:a@1.0.0"), "on its own"),
+    ("example.ext@9.9.9", (), "not found on Open VSX"),
+])
+def test_extension_option_is_refused_when_it_cannot_work(tmp_path, fixtures, capsys, ident, extra, msg):
+    code, _ = _ext_scan(tmp_path, fixtures, ident, FakeHttp(), *extra)
+    assert code == cli.EXIT_USAGE and msg in capsys.readouterr().err
+
+
+def test_an_unverified_or_missing_open_vsx_entry_is_shown(tmp_path, fixtures):
+    """For a --path extension, Open VSX metadata is looked up too; one Open VSX does not have at that version is
+    named, not treated as a failure."""
+    http = FakeHttp()
+    _openvsx(http, tmp_path, ns="other", name="tool", verified=False)
+    root = tmp_path / "extensions"
+    make_folder(root)
+    make_folder(root, "other.tool-1.2.3", pkg=manifest("other", "tool"))
+    code, out = scan(tmp_path, fixtures, root, http)
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    by = {e["id"]: e["open_vsx"] for e in a["extensions"]["extensions"]}
+    assert by["example.ext"] == {"found": False} and by["other.tool"]["verified"] is False
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "Not on Open VSX at this version: example.ext" in md and "| NO |" in md

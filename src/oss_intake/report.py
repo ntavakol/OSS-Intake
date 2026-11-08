@@ -288,6 +288,27 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         blocks.append(("p", f"What the update from {ch['from_version']} to {ch['to_version']} changed "
                             "(--compare-with): most extension compromises arrive as an update to a trusted one."))
         blocks.append(("table", ["Change", "Detail"], crows))
+    dl = info.get("download")
+    if dl:
+        blocks.append(("p", f"Downloaded from Open VSX ({dl['source']}) by --extension; its SHA-256 {dl['sha256']} "
+                            "matches the one Open VSX publishes for it."))
+    ov = info.get("open_vsx") or {}
+    orows = [[e["id"], e["version"], "yes" if e["open_vsx"]["verified"] else "NO",
+              e["open_vsx"]["published"] or "not given", e["open_vsx"]["published_by"] or "not given",
+              "not given" if e["open_vsx"]["downloads"] is None else f"{e['open_vsx']['downloads']:,}",
+              "pre-release" if e["open_vsx"]["pre_release"] else "release"]
+             for e in current if e.get("open_vsx", {}).get("found")]
+    if ov.get("status") == "checked":
+        missing = [e["id"] for e in current if e.get("open_vsx") and not e["open_vsx"]["found"]]
+        blocks.append(("p", "Open VSX, the registry VSCodium, Cursor and other VS Code builds install from: whether "
+                            "the publisher's namespace is verified, and who published this version when. "
+                       + (f"Not on Open VSX at this version: {', '.join(missing[:20])}. " if missing else "")
+                       + (f"{ov['errors']} lookup(s) failed. " if ov.get("errors") else "")
+                       + (f"{ov['skipped_limit']} not looked up (over the limit). "
+                          if ov.get("skipped_limit") else "")))
+        if orows:
+            blocks.append(("table", ["Extension", "Version", "Verified publisher", "Published", "Published by",
+                                     "Downloads (all versions)", "Kind"], orows))
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
                                                        else "")] for e in current if e["hosts"]]
     if hosts:

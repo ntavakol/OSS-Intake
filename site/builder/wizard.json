@@ -1546,6 +1546,28 @@
     ]
    },
    "short": "Removal list"
+  },
+  {
+   "name": "Open VSX",
+   "hosts": [
+    "open-vsx.org"
+   ],
+   "sends": "the ID and version of each extension (and downloads one with --extension)",
+   "when": {
+    "all": [
+     {
+      "what": [
+       "vscode"
+      ]
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   },
+   "short": "Open VSX"
   }
  ],
  "scanner_notes": [
