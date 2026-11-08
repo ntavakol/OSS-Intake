@@ -3947,7 +3947,7 @@ def test_release_cadence_from_gitlab():
     ])
     h = releases.fetch(http, "gitlab.com/group/sub/app", datetime(2026, 11, 8, tzinfo=timezone.utc),
                        release_tag="v1.9.0")
-    assert h["status"] == "ok" and h["forge"] == "gitlab" and h["license"] == "apache-2.0"
+    assert h["status"] == "ok" and h["forge"] == "gitlab" and h["license"] == "Apache-2.0"  # as SPDX, as GitHub
     assert h["latest_release"]["tag"] == "v2.0.0"  # the rc is a pre-release, the upcoming one not out yet
     assert h["scanned_release"]["tag"] == "v1.9.0" and h["newer_stable_releases"] == ["v2.0.0"]
     assert all("api.github.com" not in u for u in http.asked)
@@ -4134,3 +4134,15 @@ def test_xlsx_shared_strings_are_found_by_content_type_not_name(tmp_path, monkey
     monkeypatch.setattr(inputs, "MAX_XLSX_STRINGS", 10_000)
     with pytest.raises(inputs.InputError, match="shared strings"):
         inputs.inventory(f)
+
+
+@pytest.mark.parametrize("key, spdx", [("mit", "MIT"), ("apache-2.0", "Apache-2.0"), ("bsd-3-clause", "BSD-3-Clause"),
+                                       ("gpl-3.0", "GPL-3.0"), ("mpl-2.0", "MPL-2.0"), ("other", "NOASSERTION"),
+                                       ("some-new-licence", "some-new-licence")])
+def test_gitlab_licence_keys_are_given_as_spdx_ids(key, spdx):
+    """Ned, 8 Nov (live run gave "mit"): GitLab's licensee keys are given as the SPDX IDs GitHub gives."""
+    from oss_intake.health import releases
+
+    api = "https://gitlab.com/api/v4/projects/group%2Fapp"
+    http = _ForgeHttp([(f"{api}?license=true", (200, {"archived": False, "license": {"key": key}}))])
+    assert releases._meta(http, "gitlab", "group/app")[1]["license"] == spdx
