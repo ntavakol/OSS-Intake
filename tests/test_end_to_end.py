@@ -2899,3 +2899,39 @@ def test_reports_are_readable_by_their_owner_only(tmp_path, fixtures, monkeypatc
                                         "findings.sarif", ".oss-intake-files.json"}
     assert {p.relative_to(out).as_posix(): oct(p.stat().st_mode & 0o777) for p in files} == {
         p.relative_to(out).as_posix(): "0o600" for p in files}
+
+
+def _scorecard_run(tmp_path, fixtures, http, as_of):
+    out = tmp_path / "out"
+    code = cli.main(["--image", "owner/app:1.0", "--repo", "example/webapp", "--out", str(out),
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json",
+                     str(fixtures / "grype.json"), "--as-of", as_of], http=http)
+    assert code == cli.EXIT_OK
+    return out, json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+
+
+def test_an_undated_scorecard_result_is_not_taken_as_current(tmp_path, fixtures):
+    """Pre-release review (0.19.0): a result with no readable date was shown as a current rating, failing open."""
+    class Undated(FakeHttp):
+        def get_json(self, url, params=None):
+            status, data = super().get_json(url, params)
+            if url.startswith("https://api.securityscorecards.dev/") and isinstance(data, dict):
+                data = {k: v for k, v in data.items() if k != "date"}
+            return status, data
+
+    out, a = _scorecard_run(tmp_path, fixtures, Undated(), "2026-11-08")
+    assert a["scorecard"]["date_unknown"] is True
+    assert any("has no readable date" in w for w in a["warnings"])
+    assert '<div class="tile n"><div class="k">OpenSSF Scorecard' in (out / "report.html").read_text(encoding="utf-8")
+    assert "no date: not current" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_an_old_or_undated_scorecard_score_does_not_drive_the_likelihood():
+    """Pre-release review (0.19.0): the report called an old score not current, and the likelihood still used it."""
+    from oss_intake import likelihood
+
+    def score(sc):
+        return likelihood.metrics({}, {}, {"status": "ok", "score": 3.0, **sc})["scorecard_score"]
+
+    assert score({}) == 3.0
+    assert score({"stale_days": 400}) is None and score({"date_unknown": True}) is None

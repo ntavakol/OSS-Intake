@@ -40,8 +40,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   umask), as they can name hosts, packages and findings. A pipeline that serves or shares the output folder
   directly must now copy the reports or `chmod` them (CodeQL py/overly-permissive-file).
 - An OpenSSF Scorecard result more than a year older than the assessment date is shown with its age and a
-  warning, and its tile is grey rather than coloured as a current rating. The Scorecard service rescans on its
-  own schedule, rarely for GitLab projects (a live check found a 2023 result).
+  warning, and its tile is grey rather than coloured as a current rating; so is one with no readable date. Such a
+  score no longer counts toward the likelihood level. The Scorecard service rescans on its own schedule, rarely
+  for GitLab projects (a live check found a 2023 result).
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
   oss-intake does not download scanners. A scanner downloader is no longer planned (decided 8 Nov).
 

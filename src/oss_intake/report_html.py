@@ -207,9 +207,10 @@ def _tiles(a: dict) -> str:
         tiles.append(("a", "New releases", str(len(ra["recent"])), f"published in the last {ra['days']} days"))
     if sc.get("status") == "ok":
         stale = sc.get("stale_days")
-        tiles.append(("n" if stale else tone_scorecard(sc.get("score")), "OpenSSF Scorecard",
+        tiles.append(("n" if stale or sc.get("date_unknown") else tone_scorecard(sc.get("score")), "OpenSSF Scorecard",
                       Raw(f'{_e(str(sc.get("score")))}<span class="of">/10</span>'),
                       f"from {sc.get('date')}, {stale} days old: not current" if stale else
+                      "no date: not current" if sc.get("date_unknown") else
                       _plural(len(sc.get("low_checks") or []), "check") + " scoring 0 to 3"))
     kev = lag["kev_with_fix"]
     parts = []
@@ -400,7 +401,8 @@ def _health(a: dict) -> str:
             _metric("Days since last push", "n/a" if push is None else push,
                     "" if push is None else "g" if push < 90 else "a" if push < 365 else "r")]
     if sc.get("status") == "ok":
-        old = f", {sc['stale_days']} days old" if sc.get("stale_days") else ""
+        old = (f", {sc['stale_days']} days old" if sc.get("stale_days")
+               else ", no date" if sc.get("date_unknown") else "")
         rows.append(_metric("OpenSSF Scorecard", f"{sc.get('score')} / 10 ({sc.get('date')}{old})",
                             "" if old else tone_scorecard(sc.get("score"))))
         if sc.get("low_checks"):
