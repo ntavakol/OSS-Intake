@@ -526,6 +526,11 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     for e in found:
         e["in_use"] = e["folder"].casefold() not in old
     removed, why = load_removed(http)
+    ovsx = {"status": "not_checked", "detail": "--offline"}
+    if http is not None and found:
+        from . import openvsx
+
+        ovsx = {"status": "checked", **openvsx.lookup(http, found)}
     for e in found:
         hits = [removed[k] for k in map(_key, e["ids_checked"]) if k in removed] if removed is not None else []
         hit = next((h for h in hits if is_malicious(h)), hits[0] if hits else None)
@@ -533,7 +538,8 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
         e["malicious"] = bool(hit and is_malicious(hit))
     return {"extensions": found, "single": staged or _manifest(target) is not None,
             "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
-                             "source": REMOVED_PAGE, "entries": len(removed or {})}}
+                             "source": REMOVED_PAGE, "entries": len(removed or {})},
+            "open_vsx": ovsx}
 
 
 def _is_file(p: Path) -> bool:

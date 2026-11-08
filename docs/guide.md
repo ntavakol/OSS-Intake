@@ -206,7 +206,17 @@ oss-intake --path ~/.vscode/extensions --out ./reports --fail-on malicious   # e
 ```
 
 To check an extension before installing it, download its `.vsix` from VS Code (open its page in the Extensions
-view, click the gear icon next to Install, Download VSIX); downloading runs nothing.
+view, click the gear icon next to Install, Download VSIX); downloading runs nothing. Or let oss-intake download
+one exact version from [Open VSX](https://open-vsx.org), the registry VSCodium, Cursor and other VS Code builds
+install from:
+
+```bash
+oss-intake --extension redhat.java@1.36.0 --out ./reports --fail-on malicious
+```
+
+The download is checked against the SHA-256 Open VSX publishes for that file (a mismatch stops the run, exit 2),
+assessed like any `.vsix`, and removed afterwards. The version must be exact: "latest" is not assessed. The VS
+Code Marketplace's own download API is not used: it is unofficial, and its terms tie it to Microsoft's products.
 
 A `.vsix` (recognised by its content: a zip with `extension/package.json`), an installed extension's folder, or a
 folder of them (`~/.vscode/extensions`, and the same layout in Cursor, VSCodium and Windsurf) is checked as
@@ -217,6 +227,10 @@ extensions. There is no vulnerability database for extensions, so oss-intake rep
   malicious leads the report and counts for `--fail-on malicious`; one removed for Impersonation, Typo-squatting,
   Untrustworthy or Spam is a warning. If the list cannot be fetched, or with `--offline`, the report says it was
   not checked, and `--fail-on malicious` exits 1 rather than passing.
+- **Open VSX metadata** for each extension at its version (sends the extension's ID and version to
+  open-vsx.org; not with `--offline`): whether the publisher's namespace is verified, who published this version
+  and when, downloads, and whether it is a pre-release. An extension Open VSX does not have at that version (one
+  only on the VS Code Marketplace, say) is named, not counted as a problem.
 - **The npm packages it ships**, scanned with Trivy `rootfs` and checked against OSV like any other. Each finding
   is matched to the extensions that ship that package version (oss-intake reads every `node_modules` in them, since
   the scanners do not say where in the folder a package is), or to the extension whose shipped SBOM or lockfile
@@ -373,6 +387,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--image` | Image with explicit tag or digest |
 | `--package ECOSYSTEM:NAME@VERSION` | Check one package version, no scanner needed (repeatable): `npm:chalk@5.6.1`, `pypi:django@2.2.0`, `maven:org.apache.logging.log4j:log4j-core@2.14.1`, or a package URL; prints a one-line verdict per package |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory (`.csv`, or `.xlsx` with the `xlsx` extra) instead of an image |
+| `--extension PUBLISHER.NAME@VERSION` | Download one exact version of a VS Code extension from [Open VSX](https://open-vsx.org), check it against the SHA-256 Open VSX publishes for it, and assess it as `--path` would its `.vsix` (e.g. `redhat.java@1.36.0`). On its own, not with `--image`, `--path` or `--package`; needs the network. The download is removed after the run |
 | `--compare-with` | With `--path` to one VS Code extension (a `.vsix` or its folder): an older version of the same extension, so the report shows what the update changed: new indicators, native files, web addresses and npm packages, and a publisher or repository change. Most extension compromises arrive as an update to a trusted extension |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--govulncheck-sha256`, `--govulncheck-version` | Pin govulncheck like the scanners: hash checked before it runs, version after. The Docker or crane executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json |
@@ -626,6 +641,7 @@ repository could add or hide exploit evidence, though never a vulnerability.
 | [GitHub](https://github.com) | Project health and releases (`--repo`) | GitHub's API terms |
 | Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat | Checksums, fix dates | Each registry's or distribution's terms |
 | [VS Code Marketplace removal list](https://github.com/microsoft/vsmarketplace) * | Removed extensions | See the repository |
+| [Open VSX](https://open-vsx.org) | Extension metadata, `--extension` downloads | The Eclipse Foundation's Open VSX terms |
 
 The test fixtures shipped in the source package include advisory records from the GitHub Advisory Database
 (CC-BY-4.0) and real Trivy and Grype output with advisory text from NVD, GitHub, Red Hat, Debian and Ubuntu;

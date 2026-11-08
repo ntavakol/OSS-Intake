@@ -293,6 +293,7 @@
      "image",
      "path",
      "package",
+     "extension",
      "repo"
     ]
    },
@@ -401,6 +402,73 @@
    "ok_args": [
     "--package",
     "npm:chalk@5.6.1",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "extension-alone",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "extension"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       },
+       {
+        "set": "package"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "give --extension on its own, not with --image, --path or --package",
+   "args": [
+    "--extension",
+    "example.ext@1.2.3",
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--extension",
+    "example.ext@1.2.3",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "extension-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "extension"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "--extension downloads from Open VSX, which needs the network; drop --offline",
+   "args": [
+    "--extension",
+    "example.ext@1.2.3",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--extension",
+    "example.ext@1.2.3",
     "--out",
     "{out}"
    ]

@@ -308,6 +308,10 @@ class Http:
     def get_text(self, url: str) -> tuple[int, str]:
         raise NotImplementedError
 
+    def get_bytes(self, url: str, limit: int) -> tuple[int, bytes]:
+        """A file download, up to limit bytes (over it is an HttpError). Never cached."""
+        raise NotImplementedError
+
     def prefetch(self, urls) -> None:
         """Fetch these GET URLs ahead of the get_json calls that will ask for them. Optional: the default does
         nothing, and every get_json still works without it."""
@@ -393,14 +397,16 @@ class RequestsHttp(Http):
                 raise HttpError(f"{where}: redirected to a non-https address, which is refused")
         raise HttpError(f"{method} {urlparse(url).netloc}: more than {MAX_REDIRECTS} redirects")
 
-    def _body(self, r: Any, method: str, url: str, deadline: float) -> bytes:
-        """The answer's bytes, read in chunks: over MAX_RESPONSE_BYTES or past the deadline is a failed request."""
+    def _body(self, r: Any, method: str, url: str, deadline: float, limit: int | None = None) -> bytes:
+        """The answer's bytes, read in chunks: over its limit (the source's, answer_limit, unless a download gives
+        its own) or past the deadline is a failed request."""
         where = f"{method} {urlparse(url).netloc}{urlparse(url).path}"
+        limit = limit if limit is not None else answer_limit(url)
         chunks = getattr(r, "iter_content", None)
         if chunks is None:  # an answer already read whole (as test doubles give)
             body = r.content or b""
-            if len(body) > answer_limit(url):
-                raise HttpError(f"{where}: the answer is over {answer_limit(url) // (1024 * 1024)} MB")
+            if len(body) > limit:
+                raise HttpError(f"{where}: the answer is over {limit // (1024 * 1024)} MB")
             return body
         import urllib3
 
@@ -419,7 +425,6 @@ class RequestsHttp(Http):
         else:
             source = chunks(1 << 16)
         buf = bytearray()
-        limit = answer_limit(url)
         try:
             for chunk in source:
                 buf += chunk
@@ -495,6 +500,14 @@ class RequestsHttp(Http):
         r, url = self._send("GET", url, "text/plain", timeout)
         # Decode explicitly; servers often send text/plain without a charset.
         return r.status_code, self._body(r, "GET", url, deadline).decode("utf-8", errors="replace")
+
+    def get_bytes(self, url: str, limit: int) -> tuple[int, bytes]:
+        with self._count_lock:
+            self.requests_made += 1
+        timeout = max(self._timeout, 120)
+        deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * timeout)
+        r, url = self._send("GET", url, "application/octet-stream", timeout)
+        return r.status_code, self._body(r, "GET", url, deadline, limit)
 
     def post_json(self, url: str, body: Any) -> tuple[int, Any]:
         return self._do("POST", url, json=body)

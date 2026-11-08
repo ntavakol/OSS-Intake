@@ -28,6 +28,9 @@ class FakeHttp(Http):
         self.scorecard_status = scorecard_status
         self.fail_hosts = fail_hosts
         self.depsdev = load("depsdev.json")
+        # Open VSX answers (URL to JSON) and downloads (URL to bytes or text) a test sets up; others are 404.
+        self.openvsx: dict[str, dict] = {}
+        self.files: dict[str, bytes] = {}
 
     def _check(self, url: str):
         self.calls.append(url)
@@ -72,6 +75,8 @@ class FakeHttp(Http):
             return 200, load("kev.json")
         if url.endswith("/db/modules_metadata_base.json"):
             return 200, load("metasploit.json")
+        if url.startswith("https://open-vsx.org/api/"):
+            return (200, self.openvsx[url]) if url in self.openvsx else (404, {"error": "not found"})
         if url.startswith("https://raw.githubusercontent.com/nomi-sec/PoC-in-GitHub/"):
             p = FIX / "poc" / url.rsplit("/", 1)[1]
             return (200, json.loads(p.read_text(encoding="utf-8"))) if p.exists() else (404, None)
@@ -89,12 +94,22 @@ class FakeHttp(Http):
             return 200, (FIX / "exploitdb.csv").read_text(encoding="utf-8")
         if url == "https://raw.githubusercontent.com/microsoft/vsmarketplace/main/RemovedPackages.md":
             return 200, (FIX / "vscode_removed.md").read_text(encoding="utf-8")
+        if url in self.files:
+            return 200, self.files[url].decode("utf-8")
         if url == "https://go.dev/doc/devel/release":
             return 200, (FIX / "go_release.html").read_text(encoding="utf-8")
         if url.startswith("https://deb.debian.org/debian/dists/") and url.endswith("/ChangeLog"):
             p = FIX / f"debian_{url.split('/')[-2]}_ChangeLog.txt"
             return (200, p.read_text(encoding="utf-8")) if p.exists() else (404, "")
         raise AssertionError(f"unexpected GET (text) {url}")
+
+    def get_bytes(self, url, limit):
+        self._check(url)
+        if url in self.files:
+            if len(self.files[url]) > limit:
+                raise HttpError(f"GET {url}: the answer is over the limit")
+            return 200, self.files[url]
+        raise AssertionError(f"unexpected download {url}")
 
     def post_json(self, url, body):
         self._check(url)

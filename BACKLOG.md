@@ -31,11 +31,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
   packages (OSV has a Bioconductor ecosystem).
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
-- Download by ID (`vscode:publisher.name@1.2.3`), from Open VSX's public API only: the VS Code Marketplace's API
-  is unofficial and its terms tie it to Microsoft's products.
 - Fleet input from osquery's `vscode_extensions` table, through the existing osquery collector: the removal list
   check for every machine, by ID and version.
-- Open VSX metadata (publisher verification, downloads, last update) for extensions from Cursor and VSCodium.
 - Check the Marketplace signature of a `.vsix`.
 - JetBrains plugins (plugins.jetbrains.com has a public API).
 

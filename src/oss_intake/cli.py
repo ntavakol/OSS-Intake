@@ -19,6 +19,7 @@ from . import (
     inputs,
     integrity,
     likelihood,
+    openvsx,
     registry_check,
     sbom,
     scanning,
@@ -141,6 +142,30 @@ def validate_scanner_env(pat: str) -> None:
 
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
+    """--extension is downloaded to a temporary folder first and then assessed as --path on the .vsix; the folder is
+    removed whatever happens."""
+    ext_tmp = None
+    if getattr(args, "extension", None):
+        if args.image or args.path or args.package:
+            raise UsageError("give --extension on its own, not with --image, --path or --package")
+        if args.offline:
+            raise UsageError("--extension downloads from Open VSX, which needs the network; drop --offline")
+        try:
+            openvsx.parse_id(args.extension)
+        except ValueError as exc:
+            raise UsageError(f"--extension {args.extension}: {exc}") from None
+        ext_tmp = Path(tempfile.mkdtemp(prefix="oss-intake-ext-"))
+    try:
+        if ext_tmp:
+            vsix, args.extension_download = openvsx.download(http or RequestsHttp(), args.extension, ext_tmp)
+            args.path = str(vsix)
+        return _cmd_scan(args, http)
+    finally:
+        if ext_tmp:
+            shutil.rmtree(ext_tmp, ignore_errors=True)
+
+
+def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
     if not args.image and not args.repo and not args.path and not args.package:
         raise UsageError("give --image, --path, --package or --repo")
@@ -372,6 +397,8 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     args.extension_info = None
     if args.path_kind == "vscode":
         args.extension_info = vscode.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())
+        if getattr(args, "extension_download", None):
+            args.extension_info["download"] = args.extension_download
         if args.compare_with:
             new = args.extension_info["extensions"][0]
             old = vscode.assess(Path(args.compare_target), None, staged=Path(args.compare_with).is_file())

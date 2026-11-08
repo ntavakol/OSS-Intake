@@ -21,6 +21,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `--compare-with OLD`: for a VS Code extension, what an update changed since an older version (a `.vsix` or its
   folder): new indicators, native files, web addresses and npm packages, and a publisher or repository change,
   with a warning when it adds any.
+- `--extension publisher.name@version` downloads one exact version of a VS Code extension from Open VSX, checks it
+  against the SHA-256 Open VSX publishes, and assesses it like a `.vsix`.
+- VS Code extensions are looked up on Open VSX (their ID and version are sent; not with `--offline`): verified
+  publisher, who published the version and when, downloads, pre-release. Shown in the extensions section; no
+  gate uses it.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says

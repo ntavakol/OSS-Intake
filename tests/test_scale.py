@@ -505,6 +505,21 @@ def test_service_answer_over_the_size_limit_is_a_failed_request(monkeypatch):
         h.get_text("https://example.invalid/list")
 
 
+def test_a_download_has_its_own_size_limit(monkeypatch):
+    """get_bytes (an --extension download) reads up to the limit it is given, not the source's answer limit, and
+    over it is a failed request."""
+    from oss_intake import http as http_mod
+
+    monkeypatch.setattr(http_mod, "MAX_RESPONSE_BYTES", 1000)
+    h = _streamed_client(monkeypatch, _Streamed([b"x" * 1500]))
+    assert h.get_bytes("https://open-vsx.org/api/a/b/1.0.0/file/a.b-1.0.0.vsix", 2000) == (200, b"x" * 1500)
+    resp = _Streamed([b"x" * 1500, b"x" * 1500])
+    h = _streamed_client(monkeypatch, resp)
+    with pytest.raises(HttpError, match="over"):
+        h.get_bytes("https://open-vsx.org/api/a/b/1.0.0/file/a.b-1.0.0.vsix", 2000)
+    assert resp.closed
+
+
 def test_service_answer_past_the_deadline_is_a_failed_request(monkeypatch):
     """Each read was bounded by the timeout but the whole answer was not: a byte at a time held the run."""
     from oss_intake import http as http_mod

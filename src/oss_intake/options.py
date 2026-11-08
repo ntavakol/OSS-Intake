@@ -141,6 +141,9 @@ def build_parser() -> argparse.ArgumentParser:
                                   "folder of built artifacts, a lockfile (requirements.txt, package-lock.json, "
                                   "pom.xml, ...), an R renv.lock, or a package inventory .csv (columns "
                                   "ecosystem,name,version or purl, plus any label columns such as owner)")
+    s.add_argument("--extension", metavar="PUBLISHER.NAME@VERSION",
+                   help="download one exact version of a VS Code extension from Open VSX (e.g. redhat.java@1.36.0), "
+                        "check it against the SHA-256 Open VSX publishes, and assess it like --path on its .vsix")
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")
