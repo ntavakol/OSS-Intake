@@ -27,8 +27,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
 
 ## Inputs
-- Source checkouts: scan a folder in both Trivy modes (`fs` for lockfiles, `rootfs` for built artifacts) and
-  merge, so a whole repository can be passed instead of its lockfile.
 - CRAN fix dates for `renv.lock` findings (from CRAN's archive or the CRAN package database), and Bioconductor
   packages (OSV has a Bioconductor ecosystem).
 - Non-GitHub forges (GitLab, Codeberg) for release cadence.

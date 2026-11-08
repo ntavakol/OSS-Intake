@@ -7,6 +7,7 @@ source for an inventory, SBOM, package list or renv.lock, so a failed lookup sto
 from __future__ import annotations
 
 import argparse
+import json
 import tempfile
 from pathlib import Path
 
@@ -67,6 +68,19 @@ def _refuse_old_database(tool: str, built: object, max_days: int) -> None:
                            "or grype db update) and run again")
 
 
+def merge_trivy_reports(rootfs: bytes, fs: bytes) -> bytes:
+    """One Trivy report from a folder scanned in rootfs and fs mode: the rootfs report, with the fs report's
+    results added after its own (a package both modes found is one finding once merged: merge.merge)."""
+    a, b = load_json_bytes(rootfs, "trivy output (rootfs)"), load_json_bytes(fs, "trivy output (fs)")
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        raise ScannerError("trivy output: not a JSON object")
+    for r in (a, b):
+        if not isinstance(r.get("Results", []), list):
+            raise ScannerError("trivy output: Results is not a list")
+    a["Results"] = [*(a.get("Results") or []), *(b.get("Results") or [])]
+    return json.dumps(a).encode()
+
+
 def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_meta: dict,
                  warnings: list[str] | None = None) -> dict:
     loaded = getattr(args, f"from_{tool}_json")
@@ -122,7 +136,13 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     log(f"running {tool} {info['version']} on {target}", args.quiet)
     if args.path:
         extra = getattr(args, f"{tool}_arg")
-        if tool == "trivy":
+        if tool == "trivy" and args.path_kind == "dir":
+            # A folder may be a source checkout (lockfiles, which only 'fs' reads) or built artifacts (JARs and
+            # binaries, which only 'rootfs' reads): both are run and their results put together.
+            raw = merge_trivy_reports(
+                mod.scan_path(path, "rootfs", str(args.scan_target), extra, args.timeout),
+                mod.scan_path(path, "fs", str(args.scan_target), extra, args.timeout))
+        elif tool == "trivy":
             raw = mod.scan_path(path, inputs.trivy_mode(args.path_kind), str(args.scan_target), extra, args.timeout)
         else:
             raw = mod.scan_path(path, str(args.scan_target), extra, args.timeout)

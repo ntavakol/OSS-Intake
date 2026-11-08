@@ -10,8 +10,9 @@ Kinds, decided from the path:
             Trivy 'fs' and Grype 'dir:'
   artifact  any other single file, e.g. a vendor JAR, WAR, EAR or binary: Trivy 'rootfs' and Grype 'dir:'
             (Trivy reads JARs and binaries in rootfs mode, not fs mode)
-  dir       a directory of built artifacts (an unpacked application, a lib/ folder): Trivy 'rootfs'.
-            For a source checkout, pass the lockfile itself, since rootfs mode skips lockfiles.
+  dir       a directory: a source checkout or built artifacts (an unpacked application, a lib/ folder). Trivy
+            runs in both modes, 'rootfs' for JARs and binaries and 'fs' for lockfiles, and the two are merged;
+            Grype 'dir:' reads both kinds itself
 A single file is copied into an empty temporary directory so both scanners see exactly that file.
 """
 

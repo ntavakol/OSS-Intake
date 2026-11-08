@@ -9,6 +9,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Package inventories as `.xlsx`, read directly (the first worksheet) with the optional `xlsx` extra
   (`pip install 'oss-intake[xlsx]'`, which adds openpyxl). Cells are read as stored values, never as formulas;
   what the workbook may unpack to is limited before it is opened.
+- A folder (`--path`) is scanned by Trivy in both modes, `rootfs` for JARs and binaries and `fs` for lockfiles,
+  and the two are put together, so a whole source checkout can be passed instead of its lockfile.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
