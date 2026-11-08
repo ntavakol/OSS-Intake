@@ -149,7 +149,9 @@ def cosign_verify_blob(file_path: str | Path, bundle: str | Path | None, identit
     not finish in time, or verification fails."""
     cosign = shutil.which("cosign")
     if not cosign:
-        raise IntegrityError("cosign was requested (a cosign bundle or signature) but is not on PATH")
+        from .scanners import missing
+
+        raise IntegrityError(missing("cosign", ", which a cosign bundle or signature needs", path_option=False))
     if bundle:
         material = ["--bundle", str(bundle)]
     elif certificate and signature:

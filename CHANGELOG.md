@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
+  oss-intake does not download scanners. A scanner downloader is no longer planned (decided 8 Nov).
+
 ## [0.18.0] - 2026-11-08
 
 A feature release: upgrade from 0.17.0. SARIF output for code-scanning dashboards (`--formats sarif`), the

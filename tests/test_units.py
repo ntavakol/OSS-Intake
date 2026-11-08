@@ -3799,3 +3799,29 @@ def test_sarif_known_exploited_is_at_least_critical_and_links_are_web_only():
     doc = sarif.build([Finding("CVE-2099-1", "p", "1", severity="LOW", kev=True, url="javascript:alert(1)")], "0", "t")
     rule = doc["runs"][0]["tool"]["driver"]["rules"][0]
     assert float(rule["properties"]["security-severity"]) >= 9.0 and "helpUri" not in rule
+
+
+@pytest.mark.parametrize("tool", ["trivy", "grype"])
+def test_a_missing_scanner_is_named_with_where_to_install_it(tool, monkeypatch):
+    """Ned (8 Nov): oss-intake never downloads a scanner; a missing one is named, with where to install it."""
+    from oss_intake import scanners
+
+    monkeypatch.setattr(scanners.shutil, "which", lambda name: None)
+    with pytest.raises(scanners.ScannerError) as e:
+        scanners.find_executable(tool)
+    msg = str(e.value)
+    assert f"{tool} is not installed" in msg and scanners.INSTALL_PAGES[tool] in msg
+    assert "does not download scanners" in msg and f"--{tool}-path" in msg
+
+
+def test_missing_govulncheck_and_cosign_name_where_to_install_them(monkeypatch, tmp_path):
+    from oss_intake import integrity, scanners
+    from oss_intake.scanners import govulncheck
+
+    monkeypatch.setattr(govulncheck.shutil, "which", lambda name: None)
+    with pytest.raises(scanners.ScannerError, match="govulncheck is not installed.*pkg.go.dev"):
+        govulncheck.find(None)
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: None)
+    with pytest.raises(integrity.IntegrityError) as e:
+        integrity.cosign_verify_blob(tmp_path / "f", tmp_path / "b", ".*")
+    assert "cosign is not installed" in str(e.value) and "--cosign-path" not in str(e.value)
