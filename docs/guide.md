@@ -51,7 +51,9 @@ CISA KEV membership).
 - Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html` (and, on request,
   `findings.sarif` for code-scanning dashboards and `report.pdf`), plus the raw
   scanner output under `raw/` as evidence. Reports the last run left in the folder that this run did not write
-  are removed (only files listed in its `.oss-intake-files.json`; other files are left alone), and a symbolic
+  are removed (only files listed in its `.oss-intake-files.json`; other files are left alone). Reports are
+  readable by you only (mode 600 on Linux and macOS), as they can name hosts, packages and findings: to share
+  them, copy them somewhere shared or `chmod` them. A symbolic
   link where a report goes stops the run.
 - Applies integrity checks to the scanners it runs: version pinning, a known-bad version list, SHA-256
   verification and optional Sigstore (cosign) verification.

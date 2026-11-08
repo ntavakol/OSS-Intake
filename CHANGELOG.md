@@ -36,6 +36,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   extra, the option is refused before any work, saying how to add it. The renderer fetches nothing.
 
 ### Changed
+- **Reports are now readable by their owner only** (mode 600 on Linux and macOS; before, 644 under the usual
+  umask), as they can name hosts, packages and findings. A pipeline that serves or shares the output folder
+  directly must now copy the reports or `chmod` them (CodeQL py/overly-permissive-file).
 - An OpenSSF Scorecard result more than a year older than the assessment date is shown with its age and a
   warning, and its tile is grey rather than coloured as a current rating. The Scorecard service rescans on its
   own schedule, rarely for GitLab projects (a live check found a 2023 result).
