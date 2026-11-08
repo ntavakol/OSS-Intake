@@ -43,7 +43,7 @@
   {
    "id": "artifact",
    "label": "A file or folder you downloaded or built",
-   "hint": "A JAR or WAR, a wheel, an npm .tgz, a binary, or a folder of built files.",
+   "hint": "A JAR or WAR, a wheel, an npm .tgz, a binary, or a folder: built files or a whole source checkout.",
    "fields": [
     "path"
    ],

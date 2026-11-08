@@ -193,7 +193,9 @@ and leads the report; a match proves only that the file is the published one, no
 that bundles several projects cannot be checked this way. `--no-registry-check` or `--offline` skips it. Lockfiles the scanners understand (Python, npm, Maven, Go, Rust, PHP,
 Ruby, .NET) are scanned with Trivy `fs`. An R `renv.lock` is read by oss-intake and checked against OSV's CRAN
 advisories, since neither scanner reads it; packages from Bioconductor, GitHub or local sources are listed as
-not checked. A folder is scanned as built artifacts; for a source checkout, pass its lockfile. Release lag needs
+not checked. A folder, a source checkout or built artifacts, is scanned by Trivy in both modes (`rootfs` for JARs
+and binaries, `fs` for lockfiles) and the results put together, so a whole repository can be passed; Grype
+reads both kinds itself. Release lag needs
 the project's release: `--repo` with `--release-tag`, or `--release-date`.
 
 ### VS Code extensions

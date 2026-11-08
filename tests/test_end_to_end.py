@@ -2815,3 +2815,47 @@ def test_include_kernel_headers_says_when_it_has_no_effect(tmp_path, capsys):
     cli.main(["--path", str(folder), "--out", str(tmp_path / "o"), "--from-trivy-json",
               str(_kernel_header_trivy(tmp_path)), "--scanners", "trivy", "--offline", "--include-kernel-headers"])
     assert "--include-kernel-headers has no effect" in capsys.readouterr().err
+
+
+def test_a_folder_is_scanned_in_both_trivy_modes_and_merged(tmp_path, monkeypatch):
+    """Backlog (done 8 Nov): a source checkout could not be passed as a folder, as Trivy's rootfs mode skips
+    lockfiles. A folder is now scanned in rootfs mode (JARs, binaries) and fs mode (lockfiles) and the results are
+    put together; a package both modes found is one finding."""
+    folder = tmp_path / "repo"
+    folder.mkdir()
+    fake = tmp_path / "trivy"
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+
+    def vuln(cve, pkg, ver, purl):
+        return {"VulnerabilityID": cve, "PkgName": pkg, "InstalledVersion": ver, "Severity": "HIGH",
+                "PkgIdentifier": {"PURL": purl}}
+
+    shared = vuln("CVE-2099-5002", "lodash", "4.17.20", "pkg:npm/lodash@4.17.20")
+    reports = {
+        "rootfs": {"SchemaVersion": 2, "ArtifactName": "repo", "Results": [
+            {"Target": "lib/app.jar", "Class": "lang-pkgs", "Type": "jar", "Vulnerabilities": [
+                vuln("CVE-2099-5001", "org.example:lib", "1.0", "pkg:maven/org.example/lib@1.0")]},
+            {"Target": "node_modules/lodash/package.json", "Class": "lang-pkgs", "Type": "node-pkg",
+             "Vulnerabilities": [shared]}]},
+        "fs": {"SchemaVersion": 2, "ArtifactName": "repo", "Results": [
+            {"Target": "package-lock.json", "Class": "lang-pkgs", "Type": "npm", "Vulnerabilities": [shared]}]},
+    }
+    modes = []
+
+    def run(cmd, timeout):
+        if "--version" in cmd:
+            return json.dumps({"Version": "0.76.1"}).encode()
+        modes.append(cmd[1])
+        return json.dumps(reports[cmd[1]]).encode()
+
+    monkeypatch.setattr(cli.trivy_mod, "run", run)
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(folder), "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--trivy-path", str(fake), "--formats", "json"]) == 0
+    assert sorted(modes) == ["fs", "rootfs"]
+    rows = list(csv.DictReader((out / "findings.csv").open(encoding="utf-8", newline="")))
+    assert sorted(r["id"] for r in rows) == ["CVE-2099-5001", "CVE-2099-5002"]
+    raw = json.loads((out / "raw" / "trivy.json").read_text(encoding="utf-8"))
+    assert [r["Target"] for r in raw["Results"]] == ["lib/app.jar", "node_modules/lodash/package.json",
+                                                     "package-lock.json"]
