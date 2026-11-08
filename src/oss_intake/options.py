@@ -186,7 +186,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--unshipped-days", type=int, default=lag.DEFAULT_UNSHIPPED_DAYS,
                    help="days a fix must be public, with no newer release, to count as unshipped (default 90)")
     s.add_argument("--no-image-date", action="store_true",
-                   help="do not fall back to the image build date when no release date is known")
+                   help="do not use the image build date: no fall back to it when no release date is known, and "
+                        "no OS package lag against a rebuild")
     s.add_argument("--include-kernel-headers", action="store_true",
                    help="for a container image, count kernel CVEs on kernel header packages (linux-libc-dev...) in lag "
                         "and likelihood; for other targets they always count")

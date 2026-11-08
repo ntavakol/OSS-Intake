@@ -3994,3 +3994,46 @@ def test_the_workflow_audit_is_skipped_for_a_repo_not_on_github():
                            release_tag=None, no_scorecard=True, no_workflows=False)
     health, _ = assessment._health(args, _ForgeHttp([]), datetime(2026, 11, 8, tzinfo=timezone.utc), [])
     assert health["workflows"]["status"] == "skipped"
+
+
+def test_os_lag_against_the_build_of_a_rebuilt_image():
+    """Backlog (done 8 Nov): official images are rebuilt with newer OS packages under the same tag, so lag against
+    the project's release can be unfair to the OS layer. For an image built after its release, the OS fixes that
+    were public before the build are counted too; language packages and an image built before the release are not."""
+    from datetime import datetime, timedelta, timezone
+
+    from oss_intake import lag
+    from oss_intake.models import Finding
+
+    release, build = datetime(2026, 6, 1, tzinfo=timezone.utc), datetime(2026, 10, 1, tzinfo=timezone.utc)
+
+    def f(purl, fixed_days_before_build, sev="HIGH"):
+        x = Finding("CVE-2099-1", "p", "1", severity=sev, purl=purl, fixed_versions=["2"])
+        x.fix_published = build - timedelta(days=fixed_days_before_build)
+        return x
+
+    found = [f("pkg:deb/debian/openssl@1", 60), f("pkg:deb/debian/zlib@1", 5), f("pkg:npm/lodash@1", 60),
+             f("pkg:rpm/redhat/curl@1", 200, "CRITICAL")]
+    got = lag.os_at_build(found, build, release, grace_days=14)
+    assert got["os_with_fix"] == 3 and got["fix_available_at_build"] == 2  # zlib's fix came within the grace days
+    assert got["fix_available_at_build_by_severity"]["CRITICAL"] == 1
+    assert lag.os_at_build(found, release - timedelta(days=1), release) is None
+    assert lag.os_at_build(found, build, None) is None
+
+
+def test_the_rebuilt_image_lag_is_reported(tmp_path, fixtures):
+    import json as _json
+
+    from oss_intake import cli
+
+    report = _json.loads((fixtures / "trivy.json").read_text(encoding="utf-8"))
+    report.setdefault("Metadata", {}).setdefault("ImageConfig", {})["created"] = "2026-03-01T00:00:00Z"
+    tj = tmp_path / "t.json"
+    tj.write_text(_json.dumps(report), encoding="utf-8")
+    out = tmp_path / "o"
+    assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--from-trivy-json", str(tj),
+                     "--scanners", "trivy", "--release-date", "2026-01-15", "--as-of", "2026-06-01"]) == 0
+    a = _json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["lag"]["os_at_build"]["build_date"].startswith("2026-03-01")
+    assert "before the image was rebuilt on 2026-03-01" in (out / "summary.md").read_text(encoding="utf-8")
+    assert "before the image was rebuilt on 2026-03-01" in (out / "report.html").read_text(encoding="utf-8")

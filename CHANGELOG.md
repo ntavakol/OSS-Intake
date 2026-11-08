@@ -14,6 +14,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `--repo` may name a project on GitLab (`gitlab.com/group/name`, subgroups too) or Codeberg
   (`codeberg.org/owner/name`) as well as GitHub, for release cadence, release lag and Scorecard (GitHub and GitLab
   only); both are asked without a token. The workflow audit stays GitHub-only.
+- For an image built after the release it is matched to (official images are rebuilt with newer OS packages
+  under the same tag), the OS packages are also measured against the build: how many of their fixes were public
+  before the image was rebuilt, beside the lag against the release (`assessment.json` `lag.os_at_build`, and a
+  row in the release lag table).
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
