@@ -105,7 +105,8 @@ def validate_repo(value: str) -> str:
 
 def forge_of(repo: str) -> str:
     """'github', 'gitlab' or 'codeberg' for a --repo value validate_repo accepted."""
-    return "gitlab" if repo.startswith("gitlab.com/") else "codeberg" if repo.startswith("codeberg.org/") else "github"
+    host = repo.partition("/")[0]  # the first segment: a GitHub owner, or the forge's host
+    return "gitlab" if host == "gitlab.com" else "codeberg" if host == "codeberg.org" else "github"
 
 
 def validate_date(value: str | None, flag: str) -> datetime | None:
