@@ -84,3 +84,19 @@ def test_the_real_renderer_reads_data_uris_and_nothing_else():
     pdf = report_pdf.render('<html><head></head><body><img src="file:///etc/passwd">'
                             '<link rel="stylesheet" href="http://127.0.0.1:9/x.css"><p>ok</p></body></html>')
     assert pdf.startswith(b"%PDF")
+
+
+def test_a_pdf_that_cannot_be_rendered_writes_no_reports(tmp_path, fixtures, stand_in, monkeypatch, capsys):
+    """Second review: the PDF was rendered after the other reports were written, so a renderer failure left new
+    reports beside the previous run's report.pdf, and the error called itself a bug in oss-intake."""
+    code, out = _scan(tmp_path, fixtures, "--formats", "html,pdf")
+    before = (out / "report.html").read_bytes()
+
+    def broken(self):
+        raise RuntimeError("Pango failed")
+
+    monkeypatch.setattr(sys.modules["weasyprint"].HTML, "write_pdf", broken)
+    code, out = _scan(tmp_path, fixtures, "--formats", "html,pdf", "--as-of", "2026-11-09")
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_ERROR and "could not be rendered" in err and "bug in oss-intake" not in err
+    assert (out / "report.html").read_bytes() == before  # nothing of the failed run was written

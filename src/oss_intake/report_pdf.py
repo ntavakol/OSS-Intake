@@ -9,9 +9,6 @@ than opened, so rendering cannot reach the network or read local files. Only dat
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-
-from . import safewrite
 
 INSTALL = "pip install 'oss-intake[pdf]' (WeasyPrint; it also needs Pango, see doc.courtbouillon.org/weasyprint)"
 # Paper layout: the screen page's width and shadows do not suit A4; tables may run across pages, rows do not. The
@@ -65,13 +62,11 @@ def render(html_text: str) -> bytes:
         # The paper layout goes last in the head, so it wins over the screen styles it replaces.
         page = html_text.replace("</head>", f"<style>{PAGE_CSS}</style></head>", 1)
         pdf = weasyprint.HTML(string=page, url_fetcher=fetcher, base_url=None).write_pdf()
+    except Exception as exc:  # noqa: BLE001 - a renderer or system library failure, said plainly (exit 1)
+        raise OSError(f"the PDF report could not be rendered by WeasyPrint: {type(exc).__name__}: {exc}") from exc
     finally:
         for lg, level in zip(quiet, levels, strict=True):
             lg.setLevel(level)
     if not isinstance(pdf, bytes):
         raise OSError("WeasyPrint returned no PDF")
     return pdf
-
-
-def write(path: Path, html_text: str) -> None:
-    safewrite.write_bytes(path, render(html_text))

@@ -4112,3 +4112,25 @@ def test_offline_hint_names_the_forge_of_the_repo(tmp_path, fixtures, capsys):
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     text = json.dumps(a["warnings"]) + capsys.readouterr().err
     assert "skips the GitLab lookup" in text and "GitHub lookup" not in text
+
+
+def test_xlsx_shared_strings_are_found_by_content_type_not_name(tmp_path, monkeypatch):
+    """Second review: openpyxl finds the shared strings by content type, so a renamed part escaped the limit."""
+    pytest.importorskip("openpyxl")
+    import zipfile
+
+    from oss_intake import inputs
+
+    src = _xlsx(tmp_path / "src.xlsx", [["purl"], ["pkg:npm/chalk@5.6.1"]])
+    f = tmp_path / "inv.xlsx"
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(f, "w") as zout:
+        for item in zin.infolist():
+            data = zin.read(item)
+            if item.filename == "[Content_Types].xml":
+                data = data.replace(b"</Types>", b'<Override PartName="/xl/zz.xml" ContentType="application/'
+                                    b'vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
+            zout.writestr(item, data)
+        zout.writestr("xl/zz.xml", "<sst>" + "<si><t>repeated text</t></si>" * 2000 + "</sst>")
+    monkeypatch.setattr(inputs, "MAX_XLSX_STRINGS", 10_000)
+    with pytest.raises(inputs.InputError, match="shared strings"):
+        inputs.inventory(f)
