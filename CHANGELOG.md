@@ -5,6 +5,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-08
+
+A feature release: upgrade from 0.18.0. New inputs (`.xlsx` inventories, GitLab and Codeberg repositories, a VS
+Code extension downloaded from Open VSX by ID, a fleet's VS Code extensions from osquery), `--compare-with` for an
+extension update, the OS lag of a rebuilt image, and a PDF report. One change affects pipelines: reports are now
+readable by their owner only (mode 600), so a pipeline that serves or shares the output folder directly must copy
+or `chmod` them.
+
 ### Added
 - Package inventories as `.xlsx`, read directly (the first worksheet) with the optional `xlsx` extra
   (`pip install 'oss-intake[xlsx]'`, which adds openpyxl). Cells are read as stored values, never as formulas;
