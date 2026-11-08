@@ -3825,3 +3825,68 @@ def test_missing_govulncheck_and_cosign_name_where_to_install_them(monkeypatch, 
     with pytest.raises(integrity.IntegrityError) as e:
         integrity.cosign_verify_blob(tmp_path / "f", tmp_path / "b", ".*")
     assert "cosign is not installed" in str(e.value) and "--cosign-path" not in str(e.value)
+
+
+def _xlsx(path, rows):
+    openpyxl = pytest.importorskip("openpyxl")
+    book = openpyxl.Workbook()
+    for r in rows:
+        book.active.append(r)
+    book.save(path)
+    return path
+
+
+def test_an_xlsx_inventory_is_read_like_a_csv(tmp_path):
+    """Backlog (done 8 Nov): an inventory as .xlsx, read directly (openpyxl, an optional extra). The first sheet is
+    read, a version typed as a number keeps its digits, other columns are labels, and every row is checked."""
+    from oss_intake import inputs
+
+    f = _xlsx(tmp_path / "inv.xlsx", [["Ecosystem", "Name", "Version", "Owner"],
+                                      ["npm", "lodash", "4.17.20", "Web team"],
+                                      ["pypi", "requests", 2, "Data"],
+                                      [None, None, None, None],
+                                      ["npm", "lodash", "4.17.20", "Mobile"]])
+    assert inputs.classify(f) == "inventory"
+    got = {r["purl"]: r["labels"] for r in inputs.inventory(f)}
+    assert got == {"pkg:npm/lodash@4.17.20": {"owner": "Mobile; Web team"}, "pkg:pypi/requests@2": {"owner": "Data"}}
+
+
+def test_an_xlsx_formula_is_not_taken_as_a_value_and_bad_rows_are_listed(tmp_path):
+    from oss_intake import inputs
+
+    f = _xlsx(tmp_path / "inv.xlsx", [["purl"], ["pkg:npm/chalk@5.6.1"], ["=HYPERLINK(\"x\")"], ["not a purl"]])
+    with pytest.raises(inputs.InputError) as e:
+        inputs.inventory(f)
+    assert "row 4" in str(e.value) and "HYPERLINK" not in str(e.value)  # the formula cell has no value: skipped
+
+
+def test_an_xlsx_that_unpacks_too_large_or_is_not_a_workbook_is_refused(tmp_path, monkeypatch):
+    from oss_intake import inputs
+
+    f = _xlsx(tmp_path / "inv.xlsx", [["purl"], ["pkg:npm/chalk@5.6.1"]])
+    monkeypatch.setattr(inputs, "MAX_XLSX_UNPACKED", 100)
+    with pytest.raises(inputs.InputError, match="unpacks to more than"):
+        inputs.inventory(f)
+    bad = tmp_path / "bad.xlsx"
+    bad.write_bytes(b"not a zip")
+    with pytest.raises(inputs.InputError, match="cannot read bad.xlsx as an Excel workbook"):
+        inputs.inventory(bad)
+
+
+def test_an_xlsx_without_openpyxl_says_how_to_add_it(tmp_path, monkeypatch):
+    import builtins
+
+    from oss_intake import inputs
+
+    f = tmp_path / "inv.xlsx"
+    f.write_bytes(b"PK")
+    real = builtins.__import__
+
+    def no_openpyxl(name, *a, **k):
+        if name == "openpyxl":
+            raise ImportError(name)
+        return real(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", no_openpyxl)
+    with pytest.raises(inputs.InputError, match=r"pip install 'oss-intake\[xlsx\]'"):
+        inputs.inventory(f)

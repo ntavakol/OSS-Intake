@@ -133,7 +133,7 @@ one way a package is recognised as malware).
 ## User inputs
 
 **What crosses:** command-line options and the files the user names: package lists (`--package`, CSV
-inventories), SBOMs, decisions files (`--decisions`, a findings.csv or OpenVEX), a likelihood configuration, and
+and `.xlsx` inventories), SBOMs, decisions files (`--decisions`, a findings.csv or OpenVEX), a likelihood configuration, and
 `--path` targets. They usually come from the user, but often from somewhere else first (an SBOM from a vendor, an
 inventory exported from a fleet), so they are checked as untrusted.
 
@@ -153,7 +153,8 @@ memory and time.
 | A gate is asked for that cannot be checked | A gate whose check is turned off is refused (exit 2); one whose check could not run fails (exit 1). | `options.refuse_gates_without_their_check`, `gates.not_evaluated` |
 | `--fail-on-likelihood` passes because a source did not load | Evidence from a source that failed on the run (KEV, malicious package data, EPSS, exploit indexes) is unknown, not 0; when a rule at or above the threshold depends on it, the gate fails (exit 1), naming it. A source turned off by choice, and release health without `--repo`, read as before (the latter as low confidence). | `likelihood.evaluate` (`could_be`), `assessment._finish` |
 | `--min-severity` hides what a gate depends on | It is applied after KEV, exploits and triage, keeps findings in Act now, malicious ones and those missing their details, and the gates and likelihood see every finding; a gate met only by findings it left out is named in a warning. | `assessment._shown`, `gates.hidden_warnings` |
-| Spreadsheet formulas in an input cell | Kept as text, and neutralised when written to CSV (see "Reports"). | `report.csv_safe` |
+| Spreadsheet formulas in an input cell | Kept as text, and neutralised when written to CSV (see "Reports"). An `.xlsx` cell is read as its stored value; a formula is never evaluated. | `report.csv_safe`, `inputs._xlsx_rows` |
+| An `.xlsx` that unpacks to far more than its size (a zip bomb) | Its parts are counted and their unpacked size added up (at most 800 MB and 10,000 parts) before openpyxl opens it, read-only. The XML inside is parsed by openpyxl with Python's expat, which limits entity expansion. | `inputs._xlsx_rows` |
 
 **Left open:**
 

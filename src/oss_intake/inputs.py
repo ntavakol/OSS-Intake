@@ -21,6 +21,7 @@ import io
 import re
 import shutil
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -73,7 +74,7 @@ def classify(path: Path) -> str:
         return "dir"
     if path.name == "renv.lock":
         return "renv"
-    if path.suffix.lower() == ".csv":
+    if path.suffix.lower() in (".csv", ".xlsx"):
         return "inventory"
     if LOCKFILES.match(path.name):
         return "lockfile"
@@ -271,8 +272,69 @@ def packages(specs: list[str]) -> list[dict]:
     return [{"purl": p, "labels": {}} for p in found]
 
 
+# An .xlsx is a zip of XML: what it may unpack to is limited before it is opened (a small file can unpack to a
+# very large one).
+MAX_XLSX_UNPACKED = 4 * MAX_INPUT_BYTES
+MAX_XLSX_PARTS = 10_000
+
+
+def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[dict]]:
+    """The first worksheet of an .xlsx as a header row and dict rows of text, read with openpyxl (an optional
+    extra: pip install 'oss-intake[xlsx]'). Cells are read as their stored values, never as formulas run."""
+    import zipfile
+
+    try:
+        import openpyxl
+    except ImportError:
+        raise InputError(f"reading {path.name} needs openpyxl, an optional extra: pip install 'oss-intake[xlsx]' "
+                         "(or save the sheet as 'CSV UTF-8')") from None
+    try:
+        with zipfile.ZipFile(path) as z:
+            parts = z.infolist()
+        if len(parts) > MAX_XLSX_PARTS or sum(p.file_size for p in parts) > MAX_XLSX_UNPACKED:
+            raise InputError(f"{path.name} unpacks to more than {MAX_XLSX_UNPACKED // (1024 * 1024)} MB or "
+                             f"{MAX_XLSX_PARTS} parts; save it as CSV instead")
+        book = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    except InputError:
+        raise
+    except Exception as exc:  # openpyxl and zipfile raise many kinds for a damaged or non-xlsx file
+        raise InputError(f"cannot read {path.name} as an Excel workbook: {exc}") from None
+    sheet = book.worksheets[0] if book.worksheets else None
+    if sheet is None:
+        book.close()
+        raise InputError(f"{path.name} has no worksheet")
+
+    def text(v: object) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, float) and v.is_integer():
+            return str(int(v))  # a version typed as 2 is stored as 2.0
+        return str(v)
+
+    rows = sheet.iter_rows(values_only=True)
+    try:
+        header = [text(v) for v in next(rows, ())]
+    except Exception as exc:
+        book.close()
+        raise InputError(f"cannot read {path.name}: {exc}") from None
+    # Header cells that are empty, or repeat an earlier one, are kept apart so no column overwrites another.
+    keys = [h if h and h not in header[:i] else f"\0{i}" for i, h in enumerate(header)]
+
+    def body() -> Iterator[dict]:
+        try:
+            for r in rows:
+                yield {k: text(v) for k, v in zip(keys, r, strict=False)}  # cells past the header are not read
+        except Exception as exc:
+            raise InputError(f"cannot read {path.name}: {exc}") from None
+        finally:
+            book.close()
+
+    return keys, body()
+
+
 def inventory(path: Path) -> list[dict]:
-    """Read a package inventory CSV. Returns [{"purl", "labels"}], one per distinct package version.
+    """Read a package inventory, CSV or the first worksheet of an .xlsx. Returns [{"purl", "labels"}], one per
+    distinct package version.
 
     Columns, case-insensitive: either 'purl', or 'ecosystem', 'name' and 'version'. Any other column (owner,
     system, team...) is kept as a label and carried through to the reports. Every row is validated before
@@ -281,14 +343,18 @@ def inventory(path: Path) -> list[dict]:
     import csv
 
     check_size(path, MAX_INPUT_BYTES, "inventory")
-    try:
-        text = path.read_text(encoding="utf-8-sig")  # Excel writes a byte order mark
-    except (OSError, UnicodeDecodeError) as exc:
-        raise InputError(f"cannot read {path.name}: {exc}. Save it from Excel as 'CSV UTF-8'.") from None
-    # newline="": the csv module splits rows itself, so a quoted line break, or a character str.splitlines()
-    # also breaks on (\x85, \x0b, \x1c), stays inside its cell.
-    reader = csv.DictReader(io.StringIO(text, newline=""))
-    headers = {h: (h or "").strip().lower() for h in reader.fieldnames or []}
+    if path.suffix.lower() == ".xlsx":
+        fieldnames, reader = _xlsx_rows(path)
+    else:
+        try:
+            text = path.read_text(encoding="utf-8-sig")  # Excel writes a byte order mark
+        except (OSError, UnicodeDecodeError) as exc:
+            raise InputError(f"cannot read {path.name}: {exc}. Save it from Excel as 'CSV UTF-8'.") from None
+        # newline="": the csv module splits rows itself, so a quoted line break, or a character str.splitlines()
+        # also breaks on (\x85, \x0b, \x1c), stays inside its cell.
+        dict_reader = csv.DictReader(io.StringIO(text, newline=""))
+        fieldnames, reader = list(dict_reader.fieldnames or []), iter(dict_reader)
+    headers = {h: ("" if h.startswith("\0") else (h or "").strip().lower()) for h in fieldnames}
     cols = set(headers.values())
     if "purl" not in cols and not {"ecosystem", "name", "version"} <= cols:
         raise InputError(f"{path.name} needs a 'purl' column, or 'ecosystem', 'name' and 'version' columns "

@@ -1,5 +1,6 @@
 coverage==7.17.0 ; python_version >= '3.11'  # measured on one Python 3.13 job only
 mypy==2.4.1
+openpyxl==3.1.5  # the optional .xlsx inventory reader, tested in CI
 pytest==9.2.0
 requests>=2.31,<3
 ruff==0.17.3

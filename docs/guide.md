@@ -44,7 +44,7 @@ CISA KEV membership).
   compromised `trivy-action` tags), missing or write-all token permissions, and `pull_request_target` triggers.
 - Optionally suggests a likelihood value for a 5x5 risk matrix from configurable rules, clearly labelled
   as a heuristic.
-- Checks the open source an organisation already runs: a package inventory CSV or a folder of SBOMs, one per
+- Checks the open source an organisation already runs: a package inventory (CSV or Excel) or a folder of SBOMs, one per
   host, image or repository (an [osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
   collector makes them for laptops and servers), with each package version looked up once and counted per
   system.
@@ -249,10 +249,14 @@ signature is not checked. `--fail-on mismatch` is refused, as for a folder. The 
 ### Package inventory
 
 To check the open source an organisation already uses, pass a CSV list of packages, for example exported from
-Artifactory or Nexus, or kept in a spreadsheet (save it from Excel as "CSV UTF-8"):
+Artifactory or Nexus, or a spreadsheet: an `.xlsx` is read directly (its first worksheet) once the optional
+extra is installed (`pipx install 'oss-intake[xlsx]'`, or `pipx inject oss-intake openpyxl`), or save it from Excel
+as "CSV UTF-8". Cells are read as stored values, never as formulas; type versions as text, as Excel turns
+`1.10` typed as a number into 1.1:
 
 ```bash
 oss-intake --path ./packages.csv --out ./reports
+oss-intake --path ./packages.xlsx --out ./reports
 ```
 
 To re-scan it every week and get an issue when something new needs action, copy the ready-made GitHub workflow in
@@ -366,7 +370,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--out` | Output directory (required) |
 | `--image` | Image with explicit tag or digest |
 | `--package ECOSYSTEM:NAME@VERSION` | Check one package version, no scanner needed (repeatable): `npm:chalk@5.6.1`, `pypi:django@2.2.0`, `maven:org.apache.logging.log4j:log4j-core@2.14.1`, or a package URL; prints a one-line verdict per package |
-| `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory `.csv` instead of an image |
+| `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory (`.csv`, or `.xlsx` with the `xlsx` extra) instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--govulncheck-sha256`, `--govulncheck-version` | Pin govulncheck like the scanners: hash checked before it runs, version after. The Docker or crane executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json |
 | `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
