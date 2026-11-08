@@ -72,7 +72,8 @@ nothing, or output that is not what it seems).
 
 ## Public services (network)
 
-**What crosses:** JSON and text from OSV, deps.dev, the GitHub API and raw.githubusercontent.com, GitLab, CISA
+**What crosses:** JSON and text from OSV, deps.dev, the GitHub API and raw.githubusercontent.com, GitLab (exploit
+indexes, and a GitLab `--repo`'s releases), Codeberg (a Codeberg `--repo`'s releases), CISA
 KEV, FIRST EPSS, OpenSSF Scorecard, the package registries (PyPI, npm, Maven Central, Packagist), Debian, Ubuntu,
 Red Hat and go.dev. oss-intake trusts these services for facts, so a wrong answer can change the verdict; it does
 not trust them to be up, or to answer in the right shape.

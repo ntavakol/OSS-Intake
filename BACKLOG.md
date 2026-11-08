@@ -29,7 +29,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
 ## Inputs
 - CRAN fix dates for `renv.lock` findings (from CRAN's archive or the CRAN package database), and Bioconductor
   packages (OSV has a Bioconductor ecosystem).
-- Non-GitHub forges (GitLab, Codeberg) for release cadence.
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
 - Download by ID (`vscode:publisher.name@1.2.3`), from Open VSX's public API only: the VS Code Marketplace's API

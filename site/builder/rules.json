@@ -33,18 +33,24 @@
   {
    "command": "scan",
    "dest": "repo",
-   "pattern": "^(?:(?:https?://)?(?:www\\.)?github\\.com/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.git/?$)[A-Za-z0-9._-]{1,100}?(?:\\.git)?/?$",
-   "message": "must be a GitHub repository as owner/name",
+   "pattern": "^(?:https?://)?(?:(?:(?:www\\.)?github\\.com/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.git/?$)[A-Za-z0-9._-]{1,100}?|gitlab\\.com/[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})(?:/[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})){1,19}?|codeberg\\.org/[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})/[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})?)(?:\\.git)?/?$",
+   "message": "must be a repository as owner/name (GitHub), gitlab.com/group/name or codeberg.org/owner/name",
    "valid": [
     "owner/name",
     "https://github.com/owner/name",
-    "owner/name.git"
+    "owner/name.git",
+    "gitlab.com/group/sub/name",
+    "https://gitlab.com/group/name.git",
+    "codeberg.org/owner/name"
    ],
    "invalid": [
     "owner",
     "owner/name/extra",
     "-owner/name",
-    "owner/.git"
+    "owner/.git",
+    "gitlab.com/name",
+    "codeberg.org/owner/name/extra",
+    "bitbucket.org/owner/name"
    ]
   },
   {

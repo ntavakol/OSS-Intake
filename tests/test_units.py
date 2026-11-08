@@ -3890,3 +3890,107 @@ def test_an_xlsx_without_openpyxl_says_how_to_add_it(tmp_path, monkeypatch):
     monkeypatch.setattr(builtins, "__import__", no_openpyxl)
     with pytest.raises(inputs.InputError, match=r"pip install 'oss-intake\[xlsx\]'"):
         inputs.inventory(f)
+
+
+class _ForgeHttp:
+    """Answers by URL prefix and records what was asked."""
+
+    def __init__(self, answers):
+        self.answers, self.asked = answers, []
+
+    def get_json(self, url, params=None):
+        from oss_intake.http import with_params
+
+        full = with_params(url, params) if params else url
+        self.asked.append(full)
+        for prefix, answer in self.answers:
+            if full.startswith(prefix):
+                return answer
+        return 404, None
+
+
+@pytest.mark.parametrize("value, repo, forge", [
+    ("owner/name", "owner/name", "github"),
+    ("https://github.com/owner/name.git", "owner/name", "github"),
+    ("https://gitlab.com/group/sub/name.git", "gitlab.com/group/sub/name", "gitlab"),
+    ("codeberg.org/forgejo/forgejo", "codeberg.org/forgejo/forgejo", "codeberg"),
+])
+def test_repo_may_be_on_github_gitlab_or_codeberg(value, repo, forge):
+    """Backlog (done 8 Nov): release cadence from GitLab and Codeberg as well as GitHub."""
+    from oss_intake import options
+
+    assert options.validate_repo(value) == repo and options.forge_of(repo) == forge
+
+
+@pytest.mark.parametrize("value", ["gitlab.com/name", "codeberg.org/a/b/c", "bitbucket.org/a/b", "a"])
+def test_a_repo_on_another_forge_is_refused(value):
+    from oss_intake import options
+
+    with pytest.raises(options.UsageError, match="gitlab.com/group/name or codeberg.org/owner/name"):
+        options.validate_repo(value)
+
+
+def test_release_cadence_from_gitlab():
+    from datetime import datetime, timezone
+
+    from oss_intake.health import releases
+
+    api = "https://gitlab.com/api/v4/projects/group%2Fsub%2Fapp"
+    http = _ForgeHttp([
+        (f"{api}/releases?", (200, [
+            {"tag_name": "v2.1.0-rc1", "released_at": "2026-10-20T00:00:00Z"},
+            {"tag_name": "v2.0.0", "released_at": "2026-09-01T00:00:00Z"},
+            {"tag_name": "v1.9.0", "released_at": "2026-07-01T00:00:00Z"},
+            {"tag_name": "v3.0.0", "released_at": "2026-12-01T00:00:00Z", "upcoming_release": True}])),
+        (f"{api}?license=true", (200, {"archived": False, "last_activity_at": "2026-10-30T00:00:00Z",
+                                       "license": {"key": "apache-2.0"}})),
+    ])
+    h = releases.fetch(http, "gitlab.com/group/sub/app", datetime(2026, 11, 8, tzinfo=timezone.utc),
+                       release_tag="v1.9.0")
+    assert h["status"] == "ok" and h["forge"] == "gitlab" and h["license"] == "apache-2.0"
+    assert h["latest_release"]["tag"] == "v2.0.0"  # the rc is a pre-release, the upcoming one not out yet
+    assert h["scanned_release"]["tag"] == "v1.9.0" and h["newer_stable_releases"] == ["v2.0.0"]
+    assert all("api.github.com" not in u for u in http.asked)
+
+
+def test_release_cadence_from_codeberg_and_a_tag_asked_for_directly():
+    from datetime import datetime, timezone
+
+    from oss_intake.health import releases
+
+    api = "https://codeberg.org/api/v1/repos/owner/app"
+    http = _ForgeHttp([
+        (f"{api}/releases?", (200, [
+            {"tag_name": "v1.2.0", "published_at": "2026-10-01T00:00:00Z", "prerelease": False},
+            {"tag_name": "v1.3.0-beta", "published_at": "2026-10-20T00:00:00Z", "prerelease": True},
+            {"tag_name": "v1.1.9", "published_at": "2026-08-01T00:00:00Z", "draft": True}])),
+        (f"{api}/releases/tags/v1.0.0", (200, {"tag_name": "v1.0.0", "published_at": "2026-01-01T00:00:00Z"})),
+        (api, (200, {"archived": True, "updated_at": "2026-10-02T00:00:00Z", "licenses": ["MIT"]})),
+    ])
+    h = releases.fetch(http, "codeberg.org/owner/app", datetime(2026, 11, 8, tzinfo=timezone.utc),
+                       release_tag="v1.0.0")
+    assert h["archived"] is True and h["license"] == "MIT" and h["latest_release"]["tag"] == "v1.2.0"
+    assert h["scanned_release"]["tag"] == "v1.0.0"  # not in the list, asked for by tag
+    missing = releases.fetch(_ForgeHttp([]), "codeberg.org/owner/gone", datetime(2026, 11, 8, tzinfo=timezone.utc))
+    assert missing["status"] == "not_found" and "Codeberg repository" in missing["warnings"][0]
+
+
+def test_scorecard_and_workflows_follow_the_forge():
+    from oss_intake.health import scorecard
+
+    http = _ForgeHttp([("https://api.securityscorecards.dev/projects/gitlab.com/group/app", (200, {"score": 6}))])
+    assert scorecard.fetch(http, "gitlab.com/group/app")["score"] == 6
+    assert scorecard.fetch(http, "codeberg.org/owner/app")["status"] == "not_scored"
+    assert len(http.asked) == 1  # Codeberg is not asked for
+
+
+def test_the_workflow_audit_is_skipped_for_a_repo_not_on_github():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from oss_intake import assessment
+
+    args = SimpleNamespace(repo="gitlab.com/group/app", path=None, path_kind=None, image="owner/app:1.0",
+                           release_tag=None, no_scorecard=True, no_workflows=False)
+    health, _ = assessment._health(args, _ForgeHttp([]), datetime(2026, 11, 8, tzinfo=timezone.utc), [])
+    assert health["workflows"]["status"] == "skipped"

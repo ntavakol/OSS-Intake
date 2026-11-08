@@ -375,7 +375,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory (`.csv`, or `.xlsx` with the `xlsx` extra) instead of an image |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
 | `--govulncheck-sha256`, `--govulncheck-version` | Pin govulncheck like the scanners: hash checked before it runs, version after. The Docker or crane executable used to copy binaries out of an image is recorded with its SHA-256 in assessment.json |
-| `--repo` | GitHub `owner/name` (a full GitHub URL is accepted) |
+| `--repo` | The project's repository, for release cadence, Scorecard and (GitHub only) the workflow audit: GitHub `owner/name` (a full GitHub URL is accepted), `gitlab.com/group/name` (subgroups too) or `codeberg.org/owner/name`. GitLab and Codeberg are asked without a token; Scorecard covers GitHub and GitLab |
 | `--image-src remote` | Pull from the registry without Docker installed (Trivy `--image-src remote`, Grype `registry:`) |
 | `--platform` | Image platform for both scanners (default `linux/amd64`, so Apple Silicon scans the same variant as a server); `''` uses scanner defaults |
 | `--scanners` | `auto` (default: Trivy and OSV, plus Grype if found) or a list such as `trivy,grype,osv` |
@@ -387,7 +387,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--trivy-arg`, `--grype-arg` | Pass extra arguments, e.g. `--trivy-arg=--db-repository=ghcr.io/aquasecurity/trivy-db:2` |
 | `--scanner-env NAME` | Programs oss-intake starts (Trivy, Grype, govulncheck, docker, crane, cosign) get only the environment they need: the path, home and temporary folders, locale, proxy and CA settings, the Windows essentials, and each tool's own settings (`TRIVY_*` for Trivy, `GRYPE_*` and `SYFT_*` for Grype, `GO*` settings for govulncheck, `COSIGN_*` and `SIGSTORE_*` for cosign, and the Docker connection and registry login settings `DOCKER_HOST`, `DOCKER_CONFIG`, `DOCKER_CERT_PATH`, `DOCKER_TLS_VERIFY`, `DOCKER_CONTEXT`, `CONTAINER_HOST` and `REGISTRY_AUTH_FILE` for those that pull images; other `DOCKER_*` variables need `--scanner-env`). Anything else, cloud credentials included, is passed on only when named: `--scanner-env 'AWS_*'` (repeatable, patterns with `*` and `?`) for an ECR image whose credentials come from the environment, for example. The GitHub token is never passed on. This keeps secrets held in environment variables (as on CI) from a swapped scanner; it is not a sandbox, as the program still runs as you and can read your files |
 | `--from-trivy-json`, `--from-grype-json` | Use an existing JSON report instead of running the scanner; a file that is not that scanner's report is refused (exit 2) |
-| `--release-tag`, `--release-date` | Set the release the image corresponds to, when tags do not match |
+| `--release-tag`, `--release-date` | Set the release the input corresponds to, when tags do not match (on GitLab, a tag with alpha, beta, rc, pre, preview, dev or snapshot at its end is taken as a pre-release, as GitLab releases carry no such flag) |
 | `--grace-days` | A fix must predate the release by this many days to count as missed (default 14) |
 | `--unshipped-days` | Days a fix must be public, with no newer release, to count as unshipped (default 90) |
 | `--as-of` | Fix the assessment date for reproducible reports |

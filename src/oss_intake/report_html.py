@@ -142,11 +142,12 @@ def _no_release_date(a: dict) -> str:
     health = a.get("health") or {}
     if not repo:
         return "no release date: pass --repo or --release-date"
+    forge = {"gitlab": "GitLab", "codeberg": "Codeberg"}.get(health.get("forge", ""), "GitHub")
     if health.get("status") == "no_releases":
-        return f"{repo} has no GitHub releases: pass --release-date"
+        return f"{repo} has no {forge} releases: pass --release-date"
     if health.get("status") == "ok":
         return f"no release of {repo} matched: pass --release-tag or --release-date"
-    return f"the GitHub lookup for {repo} was skipped or failed: pass --release-date"
+    return f"the {forge} lookup for {repo} was skipped or failed: pass --release-date"
 
 
 def _tiles(a: dict) -> str:
