@@ -142,10 +142,11 @@ def validate_scanner_env(pat: str) -> None:
 
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
-    """--extension is downloaded to a temporary folder first and then assessed as --path on the .vsix; the folder is
-    removed whatever happens."""
-    ext_tmp = None
-    if getattr(args, "extension", None):
+    """--extension is downloaded, once every option has been checked, to a temporary folder and then assessed as
+    --path on the .vsix; the folder is removed whatever happens."""
+    args.extension = getattr(args, "extension", None)
+    args.ext_tmp = None
+    if args.extension:
         if args.image or args.path or args.package:
             raise UsageError("give --extension on its own, not with --image, --path or --package")
         if args.offline:
@@ -154,20 +155,17 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             openvsx.parse_id(args.extension)
         except ValueError as exc:
             raise UsageError(f"--extension {args.extension}: {exc}") from None
-        ext_tmp = Path(tempfile.mkdtemp(prefix="oss-intake-ext-"))
+        args.ext_tmp = Path(tempfile.mkdtemp(prefix="oss-intake-ext-"))
     try:
-        if ext_tmp:
-            vsix, args.extension_download = openvsx.download(http or RequestsHttp(), args.extension, ext_tmp)
-            args.path = str(vsix)
         return _cmd_scan(args, http)
     finally:
-        if ext_tmp:
-            shutil.rmtree(ext_tmp, ignore_errors=True)
+        if args.ext_tmp:
+            shutil.rmtree(args.ext_tmp, ignore_errors=True)
 
 
 def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
-    if not args.image and not args.repo and not args.path and not args.package:
+    if not args.image and not args.repo and not args.path and not args.package and not args.extension:
         raise UsageError("give --image, --path, --package or --repo")
     if args.image and args.path:
         raise UsageError("give --image or --path, not both")
@@ -176,6 +174,8 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.image:
         args.image = validate_image(args.image)
     args.path_kind, args.scan_target, tmp_dir, compare_tmp = None, None, None, None
+    if args.extension:
+        args.path_kind = "vscode"  # downloaded after every other check (below, before staging)
     if args.path:
         p = Path(args.path).expanduser()
         if not p.exists():
@@ -186,7 +186,7 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.path_kind = inputs.classify(p)
     if args.compare_with:
         old = Path(args.compare_with).expanduser()
-        if args.path_kind != "vscode" or not vscode.is_single(Path(args.path)):
+        if args.path_kind != "vscode" or (args.path and not vscode.is_single(Path(args.path))):
             raise UsageError("--compare-with needs --path to one VS Code extension (a .vsix or its folder)")
         if not old.exists() or not vscode.is_single(old):
             raise UsageError(f"--compare-with {args.compare_with}: not a VS Code extension (a .vsix or its folder)")
@@ -300,7 +300,7 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                              "which needs the network; drop --offline")
         if args.path_kind == "inventory" and args.sbom_info is None and not args.package:
             args.inventory = inputs.inventory(Path(args.path))  # validates every row before any lookup
-            args.input_format = "CSV inventory"
+            args.input_format = "Excel inventory" if Path(args.path).suffix.lower() == ".xlsx" else "CSV inventory"
         unused = set(args.label_list)
         for e in args.inventory if args.path_kind == "inventory" else []:
             # A label the package already has (an inventory column, the SBOM's system) is kept: --label fills in.
@@ -310,11 +310,12 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             warnings.append(f"--label {k} has no effect: every package already has a {k} label"
                             + (" (from the SBOM)" if args.sbom_info else ""))
     else:
-        chosen, warnings = resolve_scanners(args) if (args.image or args.path) else ([], [])
+        chosen, warnings = resolve_scanners(args) if (args.image or args.path or args.extension) else ([], [])
     if args.label_list and args.path_kind != "inventory":
         raise UsageError("--label applies to a package inventory or SBOM, or to --package")
     refuse_gates_without_their_check(args, chosen)
-    if args.image is None and args.path is None and (args.from_trivy_json or args.from_grype_json):
+    if args.image is None and args.path is None and not args.extension and (args.from_trivy_json
+                                                                             or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     warnings += ineffective_options(args, chosen)
     # The scanners that will run must exist before anything is written (B24: no empty output folder left behind).
@@ -323,6 +324,9 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             scanning.find_executable(tool, getattr(args, f"{tool}_path"))
     scanned_offline = args.from_trivy_json and args.from_grype_json
     if args.path_kind == "vscode":
+        if args.extension:  # every option is valid: now it is worth downloading
+            vsix, args.extension_download = openvsx.download(http or RequestsHttp(), args.extension, args.ext_tmp)
+            args.path = str(vsix)
         # A .vsix is unpacked here, before anything is written: one that breaks a limit is refused (exit 2). The
         # extension's own files are read even when the scanners' reports are imported.
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), "vscode")

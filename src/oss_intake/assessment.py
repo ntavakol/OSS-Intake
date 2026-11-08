@@ -54,9 +54,10 @@ from .enrich import (
     ubuntu_launchpad,
 )
 from .health import releases, scorecard, workflows
+from .health.releases import FORGE_NAMES
 from .http import HttpError
 from .models import SEVERITY_ORDER, parse_datetime
-from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, OUTPUT_FILES, image_tag, log
+from .options import EXIT_ERROR, EXIT_OK, EXIT_THRESHOLD, FAIL_ON, OUTPUT_FILES, forge_of, image_tag, log
 
 
 def is_container_target(args) -> bool:
@@ -196,7 +197,7 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
 def _release_date(args, findings: list, health: dict, scan_info: dict, release_override, warnings: list[str]):
     """The date release lag is measured against: --release-date, the matched forge release or the image build."""
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
-    forge = {"gitlab": "GitLab", "codeberg": "Codeberg"}.get(health.get("forge", ""), "GitHub")
+    forge = FORGE_NAMES[forge_of(args.repo)] if args.repo else "GitHub"
     release_date_source = "--release-date" if release_override else (f"{forge} release" if release_date else None)
     if release_override:
         if not health.get("scanned_release"):

@@ -390,6 +390,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     hosts: set[str] = set()
     packages: set[tuple[str, str]] = set()
     listings: list[str] = []
+    natives: list[str] = []  # every native file, for --compare-with (the indicator keeps MAX_HITS)
     dep_files: list[tuple[Path, str]] = []
     files = 0
     for p in _files(folder):
@@ -418,6 +419,7 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
             continue
         if p.suffix.lower() in NATIVE_SUFFIXES or head.startswith(NATIVE_MAGIC):
             add("native", rel, None, p.suffix.lower() or "a program")
+            natives.append(rel)
         if not is_main and (p.suffix.lower() in NOT_READ_SUFFIXES or b"\0" in head):
             continue
         if in_deps:
@@ -462,7 +464,11 @@ def analyse(folder: Path, budget: list[int] | None = None, manifest: Path | None
     # otherwise turn the warning off).
     bundled = bool(main_files) and max(f.stat().st_size for f in main_files) >= BUNDLE_BYTES
     return {**ident, "folder": folder.name, "ids_checked": list(dict.fromkeys(ids)),
-            "indicators": [{"id": k, "title": INDICATORS[k], "seen": v} for k, v in hits.items()],
+            "indicators": [{"id": k, "title": INDICATORS[k], "seen": v, "capped": len(v) >= MAX_HITS}
+                           for k, v in hits.items()],
+            # For --compare-with only, removed before the reports (attribute): the full lists the capped ones above
+            # are cut from.
+            "native_files": sorted(natives), "hosts_all": sorted(hosts),
             "hosts": sorted(hosts)[:100], "hosts_total": len(hosts),
             "bundled": bundled, "dependencies_visible": not bundled,
             "not_read": unread[:20], "not_read_total": len(unread),
@@ -676,6 +682,8 @@ def attribute(info: dict, findings: list) -> None:
         e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
         e["findings_listed"] = 0  # of those, found only in an SBOM or lockfile it ships
         e["packages_seen"] = len(e.get("packages", []))
+        e.pop("native_files", None)
+        e.pop("hosts_all", None)
         for pkg in e.pop("packages", []):
             by_package.setdefault(tuple(pkg), []).append(e)
     by_folder = {e["folder"].casefold(): e for e in info["extensions"]}
@@ -733,14 +741,16 @@ def compare(old: dict, new: dict) -> dict:
     def kinds(e: dict) -> dict[str, dict]:
         return {i["id"]: i for i in e["indicators"]}
 
-    def native(e: dict) -> set[str]:
-        return {s["file"] for i in e["indicators"] if i["id"] == "native" for s in i["seen"]}
-
     ok, nk = kinds(old), kinds(new)
     added = [{"id": k, "title": nk[k]["title"], "seen": nk[k]["seen"][:3]} for k in nk if k not in ok]
-    grew = [{"id": k, "title": nk[k]["title"], "from": len(ok[k]["seen"]), "to": len(nk[k]["seen"])}
-            for k in nk if k in ok and len(nk[k]["seen"]) > len(ok[k]["seen"])]
-    old_hosts, new_hosts = set(old["hosts"]), set(new["hosts"])
+    # Occurrences are kept up to MAX_HITS: two full lists cannot say whether the new version has more.
+    grew = [{"id": k, "title": nk[k]["title"], "from": len(ok[k]["seen"]), "to": len(nk[k]["seen"]),
+             "capped": nk[k].get("capped", False)}
+            for k in nk if k in ok and not ok[k].get("capped") and len(nk[k]["seen"]) > len(ok[k]["seen"])]
+    both_capped = [nk[k]["title"] for k in nk if k in ok and ok[k].get("capped") and nk[k].get("capped")]
+    # Hosts are read up to MAX_HOSTS per extension: past that, a host missing from the older list is not new.
+    hosts_full = old["hosts_total"] < MAX_HOSTS and new["hosts_total"] < MAX_HOSTS
+    old_hosts, new_hosts = set(old.get("hosts_all", old["hosts"])), set(new.get("hosts_all", new["hosts"]))
     old_pkgs, new_pkgs = {tuple(p) for p in old["packages"]}, {tuple(p) for p in new["packages"]}
     old_names = {p[0] for p in old_pkgs}
     return {
@@ -751,11 +761,12 @@ def compare(old: dict, new: dict) -> dict:
         "repository_from": old["repository"], "repository_to": new["repository"],
         "indicators_added": added, "indicators_grew": grew,
         "indicators_dropped": [ok[k]["title"] for k in ok if k not in nk],
-        "native_added": sorted(native(new) - native(old))[:50],
-        # The hosts are read up to MAX_HOSTS per extension and kept up to 100: a host missing from a capped list
-        # is not new, so only a full list on both sides says so.
-        "hosts_added": sorted(new_hosts - old_hosts)[:100] if old["hosts_total"] <= 100 else [],
-        "hosts_not_compared": old["hosts_total"] > 100,
+        "indicators_not_compared": both_capped,
+        "native_added": sorted(set(new.get("native_files", [])) - set(old.get("native_files", [])))[:50],
+        "native_added_total": len(set(new.get("native_files", [])) - set(old.get("native_files", []))),
+        "hosts_added": sorted(new_hosts - old_hosts)[:100] if hosts_full else [],
+        "hosts_added_total": len(new_hosts - old_hosts) if hosts_full else 0,
+        "hosts_not_compared": not hosts_full,
         "packages_added": sorted(p[0] for p in new_pkgs - old_pkgs if p[0] not in old_names)[:200],
         "packages_changed": sorted(f"{n} {v}" for n, v in new_pkgs - old_pkgs if n in old_names)[:200],
         "bundled_from": old["bundled"], "bundled_to": new["bundled"],
@@ -774,12 +785,18 @@ def change_warnings(diff: dict, ext_id: str) -> list[str]:
                    "publishes it now before you take the update")
     adds = [i["title"].split(" (")[0] for i in diff["indicators_added"]]
     if diff["native_added"]:
-        adds.append(f"{len(diff['native_added'])} new native file(s)")
+        adds.append(f"{diff.get('native_added_total', len(diff['native_added']))} new native file(s)")
     if diff["hosts_added"]:
-        adds.append(f"{len(diff['hosts_added'])} new web address(es)")
+        adds.append(f"{diff.get('hosts_added_total', len(diff['hosts_added']))} new web address(es)")
     if adds:
         out.append(f"{ext_id} {diff['to_version']} adds since {diff['from_version']}: {'; '.join(adds)}. Read "
                    "what changed before you take the update")
+    unknown = ([f"web addresses (over {MAX_HOSTS} in a version)"] if diff["hosts_not_compared"] else []) + [
+        f"how often it shows '{t.split(' (')[0]}' (over {MAX_HITS} in each)"
+        for t in diff.get("indicators_not_compared", [])]
+    if unknown:
+        out.append(f"--compare-with could not compare {'; '.join(unknown)}: what {diff['to_version']} adds there is "
+                   "not known")
     return out
 
 

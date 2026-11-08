@@ -37,6 +37,7 @@ MAX_API_BYTES = 32 * 1024 * 1024
 MAX_INDEX_BYTES = 128 * 1024 * 1024
 INDEX_HOSTS = ("raw.githubusercontent.com", "gitlab.com")
 DEADLINE_SECONDS = 300
+DOWNLOAD_DEADLINE_SECONDS = 1800  # a file download (get_bytes): 500 MB in 30 minutes is under 300 KB/s
 # Redirects are followed by hand: a request with a body (the OSV batch query carries the package list) is never
 # redirected, as a 307 or 308 would send the body on to wherever it points; a GET follows at most MAX_REDIRECTS,
 # and only to https.
@@ -505,7 +506,7 @@ class RequestsHttp(Http):
         with self._count_lock:
             self.requests_made += 1
         timeout = max(self._timeout, 120)
-        deadline = time.monotonic() + max(DEADLINE_SECONDS, 2 * timeout)
+        deadline = time.monotonic() + max(DOWNLOAD_DEADLINE_SECONDS, 2 * timeout)
         r, url = self._send("GET", url, "application/octet-stream", timeout)
         return r.status_code, self._body(r, "GET", url, deadline, limit)
 

@@ -15,8 +15,11 @@ API = "https://api.github.com"
 GITLAB_API = "https://gitlab.com/api/v4/projects"
 CODEBERG_API = "https://codeberg.org/api/v1/repos"
 FORGE_NAMES = {"github": "GitHub", "gitlab": "GitLab", "codeberg": "Codeberg"}
-# GitLab releases carry no pre-release flag: a tag that says so is taken as one.
-_PRE = re.compile(r"(?i)(?:^|[.\-_+\d])(?:alpha|beta|rc|pre|preview|dev|snapshot)(?:[.\-_]?\d+)?$")
+# GitLab releases carry no pre-release flag: a tag that says so is taken as one. A word (1.0.0-beta.1, 2.0-rc1),
+# PEP 440's letters after a digit (1.0b1, 2.0a2, 3.1rc1) or a Maven milestone (3.0.0-M1), with anything after it
+# (1.0.0-beta.1+build.5, 2.0.0-alpha.1.2).
+_PRE = re.compile(r"(?i)(?:(?:^|[.\-_+\d])(?:alpha|beta|rc|pre|preview|dev|snapshot)(?:[.\-_]?\d+)?"
+                  r"|\d(?:a|b|rc)\d+|[.\-_]m\d+)(?:[.\-_+][0-9a-z.\-_+]*)?$")
 
 
 def _candidates(tag: str, repo_name: str) -> list[str]:
@@ -59,9 +62,19 @@ def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:
         if status != 200 or not isinstance(data, dict):
             return status, {}
         lic = data.get("license")
-        return status, {"archived": data.get("archived"), "pushed_at": data.get("last_activity_at"),
-                        "license": lic.get("key") if isinstance(lic, dict) and isinstance(lic.get("key"), str)
-                        else None}
+        key = lic.get("key") if isinstance(lic, dict) and isinstance(lic.get("key"), str) else None
+        # last_activity_at moves with issues and merge requests too: the latest commit on the default branch is
+        # what GitHub's pushed_at measures.
+        pushed = None
+        try:
+            st, commits = http.get_json(f"{GITLAB_API}/{quote(path, safe='')}/repository/commits",
+                                        params={"per_page": 1})
+            if st == 200 and isinstance(commits, list) and commits and isinstance(commits[0], dict):
+                pushed = commits[0].get("committed_date")
+        except HttpError:
+            pass
+        return status, {"archived": data.get("archived"), "pushed_at": pushed,
+                        "license": key}
     if forge == "codeberg":
         status, data = http.get_json(f"{CODEBERG_API}/{path}")
         if status != 200 or not isinstance(data, dict):
