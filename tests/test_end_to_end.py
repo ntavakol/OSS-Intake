@@ -2859,3 +2859,20 @@ def test_a_folder_is_scanned_in_both_trivy_modes_and_merged(tmp_path, monkeypatc
     raw = json.loads((out / "raw" / "trivy.json").read_text(encoding="utf-8"))
     assert [r["Target"] for r in raw["Results"]] == ["lib/app.jar", "node_modules/lodash/package.json",
                                                      "package-lock.json"]
+
+
+def test_an_old_scorecard_result_is_shown_as_old_not_as_a_rating(tmp_path, fixtures):
+    """Backlog (done 8 Nov): the Scorecard service rescans on its own schedule, rarely for GitLab projects (a live
+    run gave a result from 2023). A result over a year before the assessment date is named with its age, warned
+    about, and not coloured as a current rating."""
+    out = tmp_path / "out"
+    code = cli.main(["--image", "owner/app:1.0", "--repo", "example/webapp", "--out", str(out),
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json",
+                     str(fixtures / "grype.json"), "--as-of", "2028-01-01"], http=FakeHttp())
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["scorecard"]["stale_days"] == 439
+    assert any("Scorecard result for example/webapp is from 2026-10-19, 439 days" in w for w in a["warnings"])
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "439 days old" in html and '<div class="tile n"><div class="k">OpenSSF Scorecard' in html
+    assert "439 days old: not current" in (out / "summary.md").read_text(encoding="utf-8")

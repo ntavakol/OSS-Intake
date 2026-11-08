@@ -179,6 +179,13 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
                 sc = scorecard.fetch(net, args.repo)
             except HttpError as exc:
                 sc = {"status": "error", "note": str(exc)}
+            # The Scorecard service rescans on its own schedule (rarely for GitLab): an old score describes the
+            # project as it was then, so it is shown as old rather than coloured as a current rating.
+            age = scorecard.age_days(sc, as_of)
+            if age is not None and age > scorecard.STALE_DAYS:
+                sc["stale_days"] = age
+                warnings.append(f"The OpenSSF Scorecard result for {args.repo} is from {sc.get('date')}, "
+                                f"{age} days before the assessment date: it describes the project as it was then")
         if not args.no_workflows and "/" in args.repo and args.repo.split("/", 1)[0] in ("gitlab.com", "codeberg.org"):
             health["workflows"] = {"status": "skipped", "note": "the workflow audit reads GitHub Actions only"}
         elif not args.no_workflows:
