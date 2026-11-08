@@ -21,6 +21,7 @@ from urllib.parse import quote, unquote
 from . import versions as versions_mod
 from .enrich.fixdates import API, _system_and_name
 from .http import Http, HttpError, prefetch
+from .os_packages import identity, is_os_purl
 from .scanners import osv as osv_mod
 
 _NUM = re.compile(r"v?(\d+)(?:\.(\d+))?")
@@ -90,16 +91,21 @@ def latest_version(http: Http, purl: str) -> str | None:
     return found[0] if found else None
 
 
-def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict | None = None) -> dict:
-    """Add upgrade fields to inventory rows in place: major-upgrade flags, the latest stable version from deps.dev
-    (api.deps.dev, if latest) and the findings left at the fix and latest versions from an OSV scan (api.osv.dev).
-    Returns info with status, latest_checked, latest_unknown, errors and latest (plus error if the scan failed)."""
-    info: dict = {"status": "ok", "latest_checked": 0, "latest_unknown": 0, "errors": 0, "latest": latest}
+def blank(rows: list[dict]) -> None:
+    """The upgrade fields with nothing looked up (offline): the major-upgrade flag only, which needs no lookup."""
     for r in rows:
         r.update({"upgrade_left": None, "upgrade_major": False, "latest": "", "latest_published": "",
                   "latest_left": None, "latest_major": False})
         if r["upgrade_to"] and not r["malicious"]:
             r["upgrade_major"] = breaking(r.get("compare_version") or r["version"], _target(r))
+
+
+def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict | None = None) -> dict:
+    """Add upgrade fields to inventory rows in place: major-upgrade flags, the latest stable version from deps.dev
+    (api.deps.dev, if latest) and the findings left at the fix and latest versions from an OSV scan (api.osv.dev).
+    Returns info with status, latest_checked, latest_unknown, errors and latest (plus error if the scan failed)."""
+    info: dict = {"status": "ok", "latest_checked": 0, "latest_unknown": 0, "errors": 0, "latest": latest}
+    blank(rows)
     if latest:
         prefetch(http, [f"{API}/{sn[0]}/packages/{quote(sn[1], safe='')}"
                       for sn in (_system_and_name(r["purl"]) for r in rows) if sn])
@@ -129,6 +135,10 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
     except HttpError as exc:
         info.update(status="failed", error=str(exc))
         return info
+    # An OS package version OSV cannot be asked about (no distro query for it: an image's packages) was not
+    # checked, so nothing is said about it rather than "0 known".
+    index = osv_mod.os_query_index(os_queries)
+    unasked = {p for p in targets if is_os_purl(p) and p not in (os_queries or {}) and identity(p) not in index}
     counts: dict[str, dict] = {}
     for f in osv_found:
         c = counts.setdefault(f.purl or "", {"total": 0, "critical": 0, "malicious": False})
@@ -137,8 +147,9 @@ def enrich(http: Http, rows: list[dict], latest: bool = True, os_queries: dict |
         c["malicious"] = c["malicious"] or f.malicious
     empty = {"total": 0, "critical": 0, "malicious": False}
     for r in rows:
-        if r["upgrade_to"] and not r["malicious"]:
-            r["upgrade_left"] = counts.get(_with_version(r["purl"], _target(r)), empty)
+        fix_purl = _with_version(r["purl"], _target(r))
+        if r["upgrade_to"] and not r["malicious"] and fix_purl not in unasked:
+            r["upgrade_left"] = counts.get(fix_purl, empty)
         if r["latest"]:
             r["latest_left"] = (counts.get(_with_version(r["purl"], r["latest"]), empty)
                                 if r["latest"] != r["version"] else

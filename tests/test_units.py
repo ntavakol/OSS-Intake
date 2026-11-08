@@ -3764,3 +3764,27 @@ def test_an_sbom_of_a_container_image_is_recognised(doc, container):
     assert sbom.is_container(doc) is container
     args = SimpleNamespace(image=None, sbom_info={"files": 2, "containers": 2 if container else 1})
     assert assessment.is_container_target(args) is container
+
+
+def test_upgrade_never_says_0_known_for_a_version_osv_was_not_asked_about():
+    """An OS package version with no distro query is skipped by the OSV scan, so 'what is still known at the fix'
+    was read as 0 known. It now says nothing (None)."""
+    from oss_intake import upgrade
+
+    class Http:
+        def post_json(self, url, body):
+            return 200, {"results": [{} for _ in body["queries"]]}
+
+        def get_json(self, url, params=None):
+            return 404, None
+
+        def prefetch(self, urls):
+            pass
+
+    rows = [{"purl": "pkg:deb/ubuntu/libc6@2.39-0ubuntu8.4?distro=ubuntu-24.04", "version": "2.39-0ubuntu8.4",
+             "upgrade_to": "2.39-0ubuntu8.5", "malicious": False, "findings": 1, "critical": 0},
+            {"purl": "pkg:npm/lodash@4.17.20", "version": "4.17.20", "upgrade_to": "4.17.21", "malicious": False,
+             "findings": 1, "critical": 0}]
+    upgrade.enrich(Http(), rows, latest=False)
+    assert rows[0]["upgrade_left"] is None
+    assert rows[1]["upgrade_left"] == {"total": 0, "critical": 0, "malicious": False}

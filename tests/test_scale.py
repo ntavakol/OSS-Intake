@@ -1031,3 +1031,48 @@ def test_answer_limits_are_per_source():
     assert http_mod.answer_limit("https://api.osv.dev/v1/querybatch") == 32 * 1024 * 1024
     assert http_mod.answer_limit("https://raw.githubusercontent.com/rapid7/x/db.json") == 128 * 1024 * 1024
     assert http_mod.answer_limit("https://gitlab.com/exploit-database/exploitdb/-/raw/main/x.csv") == 128 * 1024 * 1024
+
+
+def test_gets_with_parameters_are_cached_where_a_rule_allows(monkeypatch, tmp_path):
+    """Backlog (agreed 3 Nov, done 8 Nov): a GET with query parameters always went to the network. Launchpad
+    publications and Alpine aports histories are now cached; GitHub releases and EPSS stay fresh."""
+    lp = ("https://api.launchpad.net/1.0/ubuntu/+archive/primary", {
+        "ws.op": "getPublishedSources", "source_name": "openssl", "version": "3.0.2-0ubuntu1.10",
+        "exact_match": "true", "distro_series": "https://api.launchpad.net/1.0/ubuntu/jammy", "ws.size": 50})
+    aports = ("https://api.github.com/repos/alpinelinux/aports/commits",
+              {"path": "main/openssl/APKBUILD", "sha": "3.20-stable", "per_page": 100})
+    fresh = [("https://api.github.com/repos/owner/app/releases", {"per_page": 100}),
+             ("https://api.first.org/data/v1/epss", {"cve": "CVE-2099-1"})]
+    from oss_intake.http import with_params
+
+    real = _Session.request
+
+    def published(self, method, url, **kw):  # Launchpad answers with a publication
+        r = real(self, method, url, **kw)
+        r._data = {"entries": [{"date_published": "2024-01-01T00:00:00+00:00"}], "url": url}
+        r.content = json.dumps(r._data).encode()
+        return r
+
+    monkeypatch.setattr(_Session, "request", published)
+    asked = []
+    for _ in range(2):
+        http, log = _client(monkeypatch, tmp_path, delay=0)
+        for url, params in [lp, aports, *fresh]:
+            assert http.get_json(url, params)[0] == 200
+        asked.append([u for _, u in log])
+    assert len(asked[0]) == 4
+    assert asked[1] == [with_params(*f) for f in fresh]  # the second run asked only for the fresh ones
+
+
+def test_a_launchpad_answer_with_no_publication_is_not_kept(tmp_path):
+    c = ResponseCache(tmp_path)
+    from oss_intake.http import with_params
+
+    url = with_params("https://api.launchpad.net/1.0/ubuntu/+archive/primary", {
+        "ws.op": "getPublishedSources", "source_name": "x", "version": "1", "exact_match": "true",
+        "distro_series": "https://api.launchpad.net/1.0/ubuntu/noble", "ws.size": 50})
+    assert ResponseCache.max_age(url) == 30 * 86400
+    c.put(url, 200, {"entries": []})
+    assert c.get(url) is None
+    c.put(url, 200, {"entries": [{"date_published": "2024-01-01T00:00:00+00:00"}]})
+    assert c.get(url) is not None

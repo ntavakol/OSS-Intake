@@ -5,16 +5,33 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `--formats sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code
+  scanning: one rule per advisory, one result per finding at the file the package was found in, a fingerprint
+  that stays the same across runs, the CVSS score as GitHub's security severity, and an assessor's
+  `not_affected` or `fixed` decision (or a finding the tool set aside) carried as a suppression. Not in the
+  default formats.
+- Upgrade options for image, lockfile, folder and artifact scans, as inventories have had since 0.4.0: per
+  vulnerable package, the lowest version that fixes every listed vulnerability and the latest release, with what
+  is still known at each and a warning when either crosses a major version (`assessment.json`, `summary.md`,
+  `report.html`). For an image's OS packages, what is still known at the fix is not checked.
+- `--utc`: date the assessment by today in UTC instead of the local date.
+- A warning when the output folder can be written by other users, or replaced through a folder above it
+  (external audit SEC-01/11): reports are written by rename, but another user could still replace or delete
+  them after the run.
+
 ### Changed
 - Kernel CVEs on kernel header packages (`linux-libc-dev`, `kernel-headers`) are set aside only for a container
   image: `--image`, or SBOMs that all describe an image (CycloneDX `container`, SPDX `CONTAINER`, or an `oci` or
   `docker` package URL). For a folder, an artifact or another SBOM, which may be a host or VM image running that
   kernel, they now count like any finding, including for gates and when in CISA KEV.
+- Ubuntu publication dates from Launchpad (30 days, once published) and Alpine aports commit histories (a day)
+  are now kept in the response cache; GET requests with query parameters went to the network every time.
+  GitHub release lists and EPSS are still fetched fresh.
 
-### Added
-- A warning when the output folder can be written by other users, or replaced through a folder above it
-  (external audit SEC-01/11): reports are written by rename, but another user could still replace or delete
-  them after the run.
+### Fixed
+- The upgrade comparison said "0 known" at the fix version for an OS package OSV was not asked about (one with no
+  distro query); it now says nothing.
 
 ## [0.17.0] - 2026-11-07
 

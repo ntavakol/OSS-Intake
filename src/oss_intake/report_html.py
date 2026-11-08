@@ -560,26 +560,67 @@ def _group_pill(group: str, reason: str = "") -> object:
 PACKAGES_SHOWN = 100
 
 
+def _upgrade_target(version: str, left: dict | None, major: bool) -> object:
+    """A version to move to, what is still known at it, and a 'major' pill when it crosses a major version."""
+    from .upgrade import describe
+
+    if not version:
+        return ""
+    head = f'<span class="mono">{_e(version)}</span>'
+    if left is not None:
+        tone = "c" if left["malicious"] or left["critical"] else "a" if left["total"] else "g"
+        head += f' · <span class="{tone}">{_e(describe(left))}</span>'
+    out = f'<span class="nw">{head}</span>'
+    if major:
+        out += (' <span class="pill p-med" title="crosses a major version (or a 0.x minor version): expect '
+                'breaking changes">major</span>')
+    return Raw(out)
+
+
+def _upgrades(a: dict) -> str:
+    """Image, lockfile, folder and artifact scans: per vulnerable package, the minimum fix and the latest
+    release, with what is still known at each."""
+    up = a.get("upgrades")
+    if not up:
+        return ""
+    rows, cls = [], []
+    for r in up["rows"][:PACKAGES_SHOWN]:
+        rows.append([_group_pill(r["group_key"]),
+                     Raw(f'<span class="mono">{_e(r["package"])}</span><br><small class="v4">{_e(r["ecosystem"])}'
+                         "</small>"),
+                     Raw(f'<span class="mono">{_e(r["version"])}</span>'), r["findings"], r["critical"], r["high"],
+                     Raw('<span class="pill p-crit">MALICIOUS</span>') if r["malicious"] else (
+                         f'{r["kev"]} KEV' if r["kev"] else ""),
+                     "remove: malicious release" if r["malicious"]
+                     else _upgrade_target(r["upgrade_to"], r.get("upgrade_left"), r.get("upgrade_major", False))
+                     if r["upgrade_to"] else ("no fix listed" if r["no_fix"] else ""),
+                     "" if r.get("latest") == r["version"]
+                     else _upgrade_target(r.get("latest", ""), r.get("latest_left"), r.get("latest_major", False))])
+        cls.append("row-crit" if r["malicious"] or r["critical"] else "row-high" if r["high"] else "")
+    ok = up.get("upgrade", {}).get("status") == "ok"
+    head = (f'<p>{_e(str(len(up["rows"])))} packages have known vulnerabilities or malware.'
+            + (f' Upgrading to the minimum fix version clears every known vulnerability for '
+               f'{_e(str(up.get("fix_clears_all", 0)))} of them.' if ok else "") + "</p>")
+    more = len(up["rows"]) - PACKAGES_SHOWN
+    body = head + _table(["Group", "Package", "Version", "Findings", "Critical", "High", "Evidence",
+                          "Upgrade to at least", "Latest release"], rows, num={3, 4, 5}, row_cls=cls)
+    body += _note(("" if more <= 0 else f"{more} more packages are in assessment.json. ")
+                  + "'Upgrade to at least' is the lowest version that fixes every listed vulnerability with a fix, "
+                  "followed by what is still known to affect that version (not checked for an image's OS "
+                  "packages); 'Latest release' is the package's current release on deps.dev (skipped with "
+                  "--no-latest). Fewer known vulnerabilities is not proof that a version is safe: it may be "
+                  "less studied, or newer than the advisories.")
+    return _section("Upgrade options", body)
+
+
 def _packages(a: dict) -> str:
     """Inventory scans: one row per package that needs attention, worst first."""
     inv = a.get("inventory")
     if not inv:
         return ""
     from .inventory_report import label_text
-    from .upgrade import describe
 
-    def target(version: str, left: dict | None, major: bool) -> object:
-        if not version:
-            return ""
-        head = f'<span class="mono">{_e(version)}</span>'
-        if left is not None:
-            tone = "c" if left["malicious"] or left["critical"] else "a" if left["total"] else "g"
-            head += f' · <span class="{tone}">{_e(describe(left))}</span>'
-        out = f'<span class="nw">{head}</span>'
-        if major:
-            out += (' <span class="pill p-med" title="crosses a major version (or a 0.x minor version): expect '
-                    'breaking changes">major</span>')
-        return Raw(out)
+    target = _upgrade_target
 
     flagged = [r for r in inv["rows"] if r["findings"]]
     clean = inv["packages"] - len(flagged)
@@ -707,7 +748,8 @@ def write(path: Path, a: dict, findings: list[Finding], top: int, caveat: str, h
     if a.get("warnings"):
         parts.append(_section("Warnings", "<ul>" + "".join(f"<li>{_e(str(w))}</li>" for w in a["warnings"])
                               + "</ul>", "warn"))
-    parts += [_extensions(a), _packages(a), _severity(a, caveat), _triage(a), _new_releases(a), _not_checked(a),
+    parts += [_extensions(a), _packages(a), _upgrades(a), _severity(a, caveat), _triage(a), _new_releases(a),
+              _not_checked(a),
               _decisions(a),
               _likelihood(a, heuristic_note),
               _lag(a, lag_note),
