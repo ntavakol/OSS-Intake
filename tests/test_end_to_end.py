@@ -2876,3 +2876,26 @@ def test_an_old_scorecard_result_is_shown_as_old_not_as_a_rating(tmp_path, fixtu
     html = (out / "report.html").read_text(encoding="utf-8")
     assert "439 days old" in html and '<div class="tile n"><div class="k">OpenSSF Scorecard' in html
     assert "439 days old: not current" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes; Windows ignores them")
+def test_reports_are_readable_by_their_owner_only(tmp_path, fixtures, monkeypatch):
+    """CodeQL py/overly-permissive-file (Ned, 8 Nov): reports were created 0o644, so other users on the machine
+    could read the hosts, packages and findings in them. Every report and raw file is now 0o600, whatever the
+    umask allows."""
+    import os
+
+    old = os.umask(0)  # the most permissive umask: only the mode oss-intake asks for decides
+    try:
+        out = tmp_path / "out"
+        code = cli.main(["--image", "owner/app:1.0", "--out", str(out), "--from-trivy-json",
+                         str(fixtures / "trivy.json"), "--from-grype-json", str(fixtures / "grype.json"),
+                         "--offline", "--as-of", "2026-11-08", "--formats", "csv,md,json,html,sarif"])
+    finally:
+        os.umask(old)
+    assert code == cli.EXIT_OK
+    files = [p for p in out.rglob("*") if p.is_file()]
+    assert {p.name for p in files} >= {"findings.csv", "summary.md", "assessment.json", "report.html",
+                                        "findings.sarif", ".oss-intake-files.json"}
+    assert {p.relative_to(out).as_posix(): oct(p.stat().st_mode & 0o777) for p in files} == {
+        p.relative_to(out).as_posix(): "0o600" for p in files}
