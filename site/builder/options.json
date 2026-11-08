@@ -453,7 +453,7 @@
      "dest": "no_image_date",
      "exclusive_group": null,
      "flag": "--no-image-date",
-     "help": "do not fall back to the image build date when no release date is known",
+     "help": "do not use the image build date: no fall back to it when no release date is known, and no OS package lag against a rebuild",
      "kind": "flag",
      "metavar": null,
      "required": false,

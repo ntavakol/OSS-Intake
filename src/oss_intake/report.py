@@ -454,6 +454,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
         ["Kernel CVEs on kernel header packages (excluded: containers use the host kernel)",
          lag.get("excluded_kernel_headers", 0)],
         ["Fix published after the release", lag["fix_after_release"]],
+        *([[f"OS packages: fix existed at least {lag['grace_days']} days before the image was rebuilt on "
+            f"{lag['os_at_build']['build_date'][:10]}", lag["os_at_build"]["fix_available_at_build"]]]
+          if lag.get("os_at_build") else []),
         ["CVE published before the release (secondary)", lag["cve_published_before_release"]],
         ["Median days a fix has been available", _v(lag["median_days_fix_available"])],
         ["Longest days a fix has been available", _v(lag["max_days_fix_available"])],

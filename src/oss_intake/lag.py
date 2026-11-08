@@ -63,6 +63,27 @@ def flag_no_newer_fix(findings: list[Finding]) -> int:
     return n
 
 
+def os_at_build(findings: list[Finding], build_date: datetime, release_date: datetime | None,
+                grace_days: int = DEFAULT_GRACE_DAYS) -> dict | None:
+    """For an image rebuilt after its project's release (official images are rebuilt with newer OS packages under
+    the same tag): how many OS package fixes were public at least grace_days before the image was built, so the
+    rebuild could have taken them. A second view beside lag against the release, which can be unfair to the OS
+    layer of a rebuilt image. None when the image was not built after the release."""
+    from .os_packages import is_os_purl
+
+    if not release_date or build_date <= release_date:
+        return None
+    cutoff = build_date - timedelta(days=grace_days)
+    os_fix = [f for f in findings if f.has_fix and not f.likely_fixed and not f.excluded
+              and (is_os_purl(f.purl or "") or (not f.purl and f.os_release))]
+    at_build = [f for f in os_fix if f.fix_published and f.fix_published < cutoff]
+    return {"build_date": build_date.isoformat(), "release_date": release_date.isoformat(),
+            "os_with_fix": len(os_fix), "fix_date_known": sum(1 for f in os_fix if f.fix_published),
+            "fix_available_at_build": len(at_build),
+            "fix_available_at_build_by_severity": {s: sum(1 for f in at_build if f.severity == s)
+                                                   for s in SEVERITIES}}
+
+
 def _brief(f: Finding) -> dict:
     return {"id": f.vuln_id, "package": f.package, "severity": f.severity, "epss": f.epss,
             "sources": sorted(f.sources), "pkg_type": f.pkg_type, "exploit_level": f.exploit_level,

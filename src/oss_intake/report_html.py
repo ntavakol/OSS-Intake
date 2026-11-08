@@ -303,6 +303,10 @@ def _lag(a: dict, lag_note: str) -> str:
                     _count_tone(lag["fix_available_at_release"], "r")),
             _metric(f"Fix published within {g} days before the release (not counted)", lag["fix_within_grace"],
                     "a" if lag["fix_within_grace"] else "")]
+    if ob := lag.get("os_at_build"):
+        rows.append(_metric(f"OS packages: fix existed at least {g} days before the image was rebuilt on "
+                            f"{ob['build_date'][:10]}", ob["fix_available_at_build"],
+                            _count_tone(ob["fix_available_at_build"], "r")))
     if lag.get("scanned_is_latest") is False:
         rows.append(_metric(f"Fix public {lag['unshipped_days']}+ days with no newer release (unshipped)",
                             "n/a (scanned release is not the latest)"))

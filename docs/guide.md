@@ -651,15 +651,18 @@ NOTICE credits them.
   OSV inherits the same mistake because it is queried with the scanner's version.
 - The OpenSSF Scorecard API only covers repositories in its scheduled dataset. "Not scored" is not a
   negative signal.
-- Release matching expects GitHub releases whose tags resemble the image tag (`1.2.3`, `v1.2.3`,
+- Release matching expects GitHub, GitLab or Codeberg releases whose tags resemble the image tag (`1.2.3`, `v1.2.3`,
   `name-1.2.3`, `release-1.2.3`), and also tries the tag without a variant suffix (`2.528-jdk21` matches
   `jenkins-2.528`). If nothing matches, lag metrics are not computed rather than measured against the
   wrong release. Use `--release-tag` or `--release-date` in that case. Failing both, the image's build date is
   used and labelled "image build date": lag then means "fixes that existed when the image was built"
-  (disable with `--no-image-date`).
+  (disable with `--no-image-date`). When the image was built after the release it is matched to (official images
+  are rebuilt with newer OS packages under the same tag), the OS packages are also measured against the build:
+  how many of their fixes were public before the image was rebuilt, beside the lag against the release.
 - Fix dates are unavailable for Amazon Linux and for runtimes found only in binaries. When more than half of the fixes lack
   a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
-- Only GitHub-hosted projects get health signals in this version.
+- Health signals come from GitHub, GitLab and Codeberg; Scorecard covers GitHub and GitLab, and the workflow
+  audit GitHub Actions only.
 - Trivy does not catalogue installed R (CRAN) packages, so R libraries inside an image are not assessed.
 - Runtimes detected from binaries (`binary` in the coverage table) have no package registry to date fixes
   from, so they always show as "fix date unknown".

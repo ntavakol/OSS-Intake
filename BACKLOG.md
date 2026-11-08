@@ -61,9 +61,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   rule that does not compile is a clear error. Not rule generation: for a known-bad package the hash is the
   better indicator.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
-- Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
-  For the OS layer, lag against the image build date may be fairer than against the project's release date;
-  consider reporting both.
 
 ## Scanner management
 - Fetch the known-bad list from a signed location instead of shipping it with each release.

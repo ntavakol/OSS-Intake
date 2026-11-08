@@ -194,7 +194,7 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
 
 
 def _release_date(args, findings: list, health: dict, scan_info: dict, release_override, warnings: list[str]):
-    """The date release lag is measured against: --release-date, the matched GitHub release or the image build."""
+    """The date release lag is measured against: --release-date, the matched forge release or the image build."""
     release_date = release_override or parse_datetime((health.get("scanned_release") or {}).get("date"))
     forge = {"gitlab": "GitLab", "codeberg": "Codeberg"}.get(health.get("forge", ""), "GitHub")
     release_date_source = "--release-date" if release_override else (f"{forge} release" if release_date else None)
@@ -203,20 +203,21 @@ def _release_date(args, findings: list, health: dict, scan_info: dict, release_o
             health["scanned_release"] = {}
         health["scanned_release"]["tag"] = args.release_tag or "(set by --release-date)"
     image_created = parse_datetime(scan_info.get("image_created"))
+    args.image_created = image_created.isoformat() if image_created else None  # for the OS lag at build
     if not release_date and image_created and not args.no_image_date:
         # Lag against the build date answers "were fixes available when this image was built and
         # left out?". That is a fair question for an image, but not the same as a project release.
         release_date, release_date_source = image_created, "image build date"
         health["scanned_release"] = {"tag": "(image build date)", "date": image_created.isoformat(),
                                      "matched": False}
-        warnings.append(f"No release date from GitHub or --release-date; using the image build date "
+        warnings.append(f"No release date from {forge} or --release-date; using the image build date "
                         f"{image_created.date().isoformat()} for release-lag metrics. The unshipped metric "
                         "needs a matched release and stays unavailable. Use --no-image-date to disable.")
     if findings and not release_date:
         if args.repo and args.offline:
-            hint = "--offline skips the GitHub lookup; drop --offline or pass --release-date."
+            hint = f"--offline skips the {forge} lookup; drop --offline or pass --release-date."
         elif args.repo:
-            hint = "the GitHub release lookup did not return a date; pass --release-tag or --release-date."
+            hint = f"the {forge} release lookup did not return a date; pass --release-tag or --release-date."
         else:
             hint = "pass --repo, or --release-date."
         if args.path_kind != "inventory":  # an inventory has no single release to compare against
@@ -421,6 +422,9 @@ def _lag_and_likelihood(args, findings: list, all_findings: list, release_date, 
                         dict, lk_cfg, health: dict, sc: dict, warnings: list[str]):
     """Release lag of the findings shown; likelihood from every finding, as it is a gate too."""
     lag_m = lag.compute(findings, release_date, as_of, args.grace_days, args.unshipped_days, is_latest)
+    build = parse_datetime(getattr(args, "image_created", None))
+    if build and not args.no_image_date:
+        lag_m["os_at_build"] = lag.os_at_build(findings, build, release_date, args.grace_days)
     lag_m["exploits_checked"] = checks.is_checked(check_info, "exploits") and bool(findings)
     # For the likelihood gate: a source that failed (or loaded only in part) leaves its metric unknown, so a rule
     # on it cannot be read as not met. One the user turned off is their choice, already reported: read as before.
