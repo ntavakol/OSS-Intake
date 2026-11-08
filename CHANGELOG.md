@@ -7,7 +7,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - A GitLab project's licence is given as its SPDX ID (`MIT`, `Apache-2.0`), as for GitHub, not GitLab's lower-case
-  key; an unlisted key is kept as GitLab gives it.
+  key; an unlisted key is kept as GitLab gives it. Codeberg does not report licences: `health.license_note` in
+  `assessment.json` now says so, rather than leaving an unexplained empty licence.
 
 ## [0.19.0] - 2026-11-08
 

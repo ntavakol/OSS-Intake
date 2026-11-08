@@ -92,10 +92,14 @@ def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:
         status, data = http.get_json(f"{CODEBERG_API}/{path}")
         if status != 200 or not isinstance(data, dict):
             return status, {}
+        # Forgejo (Codeberg) does not detect a repository's licence (a live answer, 8 Nov 2026, has no such
+        # field); Gitea's "licenses" list is read if Codeberg ever gives one.
         lics = data.get("licenses")
         return status, {"archived": data.get("archived"), "pushed_at": data.get("updated_at"),
                         "license": "; ".join(x for x in lics if isinstance(x, str)) or None
-                        if isinstance(lics, list) else None}
+                        if isinstance(lics, list) else None,
+                        **({} if isinstance(lics, list) else
+                           {"license_note": "Codeberg does not report a repository's licence"})}
     status, data = http.get_json(f"{API}/repos/{path}")
     if status != 200 or not isinstance(data, dict):
         return status, {}
@@ -161,6 +165,8 @@ def fetch(http: Http, repo: str, as_of: datetime, image_tag: str | None = None,
     out["pushed_at"] = meta.get("pushed_at")
     out["days_since_push"] = days_between(parse_datetime(meta.get("pushed_at")), as_of)
     out["license"] = meta.get("license")
+    if meta.get("license_note"):
+        out["license_note"] = meta["license_note"]
 
     status, rels = _releases(http, forge, path)
     if status != 200 or not isinstance(rels, list):

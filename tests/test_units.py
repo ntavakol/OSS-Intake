@@ -4146,3 +4146,14 @@ def test_gitlab_licence_keys_are_given_as_spdx_ids(key, spdx):
     api = "https://gitlab.com/api/v4/projects/group%2Fapp"
     http = _ForgeHttp([(f"{api}?license=true", (200, {"archived": False, "license": {"key": key}}))])
     assert releases._meta(http, "gitlab", "group/app")[1]["license"] == spdx
+
+
+def test_codeberg_says_it_does_not_report_a_licence():
+    """Live run, 8 Nov: Codeberg's repository answer has no licence field, and the licence was left empty with
+    nothing to say why."""
+    from oss_intake.health import releases
+
+    api = "https://codeberg.org/api/v1/repos/forgejo/forgejo"
+    http = _ForgeHttp([(api, (200, {"archived": False, "updated_at": "2026-11-08T07:32:31+01:00"}))])
+    status, meta = releases._meta(http, "codeberg", "forgejo/forgejo")
+    assert meta["license"] is None and "does not report" in meta["license_note"]
