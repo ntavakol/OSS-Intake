@@ -5,6 +5,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- A GitLab project's licence is given as its SPDX ID (`MIT`, `Apache-2.0`), as for GitHub, not GitLab's lower-case
+  key; an unlisted key is kept as GitLab gives it.
+
 ## [0.19.0] - 2026-11-08
 
 A feature release: upgrade from 0.18.0. New inputs (`.xlsx` inventories, GitLab and Codeberg repositories, a VS

@@ -55,6 +55,19 @@ def _forge(repo: str) -> tuple[str, str]:
     return forge, (repo if forge == "github" else repo.partition("/")[2])
 
 
+# GitLab names a licence by its licensee key (lower case, "apache-2.0"); GitHub, which uses the same keys, gives
+# the SPDX ID ("Apache-2.0"). The licences licensee knows, as SPDX writes them; "other" is GitHub's NOASSERTION.
+# A key not listed is kept as GitLab gives it.
+_SPDX_IDS = {k.lower(): k for k in (
+    "0BSD", "AFL-3.0", "AGPL-3.0", "Apache-2.0", "Artistic-2.0", "BlueOak-1.0.0", "BSD-2-Clause",
+    "BSD-2-Clause-Patent", "BSD-3-Clause", "BSD-3-Clause-Clear", "BSD-4-Clause", "BSL-1.0", "CC-BY-4.0",
+    "CC-BY-SA-4.0", "CC0-1.0", "CECILL-2.1", "CERN-OHL-P-2.0", "CERN-OHL-S-2.0", "CERN-OHL-W-2.0", "ECL-2.0",
+    "EPL-1.0", "EPL-2.0", "EUPL-1.1", "EUPL-1.2", "GFDL-1.3", "GPL-2.0", "GPL-3.0", "ISC", "LGPL-2.1", "LGPL-3.0",
+    "LPPL-1.3c", "MIT", "MIT-0", "MPL-2.0", "MS-PL", "MS-RL", "MulanPSL-2.0", "NCSA", "ODbL-1.0", "OFL-1.1",
+    "OSL-3.0", "PostgreSQL", "Unlicense", "UPL-1.0", "Vim", "WTFPL", "Zlib")}
+_SPDX_IDS["other"] = "NOASSERTION"
+
+
 def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:
     """The repository's status code and its archived, pushed_at and license, as GitHub names them."""
     if forge == "gitlab":
@@ -74,7 +87,7 @@ def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:
         except HttpError:
             pass
         return status, {"archived": data.get("archived"), "pushed_at": pushed,
-                        "license": key}
+                        "license": _SPDX_IDS.get(key.lower(), key) if key else None}
     if forge == "codeberg":
         status, data = http.get_json(f"{CODEBERG_API}/{path}")
         if status != 200 or not isinstance(data, dict):
