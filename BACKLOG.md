@@ -31,8 +31,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   packages (OSV has a Bioconductor ecosystem).
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
-- Fleet input from osquery's `vscode_extensions` table, through the existing osquery collector: the removal list
-  check for every machine, by ID and version.
 - Check the Marketplace signature of a `.vsix`.
 - JetBrains plugins (plugins.jetbrains.com has a public API).
 
@@ -56,6 +54,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
   rule that does not compile is a clear error. Not rule generation: for a known-bad package the hash is the
   better indicator.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
+  Kept here (8 Nov): AWS publishes no ALAS API, only the RSS feeds and the bulletin pages, and their format has
+  not been checked against real samples yet.
 
 ## Scanner management
 - Fetch the known-bad list from a signed location instead of shipping it with each release.

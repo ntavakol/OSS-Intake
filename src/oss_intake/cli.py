@@ -276,6 +276,7 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.path_kind == "sbom":
         # An SBOM is a package inventory in another format: read and validate it all, then treat it as one.
         args.inventory, args.os_queries, args.sbom_info = sbom.read(Path(args.path))
+        args.sbom_extensions = args.sbom_info.pop("vscode_extensions", [])
         args.path_kind = "inventory"
         nc = args.sbom_info["not_checked"]
         if nc:
@@ -285,7 +286,7 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             top = "; ".join(f"{n} {r}" for r, n in sorted(why.items(), key=lambda kv: -kv[1])[:4])
             args.sbom_warning = (f"{len(nc)} of {args.sbom_info['components']} SBOM components were not checked "
                                  f"({top}); they are listed in the report, not counted as clean")
-        if not args.inventory:
+        if not args.inventory and not args.sbom_extensions:
             raise UsageError(f"{Path(args.path).name}: none of the {args.sbom_info['components']} components can "
                              "be checked; see the reasons with --quiet off")
         args.input_format = ", ".join(f"{k} ({v} file{'s' if v != 1 else ''})"
@@ -405,6 +406,11 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
             diff = vscode.compare(old["extensions"][0], new)
             args.extension_info["changes"] = diff
             warnings.extend(vscode.change_warnings(diff, new["id"]))
+    elif getattr(args, "sbom_extensions", None):
+        # VS Code extensions an SBOM lists (the osquery collector's vscode_extensions): the removal list and Open
+        # VSX by ID and version, for each system that has them; their files are not seen.
+        args.extension_info = vscode.assess_listed(args.sbom_extensions, net)
+    if args.extension_info:
         alerts, more = vscode.warnings(args.extension_info)
         warnings[:0] = alerts
         warnings.extend(more)

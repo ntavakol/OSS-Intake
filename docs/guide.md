@@ -348,7 +348,11 @@ reason, never counted as clean. The SBOM's subject becomes the `system` label an
 and the GitHub dependency graph are in
 [examples/sbom](https://github.com/ntavakol/OSS-Intake/tree/main/examples/sbom).
 For laptops and servers, [examples/osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
-turns osquery's package tables, from one machine or a whole fleet's result logs, into one SBOM per host.
+turns osquery's package tables, from one machine or a whole fleet's result logs, into one SBOM per host. It
+includes each machine's VS Code extensions (and Cursor's, VSCodium's and the other editors' osquery reads), which
+oss-intake checks against the Marketplace removal list and Open VSX by ID and version, naming the systems that have
+each: one removed as malware fails `--fail-on malicious`. Their files are not read, so there are no behaviour
+indicators; assess an extensions folder or a `.vsix` for those.
 [examples/nexus](https://github.com/ntavakol/OSS-Intake/tree/main/examples/nexus) does the same for what a Nexus
 Repository proxy has cached, with a gate recipe that checks only what is new since the last run.
 
@@ -366,8 +370,8 @@ curl -fsSLO "$BASE/osquery/osquery_sbom.py"
 curl -fsSLO "$BASE/osquery/oss-intake-pack.conf"
 shasum -a 256 -c <<'SUMS'
 79eff58018a09f1e1599ee9d1723af815794f5109b1b53be11629af4f513cd89  nexus_sbom.py
-0fbaa9d99d2714337a2bbc286543f7a47153ba878edde0edd87dee0697307bd7  osquery_sbom.py
-b5dfa634d47e15ed06bed1118b40cef9ea02c78c8da2da7ed80c1546567e1a93  oss-intake-pack.conf
+89d6fbfb6f9763148eee5c3668d954220b9da0d0765b4697e4338bd2d883bd94  osquery_sbom.py
+e23a0bfd5c1e52b205014c05e159c88521880d0a051eb80b96d33296eb361461  oss-intake-pack.conf
 SUMS
 ```
 

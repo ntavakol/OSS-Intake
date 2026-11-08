@@ -455,7 +455,7 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
               dict, check_info: dict, decision_info, age_info: dict, reach_stats: dict, lag_m: dict,
               release_date_source, health: dict, sc: dict, lk, warnings: list[str]):
     """The assessment every report is written from, and the per-package rows for an inventory."""
-    if args.extension_info:
+    if args.extension_info and not args.extension_info.get("listed_only"):
         vscode.attribute(args.extension_info, findings)
     assessment = {
         "tool": {"name": "oss-intake", "version": __version__},

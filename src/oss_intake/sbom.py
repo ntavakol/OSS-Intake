@@ -12,6 +12,10 @@ release cannot be told is listed as not checked with the reason; nothing is drop
 becomes the `system` label and a component's supplier the `supplier` label, so packages.csv and the executive
 summary group by them. Structural problems (not JSON, not an SBOM, too large) stop the run before any lookup.
 
+A VS Code extension (purl pkg:vscode-extension/publisher/name@version, as the osquery collector writes for
+osquery's vscode_extensions table) is not a package OSV covers: it is checked against the VS Code Marketplace
+removal list and looked up on Open VSX instead (vscode.assess_listed), for each system that has it.
+
 Two CycloneDX component properties are read, so a collector (examples/osquery) can say more than a purl does:
   oss-intake:not-checked     why a component without a purl cannot be checked (a Homebrew formula, the OS)
   oss-intake:label:<key>     a label for the package, e.g. oss-intake:label:location = ~/app/.venv
@@ -22,6 +26,7 @@ from __future__ import annotations
 import re
 from collections import deque
 from pathlib import Path
+from urllib.parse import unquote
 
 from . import jsonsafe, os_packages
 from .inputs import InputError, _row_purl
@@ -33,6 +38,9 @@ MAX_COMPONENTS = 500_000
 NOT_CHECKED_PROP = "oss-intake:not-checked"
 LABEL_PROP = "oss-intake:label:"
 _LABEL_KEY = re.compile(r"^[a-z][a-z0-9_ -]{0,39}$")
+MAX_EXTENSIONS = 50_000  # distinct extension versions across the SBOMs
+_VSCODE = re.compile(r"^pkg:vscode-extension/(?P<ns>[^/@?#]{1,200})/(?P<name>[^/@?#]{1,200})"
+                     r"@(?P<version>[^/@?#]{1,100})(?:[?#].*)?$", re.IGNORECASE)
 _CDX_SPECS = ("1.2", "1.3", "1.4", "1.5", "1.6", "1.7")
 
 
@@ -271,6 +279,7 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     found: dict[str, dict[str, set[str]]] = {}
     os_queries: dict[str, dict] = {}
     info: dict = {"files": 0, "formats": {}, "components": 0, "packages": 0, "not_checked": [], "containers": 0}
+    extensions: dict[tuple[str, str], set[str]] = {}
     errors: list[str] = []
     for f in files_of(path):
         try:
@@ -289,6 +298,14 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
             info["components"] += 1
             if info["components"] > MAX_COMPONENTS:
                 raise InputError(f"more than {MAX_COMPONENTS} components; split the SBOMs into smaller sets")
+            ext = _VSCODE.match(raw_purl or "")
+            if ext:
+                ident = f"{unquote(ext['ns'])}.{unquote(ext['name'])}"
+                key = (ident, unquote(ext["version"]))
+                if key not in extensions and len(extensions) >= MAX_EXTENSIONS:
+                    raise InputError(f"more than {MAX_EXTENSIONS} VS Code extension versions; split the SBOMs")
+                extensions.setdefault(key, set()).add(system)
+                continue
             purl, why = _purl(raw_purl, props, os_queries)
             if not raw_purl and props.get(NOT_CHECKED_PROP):
                 why = props[NOT_CHECKED_PROP][:300]
@@ -305,9 +322,11 @@ def read(path: Path) -> tuple[list[dict], dict, dict]:
     if errors:
         shown = "\n  ".join(errors[:20])
         raise InputError(f"{len(errors)} file(s) could not be read as SBOMs; nothing was looked up:\n  {shown}")
-    if not found and not info["not_checked"]:
+    if not found and not info["not_checked"] and not extensions:
         raise InputError(f"{path.name} lists no components")
     info["packages"] = len(found)
+    info["vscode_extensions"] = [{"id": i, "version": v, "systems": sorted(s)}
+                                 for (i, v), s in sorted(extensions.items())]
     entries = [{"purl": p, "labels": {k: "; ".join(sorted(v)) for k, v in sorted(lb.items())}}
                for p, lb in sorted(found.items())]
     return entries, os_queries, info

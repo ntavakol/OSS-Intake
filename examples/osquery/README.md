@@ -53,6 +53,7 @@ To check what the collector made of a host, open its `.cdx.json`; every componen
 | `rpm_packages` | Rocky Linux and AlmaLinux advisories in OSV | RHEL, Amazon Linux, CentOS and Fedora are listed with the reason (no usable OSV data) |
 | `python_packages` | PyPI | See below for the distro's own folders |
 | `npm_packages` | npm | Global packages unless folders are given |
+| `vscode_extensions` | VS Code Marketplace removal list and Open VSX, by ID and version | Every user's VS Code, Cursor, VSCodium, Windsurf and the other editors osquery reads; one removed as malware fails `--fail-on malicious`. The extensions' files are not read |
 | `homebrew_packages`, `chocolatey_packages`, `os_version` | Not checked | No advisory database covers them; listed in the report, never counted as clean |
 
 osquery has no Alpine (`apk`) table; for Alpine images use [examples/sbom](../sbom) instead.

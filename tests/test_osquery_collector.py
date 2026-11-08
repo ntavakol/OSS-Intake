@@ -205,3 +205,61 @@ def test_dir_project_root_finds_its_venv(tmp_path):
     site = tmp_path / "app" / ".venv" / "lib" / "python3.12" / "site-packages"
     site.mkdir(parents=True)
     assert col._site_packages(tmp_path / "app") == str(site.resolve())
+
+
+def _host_sbom(tmp_path, host, rows, extra=None):
+    """One host's SBOM from a saved osquery result with these vscode_extensions rows."""
+    saved = tmp_path / f"{host}.json"
+    saved.write_text(json.dumps({"vscode_extensions": rows, **(extra or {})}), encoding="utf-8")
+    out = tmp_path / "sboms"
+    assert col.main(["--json", str(saved), "--host", host, "--out", str(out)]) == 0
+    return out
+
+
+def test_vscode_extensions_are_written_and_read_back(tmp_path):
+    """Backlog (done 8 Nov): osquery's vscode_extensions rows become pkg:vscode-extension components, which
+    oss-intake reads as extensions to check, not as packages for OSV and not as not checked."""
+    out = _host_sbom(tmp_path, "dev-01", [{"name": "ms-python.python", "version": "2026.1.0"},
+                                          {"name": "noid", "version": "1.0.0"}])
+    doc = json.loads((out / "dev-01.cdx.json").read_text(encoding="utf-8"))
+    assert [c["purl"] for c in doc["components"]] == ["pkg:vscode-extension/ms-python/python@2026.1.0"]
+    entries, _, info = sbom.read(out)
+    assert entries == [] and info["not_checked"] == []
+    assert info["vscode_extensions"] == [{"id": "ms-python.python", "version": "2026.1.0", "systems": ["dev-01"]}]
+
+
+def test_a_fleet_extension_removed_as_malware_fails_the_gate_and_names_the_systems(tmp_path, fixtures):
+    """The removal list is checked for every machine's extensions; one removed as malware leads the report with
+    the systems that have it and fails --fail-on malicious, as an extensions folder would."""
+    from oss_intake import cli
+
+    from .conftest import FakeHttp
+
+    _host_sbom(tmp_path, "dev-01", [{"name": "badpub.evil-theme", "version": "0.0.1"},
+                                    {"name": "example.ext", "version": "1.2.3"}],
+               {"npm_packages": [{"name": "left-pad", "version": "1.3.0", "directory": "/usr/lib/node_modules"}]})
+    out = _host_sbom(tmp_path, "dev-02", [{"name": "badpub.evil-theme", "version": "0.0.1"}])
+    reports = tmp_path / "reports"
+    code = cli.main(["--path", str(out), "--out", str(reports), "--as-of", "2026-11-08", "--fail-on", "malicious"],
+                    http=FakeHttp())
+    assert code == cli.EXIT_THRESHOLD
+    a = json.loads((reports / "assessment.json").read_text(encoding="utf-8"))
+    assert a["warnings"][0].startswith("EXTENSION REMOVED FROM THE VS CODE MARKETPLACE AS MALWARE: badpub.evil-theme")
+    assert "on 2 system(s): dev-01, dev-02" in a["warnings"][0]
+    by = {e["id"]: e for e in a["extensions"]["extensions"]}
+    assert by["badpub.evil-theme"]["malicious"] and not by["example.ext"]["removed"]
+    assert by["example.ext"]["systems"] == ["dev-01"]
+    md = (reports / "summary.md").read_text(encoding="utf-8")
+    assert "VS Code extensions (2)" in md and "checked by ID and version" in md
+
+
+def test_fleet_extensions_with_the_removal_list_unavailable_fail_the_gate(tmp_path):
+    """Fail closed: the list could not be read, so --fail-on malicious cannot pass on these extensions."""
+    from oss_intake import cli
+
+    from .conftest import FakeHttp
+
+    out = _host_sbom(tmp_path, "dev-01", [{"name": "example.ext", "version": "1.2.3"}])
+    code = cli.main(["--path", str(out), "--out", str(tmp_path / "r"), "--fail-on", "malicious"],
+                    http=FakeHttp(fail_hosts=("raw.githubusercontent.com",)))
+    assert code == cli.EXIT_ERROR
