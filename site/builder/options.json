@@ -543,7 +543,7 @@
      "dest": "formats",
      "exclusive_group": null,
      "flag": "--formats",
-     "help": "comma list of csv,md,json,html,sarif (findings.csv is always written; sarif, for code-scanning dashboards, only when asked for)",
+     "help": "comma list of csv,md,json,html,sarif,pdf (findings.csv is always written; sarif, for code-scanning dashboards, and pdf, which needs the pdf extra, only when asked for)",
      "kind": "value",
      "metavar": null,
      "required": false,

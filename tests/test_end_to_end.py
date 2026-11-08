@@ -111,7 +111,7 @@ def test_enrichment_failures_are_warnings(tmp_path, fixtures):
     (["--image", "Example/Web App:1", "--out", "o"], "not a valid image"),
     (["--image", "example/webapp", "--out", "o"], "explicit tag"),
     (["--repo", "not a repo", "--out", "o"], "owner/name"),
-    (["--repo", "a/b", "--out", "o", "--formats", "pdf"], "unknown value"),
+    (["--repo", "a/b", "--out", "o", "--formats", "docx"], "unknown value"),
     (["--repo", "a/b", "--out", "o", "--as-of", "22/10/2026"], "YYYY-MM-DD"),
     (["--image", "a/b:1", "--out", "o", "--offline", "--scanners", "trivy,osv"], "--offline"),
     (["--image", "a/b:1", "--out", "o", "--scanners", "osv"], "needs the package list"),

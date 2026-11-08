@@ -179,7 +179,7 @@ memory and time.
 
 ## Reports
 
-**What crosses:** what oss-intake writes to the output folder: `summary.md`, `report.html`,
+**What crosses:** what oss-intake writes to the output folder: `summary.md`, `report.html`, `report.pdf`,
 `executive-summary.html`, `findings.csv`, `packages.csv` and the other CSVs, `assessment.json`, OpenVEX and
 `vex.cdx.json`, and the raw scanner output. Much of it is text from advisories, package
 names and the software being assessed, chosen by whoever wrote it.
@@ -190,6 +190,7 @@ user's files (where the output is written), and the user's privacy (what the rep
 | Threat | Mitigation | Where |
 |---|---|---|
 | Script or markup in the HTML report | Every value is escaped with `html.escape`, quotes included; only markup the code builds itself is not. The report has no scripts and no links built from data, so a `javascript:` URL cannot reach it. | `report_html`, `exec_summary` |
+| The PDF renderer is made to fetch a URL or read a local file named in the report (an image or stylesheet in a value) | Values are escaped as for the HTML report, which the PDF is rendered from, and WeasyPrint is given a URL fetcher that reads only `data:` URIs: `file:`, `http:` and every other scheme is refused, so rendering reaches no network and no file. | `report_pdf._fetcher` |
 | Markup, links or broken tables in Markdown | Every value is escaped (`` \ ` * _ [ ] ! \| ~ # ``, `<` and `>`), and line breaks become spaces. | `report._md_cell` |
 | Spreadsheet formula injection in CSV | A value starting with `=`, `+`, `-`, `@`, a tab or a carriage return (after any leading apostrophes), or with one after a separator inside it, is prefixed with `'`, header row included; signed numbers after a separator are left alone. Decisions read back undo it. | `report.csv_safe`, `decisions.unguard` |
 | The token or a scanner option ends up in a report | Neither is written; image references cannot carry credentials. | `cli`, `report` |

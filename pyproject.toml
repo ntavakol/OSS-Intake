@@ -45,6 +45,8 @@ Changelog = "https://github.com/ntavakol/OSS-Intake/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6", "coverage>=7", "mypy>=2.4", "openpyxl>=3.1"]
 xlsx = ["openpyxl>=3.1"]
+# The PDF report; WeasyPrint also needs Pango from the system (not on PyPI), so it is not in dev.
+pdf = ["weasyprint>=62"]
 
 [project.scripts]
 oss-intake = "oss_intake.cli:main"
@@ -78,8 +80,8 @@ warn_unused_ignores = true
 disable_error_code = ["annotation-unchecked"]
 
 [[tool.mypy.overrides]]
-# openpyxl (the optional .xlsx reader) ships no type hints.
-module = ["openpyxl", "openpyxl.*"]
+# openpyxl (the optional .xlsx reader) ships no type hints; WeasyPrint (the optional PDF) is not installed in CI.
+module = ["openpyxl", "openpyxl.*", "weasyprint", "weasyprint.*"]
 ignore_missing_imports = true
 
 [tool.ruff]

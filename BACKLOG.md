@@ -34,11 +34,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Check the Marketplace signature of a `.vsix`.
 - JetBrains plugins (plugins.jetbrains.com has a public API).
 
-## Outputs
-- PDF report. Deferred because it needs either a heavy dependency (WeasyPrint, ReportLab) or a headless
-  browser, which conflicts with the minimal-dependency goal. Until then, print `report.html` to PDF from a
-  browser; the page is self-contained and prints cleanly.
-
 ## Signals
 - Optional VirusTotal lookup for `--path` artifacts (parked 8 Nov): hash only, never an upload (uploads are
   shared with VirusTotal subscribers), opt-in with the user's own key, read from `VT_API_KEY` (never an option,

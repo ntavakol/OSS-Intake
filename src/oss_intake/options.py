@@ -46,12 +46,12 @@ _IMAGE_RE = re.compile(
 _REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$")
 
 
-FORMATS = {"csv", "md", "json", "html", "sarif"}
+FORMATS = {"csv", "md", "json", "html", "sarif", "pdf"}
 # Every file a scan writes into --out. One the last run wrote (as its manifest, .oss-intake-files.json, says) that
 # this run did not write is removed at the end, so it cannot be taken for a current result; nothing else is
 # touched.
 OUTPUT_FILES = ("findings.csv", "packages.csv", "package-systems.csv", "executive-summary.html", "openvex.json",
-                "vex.cdx.json", "summary.md", "assessment.json", "report.html",
+                "vex.cdx.json", "summary.md", "assessment.json", "report.html", "report.pdf",
                 "findings.sarif", "raw/trivy.json", "raw/grype.json", "raw/sbom.cdx.json")
 
 
@@ -207,8 +207,8 @@ def build_parser() -> argparse.ArgumentParser:
                         "those whose details could not be loaded are kept; --fail-on and likelihood still see every "
                         "finding)")
     s.add_argument("--formats", default="csv,md,json,html",
-                   help="comma list of csv,md,json,html,sarif (findings.csv is always written; sarif, for "
-                        "code-scanning dashboards, only when asked for)")
+                   help="comma list of csv,md,json,html,sarif,pdf (findings.csv is always written; sarif, for "
+                        "code-scanning dashboards, and pdf, which needs the pdf extra, only when asked for)")
     s.add_argument("--sbom", action="store_true", help="also write a CycloneDX SBOM from Trivy to raw/")
     s.add_argument("--offline", action="store_true",
                    help="no network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV); scanners may still pull")

@@ -112,6 +112,7 @@
     "html",
     "json",
     "md",
+    "pdf",
     "sarif"
    ],
    "message": "unknown value",
@@ -119,7 +120,7 @@
     "csv,html"
    ],
    "invalid": [
-    "pdf",
+    "docx",
     ","
    ]
   },

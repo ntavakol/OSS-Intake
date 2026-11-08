@@ -728,3 +728,10 @@ def write_html(path: Path, a: dict, findings: list[Finding], top: int = 50) -> N
     lag = a["lag"]
     report_html.write(path, a, findings, top, CAVEAT, HEURISTIC_NOTE, lag_note(lag))
 
+
+def render_html(a: dict, findings: list[Finding], top: int = 50) -> str:
+    """The HTML report's page, as write_html writes it (the PDF is rendered from it)."""
+    from . import report_html
+
+    return report_html.render(a, findings, top, CAVEAT, HEURISTIC_NOTE, lag_note(a["lag"]))
+
