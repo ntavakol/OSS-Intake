@@ -133,6 +133,11 @@ def extension_folders(path: Path) -> list[Path]:
     return [p for p in children if _manifest(p) is not None]
 
 
+def is_single(path: Path) -> bool:
+    """One extension: a .vsix, or an extension's own folder (not a folder of extensions)."""
+    return (path.is_file() and is_vsix(path)) or (path.is_dir() and _manifest(path) is not None)
+
+
 def is_extension_input(path: Path) -> bool:
     return is_vsix(path) if path.is_file() else bool(path.is_dir() and extension_folders(path))
 
@@ -690,6 +695,63 @@ def attribute(info: dict, findings: list) -> None:
             n["malicious"] += bool(f.malicious)
     info["unmatched"] = unmatched
     info["listings_not_read"] = not_read
+
+
+def compare(old: dict, new: dict) -> dict:
+    """What an update changed: most extension compromises arrive as an update to one people already trust. old and
+    new are analyse() results for two versions of one extension. Lists what the new version adds (indicators,
+    native files, web addresses, npm packages) and drops, and whether its publisher, name or repository changed."""
+    def kinds(e: dict) -> dict[str, dict]:
+        return {i["id"]: i for i in e["indicators"]}
+
+    def native(e: dict) -> set[str]:
+        return {s["file"] for i in e["indicators"] if i["id"] == "native" for s in i["seen"]}
+
+    ok, nk = kinds(old), kinds(new)
+    added = [{"id": k, "title": nk[k]["title"], "seen": nk[k]["seen"][:3]} for k in nk if k not in ok]
+    grew = [{"id": k, "title": nk[k]["title"], "from": len(ok[k]["seen"]), "to": len(nk[k]["seen"])}
+            for k in nk if k in ok and len(nk[k]["seen"]) > len(ok[k]["seen"])]
+    old_hosts, new_hosts = set(old["hosts"]), set(new["hosts"])
+    old_pkgs, new_pkgs = {tuple(p) for p in old["packages"]}, {tuple(p) for p in new["packages"]}
+    old_names = {p[0] for p in old_pkgs}
+    return {
+        "from_version": old["version"], "to_version": new["version"],
+        "same_extension": _key(old["id"]) == _key(new["id"]),
+        "publisher_changed": old["publisher"] != new["publisher"],
+        "repository_changed": old["repository"] != new["repository"],
+        "repository_from": old["repository"], "repository_to": new["repository"],
+        "indicators_added": added, "indicators_grew": grew,
+        "indicators_dropped": [ok[k]["title"] for k in ok if k not in nk],
+        "native_added": sorted(native(new) - native(old))[:50],
+        # The hosts are read up to MAX_HOSTS per extension and kept up to 100: a host missing from a capped list
+        # is not new, so only a full list on both sides says so.
+        "hosts_added": sorted(new_hosts - old_hosts)[:100] if old["hosts_total"] <= 100 else [],
+        "hosts_not_compared": old["hosts_total"] > 100,
+        "packages_added": sorted(p[0] for p in new_pkgs - old_pkgs if p[0] not in old_names)[:200],
+        "packages_changed": sorted(f"{n} {v}" for n, v in new_pkgs - old_pkgs if n in old_names)[:200],
+        "bundled_from": old["bundled"], "bundled_to": new["bundled"],
+    }
+
+
+def change_warnings(diff: dict, ext_id: str) -> list[str]:
+    """Warnings for what an update adds that is worth a person's look."""
+    out = []
+    if not diff["same_extension"]:
+        out.append(f"--compare-with names a different extension than {ext_id}: the comparison may mean little")
+    if diff["publisher_changed"] or diff["repository_changed"]:
+        what = " and ".join(x for x, c in (("publisher", diff["publisher_changed"]),
+                                          ("repository", diff["repository_changed"])) if c)
+        out.append(f"{ext_id} {diff['to_version']} changes its {what} since {diff['from_version']}: check who "
+                   "publishes it now before you take the update")
+    adds = [i["title"].split(" (")[0] for i in diff["indicators_added"]]
+    if diff["native_added"]:
+        adds.append(f"{len(diff['native_added'])} new native file(s)")
+    if diff["hosts_added"]:
+        adds.append(f"{len(diff['hosts_added'])} new web address(es)")
+    if adds:
+        out.append(f"{ext_id} {diff['to_version']} adds since {diff['from_version']}: {'; '.join(adds)}. Read "
+                   "what changed before you take the update")
+    return out
 
 
 def warnings(info: dict) -> tuple[list[str], list[str]]:

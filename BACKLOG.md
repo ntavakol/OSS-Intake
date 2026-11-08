@@ -33,8 +33,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
 - Download by ID (`vscode:publisher.name@1.2.3`), from Open VSX's public API only: the VS Code Marketplace's API
   is unofficial and its terms tie it to Microsoft's products.
-- Compare two versions of an extension: what changed in an update (new indicators, new web addresses, new
-  native files, a new publisher), since most extension compromises arrive as an update to a trusted one.
 - Fleet input from osquery's `vscode_extensions` table, through the existing osquery collector: the removal list
   check for every machine, by ID and version.
 - Open VSX metadata (publisher verification, downloads, last update) for extensions from Cursor and VSCodium.

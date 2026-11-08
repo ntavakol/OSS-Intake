@@ -937,6 +937,42 @@
    ]
   },
   {
+   "id": "compare-with-needs-an-extension",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "compare_with"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "package"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "--compare-with needs --path to one VS Code extension",
+   "args": [
+    "--image",
+    "owner/app:1.0",
+    "--compare-with",
+    "{file}",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--image",
+    "owner/app:1.0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
    "id": "max-db-age-days",
    "command": "scan",
    "when": {

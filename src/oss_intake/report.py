@@ -262,6 +262,32 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
             "so findings they list may be unmatched." if info.get("listings_not_read") else "") if x)))
     if seen:
         blocks.append(("table", ["Extension", "Indicator", "Seen in (first 3)"], seen))
+    ch = info.get("changes")
+    if ch:
+        def listed(xs: list, n: int = 10) -> str:
+            return (", ".join(str(x) for x in xs[:n]) + (f" and {len(xs) - n} more" if len(xs) > n else "")) or "none"
+
+        crows = [
+            ["New indicators", "; ".join(
+                i["title"] + " (" + ", ".join(f"{s['file']}{':' + str(s['line']) if s['line'] else ''}"
+                                             for s in i["seen"]) + ")" for i in ch["indicators_added"]) or "none"],
+            ["Indicators seen more often", listed([f"{i['title']}: {i['from']} to {i['to']}"
+                                                   for i in ch["indicators_grew"]])],
+            ["New native files", listed(ch["native_added"])],
+            ["New web addresses", "not compared (more than 100 in the older version)" if ch["hosts_not_compared"]
+             else listed(ch["hosts_added"], 15)],
+            ["New npm packages", listed(ch["packages_added"])],
+            ["Packages at a new version", listed(ch["packages_changed"])],
+            ["Publisher", "CHANGED" if ch["publisher_changed"] else "same"],
+            ["Repository", f"CHANGED from {ch['repository_from'] or 'none'} to {ch['repository_to'] or 'none'}"
+             if ch["repository_changed"] else "same"],
+            ["Indicators gone", listed(ch["indicators_dropped"])],
+        ]
+        if ch["bundled_to"] != ch["bundled_from"]:
+            crows.append(["Bundled", "now bundled" if ch["bundled_to"] else "no longer bundled"])
+        blocks.append(("p", f"What the update from {ch['from_version']} to {ch['to_version']} changed "
+                            "(--compare-with): most extension compromises arrive as an update to a trusted one."))
+        blocks.append(("table", ["Change", "Detail"], crows))
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
                                                        else "")] for e in current if e["hosts"]]
     if hosts:

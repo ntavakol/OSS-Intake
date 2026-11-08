@@ -188,6 +188,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-image-date", action="store_true",
                    help="do not use the image build date: no fall back to it when no release date is known, and "
                         "no OS package lag against a rebuild")
+    s.add_argument("--compare-with", metavar="PATH",
+                   help="with --path to one VS Code extension (.vsix or its folder): an older version of it, to "
+                        "show what the update changed (new indicators, native files, web addresses, packages, "
+                        "publisher)")
     s.add_argument("--include-kernel-headers", action="store_true",
                    help="for a container image, count kernel CVEs on kernel header packages (linux-libc-dev...) in lag "
                         "and likelihood; for other targets they always count")

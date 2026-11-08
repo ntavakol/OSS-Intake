@@ -764,3 +764,39 @@ def test_a_main_name_too_long_for_the_system_does_not_stop_the_assessment(tmp_pa
     """Audit (7 Nov): is_file() raised ENAMETOOLONG for a 300-character main, and the whole folder's run stopped."""
     d = make_folder(tmp_path / "exts", pkg=manifest(main="a" * 300))
     assert "bundled" in vscode.analyse(d)
+
+
+def test_compare_with_an_older_version_shows_what_the_update_adds(tmp_path, fixtures):
+    """Backlog (done 8 Nov): most extension compromises arrive as an update to a trusted extension. With
+    --compare-with, the report lists what the update adds: new indicators, native files, web addresses, packages,
+    and a publisher or repository change."""
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0", repository="https://github.com/a/b"),
+                    files={"extension/out/extension.js": "fetch('https://api.example.com/x')"})
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1", repository="https://github.com/c/d"),
+                    files={"extension/out/extension.js": "require('child_process'); fetch('https://api.example.com/x');"
+                                                         " fetch('https://drop.example.net/y')",
+                           "extension/bin/helper.node": b"\x7fELF....",
+                           "extension/node_modules/left-pad/package.json": '{"name":"left-pad","version":"1.3.0"}'})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    ch = a["extensions"]["changes"]
+    assert (ch["from_version"], ch["to_version"], ch["same_extension"]) == ("1.0.0", "1.0.1", True)
+    assert {i["id"] for i in ch["indicators_added"]} >= {"process", "native"}
+    assert ch["native_added"] == ["bin/helper.node"] and ch["hosts_added"] == ["drop.example.net"]
+    assert ch["packages_added"] == ["left-pad"] and ch["repository_changed"] and not ch["publisher_changed"]
+    assert any("adds since 1.0.0" in w and "new web address" in w for w in a["warnings"])
+    assert any("changes its repository since 1.0.0" in w for w in a["warnings"])
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    assert "What the update from 1.0.0 to 1.0.1 changed" in md and "drop.example.net" in md
+    assert "What the update from 1.0.0 to 1.0.1 changed" in (out / "report.html").read_text(encoding="utf-8")
+
+
+def test_compare_with_needs_one_extension_on_each_side(tmp_path, fixtures, capsys):
+    vsix = make_vsix(tmp_path / "x.vsix")
+    root = tmp_path / "extensions"
+    make_folder(root)
+    code, _ = scan(tmp_path, fixtures, root, FakeHttp(), "--compare-with", str(vsix))
+    assert code == cli.EXIT_USAGE and "--compare-with needs --path to one VS Code extension" in capsys.readouterr().err
+    code, _ = scan(tmp_path, fixtures, vsix, FakeHttp(), "--compare-with", str(tmp_path / "nope"))
+    assert code == cli.EXIT_USAGE and "not a VS Code extension" in capsys.readouterr().err

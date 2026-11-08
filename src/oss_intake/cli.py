@@ -150,7 +150,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         raise UsageError("give --package on its own, not with --image or --path")
     if args.image:
         args.image = validate_image(args.image)
-    args.path_kind, args.scan_target, tmp_dir = None, None, None
+    args.path_kind, args.scan_target, tmp_dir, compare_tmp = None, None, None, None
     if args.path:
         p = Path(args.path).expanduser()
         if not p.exists():
@@ -159,6 +159,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             raise UsageError(f"--path {args.path} is not a file or folder")
         args.path = str(p)
         args.path_kind = inputs.classify(p)
+    if args.compare_with:
+        old = Path(args.compare_with).expanduser()
+        if args.path_kind != "vscode" or not vscode.is_single(Path(args.path)):
+            raise UsageError("--compare-with needs --path to one VS Code extension (a .vsix or its folder)")
+        if not old.exists() or not vscode.is_single(old):
+            raise UsageError(f"--compare-with {args.compare_with}: not a VS Code extension (a .vsix or its folder)")
+        args.compare_with = str(old)
     if args.repo:
         args.repo = validate_repo(args.repo)
     # findings.csv is always written: the reports point to it and the assessor records decisions in it.
@@ -293,6 +300,13 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         # A .vsix is unpacked here, before anything is written: one that breaks a limit is refused (exit 2). The
         # extension's own files are read even when the scanners' reports are imported.
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), "vscode")
+        if args.compare_with:
+            try:
+                args.compare_target, compare_tmp = inputs.stage(Path(args.compare_with), "vscode")
+            except BaseException:
+                if tmp_dir:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                raise
     try:
         out = prepare_out(args.out)
         args.raw_written = []  # the raw scanner files this run writes; _remove_stale keeps only these
@@ -300,8 +314,9 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
         return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)
     finally:  # S8: the temporary copy of the artifact is removed whatever happens
-        if tmp_dir:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        for t in (tmp_dir, compare_tmp):
+            if t:
+                shutil.rmtree(t, ignore_errors=True)
 
 
 def _private_paths(reason: str, folder: Path) -> str:
@@ -357,6 +372,12 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     args.extension_info = None
     if args.path_kind == "vscode":
         args.extension_info = vscode.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())
+        if args.compare_with:
+            new = args.extension_info["extensions"][0]
+            old = vscode.assess(Path(args.compare_target), None, staged=Path(args.compare_with).is_file())
+            diff = vscode.compare(old["extensions"][0], new)
+            args.extension_info["changes"] = diff
+            warnings.extend(vscode.change_warnings(diff, new["id"]))
         alerts, more = vscode.warnings(args.extension_info)
         warnings[:0] = alerts
         warnings.extend(more)
