@@ -62,6 +62,14 @@ CACHE_RULES: list[tuple[re.Pattern, int]] = [
     (re.compile(r"^https://api\.deps\.dev/v3/systems/[^/]+/packages/[^/?]+$"), DAY),
     (re.compile(r"^https://raw\.githubusercontent\.com/nomi-sec/PoC-in-GitHub/master/\d{4}/CVE-[\d-]+\.json$"),
      7 * DAY),
+    # When an Ubuntu source version was first published never changes once it has been (an answer with no
+    # publication is not kept: see put).
+    (re.compile(r"^https://api\.launchpad\.net/1\.0/ubuntu/\+archive/primary\?ws\.op=getPublishedSources&"
+                r"source_name=[^&]+&version=[^&]+&exact_match=true&distro_series=[^&]+&ws\.size=\d+$"), 30 * DAY),
+    # An APKBUILD's commit history only grows; a day matches the OSV advisories the fix dates are read for.
+    (re.compile(r"^https://api\.github\.com/repos/alpinelinux/aports/commits\?path=[^&]+&sha=[^&]+&per_page=\d+$"),
+     DAY),
+    # Not cached: GitHub releases (a new release must be seen for the release-age check) and EPSS (meant fresh).
 ]
 
 
@@ -219,6 +227,8 @@ class ResponseCache:
         if "/versions/" in url and url.startswith("https://api.deps.dev/") and not (
                 isinstance(data, dict) and data.get("publishedAt")):
             return  # a version deps.dev knows but has no date for yet: ask again next time
+        if url.startswith("https://api.launchpad.net/") and not (isinstance(data, dict) and data.get("entries")):
+            return  # not published yet: it may be by the next run
         f = self._file(url)
         try:
             # Folders it makes, parents included (~/.cache on a first run), are the user's only whatever the
@@ -300,9 +310,14 @@ class Http:
         nothing, and every get_json still works without it."""
 
 
+def with_params(url: str, params: dict) -> str:
+    """The URL get_json(url, params) asks for, as cache and prefetch key it."""
+    return f"{url}{'&' if '?' in url else '?'}{urlencode(params)}"
+
+
 class RequestsHttp(Http):
-    """Http over requests: one session per thread, an optional ResponseCache and parallel prefetch for GETs without
-    params (GETs with params always go to the network). A GitHub token (argument or GITHUB_TOKEN) is sent only to
+    """Http over requests: one session per thread, an optional ResponseCache and parallel prefetch for GETs
+    (with parameters too, folded into the URL: with_params). A GitHub token (argument or GITHUB_TOKEN) is sent only to
     api.github.com. Connection failures raise HttpError; requests_made counts requests sent."""
     def __init__(self, timeout: int = DEFAULT_TIMEOUT, github_token: str | None = None,
                  cache: ResponseCache | None = None, workers: int = DEFAULT_WORKERS) -> None:
@@ -428,9 +443,9 @@ class RequestsHttp(Http):
 
     def get_json(self, url: str, params: dict | None = None) -> tuple[int, Any]:
         if params:
-            # Cache and prefetch key on the full URL, so a query string is folded in rather than passed apart.
-            url = f"{url}{'&' if '?' in url else '?'}{urlencode(params)}"
-            return self._do("GET", url)
+            # Cache and prefetch key on the full URL, so a query string is folded in rather than passed apart,
+            # and a GET with parameters is cached or prefetched like any other (CACHE_RULES decides).
+            url = with_params(url, params)
         ready = self._ready.pop(url, None)
         if isinstance(ready, HttpError):
             raise ready

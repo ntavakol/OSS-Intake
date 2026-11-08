@@ -105,8 +105,9 @@ not trust them to be up, or to answer in the right shape.
 ## The cache folder
 
 **What crosses:** answers kept on disk between runs (OSV advisory details for a day, deps.dev package data for a
-day and release dates for 30 days, PoC-in-GitHub entries for a week). What decides a version's vulnerabilities
-(OSV's batch query), KEV, EPSS and the GitHub API are always fetched fresh.
+day and release dates for 30 days, PoC-in-GitHub entries for a week, Ubuntu publication dates from Launchpad for
+30 days once published, Alpine aports commit histories for a day). What decides a version's vulnerabilities
+(OSV's batch query), KEV, EPSS and the GitHub releases list are always fetched fresh.
 
 **Assets at risk:** the verdict. A planted entry could give a malicious new release an old date, so the
 release-age check misses it, or change an advisory's severity, fix versions, aliases or CWE IDs (CWE-506 is

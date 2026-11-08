@@ -48,7 +48,8 @@ CISA KEV membership).
   host, image or repository (an [osquery](https://github.com/ntavakol/OSS-Intake/tree/main/examples/osquery)
   collector makes them for laptops and servers), with each package version looked up once and counted per
   system.
-- Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html`, plus the raw
+- Writes `findings.csv`, `summary.md`, `assessment.json` and a self-contained `report.html` (and, on request,
+  `findings.sarif` for code-scanning dashboards), plus the raw
   scanner output under `raw/` as evidence. Reports the last run left in the folder that this run did not write
   are removed (only files listed in its `.oss-intake-files.json`; other files are left alone), and a symbolic
   link where a report goes stops the run.
@@ -285,6 +286,11 @@ upgrade comparison:
   (one request per package) with `--no-latest` to see the current state and the minimum fix only.
 - **major:** the upgrade crosses a major version, or a minor version below 1.0, so expect breaking changes.
 
+Image, lockfile, folder and artifact scans get the same comparison for each vulnerable package, in an
+"Upgrade options" section of `summary.md` and `report.html` and under `upgrades` in `assessment.json`. For an
+image's OS packages the distro's fix version is given, but what is still known at it is not checked: OSV is
+asked about distro packages by source package and release, which an image scan does not have.
+
 When a package is on more than one system, `package-systems.csv` lists every package and system pair, so "which
 hosts run X" is a filter in a spreadsheet; long host lists are shortened elsewhere (Excel holds 32,767
 characters in a cell).
@@ -379,8 +385,9 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--grace-days` | A fix must predate the release by this many days to count as missed (default 14) |
 | `--unshipped-days` | Days a fix must be public, with no newer release, to count as unshipped (default 90) |
 | `--as-of` | Fix the assessment date for reproducible reports |
+| `--utc` | Date the assessment by today in UTC rather than your local date, for a team across time zones or a pipeline comparing runs. The time a report was generated is always shown in UTC. No effect with `--as-of` |
 | `--min-severity` | Leave findings below a severity out of the reports. Findings in Act now, malicious ones and those whose details could not be loaded are kept, and `--fail-on` and likelihood still see every finding: a gate met only by findings left out is named in a warning |
-| `--formats` | Any of `csv,md,json,html` (default all; `findings.csv` is always written) |
+| `--formats` | Any of `csv,md,json,html,sarif` (default `csv,md,json,html`; `findings.csv` is always written). `sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code scanning: one result per finding at the file the package was found in, with decisions and set-aside findings carried as suppressions |
 | `--offline` | No network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV, EPSS, exploit sources) |
 | `--no-epss`, `--no-kev`, `--no-scorecard`, `--no-fix-dates`, `--no-exploits` | Skip one enrichment source (`--release-age-days 0` skips the new-release check) |
 | `--no-latest` | Package inventories: skip the latest-release lookup (the minimum fix is still checked) |

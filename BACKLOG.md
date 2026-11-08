@@ -3,11 +3,6 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Scheduled: branch protection (agreed 8 Nov: on 8 Nov after 8 pm, or with the first release after that)
-- Branch protection with required status checks: changes reach main only through a pull request whose CI has
-  passed (Scorecard Branch-Protection is 3 with the current ruleset, which blocks force-push and deletion).
-  From then on, changes are delivered as a branch and a pull request instead of a push to main.
-
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
 a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no
@@ -31,8 +26,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   tested during a JFrog 14-day cloud trial, since there is no Artifactory instance to test against until then.
 - Package inventory as `.xlsx`, read directly as an optional extra (openpyxl).
 - Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
-- Upgrade comparison for image and lockfile reports (done for inventories in 0.4.0): per package, what is still
-  known at the minimum fix and at the latest stable release, with major-version warnings.
 
 ## Inputs
 - Source checkouts: scan a folder in both Trivy modes (`fs` for lockfiles, `rootfs` for built artifacts) and
@@ -56,15 +49,21 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - PDF report. Deferred because it needs either a heavy dependency (WeasyPrint, ReportLab) or a headless
   browser, which conflicts with the minimal-dependency goal. Until then, print `report.html` to PDF from a
   browser; the page is self-contained and prints cleanly.
-- SARIF output for code-scanning dashboards.
-- Report date and time in UTC on request (for example `--utc`): the reports show local time by default (0.13.0);
-  a team in several time zones, or a pipeline comparing runs, may want UTC throughout. Day counts already use
-  UTC dates.
 
 ## Signals
-- Optional VirusTotal lookup for `--path` artifacts: hash only, never an upload (uploads are shared with
-  VirusTotal subscribers), opt-in with the user's own API key. Low value for new supply-chain compromises, which
-  are usually unknown to VirusTotal at first; check the API terms for organisational use.
+- Optional VirusTotal lookup for `--path` artifacts (parked 8 Nov): hash only, never an upload (uploads are
+  shared with VirusTotal subscribers), opt-in with the user's own key, read from `VT_API_KEY` (never an option,
+  never logged), paced to the public API's 4 requests a minute by default. Users bring their own key: VirusTotal's
+  public API is for free, non-commercial use, and a hash-only workflow at work needs a premium key, so the guide
+  must say which key fits which use (and the VirusTotal terms, now under Google Cloud's, be read first). Tested
+  by the maintainer with a personal key on his own machine only, never in CI; tests use recorded answers. Low
+  value for new supply-chain compromises, which are usually unknown to VirusTotal at first.
+- YARA scanning (agreed 8 Nov): match the files oss-intake already reads (`--path` artifacts, `.vsix` and
+  installed extensions) against rules the user supplies (`--yara-rules DIR`), each match a finding with the rule
+  and the file. `yara-x` as an optional extra. No rules are shipped (the common public sets have restrictive
+  licences, and shipped rules would need keeping current). Rule files are input: size and time limits, and a
+  rule that does not compile is a clear error. Not rule generation: for a known-bad package the hash is the
+  better indicator.
 - Vendor rating beside the aggregator score: only where a structured vendor rating exists. Checked on
   CVE-2026-47884: NVD carries only a CISA-ADP 9.8, not Spring's own Medium, which exists only on spring.io. OS
   packages already use the distro's rating through Trivy. Low value until a general source appears.
@@ -83,9 +82,3 @@ a package that was clean when approved can later turn out vulnerable or compromi
   in favour of `--bundle` with `--trusted-root`. Before cosign removes them, build a Sigstore bundle from Grype's
   `.pem` and `.sig` and the transparency log entry, and verify that instead; or switch if Grype starts
   publishing bundles.
-
-## Performance
-- GET requests with query parameters skip the response cache and prefetched results
-  (`http.RequestsHttp.get_json` builds the URL and goes straight to the network): GitHub releases, Launchpad and
-  Alpine aports lookups. EPSS is meant to be fetched fresh and stays that way. Speed only, not correctness; no rush
-  (agreed 3 Nov).

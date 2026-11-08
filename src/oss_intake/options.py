@@ -46,13 +46,13 @@ _IMAGE_RE = re.compile(
 _REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$")
 
 
-FORMATS = {"csv", "md", "json", "html"}
+FORMATS = {"csv", "md", "json", "html", "sarif"}
 # Every file a scan writes into --out. One the last run wrote (as its manifest, .oss-intake-files.json, says) that
 # this run did not write is removed at the end, so it cannot be taken for a current result; nothing else is
 # touched.
 OUTPUT_FILES = ("findings.csv", "packages.csv", "package-systems.csv", "executive-summary.html", "openvex.json",
                 "vex.cdx.json", "summary.md", "assessment.json", "report.html",
-                "raw/trivy.json", "raw/grype.json", "raw/sbom.cdx.json")
+                "findings.sarif", "raw/trivy.json", "raw/grype.json", "raw/sbom.cdx.json")
 
 
 SCANNERS = {"trivy", "grype", "osv"}
@@ -175,12 +175,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="for a container image, count kernel CVEs on kernel header packages (linux-libc-dev...) in lag "
                         "and likelihood; for other targets they always count")
     s.add_argument("--as-of", help="assessment date (YYYY-MM-DD) for reproducible reports; default today")
+    s.add_argument("--utc", action="store_true",
+                   help="date the assessment by today in UTC, not your local date (the generated time is always "
+                        "UTC); no effect with --as-of")
     s.add_argument("--min-severity", default="UNKNOWN", type=str.upper, choices=list(SEVERITY_ORDER),
                    help="leave findings below this severity out of the reports (malicious ones, those in Act now and "
                         "those whose details could not be loaded are kept; --fail-on and likelihood still see every "
                         "finding)")
     s.add_argument("--formats", default="csv,md,json,html",
-                   help="comma list of csv,md,json,html (findings.csv is always written)")
+                   help="comma list of csv,md,json,html,sarif (findings.csv is always written; sarif, for "
+                        "code-scanning dashboards, only when asked for)")
     s.add_argument("--sbom", action="store_true", help="also write a CycloneDX SBOM from Trivy to raw/")
     s.add_argument("--offline", action="store_true",
                    help="no network enrichment (OSV, deps.dev, GitHub, Scorecard, KEV); scanners may still pull")

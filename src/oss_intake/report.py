@@ -397,6 +397,27 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
             ("p", "Every package, including those with none known, is in packages.csv. 'Upgrade to at least' is "
                   "the lowest version that fixes every listed vulnerability with a fix; fewer known "
                   "vulnerabilities is not proof that a version is safe.")]))
+    up = a.get("upgrades")
+    if up:
+        from .upgrade import describe as _describe_left
+
+        def _to(v, left, major):
+            return " · ".join(x for x in (v, _describe_left(left), "major" if major else "") if x)
+
+        rows = [[r["group"], r["package"], r["version"], r["ecosystem"], r["findings"], r["critical"],
+                 "MALICIOUS" if r["malicious"] else (f"{r['kev']} KEV" if r["kev"] else ""),
+                 "remove: malicious release" if r["malicious"]
+                 else _to(r["upgrade_to"], r.get("upgrade_left"), r.get("upgrade_major"))
+                 if r["upgrade_to"] else ("no fix listed" if r["no_fix"] else ""),
+                 "" if r.get("latest") == r["version"]
+                 else _to(r.get("latest", ""), r.get("latest_left"), r.get("latest_major"))]
+                for r in up["rows"][:top]]
+        secs.append(("Upgrade options", [
+            ("table", ["Group", "Package", "Version", "Ecosystem", "Findings", "Critical", "Evidence",
+                       "Upgrade to at least", "Latest release"], rows),
+            ("p", "'Upgrade to at least' is the lowest version that fixes every listed vulnerability with a fix, "
+                  "followed by what is still known at it (not checked for an image's OS packages); fewer known "
+                  "vulnerabilities is not proof that a version is safe. Every package is in assessment.json.")]))
 
     sev_rows = []
     for s in SEVERITIES:

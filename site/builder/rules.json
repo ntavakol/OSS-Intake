@@ -105,7 +105,8 @@
     "csv",
     "html",
     "json",
-    "md"
+    "md",
+    "sarif"
    ],
    "message": "unknown value",
    "valid": [

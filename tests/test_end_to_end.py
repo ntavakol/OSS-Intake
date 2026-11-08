@@ -2655,3 +2655,126 @@ def test_an_output_folder_others_can_write_to_is_warned_about(tmp_path):
         assert bool(hits) is warned, a["warnings"]
         if warned:
             assert f"{out} can be written by other users" in hits[0]
+
+
+@pytest.mark.skipif(not hasattr(__import__("time"), "tzset"), reason="needs time.tzset to change the time zone")
+def test_utc_dates_the_assessment_by_today_in_utc(tmp_path, fixtures, monkeypatch):
+    """Backlog (done 8 Nov): --utc for a team across time zones. At 20:00 UTC on 1 Jan it is already 2 Jan
+    14 hours ahead; the default dates the assessment 2 Jan, --utc dates it 1 Jan."""
+    import time
+    from datetime import datetime, timezone
+
+    class Fixed(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            t = datetime(2026, 1, 1, 20, 0, tzinfo=timezone.utc)
+            return t if tz else t.astimezone().replace(tzinfo=None)
+
+    monkeypatch.setattr(cli, "datetime", Fixed)
+    monkeypatch.setenv("TZ", "XXX-14")  # POSIX: 14 hours east of UTC
+    time.tzset()
+    try:
+        got = {}
+        for extra in ([], ["--utc"]):
+            out = tmp_path / ("u" if extra else "l")
+            assert cli.main(["--image", "example/webapp:2.0.0", "--out", str(out), "--offline", "--formats",
+                             "json", "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy",
+                             *extra]) == 0
+            got[bool(extra)] = json.loads((out / "assessment.json").read_text(encoding="utf-8"))["as_of"]
+        assert got[False].startswith("2026-01-02") and got[False].endswith("+14:00")
+        assert got[True].startswith("2026-01-01") and got[True].endswith("+00:00")
+    finally:
+        monkeypatch.delenv("TZ")
+        time.tzset()
+
+
+def test_sarif_output_for_code_scanning(tmp_path, fixtures):
+    """Backlog (done 8 Nov): SARIF 2.1.0 for code-scanning dashboards. One rule per advisory, one result per
+    finding at the file the package was found in, a fingerprint stable across runs, and an assessor's
+    not_affected decision carried as a suppression rather than dropped. Only written when asked for."""
+    from .conftest import FakeHttp
+
+    code, out1 = run(tmp_path / "one", fixtures, FakeHttp())
+    assert code == 0 and not (out1 / "findings.sarif").exists()
+    rows = list(csv.DictReader((out1 / "findings.csv").open(encoding="utf-8", newline="")))
+    for r in rows:
+        if r["id"] == "CVE-2099-0001":
+            r.update(triage_status="Not affected", triage_reachable="no", triage_notes="XsltView is not used")
+    decided = tmp_path / "decided.csv"
+    with decided.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+
+    docs = []
+    for name in ("two", "three"):
+        code, out = run(tmp_path / name, fixtures, FakeHttp(), "--formats", "sarif", "--decisions", str(decided))
+        assert code == 0
+        docs.append(json.loads((out / "findings.sarif").read_text(encoding="utf-8")))
+    doc = docs[0]
+    assert doc["version"] == "2.1.0" and len(doc["runs"]) == 1
+    run_ = doc["runs"][0]
+    assert run_["tool"]["driver"]["name"] == "oss-intake"
+    assert not (tmp_path / "two" / "reports" / "assessment.json").exists()  # only what --formats asked for
+    results, rules = run_["results"], {r["id"]: r for r in run_["tool"]["driver"]["rules"]}
+    assert len(results) == len(rows) and {r["ruleId"] for r in results} <= set(rules)
+    for r in results:
+        assert r["level"] in ("error", "warning", "note")
+        assert r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        assert " " not in r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        assert float(rules[r["ruleId"]]["properties"]["security-severity"]) >= 0
+    by_id = {r["ruleId"]: r for r in results}
+    assert by_id["CVE-2099-0001"]["suppressions"][0]["justification"].startswith("assessor decision: not_affected")
+    fps = [[r["partialFingerprints"]["ossIntakeFinding/v1"] for r in d["runs"][0]["results"]] for d in docs]
+    assert fps[0] == fps[1] and len(set(fps[0])) == len(fps[0])  # stable across runs, one per finding
+
+
+def test_sarif_levels_follow_the_finding():
+    from oss_intake import sarif
+    from oss_intake.models import Finding
+
+    def level(**kw):
+        return sarif.build([Finding("CVE-2099-1", "p", "1", **kw)], "0", "t")["runs"][0]["results"][0]["level"]
+
+    assert level(severity="CRITICAL") == level(severity="HIGH") == "error"
+    assert level(severity="LOW", kev=True) == "error"
+    assert level(severity="LOW", cwes={"CWE-506"}) == "error"  # malware
+    assert level(severity="MEDIUM") == "warning"
+    assert level(severity="LOW") == level(severity="UNKNOWN") == "note"
+    doc = sarif.build([Finding("MAL-2099-1", "p", "1", severity="UNKNOWN")], "0", "owner/app:1.0 (debian 12)")
+    res = doc["runs"][0]["results"][0]
+    assert res["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "owner/app%3A1.0%20%28debian%2012%29"
+    assert doc["runs"][0]["tool"]["driver"]["rules"][0]["properties"]["security-severity"] == "10.0"
+
+
+def test_upgrade_options_for_an_image(tmp_path, fixtures):
+    """Backlog (done 8 Nov): the upgrade comparison inventories have had since 0.4.0, for image, lockfile, folder
+    and artifact scans. An image's OS package is given its distro fix, but what is still known at that version is
+    not checked (OSV cannot be asked without the distro's source package), so it says nothing, not '0 known'."""
+    from .conftest import FakeHttp
+
+    code, out = run(tmp_path, fixtures, FakeHttp())
+    assert code == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    rows = {r["package"]: r for r in a["upgrades"]["rows"]}
+    assert a["upgrades"]["upgrade"]["status"] == "ok"
+    assert rows["org.springframework:spring-web"]["upgrade_to"] == "6.1.12"
+    assert rows["org.springframework:spring-web"]["upgrade_left"] == {"total": 0, "critical": 0, "malicious": False}
+    assert rows["libc6"]["upgrade_to"] == "2.39-0ubuntu8.5" and rows["libc6"]["upgrade_left"] is None
+    assert all(r["findings"] for r in a["upgrades"]["rows"]) and "labels" not in rows["libc6"]
+    assert a["upgrades"]["fix_clears_all"] == sum(1 for r in rows.values()
+                                                  if (r["upgrade_left"] or {}).get("total") == 0)
+    md = (out / "summary.md").read_text(encoding="utf-8")
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "## Upgrade options" in md and "6.1.12 · 0 known" in md
+    assert "<h2>Upgrade options</h2>" in html or ">Upgrade options<" in html
+    assert "inventory" not in a
+
+
+def test_upgrade_options_offline_give_the_fixes_without_lookups(tmp_path, fixtures):
+    code = cli.main(["--image", "example/webapp:2.0.0", "--out", str(tmp_path / "o"), "--offline", "--formats", "json",
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--scanners", "trivy"])
+    assert code == 0
+    a = json.loads((tmp_path / "o" / "assessment.json").read_text(encoding="utf-8"))
+    assert a["upgrades"]["upgrade"] == {"status": "skipped"} and a["upgrades"]["rows"]
+    assert all(r["upgrade_left"] is None and not r["latest"] for r in a["upgrades"]["rows"])

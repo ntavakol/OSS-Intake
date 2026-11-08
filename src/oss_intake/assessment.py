@@ -30,6 +30,7 @@ from . import (
     release_age,
     report,
     safewrite,
+    sarif,
     scanning,
     triage,
     upgrade,
@@ -499,7 +500,31 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
             warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
         assessment["inventory"] = {**inventory_report.summary(pkg_rows), "upgrade": up, "rows": pkg_rows,
                                    "executive": exec_summary.compute(pkg_rows, findings, as_of, args.previous)}
+    else:
+        _upgrade_options(args, net, assessment, all_findings, warnings)
     return assessment, pkg_rows
+
+
+def _upgrade_options(args, net, assessment: dict, all_findings: list, warnings: list) -> None:
+    """Image, lockfile, folder and artifact scans: per vulnerable package, the minimum fix and the latest release,
+    with what is still known at each (as an inventory's Packages table has had since 0.4.0)."""
+    seen = {f.purl for f in all_findings if f.purl}
+    rows = [r for r in inventory_report.package_rows([{"purl": p, "labels": {}} for p in sorted(seen)],
+                                                     all_findings) if r["findings"]]
+    if not rows:
+        return
+    if net:
+        up = upgrade.enrich(net, rows, latest=not args.no_latest, os_queries=getattr(args, "os_queries", None))
+    else:
+        upgrade.blank(rows)
+        up = {"status": "skipped"}
+    if up.get("status") == "failed":
+        warnings.append(f"Upgrade check failed, so remaining vulnerabilities are not shown: {up.get('error')}")
+    for r in rows:
+        r.pop("labels", None)
+        r.pop("systems", None)
+    assessment["upgrades"] = {"upgrade": up, "rows": rows,
+                              "fix_clears_all": sum(1 for r in rows if (r.get("upgrade_left") or {}).get("total") == 0)}
 
 
 def _write_reports(args, out: Path, formats: list[str], assessment: dict, findings: list, all_findings: list, pkg_rows,
@@ -535,6 +560,10 @@ def _write_reports(args, out: Path, formats: list[str], assessment: dict, findin
     if "html" in formats:
         report.write_html(out / "report.html", assessment, findings, max(args.top, 50))
         written.append("report.html")
+    if "sarif" in formats:
+        doc = sarif.build(findings, __version__, report.report_title(assessment))
+        safewrite.write_text(out / "findings.sarif", json.dumps(doc, indent=2))
+        written.append("findings.sarif")
     return written
 
 

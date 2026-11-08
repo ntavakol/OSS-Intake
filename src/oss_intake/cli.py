@@ -163,8 +163,10 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         args.repo = validate_repo(args.repo)
     # findings.csv is always written: the reports point to it and the assessor records decisions in it.
     formats = list(dict.fromkeys(["csv", *csv_set(args.formats, FORMATS, "--formats")]))
-    # Without --as-of, today is the assessor's local date (the report shows as_of's date), not UTC's.
-    as_of = validate_date(args.as_of, "--as-of") or datetime.now(timezone.utc).astimezone()
+    # Without --as-of, today is the assessor's local date (the report shows as_of's date), not UTC's, unless --utc
+    # asks for UTC throughout (a team across time zones, or a pipeline comparing runs).
+    now = datetime.now(timezone.utc)
+    as_of = validate_date(args.as_of, "--as-of") or (now if args.utc else now.astimezone())
     release_override = validate_date(args.release_date, "--release-date")
     if args.likelihood_config or args.fail_on_likelihood:
         args.likelihood = True
