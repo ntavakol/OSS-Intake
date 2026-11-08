@@ -22,6 +22,24 @@ class ScannerError(Exception):
     pass
 
 
+# Where to install each program oss-intake runs but never downloads (agreed 8 Nov: no downloader, a missing
+# scanner is named with where to get it).
+INSTALL_PAGES = {
+    "trivy": "https://trivy.dev/latest/getting-started/installation/",
+    "grype": "https://github.com/anchore/grype#installation",
+    "govulncheck": "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck",
+    "cosign": "https://docs.sigstore.dev/cosign/system_config/installation/",
+}
+
+
+def missing(name: str, how: str = "", path_option: bool = True) -> str:
+    """The message for a program that is not installed: oss-intake does not download scanners."""
+    page = INSTALL_PAGES.get(name)
+    return (f"{name} is not installed (not found on PATH){how}. oss-intake does not download scanners: install "
+            f"a pinned, checksum-verified release" + (f" ({page})" if page else "") + " and run again"
+            + (f", or pass --{name}-path" if path_option else ""))
+
+
 def find_executable(name: str, explicit: str | None = None) -> str:
     """Resolve a scanner binary. An explicit path wins; otherwise PATH (handles .exe on Windows)."""
     if explicit:
@@ -31,9 +49,7 @@ def find_executable(name: str, explicit: str | None = None) -> str:
         return str(p.resolve())
     found = shutil.which(name)
     if not found:
-        raise ScannerError(
-            f"{name} not found on PATH. Install a pinned, checksum-verified release or pass --{name}-path."
-        )
+        raise ScannerError(missing(name))
     return found
 
 

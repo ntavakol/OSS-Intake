@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 
 from .. import jsonsafe
-from . import ScannerError, capped_run, path_arg, run
+from . import ScannerError, capped_run, missing, path_arg, run
 
 NAME = "govulncheck"
 
@@ -30,8 +30,8 @@ NAME = "govulncheck"
 def find(explicit: str | None) -> str:
     path = explicit or shutil.which("govulncheck")
     if not path or not Path(path).is_file():
-        raise ScannerError("govulncheck not found; install it with "
-                           "'go install golang.org/x/vuln/cmd/govulncheck@v1.1.4' or pass --govulncheck-path")
+        raise ScannerError(missing("govulncheck", ", which --reachability needs; with Go: 'go install "
+                                   "golang.org/x/vuln/cmd/govulncheck@v1.1.4'"))
     return path
 
 

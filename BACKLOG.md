@@ -64,18 +64,12 @@ a package that was clean when approved can later turn out vulnerable or compromi
   licences, and shipped rules would need keeping current). Rule files are input: size and time limits, and a
   rule that does not compile is a clear error. Not rule generation: for a known-bad package the hash is the
   better indicator.
-- Vendor rating beside the aggregator score: only where a structured vendor rating exists. Checked on
-  CVE-2026-47884: NVD carries only a CISA-ADP 9.8, not Spring's own Medium, which exists only on spring.io. OS
-  packages already use the distro's rating through Trivy. Low value until a general source appears.
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
 - Rebuilt images: official images (redis, postgres...) are rebuilt with newer OS packages under the same tag.
   For the OS layer, lag against the image build date may be fairer than against the project's release date;
   consider reporting both.
 
 ## Scanner management
-- An optional, opt-in scanner downloader: exact version only, SHA-256 against the release checksums file and
-  cosign verification both mandatory, never "latest". Deliberately left out so far, because a downloader is
-  the riskiest feature a supply-chain tool can have.
 - Fetch the known-bad list from a signed location instead of shipping it with each release.
 - Grype signature without cosign's deprecated flags (agreed 8 Nov): `--grype-cosign-certificate` and
   `--grype-cosign-signature` call `cosign verify-blob --certificate --signature`, which cosign marks deprecated
