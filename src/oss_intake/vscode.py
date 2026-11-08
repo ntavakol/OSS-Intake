@@ -542,6 +542,29 @@ def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
             "open_vsx": ovsx}
 
 
+def assess_listed(listed: list[dict], http: Http | None) -> dict:
+    """Extensions an SBOM lists (sbom.read's vscode_extensions: id, version, systems), as assess() gives them:
+    the removal list's verdict and Open VSX metadata. Their files are not seen, so there are no indicators."""
+    found = [{"id": x["id"], "version": x["version"], "systems": x["systems"], "listed_only": True,
+              "folder": "", "ids_checked": [x["id"]], "indicators": [], "hosts": [], "hosts_total": 0,
+              "bundled": False, "dependencies_visible": True, "not_read": [], "not_read_total": 0,
+              "repository": "", "in_use": True} for x in listed]
+    removed, why = load_removed(http)
+    ovsx = {"status": "not_checked", "detail": "--offline"}
+    if http is not None and found:
+        from . import openvsx
+
+        ovsx = {"status": "checked", **openvsx.lookup(http, found)}
+    for e in found:
+        hit = removed.get(_key(e["id"])) if removed is not None else None
+        e["removed"] = hit
+        e["malicious"] = bool(hit and is_malicious(hit))
+    return {"extensions": found, "single": False, "listed_only": True,
+            "removed_list": {"status": "checked" if removed is not None else "not_checked", "detail": why,
+                             "source": REMOVED_PAGE, "entries": len(removed or {})},
+            "open_vsx": ovsx}
+
+
 def _is_file(p: Path) -> bool:
     """is_file that treats a path the system refuses (a name too long, an invalid one) as missing, so one
     extension's odd manifest cannot stop the assessment of the others."""
@@ -765,14 +788,18 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
     alerts, other = [], []
     for e in info["extensions"]:
         hit = e.get("removed")
+        on = ""
+        if e.get("systems"):
+            on = f" on {len(e['systems'])} system(s): {', '.join(e['systems'][:10])}" + (
+                f" and {len(e['systems']) - 10} more" if len(e["systems"]) > 10 else "")
         if hit and e["malicious"]:
             alerts.append(f"EXTENSION REMOVED FROM THE VS CODE MARKETPLACE AS {hit['type'].upper()}: {e['id']} "
-                          f"{e['version']} (removed {hit['date']}). Uninstall it everywhere and treat machines "
+                          f"{e['version']} (removed {hit['date']}){on}. Uninstall it everywhere and treat machines "
                           "that ran it as compromised")
         elif hit:
             other.append(f"{e['id']} {e['version']} was removed from the VS Code Marketplace for {hit['type']} "
-                         f"({hit['date']}). It may be a copy of another extension: check who publishes it before you "
-                         "keep it")
+                         f"({hit['date']}){on}. It may be a copy of another extension: check who publishes it before "
+                         "you keep it")
         if e["bundled"] and e.get("in_use", True):
             other.append(f"{e['id']} {e['version']} bundles its code into one file, so the scanners cannot see its "
                          "dependencies: no findings for it does not mean it has none")

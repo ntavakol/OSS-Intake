@@ -26,6 +26,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - VS Code extensions are looked up on Open VSX (their ID and version are sent; not with `--offline`): verified
   publisher, who published the version and when, downloads, pre-release. Shown in the extensions section; no
   gate uses it.
+- The osquery collector includes each machine's VS Code extensions (osquery's `vscode_extensions` table, which
+  also covers Cursor, VSCodium and other editors), and oss-intake checks extensions an SBOM lists
+  (`pkg:vscode-extension/publisher/name@version`) against the Marketplace removal list and Open VSX, naming the
+  systems that have each. One removed as malware fails `--fail-on malicious`; if the list cannot be read, that
+  gate fails rather than passing.
 
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says

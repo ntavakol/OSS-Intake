@@ -11,8 +11,8 @@ Three ways in:
   python3 osquery_sbom.py --out sboms --json saved.json  a saved {"query name": [rows]} object, one host
 
 Tables read: deb_packages, rpm_packages, python_packages, npm_packages, homebrew_packages,
-chocolatey_packages, with os_version for the distro. Query names say which table a result came from:
-"deb_packages", "pack/oss-intake/python_packages_app" and "oss_intake_npm_packages" all work.
+chocolatey_packages and vscode_extensions, with os_version for the distro. Query names say which table a
+result came from: "deb_packages", "pack/oss-intake/python_packages_app" and "oss_intake_npm_packages" all work.
 
 What osquery does not see, and what oss-intake cannot check, is said rather than dropped:
   - python_packages and npm_packages read default locations only (system and user site-packages, global
@@ -21,6 +21,9 @@ What osquery does not see, and what oss-intake cannot check, is said rather than
   - Homebrew, chocolatey and the operating system itself have no advisory data oss-intake can query; they
     are written without a purl and listed in the report as not checked, with the reason.
   - osquery has no Alpine (apk) table.
+  - VS Code extensions (and those of Cursor, VSCodium, Windsurf and the other editors osquery reads) are
+    written as pkg:vscode-extension/publisher/name@version; oss-intake checks them against the VS Code
+    Marketplace removal list and Open VSX by ID and version, not their files.
 
 Home folders are shortened (/Users/alex/app -> ~/app) so user names in paths do not reach reports. The host
 name is osquery's hostname, or --host to set your own; host names often carry a user name (Alexs-MacBook-Pro).
@@ -42,7 +45,7 @@ from urllib.parse import quote
 
 TOOL_VERSION = "1"
 TABLES = ("deb_packages", "rpm_packages", "python_packages", "npm_packages", "homebrew_packages",
-          "chocolatey_packages", "os_version", "system_info")
+          "chocolatey_packages", "vscode_extensions", "os_version", "system_info")
 QUERIES = {
     "os_version": "SELECT name, version, major, minor, platform, platform_like, codename FROM os_version",
     "system_info": "SELECT hostname FROM system_info",
@@ -52,7 +55,10 @@ QUERIES = {
     "npm_packages": "SELECT name, version, directory FROM npm_packages",
     "homebrew_packages": "SELECT name, version, type FROM homebrew_packages",
     "chocolatey_packages": "SELECT name, version FROM chocolatey_packages",
+    # name is the extension's ID, publisher.name (ms-python.python); every user's editors.
+    "vscode_extensions": "SELECT e.name, e.version FROM users CROSS JOIN vscode_extensions e USING (uid)",
 }
+_EXT_ID = re.compile(r"^(?P<ns>[A-Za-z0-9][\w-]*)\.(?P<name>[A-Za-z0-9][\w.-]*)$")
 NOT_CHECKED = {
     "homebrew_packages": "Homebrew: no advisory database covers Homebrew formulae or casks (OSV, Trivy and Grype "
                          "do not); check what the formula is built from instead",
@@ -84,7 +90,8 @@ def table_of(query_name: str) -> str | None:
         if re.search(rf"(?:^|[/:_-]){t}(?:_[a-z0-9-]+)?$", name):
             return t
     short = {"os": "os_version", "deb": "deb_packages", "rpm": "rpm_packages", "python": "python_packages",
-             "npm": "npm_packages", "homebrew": "homebrew_packages", "chocolatey": "chocolatey_packages"}
+             "npm": "npm_packages", "homebrew": "homebrew_packages", "chocolatey": "chocolatey_packages",
+             "vscode": "vscode_extensions"}
     return short.get(name)
 
 
@@ -327,6 +334,16 @@ def components(tables: dict[str, list[dict]]) -> tuple[list[dict], list[str]]:
         if name and version:
             props = {"oss-intake:label:location": mask_home(str(r.get("directory") or "")).rstrip("/\\")}
             add(_component(name, version, _npm_purl(name, version), {k: v for k, v in props.items() if v}))
+    odd = 0
+    for r in tables.get("vscode_extensions", []):
+        ident, version = str(r.get("name", "")).strip(), str(r.get("version", "")).strip()
+        m = _EXT_ID.match(ident)
+        if m and version:
+            add(_component(ident, version, f"pkg:vscode-extension/{_q(m['ns'])}/{_q(m['name'])}@{_q(version)}", {}))
+        elif ident:
+            odd += 1
+    if odd:
+        notes.append(f"{odd} VS Code extension row(s) without a publisher.name ID and a version were left out")
     for table in ("homebrew_packages", "chocolatey_packages"):
         for r in tables.get(table, []):
             name, version = str(r.get("name", "")), str(r.get("version", ""))

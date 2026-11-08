@@ -212,6 +212,51 @@ def release_age_section(a: dict) -> tuple[str, list] | None:
               "repository) before relying on it.")])
 
 
+def _open_vsx_blocks(info: dict, current: list[dict]) -> list:
+    blocks: list = []
+    ov = info.get("open_vsx") or {}
+    orows = [[e["id"], e["version"], "yes" if e["open_vsx"]["verified"] else "NO",
+              e["open_vsx"]["published"] or "not given", e["open_vsx"]["published_by"] or "not given",
+              "not given" if e["open_vsx"]["downloads"] is None else f"{e['open_vsx']['downloads']:,}",
+              "pre-release" if e["open_vsx"]["pre_release"] else "release"]
+             for e in current if e.get("open_vsx", {}).get("found")]
+    if ov.get("status") == "checked":
+        missing = [e["id"] for e in current if e.get("open_vsx") and not e["open_vsx"]["found"]]
+        blocks.append(("p", "Open VSX, the registry VSCodium, Cursor and other VS Code builds install from: whether "
+                            "the publisher's namespace is verified, and who published this version when. "
+                       + (f"Not on Open VSX at this version: {', '.join(missing[:20])}. " if missing else "")
+                       + (f"{ov['errors']} lookup(s) failed. " if ov.get("errors") else "")
+                       + (f"{ov['skipped_limit']} not looked up (over the limit). "
+                          if ov.get("skipped_limit") else "")))
+        if orows:
+            blocks.append(("table", ["Extension", "Version", "Verified publisher", "Published", "Published by",
+                                     "Downloads (all versions)", "Kind"], orows))
+    return blocks
+
+
+def _removal_verdict(e: dict, rl: dict) -> str:
+    hit = e.get("removed")
+    return (f"REMOVED as {hit['type']} ({hit['date']})" if hit and e["malicious"]
+            else f"removed for {hit['type']} ({hit['date']})" if hit
+            else "not on the list" if rl["status"] == "checked" else "not checked")
+
+
+def _listed_extensions(info: dict, exts: list[dict], rl: dict) -> tuple[str, list]:
+    """Extensions an SBOM lists (the osquery collector): removed ones first, then the rest, with the systems that
+    have each."""
+    order = sorted(exts, key=lambda e: (not e["malicious"], not e.get("removed"), e["id"].casefold(), e["version"]))
+    rows = [[e["id"], e["version"], _removal_verdict(e, rl), str(len(e["systems"])),
+             ", ".join(e["systems"][:10]) + (f" and {len(e['systems']) - 10} more" if len(e["systems"]) > 10 else "")]
+            for e in order[:500]]
+    blocks: list = [("p", f"{len(exts)} VS Code extension version{'s' if len(exts) != 1 else ''} listed in the SBOMs, "
+                          "checked by ID and version: their files were not read, so there are no behaviour indicators "
+                          "(assess a .vsix or an extensions folder for those)."
+                     + (" The first 500 are shown; assessment.json has them all." if len(exts) > 500 else ""))]
+    blocks.append(("table", ["Extension", "Version", "Marketplace removal list", "Systems", "Which"], rows))
+    blocks += _open_vsx_blocks(info, exts)
+    return f"VS Code extensions ({len(exts)})", blocks
+
+
 def extensions_section(a: dict) -> tuple[str, list] | None:
     """VS Code extensions: the removal list's verdict, the behaviour indicators with where each was seen, whether
     the dependencies could be seen, and the repository each claims. None for any other input."""
@@ -220,6 +265,8 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         return None
     exts, rl = info["extensions"], info["removed_list"]
     current = [e for e in exts if e.get("in_use", True)]
+    if info.get("listed_only"):
+        return _listed_extensions(info, exts, rl)
     rows = []
     for e in exts:
         hit = e.get("removed")
@@ -292,23 +339,7 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
     if dl:
         blocks.append(("p", f"Downloaded from Open VSX ({dl['source']}) by --extension; its SHA-256 {dl['sha256']} "
                             "matches the one Open VSX publishes for it."))
-    ov = info.get("open_vsx") or {}
-    orows = [[e["id"], e["version"], "yes" if e["open_vsx"]["verified"] else "NO",
-              e["open_vsx"]["published"] or "not given", e["open_vsx"]["published_by"] or "not given",
-              "not given" if e["open_vsx"]["downloads"] is None else f"{e['open_vsx']['downloads']:,}",
-              "pre-release" if e["open_vsx"]["pre_release"] else "release"]
-             for e in current if e.get("open_vsx", {}).get("found")]
-    if ov.get("status") == "checked":
-        missing = [e["id"] for e in current if e.get("open_vsx") and not e["open_vsx"]["found"]]
-        blocks.append(("p", "Open VSX, the registry VSCodium, Cursor and other VS Code builds install from: whether "
-                            "the publisher's namespace is verified, and who published this version when. "
-                       + (f"Not on Open VSX at this version: {', '.join(missing[:20])}. " if missing else "")
-                       + (f"{ov['errors']} lookup(s) failed. " if ov.get("errors") else "")
-                       + (f"{ov['skipped_limit']} not looked up (over the limit). "
-                          if ov.get("skipped_limit") else "")))
-        if orows:
-            blocks.append(("table", ["Extension", "Version", "Verified publisher", "Published", "Published by",
-                                     "Downloads (all versions)", "Kind"], orows))
+    blocks += _open_vsx_blocks(info, current)
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
                                                        else "")] for e in current if e["hosts"]]
     if hosts:
