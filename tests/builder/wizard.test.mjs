@@ -372,3 +372,9 @@ test("before and after the run, for each kind of check", () => {
   assert.ok(list({ path: "package-lock.json", fail_on: "malicious" }, "lockfile", "bash").code.includes("echo $?"));
   assert.doesNotMatch(list({ path: "package-lock.json" }, "lockfile").after, /exit code/);
 });
+
+test("an .xlsx package list is an inventory, as the CLI reads it (8 Nov)", () => {
+  const k = (what, path) => w.kindOf(wizard, { command: "scan", what, values: { path } });
+  assert.equal(k("lockfile", "packages.xlsx"), "inventory");
+  assert.equal(k("artifact", "Inventory.XLSX"), "inventory");
+});

@@ -24,7 +24,6 @@ Assess the open source an organisation already uses, not one artifact at a time,
 a package that was clean when approved can later turn out vulnerable or compromised.
 - Artifactory collector (AQL), the same as the Nexus one (`examples/nexus`). Later (30 Oct): to be built and
   tested during a JFrog 14-day cloud trial, since there is no Artifactory instance to test against until then.
-- Package inventory as `.xlsx`, read directly as an optional extra (openpyxl).
 - Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
 
 ## Inputs

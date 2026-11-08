@@ -34,8 +34,8 @@ function inferWhat(state) {
 }
 
 /** The kind of input oss-intake will see, for "What this command will do" and the checks that depend on it:
- * the first answer, corrected by the file name where the CLI decides by name (inputs.classify): renv.lock, a .csv
- * package list, or a lockfile name. An SBOM is told by its content, so the answer "SBOM or package list" stands. */
+ * the first answer, corrected by the file name where the CLI decides by name (inputs.classify): renv.lock, a .csv or
+ * .xlsx package list, or a lockfile name. An SBOM is told by its content, so the answer "SBOM or package list" stands. */
 export function kindOf(wiz, state) {
   const what = whatOf(wiz, state);
   if (!["lockfile", "artifact", "inventory", "path"].includes(what)) return what;
@@ -43,7 +43,7 @@ export function kindOf(wiz, state) {
   if (!name) return what;
   if (/\.vsix$/i.test(name)) return "vscode";  // the CLI reads a .vsix by its content; its name says it too
   if (name === "renv.lock") return "renv";
-  if (name.toLowerCase().endsWith(".csv")) return "inventory";
+  if (/\.(csv|xlsx)$/i.test(name)) return "inventory";
   if (new RegExp(wiz.lockfile_names).test(name)) return "lockfile";
   if (what === "inventory") return what;
   // Neither an SBOM nor a folder: a file the CLI scans as an artifact. Unasked, only a name that says so counts.

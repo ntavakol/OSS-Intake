@@ -82,7 +82,7 @@
   {
    "id": "inventory",
    "label": "An SBOM or a package list",
-   "hint": "A CycloneDX or SPDX SBOM, a folder of them, or a .csv with ecosystem,name,version (or purl) columns.",
+   "hint": "A CycloneDX or SPDX SBOM, a folder of them, or a .csv or .xlsx with ecosystem,name,version (or purl) columns.",
    "fields": [
     "path",
     "label"
@@ -237,7 +237,7 @@
   },
   {
    "id": "unchecked",
-   "label": "An SBOM component that couldn't be checked (SBOMs only, not a .csv)",
+   "label": "An SBOM component that couldn't be checked (SBOMs only, not a .csv or .xlsx)",
    "summary": "an SBOM component or renv.lock package that could not be checked"
   }
  ],

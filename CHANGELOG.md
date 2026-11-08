@@ -5,6 +5,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Package inventories as `.xlsx`, read directly (the first worksheet) with the optional `xlsx` extra
+  (`pip install 'oss-intake[xlsx]'`, which adds openpyxl). Cells are read as stored values, never as formulas;
+  what the workbook may unpack to is limited before it is opened.
+
 ### Changed
 - A missing scanner (Trivy, Grype, govulncheck) or cosign is named with where to install it, and the message says
   oss-intake does not download scanners. A scanner downloader is no longer planned (decided 8 Nov).
