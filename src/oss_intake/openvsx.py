@@ -56,9 +56,11 @@ def summary(data: object) -> dict:
 
 def lookup(http: Http, extensions: list[dict]) -> dict:
     """Open VSX metadata for each extension (its exact version), added as e["open_vsx"]. Returns stats."""
-    todo = [e for e in extensions if "." in e["id"] and e["version"]][:MAX_LOOKUPS]
+    usable = [e for e in extensions if "." in e["id"] and e["version"]]
+    todo = usable[:MAX_LOOKUPS]
     prefetch(http, [_url(*_ns_name(e["id"]), e["version"]) for e in todo])
-    stats = {"looked_up": 0, "found": 0, "errors": 0, "skipped_limit": max(0, len(extensions) - len(todo))}
+    stats = {"looked_up": 0, "found": 0, "errors": 0, "skipped_limit": len(usable) - len(todo),
+             "skipped_no_id": len(extensions) - len(usable)}
     for e in todo:
         ns, name = _ns_name(e["id"])
         try:
@@ -66,8 +68,15 @@ def lookup(http: Http, extensions: list[dict]) -> dict:
         except HttpError:
             stats["errors"] += 1
             continue
+        # Only a 404 says Open VSX does not have it; any other failure is a lookup that could not be made.
+        if status == 404:
+            e["open_vsx"] = {"found": False}
+        elif status == 200 and isinstance(data, dict):
+            e["open_vsx"] = summary(data)
+        else:
+            stats["errors"] += 1
+            continue
         stats["looked_up"] += 1
-        e["open_vsx"] = summary(data) if status == 200 else {"found": False}
         stats["found"] += e["open_vsx"]["found"]
     return stats
 
@@ -78,10 +87,11 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
     published hash, or the hash does not match; HttpError when Open VSX cannot be reached."""
     ns, name, version = parse_id(ident)
     status, data = http.get_json(_url(ns, name, version))
-    if status == 404 or not isinstance(data, dict):
-        raise InputError(f"--extension {ident}: not found on Open VSX (HTTP {status})")
-    if status != 200:
-        raise HttpError(f"Open VSX returned HTTP {status} for {ident}")
+    if status == 404:
+        raise InputError(f"--extension {ident}: not found on Open VSX")
+    if status != 200 or not isinstance(data, dict):
+        raise HttpError(f"Open VSX returned HTTP {status}" + ("" if status != 200 else " with an unreadable answer")
+                        + f" for {ident}")
     files = data.get("files")
     files = files if isinstance(files, dict) else {}
     links: dict[str, str] = {}
@@ -106,4 +116,7 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / f"{ns}.{name}-{version}.vsix"
     path.write_bytes(body)
-    return path, {**summary(data), "sha256": got, "source": _url(ns, name, version)}
+    # One version can have a build per platform; Open VSX answers with one of them, named here.
+    target = data.get("targetPlatform")
+    return path, {**summary(data), "sha256": got, "source": _url(ns, name, version),
+                  "target_platform": target if isinstance(target, str) else ""}

@@ -227,7 +227,9 @@ def _open_vsx_blocks(info: dict, current: list[dict]) -> list:
                        + (f"Not on Open VSX at this version: {', '.join(missing[:20])}. " if missing else "")
                        + (f"{ov['errors']} lookup(s) failed. " if ov.get("errors") else "")
                        + (f"{ov['skipped_limit']} not looked up (over the limit). "
-                          if ov.get("skipped_limit") else "")))
+                          if ov.get("skipped_limit") else "")
+                       + (f"{ov['skipped_no_id']} without a publisher.name ID and a version were not looked up. "
+                          if ov.get("skipped_no_id") else "")))
         if orows:
             blocks.append(("table", ["Extension", "Version", "Verified publisher", "Published", "Published by",
                                      "Downloads (all versions)", "Kind"], orows))
@@ -311,18 +313,22 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         blocks.append(("table", ["Extension", "Indicator", "Seen in (first 3)"], seen))
     ch = info.get("changes")
     if ch:
-        def listed(xs: list, n: int = 10) -> str:
-            return (", ".join(str(x) for x in xs[:n]) + (f" and {len(xs) - n} more" if len(xs) > n else "")) or "none"
+        def listed(xs: list, n: int = 10, total: int | None = None) -> str:
+            total = len(xs) if total is None else total
+            return (", ".join(str(x) for x in xs[:n]) + (f" and {total - n} more" if total > n else "")) or "none"
 
         crows = [
             ["New indicators", "; ".join(
                 i["title"] + " (" + ", ".join(f"{s['file']}{':' + str(s['line']) if s['line'] else ''}"
                                              for s in i["seen"]) + ")" for i in ch["indicators_added"]) or "none"],
             ["Indicators seen more often", listed([f"{i['title']}: {i['from']} to {i['to']}"
-                                                   for i in ch["indicators_grew"]])],
-            ["New native files", listed(ch["native_added"])],
-            ["New web addresses", "not compared (more than 100 in the older version)" if ch["hosts_not_compared"]
-             else listed(ch["hosts_added"], 15)],
+                                                   + (" or more" if i.get("capped") else "")
+                                                   for i in ch["indicators_grew"]])
+             + ("; not compared, too many in each: " + ", ".join(ch["indicators_not_compared"])
+                if ch.get("indicators_not_compared") else "")],
+            ["New native files", listed(ch["native_added"], total=ch.get("native_added_total"))],
+            ["New web addresses", "not compared (too many in a version to list them all)" if ch["hosts_not_compared"]
+             else listed(ch["hosts_added"], 15, total=ch.get("hosts_added_total"))],
             ["New npm packages", listed(ch["packages_added"])],
             ["Packages at a new version", listed(ch["packages_changed"])],
             ["Publisher", "CHANGED" if ch["publisher_changed"] else "same"],
@@ -337,8 +343,10 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         blocks.append(("table", ["Change", "Detail"], crows))
     dl = info.get("download")
     if dl:
-        blocks.append(("p", f"Downloaded from Open VSX ({dl['source']}) by --extension; its SHA-256 {dl['sha256']} "
-                            "matches the one Open VSX publishes for it."))
+        plat = dl.get("target_platform")
+        blocks.append(("p", f"Downloaded from Open VSX ({dl['source']}) by --extension"
+                       + (f", the {plat} build" if plat and plat != "universal" else "")
+                       + f"; its SHA-256 {dl['sha256']} matches the one Open VSX publishes for it."))
     blocks += _open_vsx_blocks(info, current)
     hosts = [[e["id"], ", ".join(e["hosts"][:15]) + (f" and {e['hosts_total'] - 15} more" if e["hosts_total"] > 15
                                                        else "")] for e in current if e["hosts"]]

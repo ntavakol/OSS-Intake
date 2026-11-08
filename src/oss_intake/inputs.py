@@ -277,6 +277,9 @@ def packages(specs: list[str]) -> list[dict]:
 # very large one).
 MAX_XLSX_UNPACKED = 4 * MAX_INPUT_BYTES
 MAX_XLSX_PARTS = 10_000
+# openpyxl reads the shared strings (every distinct text in the workbook) into memory whole, even read-only, at
+# several times their size; the worksheets themselves are streamed.
+MAX_XLSX_STRINGS = 64 * 1024 * 1024
 
 
 def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[dict]]:
@@ -295,6 +298,9 @@ def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[dict]]:
         if len(parts) > MAX_XLSX_PARTS or sum(p.file_size for p in parts) > MAX_XLSX_UNPACKED:
             raise InputError(f"{path.name} unpacks to more than {MAX_XLSX_UNPACKED // (1024 * 1024)} MB or "
                              f"{MAX_XLSX_PARTS} parts; save it as CSV instead")
+        if any(p.filename.casefold().endswith("sharedstrings.xml") and p.file_size > MAX_XLSX_STRINGS for p in parts):
+            raise InputError(f"{path.name} holds more than {MAX_XLSX_STRINGS // (1024 * 1024)} MB of text in its "
+                             "shared strings; save it as CSV instead")
         book = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except InputError:
         raise

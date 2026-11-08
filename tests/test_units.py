@@ -4037,3 +4037,78 @@ def test_the_rebuilt_image_lag_is_reported(tmp_path, fixtures):
     assert a["lag"]["os_at_build"]["build_date"].startswith("2026-03-01")
     assert "before the image was rebuilt on 2026-03-01" in (out / "summary.md").read_text(encoding="utf-8")
     assert "before the image was rebuilt on 2026-03-01" in (out / "report.html").read_text(encoding="utf-8")
+
+
+# --- Review of the 8 Nov batches (independent review, 8 Nov) ----------------------------------------------------
+
+def test_xlsx_shared_strings_over_the_limit_are_refused(tmp_path, monkeypatch):
+    """Review: openpyxl reads the shared strings into memory whole, even read-only, so a small file of repeated text
+    could use gigabytes inside the overall unpacked limit."""
+    pytest.importorskip("openpyxl")
+    import zipfile
+
+    from oss_intake import inputs
+
+    f = _xlsx(tmp_path / "inv.xlsx", [["purl"], ["pkg:npm/chalk@5.6.1"]])
+    with zipfile.ZipFile(f, "a") as z:  # Excel keeps text in this part; openpyxl writes it inline
+        z.writestr("xl/sharedStrings.xml", "<sst>" + "<si><t>repeated text</t></si>" * 2000 + "</sst>")
+    monkeypatch.setattr(inputs, "MAX_XLSX_STRINGS", 10_000)
+    with pytest.raises(inputs.InputError, match="shared strings"):
+        inputs.inventory(f)
+
+
+def test_an_xlsx_inventory_is_named_as_excel_in_the_reports(tmp_path, fake_http):
+    """Review: an .xlsx inventory was labelled "CSV inventory"."""
+    import json
+
+    pytest.importorskip("openpyxl")
+    from oss_intake import cli
+
+    f = _xlsx(tmp_path / "inv.xlsx", [["purl"], ["pkg:npm/chalk@5.6.1"]])
+    out = tmp_path / "out"
+    assert cli.main(["--path", str(f), "--out", str(out), "--as-of", "2026-11-08"], http=fake_http) == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["format"] == "Excel inventory"
+
+
+@pytest.mark.parametrize("tag, pre", [
+    ("1.0b1", True), ("1.0a2", True), ("3.1rc1", True), ("v3.0.0-M1", True), ("v1.0.0-beta.1+build.5", True),
+    ("v2.0.0-alpha.1.2", True), ("v2.1.0-rc1", True), ("1.0.0-SNAPSHOT", True),
+    ("v1.2.3", False), ("v1.2.3+build.5", False), ("2024.10.1", False), ("release-1.4", False), ("v10", False),
+])
+def test_gitlab_pre_release_tags_are_recognised(tag, pre):
+    """Review: PEP 440 and Maven markers, and anything after the marker, were read as stable releases."""
+    from oss_intake.health import releases
+
+    assert bool(releases._PRE.search(tag)) is pre
+
+
+def test_gitlab_last_push_is_the_latest_commit_not_any_activity():
+    """Review: last_activity_at moves with issues and merge requests, so a quiet project looked active."""
+    from datetime import datetime, timezone
+
+    from oss_intake.health import releases
+
+    api = "https://gitlab.com/api/v4/projects/group%2Fapp"
+    http = _ForgeHttp([
+        (f"{api}/releases?", (200, [{"tag_name": "v1.0.0", "released_at": "2026-01-01T00:00:00Z"}])),
+        (f"{api}/repository/commits?", (200, [{"committed_date": "2026-02-01T00:00:00Z"}])),
+        (f"{api}?license=true", (200, {"archived": False, "last_activity_at": "2026-11-07T00:00:00Z"})),
+    ])
+    h = releases.fetch(http, "gitlab.com/group/app", datetime(2026, 11, 8, tzinfo=timezone.utc))
+    assert h["pushed_at"] == "2026-02-01T00:00:00Z" and h["days_since_push"] > 250
+
+
+def test_offline_hint_names_the_forge_of_the_repo(tmp_path, fixtures, capsys):
+    """Review: with --offline there is no health answer, so a GitLab repo was named GitHub."""
+    import json
+
+    from oss_intake import cli
+
+    out = tmp_path / "out"
+    cli.main(["--image", "owner/app:1.0", "--repo", "gitlab.com/group/app", "--offline", "--out", str(out),
+              "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json", str(fixtures / "grype.json"),
+              "--as-of", "2026-11-08", "--no-image-date"])
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    text = json.dumps(a["warnings"]) + capsys.readouterr().err
+    assert "skips the GitLab lookup" in text and "GitHub lookup" not in text

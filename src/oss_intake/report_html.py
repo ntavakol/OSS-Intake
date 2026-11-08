@@ -16,6 +16,7 @@ from pathlib import Path
 
 from . import checks as checks_mod
 from . import safewrite
+from .health.releases import FORGE_NAMES
 from .health.workflows import files_audited
 from .models import SEVERITIES, Finding
 from .triage import LABEL as TRIAGE_LABEL
@@ -142,7 +143,9 @@ def _no_release_date(a: dict) -> str:
     health = a.get("health") or {}
     if not repo:
         return "no release date: pass --repo or --release-date"
-    forge = {"gitlab": "GitLab", "codeberg": "Codeberg"}.get(health.get("forge", ""), "GitHub")
+    from .options import forge_of
+
+    forge = FORGE_NAMES[forge_of(repo)]
     if health.get("status") == "no_releases":
         return f"{repo} has no {forge} releases: pass --release-date"
     if health.get("status") == "ok":

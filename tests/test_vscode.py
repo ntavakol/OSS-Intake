@@ -883,3 +883,91 @@ def test_an_unverified_or_missing_open_vsx_entry_is_shown(tmp_path, fixtures):
     assert by["example.ext"] == {"found": False} and by["other.tool"]["verified"] is False
     md = (out / "summary.md").read_text(encoding="utf-8")
     assert "Not on Open VSX at this version: example.ext" in md and "| NO |" in md
+
+
+# --- Review of the 8 Nov batches -----------------------------------------------------------------------------
+
+def test_compare_with_finds_a_new_web_address_past_the_listed_hundred(tmp_path, fixtures):
+    """Review: the hosts were compared from the first 100 in order, so a host added after them was missed and the
+    report said none were added."""
+    old_js = " ".join(f"fetch('https://h{i:03}.example.org/')" for i in range(50))
+    new_js = old_js + " " + " ".join(f"fetch('https://a{i:03}.example.org/')" for i in range(60)) + \
+        " fetch('https://zz-evil.example.net/')"
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0"), files={"extension/out/extension.js": old_js})
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1"), files={"extension/out/extension.js": new_js})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    assert code == cli.EXIT_OK
+    ch = json.loads((out / "assessment.json").read_text(encoding="utf-8"))["extensions"]["changes"]
+    assert not ch["hosts_not_compared"] and ch["hosts_added_total"] == 61
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert any("61 new web address(es)" in w for w in a["warnings"])
+    assert "zz-evil.example.net" not in json.dumps(a["extensions"]["extensions"])  # the full lists stay out
+
+
+def test_compare_with_finds_a_new_native_file_past_the_kept_twenty(tmp_path, fixtures):
+    """Review: native files were compared from the 20 occurrences the indicator keeps."""
+    natives = {f"extension/bin/{i:02}.node": b"\x7fELF" for i in range(20)}
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0"),
+                    files={"extension/out/extension.js": "x", **natives})
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1"),
+                    files={"extension/out/extension.js": "x", **natives, "extension/bin/zz-evil.node": b"\x7fELF"})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["extensions"]["changes"]["native_added"] == ["bin/zz-evil.node"]
+    assert any("1 new native file(s)" in w for w in a["warnings"])
+
+
+def test_compare_with_says_when_an_indicator_count_cannot_be_compared(tmp_path, fixtures):
+    """Review: with 20 or more occurrences on both sides (all that is kept), "seen more often" could never show."""
+    old = make_vsix(tmp_path / "old.vsix", pkg=manifest(version="1.0.0"),
+                    files={"extension/out/extension.js": "eval(1);\n" * 25})
+    new = make_vsix(tmp_path / "new.vsix", pkg=manifest(version="1.0.1"),
+                    files={"extension/out/extension.js": "eval(1);\n" * 40})
+    code, out = scan(tmp_path, fixtures, new, FakeHttp(), "--compare-with", str(old))
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["extensions"]["changes"]["indicators_not_compared"]
+    assert any("could not compare" in w for w in a["warnings"])
+
+
+def test_an_open_vsx_failure_is_not_reported_as_not_on_open_vsx(tmp_path):
+    """Review: a 503 or 429 was read as "not on Open VSX", a check that could not run reading as a result."""
+    from oss_intake import openvsx
+
+    class H(FakeHttp):
+        def get_json(self, url, params=None):
+            return (503, None) if "open-vsx.org" in url else super().get_json(url, params)
+
+    exts = [{"id": "example.ext", "version": "1.2.3"}, {"id": "noid", "version": "1.0.0"}]
+    stats = openvsx.lookup(H(), exts)
+    assert stats["errors"] == 1 and stats["looked_up"] == 0 and "open_vsx" not in exts[0]
+    assert stats["skipped_no_id"] == 1 and stats["skipped_limit"] == 0
+
+
+def test_extension_download_when_open_vsx_fails_is_an_error_not_a_bad_input(tmp_path, fixtures, capsys):
+    """Review: an outage said "not found" and exited 2 (bad input) rather than 1."""
+    class H(FakeHttp):
+        def get_json(self, url, params=None):
+            return (503, None) if "open-vsx.org" in url else super().get_json(url, params)
+
+    code, _ = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", H())
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_ERROR and "HTTP 503" in err and "not found" not in err
+
+
+def test_extension_is_downloaded_only_after_every_option_is_checked(tmp_path, fixtures, capsys):
+    """Review: the download (up to 500 MB) came before the other options were checked, and hid a usage error."""
+    http = FakeHttp()
+    _openvsx(http, tmp_path)
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http, "--fail-on", "bogus")
+    assert code == cli.EXIT_USAGE and "--fail-on" in capsys.readouterr().err
+    assert not [u for u in http.calls if "open-vsx.org" in u]
+
+
+def test_extension_download_names_the_platform_build(tmp_path, fixtures):
+    """Review: one version can have a build per platform, and which one was assessed was not recorded."""
+    http = FakeHttp()
+    _openvsx(http, tmp_path, targetPlatform="linux-x64")
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["extensions"]["download"]["target_platform"] == "linux-x64"
+    assert "the linux-x64 build" in (out / "summary.md").read_text(encoding="utf-8")
