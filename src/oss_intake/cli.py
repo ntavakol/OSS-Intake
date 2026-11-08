@@ -304,6 +304,16 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _private_paths(reason: str, folder: Path) -> str:
+    """A folder check's reason as the reports may show it: the folder (or the one above it) it starts with is given
+    as the reports give every local path, under the home folder as ~/..., elsewhere by its name only
+    (assessment.shown_path), not as an absolute path."""
+    for p in [folder, *folder.parents]:
+        if reason.startswith(f"{p} "):
+            return f"{assessment.shown_path(p)} {reason[len(str(p)) + 1:]}"
+    return reason
+
+
 def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg) -> int:
     target = ("path=" + args.path + " (" + args.path_kind + ")" if args.path
               else f"packages={len(args.inventory)}" if args.package else "image=" + (args.image or "-"))
@@ -316,17 +326,19 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     cache = None if args.no_cache or args.offline or http else ResponseCache(
         Path(args.cache_dir).expanduser() if args.cache_dir else default_cache_dir())
     if cache is not None and (why := cache.unsafe_reason(operator_trusted=args.trust_cache_dir)):
-        warnings.append(f"The lookup cache was not used: {why}, so its answers could have been planted. "
+        warnings.append(f"The lookup cache was not used: {_private_paths(why, cache.folder)}, so its answers could "
+                        "have been planted. "
                         "Use a folder only you can write to (--cache-dir), or --no-cache")
         cache = None
     elif cache is not None and args.trust_cache_dir and cache.unsafe_reason():
         log(f"using the cache in {cache.folder} on your word (--trust-cache-dir): it is outside your user profile",
             args.quiet)
         cache.operator_trusted = True
-    if why := folder_write_reason(out):
+    if why := folder_write_reason(out.resolve()):
         # Warned, not refused (Ned, 8 Nov): reports are written by rename, so nothing is written through a planted
         # link; what is left is another user replacing or deleting the reports after the run.
-        warnings.append(f"The output folder is not private: {why}, so another user could replace or delete these "
+        shown = _private_paths(why, out.resolve())
+        warnings.append(f"The output folder is not private: {shown}, so another user could replace or delete these "
                         "reports after the run. Use --out with a folder only you can write to")
     net = None if args.offline else (http or RequestsHttp(cache=cache))
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}

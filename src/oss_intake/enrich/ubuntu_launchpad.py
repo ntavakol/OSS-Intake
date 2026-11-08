@@ -37,6 +37,13 @@ def series_links(http: Http) -> dict[str, str]:
             if isinstance(e, dict) and e.get("version") and e.get("self_link")}
 
 
+def has_publication(data: object) -> bool:
+    """Whether a getPublishedSources answer holds a publication earliest() can use: only such an answer is cached,
+    as one listing only -proposed, or pending, will change when the fix is promoted."""
+    entries = data.get("entries") if isinstance(data, dict) else None
+    return isinstance(entries, list) and earliest([e for e in entries if isinstance(e, dict)]) is not None
+
+
 def earliest(entries: list[dict]) -> tuple[object, str] | None:
     best = None
     for e in entries:

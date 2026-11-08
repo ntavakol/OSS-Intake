@@ -28,10 +28,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Ubuntu publication dates from Launchpad (30 days, once published) and Alpine aports commit histories (a day)
   are now kept in the response cache; GET requests with query parameters went to the network every time.
   GitHub release lists and EPSS are still fetched fresh.
+- Changes reach main only through a pull request whose CI checks have passed (repository ruleset); force-push
+  and deletion were already blocked.
 
 ### Fixed
 - The upgrade comparison said "0 known" at the fix version for an OS package OSV was not asked about (one with no
   distro query); it now says nothing.
+- The warning about a lookup cache others can write to gave its absolute path; it now gives the folder as the
+  reports give every local path (under the home folder as `~/...`, elsewhere by name).
 
 ## [0.17.0] - 2026-11-07
 

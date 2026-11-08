@@ -29,7 +29,10 @@ def _level(f: Finding) -> str:
 def _score(f: Finding) -> str:
     if f.malicious:
         return "10.0"
-    return f"{f.cvss if f.cvss is not None else _SCORE.get(f.severity, 0.0):.1f}"
+    score = f.cvss if f.cvss is not None else _SCORE.get(f.severity, 0.0)
+    if f.kev:  # known exploited: at least critical, so a severity gate on the dashboard does not pass it
+        score = max(score, 9.0)
+    return f"{score:.1f}"
 
 
 def _uri(target: str) -> str:
@@ -70,7 +73,7 @@ def build(findings: list[Finding], version: str, target_name: str) -> dict[str, 
             "shortDescription": {"text": (f.title or f.vuln_id)[:1024]},
             "properties": {"tags": ["security", "vulnerability", *(["malicious"] if f.malicious else [])],
                            "security-severity": _score(f)},
-            **({"helpUri": f.url} if f.url else {}),
+            **({"helpUri": f.url} if f.url.startswith(("https://", "http://")) else {}),
         })
         # The rule carries the highest score any of its findings has (GitHub reads severity from the rule).
         if float(_score(f)) > float(rule["properties"]["security-severity"]):

@@ -53,8 +53,8 @@ GITHUB_API_HOST = "api.github.com"
 DEFAULT_WORKERS = 8
 MAX_PREFETCH_FAILURES = 3
 DAY = 86400
-# (URL pattern, how long a response stays usable). GitHub API responses are never cached: they are personal to
-# the token and rate limited per user, and the cache folder is not the place for them.
+# (URL pattern, how long a response stays usable). Of the GitHub API only Alpine's public aports history is kept:
+# the releases list must be fresh for the release-age check, and nothing personal to the token is cached.
 CACHE_RULES: list[tuple[re.Pattern, int]] = [
     (re.compile(r"^https://api\.osv\.dev/v1/vulns/[^/?]+$"), DAY),
     # A version's publication date never changes.
@@ -227,8 +227,11 @@ class ResponseCache:
         if "/versions/" in url and url.startswith("https://api.deps.dev/") and not (
                 isinstance(data, dict) and data.get("publishedAt")):
             return  # a version deps.dev knows but has no date for yet: ask again next time
-        if url.startswith("https://api.launchpad.net/") and not (isinstance(data, dict) and data.get("entries")):
-            return  # not published yet: it may be by the next run
+        if url.startswith("https://api.launchpad.net/"):
+            from .enrich.ubuntu_launchpad import has_publication
+
+            if not has_publication(data):
+                return  # not published yet (or only in -proposed): it may be by the next run
         f = self._file(url)
         try:
             # Folders it makes, parents included (~/.cache on a first run), are the user's only whatever the

@@ -1049,7 +1049,7 @@ def test_gets_with_parameters_are_cached_where_a_rule_allows(monkeypatch, tmp_pa
 
     def published(self, method, url, **kw):  # Launchpad answers with a publication
         r = real(self, method, url, **kw)
-        r._data = {"entries": [{"date_published": "2024-01-01T00:00:00+00:00"}], "url": url}
+        r._data = {"entries": [{"date_published": "2024-01-01T00:00:00+00:00", "pocket": "Security"}], "url": url}
         r.content = json.dumps(r._data).encode()
         return r
 
@@ -1074,5 +1074,20 @@ def test_a_launchpad_answer_with_no_publication_is_not_kept(tmp_path):
     assert ResponseCache.max_age(url) == 30 * 86400
     c.put(url, 200, {"entries": []})
     assert c.get(url) is None
-    c.put(url, 200, {"entries": [{"date_published": "2024-01-01T00:00:00+00:00"}]})
+    c.put(url, 200, {"entries": [{"date_published": "2024-01-01T00:00:00+00:00", "pocket": "Security"}]})
     assert c.get(url) is not None
+
+
+def test_a_launchpad_answer_only_in_proposed_is_not_kept(tmp_path):
+    """Review (8 Nov): an answer listing the fix only in -proposed (or pending, with no date) was cached for 30 days,
+    so the fix date stayed unknown after the fix was promoted to -security."""
+    from oss_intake.http import with_params
+
+    c = ResponseCache(tmp_path)
+    url = with_params("https://api.launchpad.net/1.0/ubuntu/+archive/primary", {
+        "ws.op": "getPublishedSources", "source_name": "x", "version": "1", "exact_match": "true",
+        "distro_series": "https://api.launchpad.net/1.0/ubuntu/noble", "ws.size": 50})
+    for entries in ([{"pocket": "Proposed", "date_published": "2024-01-01T00:00:00+00:00"}],
+                    [{"pocket": "Security", "date_published": None}]):
+        c.put(url, 200, {"entries": entries})
+        assert c.get(url) is None

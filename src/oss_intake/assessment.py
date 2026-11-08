@@ -9,6 +9,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -508,7 +509,9 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
 def _upgrade_options(args, net, assessment: dict, all_findings: list, warnings: list) -> None:
     """Image, lockfile, folder and artifact scans: per vulnerable package, the minimum fix and the latest release,
     with what is still known at each (as an inventory's Packages table has had since 0.4.0)."""
-    seen = {f.purl for f in all_findings if f.purl}
+    # Only package URLs that can be read (pkg:type/name@version): a scanner report is input, and one odd purl must
+    # not stop the run.
+    seen = {f.purl for f in all_findings if f.purl and re.match(r"^pkg:[^/]+/[^@]+@", f.purl)}
     rows = [r for r in inventory_report.package_rows([{"purl": p, "labels": {}} for p in sorted(seen)],
                                                      all_findings) if r["findings"]]
     if not rows:
