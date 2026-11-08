@@ -5,6 +5,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-08
+
+A feature release: upgrade from 0.17.0. SARIF output for code-scanning dashboards (`--formats sarif`), the
+upgrade comparison for image, lockfile, folder and artifact scans, `--utc`, a warning for an output folder others
+can write to, and more lookups answered from the cache. One change alters results: kernel CVEs on kernel header
+packages are now set aside only for a container image, so a `--path` scan of a host or VM image counts them, and
+a gate such as `--fail-on high` can now fail on them.
+
 ### Added
 - `--formats sarif` writes `findings.sarif` (SARIF 2.1.0) for code-scanning dashboards such as GitHub code
   scanning: one rule per advisory, one result per finding at the file the package was found in, a fingerprint
