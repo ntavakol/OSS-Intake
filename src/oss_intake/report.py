@@ -593,7 +593,8 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
               ["Archived", _v({True: "yes", False: "no"}.get(health.get("archived")))],
               ["Days since last push", _v(health.get("days_since_push"))]]
     if sc.get("status") == "ok":
-        old = f", {sc['stale_days']} days old: not current" if sc.get("stale_days") else ""
+        old = (f", {sc['stale_days']} days old: not current" if sc.get("stale_days")
+               else ", no date: not current" if sc.get("date_unknown") else "")
         h_rows.append(["OpenSSF Scorecard", f"{sc.get('score')} / 10 ({sc.get('date')}{old})"])
         if sc.get("low_checks"):
             h_rows.append(["Scorecard checks scoring 0 to 3", ", ".join(sc["low_checks"])])

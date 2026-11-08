@@ -49,10 +49,10 @@ def _version_core(tag: str) -> str:
 
 def _forge(repo: str) -> tuple[str, str]:
     """('github' | 'gitlab' | 'codeberg', the path on that forge) for a validated --repo."""
-    for host, forge in (("gitlab.com/", "gitlab"), ("codeberg.org/", "codeberg")):
-        if repo.startswith(host):
-            return forge, repo[len(host):]
-    return "github", repo
+    from ..options import forge_of
+
+    forge = forge_of(repo)
+    return forge, (repo if forge == "github" else repo.partition("/")[2])
 
 
 def _meta(http: Http, forge: str, path: str) -> tuple[int, dict]:

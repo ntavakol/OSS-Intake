@@ -154,7 +154,9 @@ def metrics(lag: dict, health: dict, scorecard: dict) -> dict:
         "max_days_fix_available": lag.get("max_days_fix_available"),
         "days_since_latest_release": health.get("days_since_latest_release"),
         "archived": 1 if health.get("archived") else 0,
-        "scorecard_score": _number(scorecard.get("score")) if scorecard.get("status") == "ok" else None,
+        # An old or undated Scorecard result describes the project as it was, not as it is: not used.
+        "scorecard_score": _number(scorecard.get("score")) if scorecard.get("status") == "ok"
+        and not scorecard.get("stale_days") and not scorecard.get("date_unknown") else None,
         "fix_date_unknown": lag.get("fix_date_unknown", 0),
         "with_fix": lag.get("with_fix", 0),
         "release_date_known": 1 if lag.get("release_date") else 0,

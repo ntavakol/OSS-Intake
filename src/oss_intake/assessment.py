@@ -182,11 +182,15 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
             # The Scorecard service rescans on its own schedule (rarely for GitLab): an old score describes the
             # project as it was then, so it is shown as old rather than coloured as a current rating.
             age = scorecard.age_days(sc, as_of)
-            if age is not None and age > scorecard.STALE_DAYS:
+            if sc.get("status") == "ok" and age is None:  # fail closed: an undated score is not a current one
+                sc["date_unknown"] = True
+                warnings.append(f"The OpenSSF Scorecard result for {args.repo} has no readable date, so it is not "
+                                "taken as a current rating")
+            elif age is not None and age > scorecard.STALE_DAYS:
                 sc["stale_days"] = age
                 warnings.append(f"The OpenSSF Scorecard result for {args.repo} is from {sc.get('date')}, "
                                 f"{age} days before the assessment date: it describes the project as it was then")
-        if not args.no_workflows and "/" in args.repo and args.repo.split("/", 1)[0] in ("gitlab.com", "codeberg.org"):
+        if not args.no_workflows and forge_of(args.repo) != "github":
             health["workflows"] = {"status": "skipped", "note": "the workflow audit reads GitHub Actions only"}
         elif not args.no_workflows:
             health["workflows"] = workflows.fetch(net, args.repo)
