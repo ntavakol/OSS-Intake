@@ -129,6 +129,8 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
         check.notes = [n for n in check.notes if "hash not verified" not in n]  # the release note says why
     if release.get("note"):
         check.notes.append(release["note"])
+    if release.get("deprecated"):
+        check.notes.append(release["deprecated"])
     scanners_meta[tool] = {"enabled": True, **info, **check.as_dict(), **({"release": release} if release else {}),
                            **({"hash_unsigned": True} if unsigned else {})}
     scanners_meta[tool]["path"] = Path(path).name  # identified by version and SHA-256, not where it is installed

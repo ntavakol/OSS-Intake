@@ -294,14 +294,21 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
         else:
             cosign_verify_blob(file, None, identity, certificate=cosign_certificate, signature=cosign_signature)
 
-    # What to add to sign the chain: Trivy publishes bundles, Grype a certificate and signature.
-    sign_hint = (f"--{tool}-cosign-certificate and --{tool}-cosign-signature" if tool == "grype"
+    # What to add to sign the chain: both publish a bundle for their checksums file (Grype since 0.120.0; before
+    # that, a certificate and signature, which cosign's --certificate and --signature check: deprecated in cosign).
+    sign_hint = (f"--{tool}-cosign-bundle (Grype 0.120.0 and later; for an earlier release, add "
+                 f"--{tool}-cosign-certificate and --{tool}-cosign-signature)" if tool == "grype"
                  else f"--{tool}-cosign-bundle")
     if archive:
         if checksums:
             if signed_with:
                 cosign(checksums)
                 done["signed"] = Path(checksums).name
+                if cosign_certificate:
+                    done["deprecated"] = (
+                        f"{Path(checksums).name} was verified with a certificate and signature, which cosign has "
+                        f"deprecated and may stop accepting; {tool} 0.120.0 and later publish "
+                        f"{tool}_<version>_checksums.txt.sigstore.json: use --{tool}-cosign-bundle with it")
             with open(checksums, "rb") as fh:
                 table = parse_checksums(fh.read())
             actual_archive = sha256_file(archive)

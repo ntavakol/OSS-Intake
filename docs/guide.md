@@ -148,14 +148,18 @@ oss-intake --image owner/app:1.2.3 --out ./reports --trivy-version 0.76.1 \
   --trivy-cosign-bundle trivy_0.76.1_checksums.txt.sigstore.json
 ```
 
-Grype publishes a certificate and signature for its checksums file rather than a bundle; cosign checks them
-against the Sigstore transparency log, so this needs the network:
+Grype signs its checksums file with a bundle too, from 0.120.0 (cosign 2.5.0 or later reads it):
 
 ```bash
-oss-intake --image owner/app:1.2.3 --out ./reports --scanners grype --grype-version 0.104.0 \
-  --grype-archive grype_0.104.0_darwin_arm64.tar.gz --grype-checksums grype_0.104.0_checksums.txt \
-  --grype-cosign-certificate grype_0.104.0_checksums.txt.pem --grype-cosign-signature grype_0.104.0_checksums.txt.sig
+oss-intake --image owner/app:1.2.3 --out ./reports --scanners grype --grype-version 0.121.0 \
+  --grype-archive grype_0.121.0_darwin_arm64.tar.gz --grype-checksums grype_0.121.0_checksums.txt \
+  --grype-cosign-bundle grype_0.121.0_checksums.txt.sigstore.json
 ```
+
+Grype releases before 0.120.0 published a certificate and signature instead
+(`--grype-cosign-certificate grype_0.104.0_checksums.txt.pem --grype-cosign-signature grype_0.104.0_checksums.txt.sig`).
+cosign checks them against the Sigstore transparency log, so this needs the network. cosign has deprecated those
+flags, so the report notes it: move to a release with a bundle.
 
 Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2026). `oss-intake` refuses to
 run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
@@ -405,7 +409,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--trivy-sha256`, `--grype-sha256` | Expected SHA-256 of the executable, checked before it is run at all |
 | `--trivy-archive`, `--grype-archive` | The release archive the executable came from; the executable must be byte-for-byte the one inside it |
 | `--trivy-checksums`, `--grype-checksums` | The release checksums file, which must list the archive's SHA-256 |
-| `--trivy-cosign-bundle`, `--grype-cosign-bundle` | Verify the release's Sigstore bundle with cosign (on PATH): against the checksums file when given, otherwise the archive. Trivy signs its archives and checksums file with bundles; Grype signs only its checksums file, with a certificate and signature instead of a bundle (see `--grype-cosign-certificate`); neither signs the extracted executable, so a bundle needs the archive |
+| `--trivy-cosign-bundle`, `--grype-cosign-bundle` | Verify the release's Sigstore bundle with cosign (on PATH): against the checksums file when given, otherwise the archive. Trivy signs its archives and checksums file with bundles; Grype signs only its checksums file, with a bundle from 0.120.0 (a certificate and signature before that, see `--grype-cosign-certificate`); neither signs the extracted executable, so a bundle needs the archive |
 | `--trivy-arg`, `--grype-arg` | Pass extra arguments, e.g. `--trivy-arg=--db-repository=ghcr.io/aquasecurity/trivy-db:2` |
 | `--scanner-env NAME` | Programs oss-intake starts (Trivy, Grype, govulncheck, docker, crane, cosign) get only the environment they need: the path, home and temporary folders, locale, proxy and CA settings, the Windows essentials, and each tool's own settings (`TRIVY_*` for Trivy, `GRYPE_*` and `SYFT_*` for Grype, `GO*` settings for govulncheck, `COSIGN_*` and `SIGSTORE_*` for cosign, and the Docker connection and registry login settings `DOCKER_HOST`, `DOCKER_CONFIG`, `DOCKER_CERT_PATH`, `DOCKER_TLS_VERIFY`, `DOCKER_CONTEXT`, `CONTAINER_HOST` and `REGISTRY_AUTH_FILE` for those that pull images; other `DOCKER_*` variables need `--scanner-env`). Anything else, cloud credentials included, is passed on only when named: `--scanner-env 'AWS_*'` (repeatable, patterns with `*` and `?`) for an ECR image whose credentials come from the environment, for example. The GitHub token is never passed on. This keeps secrets held in environment variables (as on CI) from a swapped scanner; it is not a sandbox, as the program still runs as you and can read your files |
 | `--from-trivy-json`, `--from-grype-json` | Use an existing JSON report instead of running the scanner; a file that is not that scanner's report is refused (exit 2) |
@@ -424,7 +428,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--decisions FILE` | Carry assessor decisions into this run: an earlier `findings.csv` with the triage columns filled in, or OpenVEX |
 | `--no-workflows` | Skip the audit of the project's GitHub Actions workflows |
 | `--trivy-path`, `--grype-path` | Use a scanner executable that is not on PATH |
-| `--grype-cosign-certificate`, `--grype-cosign-signature`, `--trivy-cosign-certificate`, `--trivy-cosign-signature` | Instead of a bundle: the signing certificate and signature for the checksums file, as Grype publishes them (`grype_<version>_checksums.txt.pem` and `.sig`). Needs `--grype-checksums` and `--grype-archive`, and cosign on PATH. Checked against the Sigstore transparency log, so it needs the network and is refused with `--offline`; a bundle (Trivy's) holds its own log entry |
+| `--grype-cosign-certificate`, `--grype-cosign-signature`, `--trivy-cosign-certificate`, `--trivy-cosign-signature` | Instead of a bundle: the signing certificate and signature for the checksums file, as Grype published them before 0.120.0 (`grype_<version>_checksums.txt.pem` and `.sig`). cosign has deprecated these flags, and the report says so; use `--grype-cosign-bundle` for Grype 0.120.0 and later. Needs `--grype-checksums` and `--grype-archive`, and cosign on PATH. Checked against the Sigstore transparency log, so it needs the network and is refused with `--offline`; a bundle (Trivy's) holds its own log entry |
 | `--trivy-cosign-identity`, `--grype-cosign-identity` | Certificate identity (regexp) the cosign bundle must match. The default is the project's release workflow: `https://github.com/aquasecurity/trivy/.github/workflows/reusable-release.yaml@refs/tags/v<version>` for Trivy, `https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/main` for Grype |
 | `--max-db-age-days N` | Stop the run with exit 1 when the vulnerability database Trivy or Grype used is older than N days, or its build date cannot be read: findings from an old database miss recent advisories, and a clean report from one would mislead. It is judged after the scan, which updates a stale database itself (Grype's from its report, Trivy's by asking Trivy again), so it fails when the update could not happen, for example offline or with `--skip-db-update`. Off by default. Works with `--from-grype-json`; refused (exit 2) with `--from-trivy-json`, whose report does not say, and on a run that uses neither scanner |
 | `--timeout` | Seconds before a scanner run is abandoned (default 1800) |
