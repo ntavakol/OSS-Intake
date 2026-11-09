@@ -25,7 +25,9 @@ from .inputs import InputError
 API = "https://open-vsx.org/api"
 MAX_VSIX_BYTES = 500 * 1024 * 1024  # the largest extensions are a few hundred MB
 MAX_LOOKUPS = 300  # metadata lookups per run (a folder of installed extensions)
-MAX_SIGZIP_BYTES = 1024 * 1024  # a .sigzip holds a 64-byte signature and a manifest of the files' hashes
+# A .sigzip holds a 64-byte signature and a manifest of every file's hash (tens of bytes each); the signature
+# member itself is held to 1 KB.
+MAX_SIGZIP_BYTES = 16 * 1024 * 1024
 INSTALL_SIGNATURES = "pip install 'oss-intake[signatures]'"
 # publisher.name@version, as VS Code shows an extension's ID; the version exact, never "latest".
 _ID = re.compile(r"^(?P<ns>[A-Za-z0-9][\w-]{0,99})\.(?P<name>[A-Za-z0-9][\w.-]{0,199})@(?P<version>\d[\w.+-]{0,99})$")
@@ -134,12 +136,16 @@ def check_signature(http: Http, data: dict, body: bytes) -> dict:
         key = load_key((pem or "").encode("ascii", errors="strict"))
         if not isinstance(key, key_class):
             raise ValueError("Open VSX's key is not an Ed25519 key")
-    except (zipfile.BadZipFile, KeyError, ValueError, UnicodeError, TypeError) as exc:
-        return {"status": "not_checked", "detail": f"Open VSX's signature or key could not be read ({exc})"}
+    except Exception as exc:  # noqa: BLE001 - any unreadable signature or key (an odd zip, an unknown key type) is
+        # "not checked"; only a real verification below can say "failed" or "verified"
+        return {"status": "not_checked",
+                "detail": f"Open VSX's signature or key could not be read ({type(exc).__name__}: {exc})"[:300]}
     try:
         key.verify(signature, body)
     except invalid:
         return {"status": "failed", "detail": "the file does not match Open VSX's Ed25519 signature for it"}
+    except Exception as exc:  # noqa: BLE001 - a verifier error is not a verdict
+        return {"status": "not_checked", "detail": f"the signature could not be checked ({type(exc).__name__})"}
     return {"status": "verified", "detail": "Open VSX's Ed25519 signature matches"}
 
 
@@ -167,8 +173,8 @@ def check_file(http: Http, ext_id: str, version: str, path: Path) -> dict:
         return {"status": "not_checked", "detail": "Open VSX's SHA-256 for this version could not be read"}
     if hashlib.sha256(body).hexdigest() != want.group(1).lower():
         return {"status": "other_build", "detail": "this file is not the one Open VSX serves for this version (a "
-                                                   "VS Code Marketplace build, say), so Open VSX's signature does "
-                                                   "not apply to it"}
+                                                   "different build, such as the VS Code Marketplace's, or an "
+                                                   "altered copy), so Open VSX's signature does not apply to it"}
     return check_signature(http, data, body)
 
 

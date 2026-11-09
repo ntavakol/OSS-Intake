@@ -128,8 +128,12 @@ def verify_sha256(file_path: str | Path, expected: str) -> str:
 # bundled list is never dropped.
 KNOWN_BAD_URL = "https://ntavakol.github.io/OSS-Intake/known-bad/known_bad.json"
 KNOWN_BAD_IDENTITY = (r"^https://github\.com/ntavakol/OSS-Intake/\.github/workflows/"
-                      r"(known-bad\.yml@refs/heads/main|pages\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)))$")
+                      r"(known-bad\.yml@refs/heads/main|pages\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+))$")
 MAX_KNOWN_BAD_BYTES = 1024 * 1024
+# cosign errors that mean it could not check (an old cosign, no route to Sigstore's trust root), not a mismatch.
+_COSIGN_COULD_NOT_CHECK = re.compile(r"unknown flag|unknown command|tuf|trusted root|trust root|dial tcp|no such host|"
+                                     r"timeout|connection|unsupported|unrecognized|could not parse", re.I)
+KNOWN_BAD_COSIGN_TIMEOUT = 30  # every online run checks it: a slow trust-root fetch must not hold the run up
 _published: dict | None = None
 known_bad_status: dict = {"source": "bundled", "detail": "the published list was not fetched"}
 
@@ -144,9 +148,20 @@ def _valid_known_bad(data: object) -> bool:
     if not isinstance(data, dict) or data.get("schema") != 1 or not isinstance(data.get("updated"), str):
         return False
     tools, actions = data.get("tools"), data.get("actions")
-    return (isinstance(tools, dict) and all(isinstance(v, list) and all(isinstance(e, dict) for e in v)
+
+    def text(e: dict, *keys: str) -> bool:
+        return all(isinstance(e.get(k), str) and e[k] for k in keys)
+
+    def tool_entry(e: object) -> bool:
+        return (isinstance(e, dict) and text(e, "reference", "note") and isinstance(e.get("versions"), list)
+                and bool(e["versions"]) and all(isinstance(v, str) and v for v in e["versions"]))
+
+    def action_entry(a: object) -> bool:
+        return isinstance(a, dict) and text(a, "action", "below", "reference", "note")
+
+    return (isinstance(tools, dict) and all(isinstance(v, list) and all(tool_entry(e) for e in v)
                                             for v in tools.values())
-            and isinstance(actions, list) and all(isinstance(a, dict) for a in actions))
+            and isinstance(actions, list) and all(action_entry(a) for a in actions))
 
 
 def bundled_known_bad_only(why: str) -> dict:
@@ -187,10 +202,16 @@ def refresh_known_bad(http) -> dict:
         listed.write_bytes(body)
         signed.write_bytes(bundle)
         try:
-            cosign_verify_blob(listed, signed, KNOWN_BAD_IDENTITY)
+            cosign_verify_blob(listed, signed, KNOWN_BAD_IDENTITY, timeout=KNOWN_BAD_COSIGN_TIMEOUT)
         except IntegrityError as exc:
-            known_bad_status = {"source": "bundled", "bundled_updated": bundled, "failed": True,
-                                "detail": f"the published list failed its signature check ({exc})"}
+            # cosign ran and rejected it ("failed"), or could not check it (too old for the bundle, no route to
+            # Sigstore's trust root, a timeout): only the first suggests tampering.
+            rejected = (str(exc).startswith("cosign verification failed")
+                        and not _COSIGN_COULD_NOT_CHECK.search(str(exc)))
+            known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                                **({"failed": True} if rejected else {}),
+                                "detail": (f"the published list failed its signature check ({exc})" if rejected
+                                           else f"the published list could not be checked ({exc})")}
             return known_bad_status
     try:
         data = json.loads(body.decode("utf-8"))
@@ -199,6 +220,11 @@ def refresh_known_bad(http) -> dict:
     if not _valid_known_bad(data):
         known_bad_status = {"source": "bundled", "bundled_updated": bundled,
                             "detail": "the published list is signed but not in the expected form"}
+        return known_bad_status
+    if str(cast(dict, data)["updated"]) < str(bundled):
+        known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                            "detail": f"the published list ({cast(dict, data)['updated']}) is older than the one "
+                                      "this version ships, so it adds nothing"}
         return known_bad_status
     _published = cast(dict, data)
     known_bad_status = {"source": "published", "updated": _published["updated"], "bundled_updated": bundled,
@@ -238,7 +264,8 @@ COSIGN_TIMEOUT = 120  # seconds
 
 def cosign_verify_blob(file_path: str | Path, bundle: str | Path | None, identity_regexp: str,
                        oidc_issuer: str = "https://token.actions.githubusercontent.com",
-                       certificate: str | Path | None = None, signature: str | Path | None = None) -> None:
+                       certificate: str | Path | None = None, signature: str | Path | None = None,
+                       timeout: int | None = None) -> None:
     """Verify a file against a Sigstore bundle, or a certificate and signature (as Grype publishes:
     checksums.txt.pem and .sig, checked against the transparency log, so this needs the network), by running
     cosign verify-blob with the certificate identity regexp and OIDC issuer (default GitHub Actions),
@@ -261,14 +288,14 @@ def cosign_verify_blob(file_path: str | Path, bundle: str | Path | None, identit
     from .scanners import ScannerError, capped_run
 
     try:
-        proc = capped_run(cmd, COSIGN_TIMEOUT, max_stdout=1024 * 1024)
+        proc = capped_run(cmd, timeout or COSIGN_TIMEOUT, max_stdout=1024 * 1024)
     except ScannerError as exc:  # it wrote far more than a verification ever does
         raise IntegrityError(f"cosign: {exc}, so the signature was not verified") from None
     except OSError as exc:
         raise IntegrityError(f"could not run cosign: {exc}") from None
     except subprocess.TimeoutExpired:
-        raise IntegrityError(f"cosign did not finish within {COSIGN_TIMEOUT} seconds, so the signature was not "
-                             "verified") from None
+        raise IntegrityError(f"cosign did not finish within {timeout or COSIGN_TIMEOUT} seconds, so the signature "
+                             "was not verified") from None
     if proc.returncode != 0:
         msg = proc.stderr.decode("utf-8", errors="replace").strip().splitlines()
         raise IntegrityError("cosign verification failed: " + (msg[-1] if msg else "no output"))
@@ -404,8 +431,10 @@ def verify_before_run(tool: str, path: str, expected_sha256: str | None, cosign_
                 if cosign_certificate:
                     done["deprecated"] = (
                         f"{Path(checksums).name} was verified with a certificate and signature, which cosign has "
-                        f"deprecated and may stop accepting; {tool} 0.120.0 and later publish "
-                        f"{tool}_<version>_checksums.txt.sigstore.json: use --{tool}-cosign-bundle with it")
+                        f"deprecated and may stop accepting; "
+                        + ("grype 0.120.0 and later publish grype_<version>_checksums.txt.sigstore.json: use "
+                           "--grype-cosign-bundle with it" if tool == "grype"
+                           else f"use the release's Sigstore bundle with --{tool}-cosign-bundle"))
             with open(checksums, "rb") as fh:
                 table = parse_checksums(fh.read())
             actual_archive = sha256_file(archive)

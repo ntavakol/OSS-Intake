@@ -165,7 +165,8 @@ Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2
 run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
 The list ships with each release and is also published on the project site, signed by the project's own
 workflow with Sigstore, so an entry added after a release reaches you without upgrading. When cosign (2.5.0 or
-later) is on PATH and the run is online, oss-intake fetches it, verifies the signature against that workflow's
+later) is on PATH and a scan runs online, oss-intake fetches it (two small downloads and one cosign check, up to
+30 seconds), verifies the signature against that workflow's
 identity, and adds its entries to the ones it ships; it never drops a shipped entry. Without cosign, offline, or
 when the list cannot be fetched, the shipped list is used, and `assessment.json` (`known_bad_list`) says which. A
 published list that fails its signature check is not used, and the report warns about it.
@@ -229,9 +230,10 @@ oss-intake --extension redhat.java@1.36.0 --out ./reports --fail-on malicious
 The download is checked against the SHA-256 Open VSX publishes for that file (a mismatch stops the run, exit 2),
 assessed like any `.vsix`, and removed afterwards. With the optional `signatures` extra
 (`pip install 'oss-intake[signatures]'`, which adds `cryptography`), Open VSX's Ed25519 signature on the file is
-checked too: a mismatch stops the run. A `.vsix` given with `--path` gets the same check when it is the file Open
-VSX serves for that version; a VS Code Marketplace build is a different file, so the report says the signature
-does not apply rather than that it failed. The key is Open VSX's own, so the check shows the file is the one Open
+checked too: a mismatch stops the run. A `.vsix` given with `--path` gets the same check when its SHA-256 is the one
+Open VSX publishes for that version. A different file, whether a VS Code Marketplace build or an altered copy, is
+reported as one the signature does not apply to, not as a failure: for a file from elsewhere, the comparison that
+matters is with the SHA-256, which the report states. The key is Open VSX's own, so the check shows the file is the one Open
 VSX signed, not that Open VSX itself is sound. The VS Code Marketplace's signatures are not checked: that needs
 Microsoft's proprietary `vsce-sign` and the Marketplace's unofficial API. The version must be exact: "latest" is not assessed. The VS
 Code Marketplace's own download API is not used: it is unofficial, and its terms tie it to Microsoft's products.

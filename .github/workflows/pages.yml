@@ -53,14 +53,18 @@ jobs:
         run: |
           version=$(python3 -c "import json; print(json.load(open('site/builder/options.json'))['version'])")
           if [ "v$version" != "$TAG" ]; then echo "site/builder/options.json is for $version, not $TAG"; exit 1; fi
-      - name: The known-bad list, to sign
+      - name: The known-bad list, to sign (main's when it is newer than the release's, so nothing added since is lost)
         run: |
-          python3 -c "import json; d=json.load(open('src/oss_intake/data/known_bad.json')); assert d['schema'] == 1"
           mkdir -p site/known-bad
           cp src/oss_intake/data/known_bad.json site/known-bad/known_bad.json
+          git fetch --quiet --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" main
+          git show FETCH_HEAD:src/oss_intake/data/known_bad.json > main-known-bad.json
+          python3 -I -c "import json, shutil; a, b = (json.load(open(f)) for f in ('site/known-bad/known_bad.json', 'main-known-bad.json')); b['updated'] > a['updated'] and shutil.copy('main-known-bad.json', 'site/known-bad/known_bad.json')"
+          python3 -I -c "import json, sys; sys.path.insert(0, 'src'); from oss_intake import integrity as i; v = getattr(i, '_valid_known_bad', None); ok = v is None or v(json.load(open('site/known-bad/known_bad.json'))); sys.exit(0 if ok else 'the known-bad list is not in the expected form')"
       - uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
         with:
           inputs: ./site/known-bad/known_bad.json
+          release-signing-artifacts: false # the job cannot write to the release, and nothing needs it there
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

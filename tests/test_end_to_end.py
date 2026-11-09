@@ -3049,3 +3049,70 @@ def test_a_published_list_that_fails_its_signature_is_warned_about(tmp_path, fix
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert code == cli.EXIT_OK and a["known_bad_list"]["failed"]
     assert any("published known-bad scanner list was not used" in w for w in a["warnings"])
+
+
+def test_the_known_bad_identity_is_exactly_oss_intake_s_own_workflows():
+    """Review (9 Nov): the identity regexp did not compile, so every check failed. It must match the workflows
+    that sign the list, on the refs they run on, and nothing else."""
+    import re
+
+    from oss_intake import integrity
+
+    base = "https://github.com/ntavakol/OSS-Intake/.github/workflows/"
+    for ok in ("known-bad.yml@refs/heads/main", "pages.yml@refs/heads/main", "pages.yml@refs/tags/v1.2.3"):
+        assert re.match(integrity.KNOWN_BAD_IDENTITY, base + ok), ok
+    for bad in ("known-bad.yml@refs/heads/dev", "known-bad.yml@refs/pull/7/merge", "pages.yml@refs/tags/v1.2.3-rc1",
+                "release.yml@refs/heads/main", "known-bad.yml@refs/tags/v1.2.3"):
+        assert not re.match(integrity.KNOWN_BAD_IDENTITY, base + bad), bad
+    assert not re.match(integrity.KNOWN_BAD_IDENTITY,
+                        "https://github.com/someone/OSS-Intake/.github/workflows/known-bad.yml@refs/heads/main")
+
+
+@pytest.mark.parametrize("bad", [
+    {"tools": {"trivy": [{"versions": None, "reference": "x", "note": "x"}]}},
+    {"tools": {"trivy": [{"versions": "0.70.1", "reference": "x", "note": "x"}]}},
+    {"actions": [{"action": "a/b", "reference": "x", "note": "x"}]},
+    {"actions": [{"action": "a/b", "below": 1, "reference": "x", "note": "x"}]},
+])
+def test_a_signed_list_with_a_malformed_entry_is_not_used(bad, fresh_known_bad):
+    """Review (9 Nov): entries were checked only for being objects, so one typo on main crashed every run."""
+    integrity = fresh_known_bad
+    data = integrity._bundled_known_bad()
+    assert integrity._valid_known_bad(data)  # the shipped list is in the form the published one must have
+    assert not integrity._valid_known_bad({**data, **bad})
+
+
+def test_an_older_published_list_or_a_cosign_that_cannot_check_is_not_a_failure(monkeypatch, fresh_known_bad):
+    """Review (9 Nov): a list older than the shipped one is not used; a cosign that cannot check (too old, no
+    route to Sigstore's trust root) is "could not be checked", not a failed signature."""
+    from oss_intake import scanners
+
+    integrity = fresh_known_bad
+    http = FakeHttp()
+    data = _published_list(http)
+    data["updated"] = "2000-01-01"
+    http.files[integrity.KNOWN_BAD_URL] = json.dumps(data).encode()
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    ok = __import__("subprocess").CompletedProcess([], 0, b"", b"Verified OK")
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: ok)
+    status = integrity.refresh_known_bad(http)
+    assert status["source"] == "bundled" and "older" in status["detail"] and not status.get("failed")
+    _published_list(http)
+    tuf = __import__("subprocess").CompletedProcess([], 1, b"", b"Error: getting trusted root: dial tcp: timeout")
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: tuf)
+    status = integrity.refresh_known_bad(http)
+    assert status["source"] == "bundled" and not status.get("failed") and "could not be checked" in status["detail"]
+
+
+def test_the_deprecation_note_for_trivy_does_not_give_grype_s_history(tmp_path, monkeypatch):
+    """Review (9 Nov): the note told a Trivy user that "trivy 0.120.0 and later" publish a bundle."""
+    from oss_intake import integrity, scanners
+
+    exe, archive, sums, pem, sig = _grype_release(tmp_path)
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: __import__("subprocess").CompletedProcess(
+        cmd, 0, b"", b"Verified OK"))
+    monkeypatch.setattr(integrity, "archive_member_sha256", lambda a, names: ("trivy", integrity.sha256_file(exe)))
+    done = integrity.verify_before_run("trivy", str(exe), None, None, None, str(archive), str(sums), str(pem),
+                                       str(sig))
+    assert "0.120.0" not in done["deprecated"] and "--trivy-cosign-bundle" in done["deprecated"]
