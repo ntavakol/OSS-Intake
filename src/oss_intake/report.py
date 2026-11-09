@@ -341,6 +341,12 @@ def extensions_section(a: dict) -> tuple[str, list] | None:
         blocks.append(("p", f"What the update from {ch['from_version']} to {ch['to_version']} changed "
                             "(--compare-with): most extension compromises arrive as an update to a trusted one."))
         blocks.append(("table", ["Change", "Detail"], crows))
+    sig = info.get("signature")
+    if sig:
+        blocks.append(("p", "Open VSX signature: " + {
+            "verified": "verified.", "failed": "DOES NOT MATCH.", "unsigned": "none published for this version.",
+            "other_build": "does not apply.", "not_on_open_vsx": "not on Open VSX.",
+            "not_checked": "not checked."}.get(sig["status"], sig["status"]) + f" {sig['detail']}."))
     dl = info.get("download")
     if dl:
         plat = dl.get("target_platform")
