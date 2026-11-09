@@ -297,7 +297,10 @@ The scanners find the libraries the jars bundle, and each finding is counted aga
 Each plugin's ID, version and vendor come from its `plugin.xml`, and online, the JetBrains Marketplace is asked
 about it (its ID and version are sent): whether its vendor is verified, whether the Marketplace has blocked it
 (which leads the report), and when this version was published. A plugin the Marketplace does not list (one from
-a private repository, say) is named, not counted as a problem. Nothing in a plugin is run.
+a private repository, say) is named, not counted as a problem. No `--fail-on` gate covers a blocked plugin or a
+failed lookup: they are warnings. A one-jar plugin the IDE keeps directly in its plugins folder counts too, and a
+`.zip` or `.jar` that is not a plugin (a Maven or Tomcat distribution, an ordinary library) is assessed as before.
+Nothing in a plugin is run.
 
 `--jetbrains-plugin ID@VERSION` downloads one exact version from the Marketplace, free or paid (a paid plugin's
 licence is checked by the IDE, not at download), and assesses it; the download is removed after the run. The

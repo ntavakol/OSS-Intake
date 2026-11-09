@@ -34,6 +34,7 @@ MAX_JARS = 400  # jars read in one plugin's lib/ for plugin.xml
 MAX_PLUGIN_XML = 2 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024
 MAX_LOOKUPS = 300
+UPDATES_PAGE = 100  # versions asked for at once; a version older than these is "not among the latest"
 NOT_SIGNED = "the JetBrains Marketplace publishes no checksum, and its signature is not checked yet: HTTPS only"
 # xmlId@version as the Marketplace writes them; the version exact.
 _ID = re.compile(r"^(?P<id>[A-Za-z0-9][\w.\-]{0,199})@(?P<version>[0-9A-Za-z][\w.+\-]{0,99})$")
@@ -90,6 +91,12 @@ def read_identity(xml: bytes) -> dict | None:
             "until_build": (build.get("until-build", "")[:40] if build is not None else "")}
 
 
+def _jar_identity(jar: Path | bytes) -> dict | None:
+    """The identity in a jar's META-INF/plugin.xml, when it is a JetBrains plugin.xml (root idea-plugin)."""
+    xml = _plugin_xml(jar)
+    return read_identity(xml) if xml else None
+
+
 def _identity(folder: Path) -> dict | None:
     """The identity of the plugin in folder (a folder with lib/*.jar), or None when it is not a plugin."""
     lib = folder / "lib"
@@ -98,44 +105,64 @@ def _identity(folder: Path) -> dict | None:
     jars = sorted((p for p in lib.iterdir() if p.suffix.lower() == ".jar" and p.is_file() and not p.is_symlink()),
                   key=lambda p: (not p.stem.casefold().startswith(folder.name.casefold()), p.name))
     for jar in jars[:MAX_JARS]:
-        xml = _plugin_xml(jar)
-        found = read_identity(xml) if xml else None
+        found = _jar_identity(jar)
         if found:
             return {**found, "jar": jar.name, "jars": len(jars)}
     return None
 
 
-def plugin_folders(path: Path) -> list[Path]:
-    """The plugin folders path is or holds: one plugin, or an IDE's plugins folder (its children)."""
+def find_plugins(path: Path) -> list[tuple[Path, dict]]:
+    """The plugins path is or holds, with their identities: one plugin folder, or an IDE's plugins folder, whose
+    plugins are folders (lib/*.jar) or single jars placed directly in it, as the IDE installs a one-jar plugin."""
     if not path.is_dir():
         return []
-    if _identity(path):
-        return [path]
-    found = []
+    own = _identity(path)
+    if own:
+        return [(path, own)]
+    found: list[tuple[Path, dict]] = []
     for child in sorted(path.iterdir()):
-        if child.is_dir() and not child.is_symlink() and _identity(child):
-            found.append(child)
+        if child.is_symlink():
+            continue
+        ident = (_identity(child) if child.is_dir()
+                 else _jar_identity(child) if child.is_file() and child.suffix.lower() == ".jar" else None)
+        if ident:
+            found.append((child, ident))
             if len(found) > MAX_PLUGINS:
                 raise InputError(f"{path.name} holds more than {MAX_PLUGINS} plugins; assess fewer at a time")
     return found
 
 
-def is_plugin_file(path: Path) -> bool:
-    """A plugin .zip (a top folder with lib/*.jar) or a plugin .jar (with META-INF/plugin.xml)."""
+def plugin_folders(path: Path) -> list[Path]:
+    return [p for p, _ in find_plugins(path)]
+
+
+MAX_PLUGIN_JAR = 100 * 1024 * 1024  # a jar inside a plugin .zip, read in memory to find plugin.xml
+
+
+def file_identity(path: Path) -> dict | None:
+    """The identity of a plugin file: a .jar with an idea-plugin plugin.xml, or a .zip whose top folder's lib/*.jar
+    holds one. None for any other .zip or .jar (a Maven or Tomcat distribution, an ordinary library)."""
     if not path.is_file() or path.suffix.lower() not in (".zip", ".jar"):
-        return False
+        return None
+    if path.suffix.lower() == ".jar":
+        return _jar_identity(path)
     try:
         with zipfile.ZipFile(path) as z:
-            names = z.namelist()
-    except (zipfile.BadZipFile, OSError):
-        return False
-    if path.suffix.lower() == ".jar":
-        return "META-INF/plugin.xml" in names
-    return any(re.match(r"^[^/]+/lib/[^/]+\.jar$", n) for n in names)
+            jars = [i for i in z.infolist() if re.match(r"^[^/]+/lib/[^/]+\.jar$", i.filename)]
+            for info in jars[:MAX_JARS]:
+                if info.file_size > MAX_PLUGIN_JAR:
+                    continue
+                with z.open(info) as fh:
+                    found = _jar_identity(fh.read(MAX_PLUGIN_JAR + 1)[:MAX_PLUGIN_JAR])
+                if found:
+                    return found
+    except Exception:  # noqa: BLE001 - a damaged or odd zip is not a plugin here; staging says why if it matters
+        return None
+    return None
 
 
 def is_plugin_input(path: Path) -> bool:
-    return is_plugin_file(path) or bool(path.is_dir() and plugin_folders(path))
+    return file_identity(path) is not None or bool(path.is_dir() and find_plugins(path))
 
 
 def unpack(path: Path, dest: Path) -> Path:
@@ -148,7 +175,12 @@ def unpack(path: Path, dest: Path) -> Path:
         lib.mkdir(parents=True)
         shutil.copy2(path, lib / path.name)
     else:
-        vscode.extract(path, dest)
+        try:
+            vscode.extract(path, dest)
+        except InputError:
+            raise
+        except vscode.ZIP_ERRORS as exc:  # a damaged, encrypted or oddly compressed file is the input's fault
+            raise InputError(f"refused: {path.name} could not be unpacked ({type(exc).__name__}: {exc})") from None
     if not plugin_folders(dest):
         raise InputError(f"{path.name} has no plugin.xml in a lib/*.jar: not a JetBrains plugin")
     return dest
@@ -195,13 +227,16 @@ def _lookup_one(http: Http, ident: str, version: str) -> dict | None:
         return {"found": False}
     if st != 200 or not isinstance(plugin, dict) or not isinstance(plugin.get("id"), int):
         return None
-    update = None
+    update, version_lookup = None, "no version in plugin.xml"
     if version:
         ust, updates = http.get_json(f"{MARKETPLACE}/api/plugins/{plugin['id']}/updates",
-                                     params={"version": version, "size": 100})
-        if ust == 200 and isinstance(updates, list):
-            update = next((u for u in updates if isinstance(u, dict) and u.get("version") == version), None)
-    return summary(plugin, update)
+                                     params={"version": version, "size": UPDATES_PAGE})
+        if ust != 200 or not isinstance(updates, list):
+            return {**summary(plugin, None), "version_lookup": f"failed (HTTP {ust})"}
+        update = next((u for u in updates if isinstance(u, dict) and u.get("version") == version), None)
+        version_lookup = ("found" if update else f"not among the {UPDATES_PAGE} latest versions"
+                          if len(updates) >= UPDATES_PAGE else "not on the Marketplace")
+    return {**summary(plugin, update), "version_lookup": version_lookup}
 
 
 def lookup(http: Http, plugins: list[dict]) -> dict:
@@ -220,6 +255,7 @@ def lookup(http: Http, plugins: list[dict]) -> dict:
         p["marketplace"] = got
         stats["looked_up"] += 1
         stats["found"] += got["found"]
+        stats["errors"] += str(got.get("version_lookup", "")).startswith("failed")
     return stats
 
 
@@ -237,24 +273,27 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / f"{plugin_id}-{version}.{'jar' if is_jar else 'zip'}"
     path.write_bytes(body)
+    # HTTPS is the only protection: at least the file must be the plugin and version asked for.
+    got = file_identity(path)
+    if got is None:
+        raise InputError(f"--jetbrains-plugin {ident}: the download is not a JetBrains plugin; nothing was assessed")
+    if got["id"] != plugin_id or (got["version"] and got["version"] != version):
+        raise InputError(f"--jetbrains-plugin {ident}: the download is {got['id']} {got['version'] or ''}, not the "
+                         "plugin and version asked for; nothing was assessed")
     return path, {"source": url, "sha256": hashlib.sha256(body).hexdigest(), "integrity": NOT_SIGNED}
 
 
 # ------------------------------------------------------------------------------------------- assessing
 
-def assess(target: Path, http: Http | None, single: bool) -> dict:
-    """Each plugin under target: its identity and, online, its Marketplace metadata."""
-    folders = plugin_folders(target)
-    if not folders:  # a staged plugin file: its folder is one level down
-        folders = [c for c in sorted(target.iterdir()) if c.is_dir() and _identity(c)]
-    plugins = []
-    for f in folders:
-        ident = _identity(f) or {}
-        plugins.append({**ident, "folder": f.name})
+def assess(target: Path, http: Http | None) -> dict:
+    """Each plugin under target: its identity and, online, its Marketplace metadata. "single" (everything scanned
+    is that plugin's) when target is one plugin."""
+    found = find_plugins(target)
+    plugins = [{**ident, "folder": f.name} for f, ident in found]
     market = {"status": "not_checked", "detail": "--offline"}
     if http is not None and plugins:
         market = {"status": "checked", **lookup(http, plugins)}
-    return {"plugins": plugins, "single": single, "marketplace": market}
+    return {"plugins": plugins, "single": len(plugins) == 1, "marketplace": market}
 
 
 def attribute(info: dict, findings: list) -> None:
@@ -294,8 +333,11 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
                           "out why before using it, and remove it if the reason is a security one")
     stats = info.get("marketplace") or {}
     if stats.get("errors"):
-        other.append(f"JetBrains Marketplace lookups failed for {stats['errors']} plugin(s); their vendor and "
-                     "publication date are not known")
+        other.append(f"JetBrains Marketplace lookups failed for {stats['errors']} plugin(s): whether they are "
+                     "blocked, their vendor or their publication date is not known")
+    if stats.get("skipped_limit"):
+        other.append(f"{stats['skipped_limit']} plugin(s) over the lookup limit ({MAX_LOOKUPS}) were not checked on "
+                     "the JetBrains Marketplace, so a blocked one among them would not be seen")
     dl = info.get("download")
     if dl:
         other.append(f"The plugin was downloaded from the JetBrains Marketplace over HTTPS; {NOT_SIGNED}")

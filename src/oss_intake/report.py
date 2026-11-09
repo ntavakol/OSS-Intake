@@ -273,7 +273,8 @@ def jetbrains_section(a: dict) -> tuple[str, list] | None:
                      (("BLOCKED" if m.get("blocked") else "listed") + (", hidden" if m.get("hidden") else "")
                       if m.get("found") else "not on the Marketplace" if m else "not looked up"),
                      ("yes" if m.get("vendor_verified") else "no") if m.get("found") else "",
-                     (m.get("published") or "version not found") if m.get("found") else "",
+                     (m.get("published") or m.get("version_lookup") or "version not found")
+                     if m.get("found") else "",
                      str(f.get("total", 0)) + (f" ({f['critical']} critical, {f['high']} high)"
                                                if f.get("critical") or f.get("high") else "")])
     blocks: list = [("p", f"{len(plugins)} JetBrains plugin{'s' if len(plugins) != 1 else ''}. The libraries "

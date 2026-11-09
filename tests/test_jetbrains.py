@@ -166,3 +166,84 @@ def test_hostile_plugin_xml_and_files_are_refused_or_ignored(tmp_path):
     no_xml = make_zip(tmp_path / "notaplugin.zip", xml=b"<project/>")
     with pytest.raises(inputs.InputError, match="not a JetBrains plugin"):
         jetbrains.unpack(no_xml, tmp_path / "staged")
+
+
+# --- Review (9 Nov) ---------------------------------------------------------------------------------------------
+
+def test_ordinary_zips_and_jars_stay_artifacts(tmp_path):
+    """Review: any zip with <top>/lib/*.jar (a Maven or Tomcat distribution) and any jar with a META-INF/plugin.xml
+    were taken as plugins and then refused (exit 2), losing the registry checksum check."""
+    maven = tmp_path / "apache-maven-3.9.6-bin.zip"
+    with zipfile.ZipFile(maven, "w") as z:
+        z.writestr("apache-maven-3.9.6/lib/maven-core-3.9.6.jar", jar_bytes(None))
+    other = tmp_path / "other-lib-1.0.jar"
+    other.write_bytes(jar_bytes(b"<plugin><id>x</id></plugin>"))
+    assert inputs.classify(maven) == "artifact" and inputs.classify(other) == "artifact"
+
+
+def test_a_damaged_plugin_zip_is_a_bad_input_not_a_bug(tmp_path, fixtures, capsys):
+    """Review: a plugin zip with a corrupt member exited 1 with "This is a bug in oss-intake"."""
+    z = make_zip(tmp_path / "plugin.zip", libs={"big.bin": b"x" * 5000})
+    raw = bytearray(z.read_bytes())
+    i = raw.find(b"x" * 100)
+    raw[i:i + 4] = b"yyyy"  # the stored member no longer matches its CRC
+    z.write_bytes(bytes(raw))
+    code, _ = scan(tmp_path, fixtures, z, FakeHttp())
+    err = capsys.readouterr().err
+    assert code == cli.EXIT_USAGE and "could not be unpacked" in err and "bug" not in err
+
+
+def test_a_failed_version_lookup_is_an_error_not_version_not_found(tmp_path):
+    """Review: an /updates failure read as "version not found" with no error counted."""
+    class UpdatesDown(FakeHttp):
+        def get_json(self, url, params=None):
+            return (500, None) if url.endswith("/updates") else super().get_json(url, params)
+
+    http = UpdatesDown()
+    marketplace(http)
+    plugins = [{"id": "mobi.hsz.idea.gitignore", "version": "4.5.7"}]
+    stats = jetbrains.lookup(http, plugins)
+    assert stats["errors"] == 1 and plugins[0]["marketplace"]["version_lookup"] == "failed (HTTP 500)"
+    http = FakeHttp()
+    marketplace(http, version="9.0.0")
+    http.jetbrains[f"{API}/api/plugins/7495/updates"] *= 100  # a full page without this version
+    plugins = [{"id": "mobi.hsz.idea.gitignore", "version": "4.5.7"}]
+    jetbrains.lookup(http, plugins)
+    assert plugins[0]["marketplace"]["version_lookup"] == "not among the 100 latest versions"
+
+
+def test_a_one_jar_plugin_in_the_plugins_folder_is_a_plugin(tmp_path, fixtures):
+    """Review: the IDE keeps a one-jar plugin directly in its plugins folder; it was missed, so a blocked one gave no
+    alert and its findings went to another plugin."""
+    http = FakeHttp()
+    marketplace(http, ident="com.example.evil", pid=99, isBlocked=True)
+    root = tmp_path / "plugins"
+    make_folder(root)
+    (root / "evil.jar").write_bytes(jar_bytes(plugin_xml("com.example.evil", "Evil", "4.5.7")))
+    code, out = scan(tmp_path, fixtures, root, http)
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert {p["id"] for p in a["jetbrains"]["plugins"]} == {"mobi.hsz.idea.gitignore", "com.example.evil"}
+    assert not a["jetbrains"]["single"]
+    assert a["warnings"][0].startswith("JETBRAINS MARKETPLACE HAS BLOCKED THIS PLUGIN: com.example.evil")
+
+
+def test_plugins_over_the_lookup_limit_are_warned_about(tmp_path, monkeypatch):
+    monkeypatch.setattr(jetbrains, "MAX_LOOKUPS", 1)
+    info = {"plugins": [{"id": "a", "version": "1"}, {"id": "b", "version": "1"}]}
+    info["marketplace"] = {"status": "checked", **jetbrains.lookup(FakeHttp(), info["plugins"])}
+    _, other = jetbrains.warnings(info)
+    assert any("1 plugin(s) over the lookup limit" in w for w in other)
+
+
+def test_a_download_that_is_not_the_plugin_asked_for_is_refused(tmp_path, fixtures, capsys):
+    """Review: with HTTPS the only protection, a file of another plugin or version was assessed under its own
+    name."""
+    http = FakeHttp()
+    url = f"{API}/plugin/download?pluginId=mobi.hsz.idea.gitignore&version=4.5.7"
+    buf = io.BytesIO()
+    make_zip(buf, xml=plugin_xml(version="4.5.6"))
+    http.files[url] = buf.getvalue()
+    code = cli.main(["--jetbrains-plugin", "mobi.hsz.idea.gitignore@4.5.7", "--out", str(tmp_path / "r"),
+                     "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json",
+                     str(fixtures / "grype.json")], http=http)
+    assert code == cli.EXIT_USAGE and "not the plugin and version asked for" in capsys.readouterr().err

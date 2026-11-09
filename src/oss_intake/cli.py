@@ -428,8 +428,7 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     # JetBrains plugins: each plugin's identity and its Marketplace entry; nothing in them is run.
     args.plugin_info = None
     if args.path_kind == "jetbrains":
-        args.plugin_info = jetbrains.assess(Path(args.scan_target), net, single=Path(args.path).is_file()
-                                            or len(jetbrains.plugin_folders(Path(args.path))) == 1)
+        args.plugin_info = jetbrains.assess(Path(args.scan_target), net)
         if getattr(args, "plugin_download", None):
             args.plugin_info["download"] = args.plugin_download
         alerts, more = jetbrains.warnings(args.plugin_info)
