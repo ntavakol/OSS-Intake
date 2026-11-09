@@ -112,6 +112,8 @@ class FakeHttp(Http):
             if len(self.files[url]) > limit:
                 raise HttpError(f"GET {url}: the answer is over the limit")
             return 200, self.files[url]
+        if url.startswith("https://ntavakol.github.io/OSS-Intake/known-bad/"):
+            return 404, b""  # the published known-bad list, unless a test sets it in files
         raise AssertionError(f"unexpected download {url}")
 
     def post_json(self, url, body):

@@ -1,0 +1,56 @@
+name: known-bad
+
+# Publishes the known-bad scanner list (src/oss_intake/data/known_bad.json) when it changes on main, signed with
+# Sigstore by this workflow (keyless), so a compromise found after a release reaches users without a new release.
+# oss-intake fetches it from the site, verifies it with cosign against this workflow's identity (or pages.yml's,
+# which publishes the list a release ships), and adds it to the list it came with. The rest of the site stays
+# the latest release's: it is checked out from that tag, as pages.yml publishes it.
+on:
+  push:
+    branches: [main]
+    paths: [src/oss_intake/data/known_bad.json]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish the signed known-bad list
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      pages: write # deploy to GitHub Pages
+      id-token: write # verify the deployment's origin, and sign the list (Sigstore, keyless)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the release tags, to publish the latest release's site
+          persist-credentials: false
+      - name: The site from the latest release, the list from main
+        run: |
+          TAG=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          if [ -z "$TAG" ]; then echo "no release tag"; exit 1; fi
+          git checkout "$TAG" -- site
+          version=$(python3 -c "import json; print(json.load(open('site/builder/options.json'))['version'])")
+          if [ "v$version" != "$TAG" ]; then echo "site/builder/options.json is for $version, not $TAG"; exit 1; fi
+          python3 -c "import json; d=json.load(open('src/oss_intake/data/known_bad.json')); assert d['schema'] == 1"
+          mkdir -p site/known-bad
+          cp src/oss_intake/data/known_bad.json site/known-bad/known_bad.json
+      - uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
+        with:
+          inputs: ./site/known-bad/known_bad.json
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

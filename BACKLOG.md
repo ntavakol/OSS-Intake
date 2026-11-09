@@ -49,6 +49,3 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
   Kept here (8 Nov): AWS publishes no ALAS API, only the RSS feeds and the bulletin pages, and their format has
   not been checked against real samples yet.
-
-## Scanner management
-- Fetch the known-bad list from a signed location instead of shipping it with each release.

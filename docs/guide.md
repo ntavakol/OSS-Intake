@@ -163,6 +163,12 @@ flags, so the report notes it: move to a release with a bundle.
 
 Trivy versions 0.69.4, 0.69.5 and 0.69.6 were malicious (CVE-2026-33634, March 2026). `oss-intake` refuses to
 run any version on its [known-bad list](https://github.com/ntavakol/OSS-Intake/blob/main/src/oss_intake/data/known_bad.json).
+The list ships with each release and is also published on the project site, signed by the project's own
+workflow with Sigstore, so an entry added after a release reaches you without upgrading. When cosign (2.5.0 or
+later) is on PATH and the run is online, oss-intake fetches it, verifies the signature against that workflow's
+identity, and adds its entries to the ones it ships; it never drops a shipped entry. Without cosign, offline, or
+when the list cannot be fetched, the shipped list is used, and `assessment.json` (`known_bad_list`) says which. A
+published list that fails its signature check is not used, and the report warns about it.
 It reads the version from the binary's Go build information first, so a known-bad release is refused without
 being run, even with no pinned hash. A build with no version recorded (some source builds) is still run once
 with `--version` and checked then; pin the hash to avoid that.

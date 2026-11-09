@@ -208,17 +208,17 @@ const S = (values, what) => ({ command: "scan", what, values: { out: "r", ...val
 
 test("contacts, table-driven", () => {
   const cases = [
-    [S({ path: "package-lock.json" }), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date"]],
-    [S({ path: "package-lock.json", repo: "o/n" }), ["OSV", "deps.dev", "GitHub", "OpenSSF", "CISA", "FIRST", "Exploit", "Fix-date"]],
+    [S({ path: "package-lock.json" }), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date", "oss-intake's"]],
+    [S({ path: "package-lock.json", repo: "o/n" }), ["OSV", "deps.dev", "GitHub", "OpenSSF", "CISA", "FIRST", "Exploit", "Fix-date", "oss-intake's"]],
     [S({ path: "package-lock.json", offline: true }), []],
-    [S({ path: "package-lock.json", no_kev: true, no_epss: true, no_exploits: true, no_fix_dates: true, release_age_days: "0" }), ["OSV"]],
-    [S({ path: "package-lock.json", scanners: "trivy", no_fix_dates: true, release_age_days: "0" }), ["CISA", "FIRST", "Exploit"]],
-    [S({ path: "app.jar" }, "artifact"), ["OSV", "deps.dev", "Maven", "CISA", "FIRST", "Exploit", "Fix-date"]],
-    [S({ path: "app.jar", no_registry_check: true }, "artifact"), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date"]],
-    [S({ package: ["npm:a@1"] }), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date"]],
-    [S({ package: ["npm:a@1"], no_fix_dates: true, release_age_days: "0", no_latest: true }), ["OSV", "CISA", "FIRST", "Exploit"]],
-    [S({ repo: "o/n" }, "repo"), ["GitHub", "OpenSSF"]],
-    [S({ repo: "o/n", no_scorecard: true }, "repo"), ["GitHub"]],
+    [S({ path: "package-lock.json", no_kev: true, no_epss: true, no_exploits: true, no_fix_dates: true, release_age_days: "0" }), ["OSV", "oss-intake's"]],
+    [S({ path: "package-lock.json", scanners: "trivy", no_fix_dates: true, release_age_days: "0" }), ["CISA", "FIRST", "Exploit", "oss-intake's"]],
+    [S({ path: "app.jar" }, "artifact"), ["OSV", "deps.dev", "Maven", "CISA", "FIRST", "Exploit", "Fix-date", "oss-intake's"]],
+    [S({ path: "app.jar", no_registry_check: true }, "artifact"), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date", "oss-intake's"]],
+    [S({ package: ["npm:a@1"] }), ["OSV", "deps.dev", "CISA", "FIRST", "Exploit", "Fix-date", "oss-intake's"]],
+    [S({ package: ["npm:a@1"], no_fix_dates: true, release_age_days: "0", no_latest: true }), ["OSV", "CISA", "FIRST", "Exploit", "oss-intake's"]],
+    [S({ repo: "o/n" }, "repo"), ["GitHub", "OpenSSF", "oss-intake's"]],
+    [S({ repo: "o/n", no_scorecard: true }, "repo"), ["GitHub", "oss-intake's"]],
   ];
   for (const [s, want] of cases) assert.deepEqual(services(s), want, JSON.stringify(s.values));
 });
@@ -324,7 +324,7 @@ test("every first answer has an icon, and the Contacts group carries the service
   const g = w.summary(data, wizard, { command: "scan", values: { path: "package-lock.json", repo: "o/n", out: "r" } })
     .find((x) => x.head === "Contacts");
   assert.deepEqual(g.services.map((s) => s.name), ["OSV", "deps.dev", "GitHub", "OpenSSF Scorecard", "CISA KEV", "FIRST EPSS",
-    "Exploit indexes", "Fix-date records"]);
+    "Exploit indexes", "Fix-date records", "known-bad list"]);
   for (const s of g.services) assert.ok(g.items.some((i) => i.includes(s.sends)), s.name);  // the text says the same
   assert.deepEqual(g.notes, g.items.slice(g.services.length));
 });

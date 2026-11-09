@@ -10,6 +10,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (`pip install 'oss-intake[signatures]'`): for every `--extension` download (a mismatch stops the run) and for a
   `.vsix` given with `--path` that is the file Open VSX serves for its version. The VS Code Marketplace's own
   signatures are not checked (they need Microsoft's proprietary vsce-sign).
+- The known-bad scanner list is also published on the project site, signed by the project's own workflow with
+  Sigstore (keyless), so an entry added after a release reaches users without upgrading. With cosign on PATH,
+  oss-intake verifies it and adds its entries to the shipped ones (never dropping one); otherwise the shipped list
+  is used, as before. `assessment.json` records which (`known_bad_list`).
 - Fix dates for R packages in an `renv.lock`, from crandb (r-hub's database of CRAN releases), so their release
   lag is measured; before, every CRAN finding was undated.
 

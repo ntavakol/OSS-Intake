@@ -121,10 +121,107 @@ def verify_sha256(file_path: str | Path, expected: str) -> str:
     return actual
 
 
-def load_known_bad() -> dict:
-    """The bundled data/known_bad.json (known compromised tool versions and GitHub Actions), parsed."""
+# The known-bad list is also published, signed, so a compromise found after a release reaches users without a new
+# release: known-bad.yml (when the list changes on main) and pages.yml (at a release) sign
+# src/oss_intake/data/known_bad.json with Sigstore, keyless, and publish it with its bundle. It is used only when
+# cosign verifies it was signed by one of those workflows, and only adds to the bundled list: an entry in the
+# bundled list is never dropped.
+KNOWN_BAD_URL = "https://ntavakol.github.io/OSS-Intake/known-bad/known_bad.json"
+KNOWN_BAD_IDENTITY = (r"^https://github\.com/ntavakol/OSS-Intake/\.github/workflows/"
+                      r"(known-bad\.yml@refs/heads/main|pages\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)))$")
+MAX_KNOWN_BAD_BYTES = 1024 * 1024
+_published: dict | None = None
+known_bad_status: dict = {"source": "bundled", "detail": "the published list was not fetched"}
+
+
+def _bundled_known_bad() -> dict:
     with resources.files("oss_intake").joinpath("data/known_bad.json").open("rb") as fh:
         return json.loads(fh.read().decode("utf-8"))
+
+
+def _valid_known_bad(data: object) -> bool:
+    """The published list's shape, as the bundled one has it: anything else is not used."""
+    if not isinstance(data, dict) or data.get("schema") != 1 or not isinstance(data.get("updated"), str):
+        return False
+    tools, actions = data.get("tools"), data.get("actions")
+    return (isinstance(tools, dict) and all(isinstance(v, list) and all(isinstance(e, dict) for e in v)
+                                            for v in tools.values())
+            and isinstance(actions, list) and all(isinstance(a, dict) for a in actions))
+
+
+def bundled_known_bad_only(why: str) -> dict:
+    """Use the bundled list alone for this run (--offline), forgetting any published list from an earlier run."""
+    global _published, known_bad_status
+    _published = None
+    known_bad_status = {"source": "bundled", "bundled_updated": _bundled_known_bad().get("updated"), "detail": why}
+    return known_bad_status
+
+
+def refresh_known_bad(http) -> dict:
+    """Fetch the published known-bad list and its Sigstore bundle, verify them with cosign against pages.yml's
+    identity, and use the list in addition to the bundled one. Returns (and keeps) the status: source published
+    or bundled, with a detail. Nothing here fails the run: without cosign, or when the list cannot be fetched or
+    verified, the bundled list is used, as before; a list that fails verification is reported (failed)."""
+    global _published, known_bad_status
+    _published = None
+    bundled = _bundled_known_bad().get("updated")
+    if not shutil.which("cosign"):
+        known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                            "detail": "cosign is not on PATH, so the published list was not checked"}
+        return known_bad_status
+    from .http import HttpError
+
+    try:
+        st, body = http.get_bytes(KNOWN_BAD_URL, MAX_KNOWN_BAD_BYTES)
+        bst, bundle = http.get_bytes(KNOWN_BAD_URL + ".sigstore.json", MAX_KNOWN_BAD_BYTES)
+    except HttpError as exc:
+        known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                            "detail": f"the published list could not be fetched ({exc})"}
+        return known_bad_status
+    if st != 200 or bst != 200:
+        known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                            "detail": f"the published list returned HTTP {st if st != 200 else bst}"}
+        return known_bad_status
+    with tempfile.TemporaryDirectory(prefix="oss-intake-kb-") as tmp:
+        listed, signed = Path(tmp) / "known_bad.json", Path(tmp) / "known_bad.json.sigstore.json"
+        listed.write_bytes(body)
+        signed.write_bytes(bundle)
+        try:
+            cosign_verify_blob(listed, signed, KNOWN_BAD_IDENTITY)
+        except IntegrityError as exc:
+            known_bad_status = {"source": "bundled", "bundled_updated": bundled, "failed": True,
+                                "detail": f"the published list failed its signature check ({exc})"}
+            return known_bad_status
+    try:
+        data = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        data = None
+    if not _valid_known_bad(data):
+        known_bad_status = {"source": "bundled", "bundled_updated": bundled,
+                            "detail": "the published list is signed but not in the expected form"}
+        return known_bad_status
+    _published = cast(dict, data)
+    known_bad_status = {"source": "published", "updated": _published["updated"], "bundled_updated": bundled,
+                        "detail": "signed by OSS-Intake's own workflow, verified with cosign; used with the "
+                                  "bundled list"}
+    return known_bad_status
+
+
+def load_known_bad() -> dict:
+    """The known compromised tool versions and GitHub Actions: the bundled data/known_bad.json, plus the entries of
+    the published list when refresh_known_bad verified it. An entry in either counts."""
+    data = _bundled_known_bad()
+    if _published is None:
+        return data
+    seen = {json.dumps(e, sort_keys=True) for v in data["tools"].values() for e in v}
+    for tool, entries in _published["tools"].items():
+        for e in entries:
+            if json.dumps(e, sort_keys=True) not in seen:
+                data["tools"].setdefault(tool, []).append(e)
+    known = {json.dumps(a, sort_keys=True) for a in data["actions"]}
+    data["actions"] += [a for a in _published["actions"] if json.dumps(a, sort_keys=True) not in known]
+    data["updated"] = max(data["updated"], _published["updated"])
+    return data
 
 
 def known_bad_entry(tool: str, version: str) -> dict | None:

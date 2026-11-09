@@ -5,6 +5,9 @@ name: pages
 # site changes when a release is published, not on every push to main. Run it by hand with a tag to republish.
 # The sample report is rebuilt and committed before the release is tagged (examples/compromised-npm/build.sh),
 # so this workflow runs no scanner.
+#
+# It also publishes the release's known-bad scanner list (src/oss_intake/data/known_bad.json) at known-bad/,
+# signed with Sigstore by this workflow (keyless); known-bad.yml republishes it when the list changes on main.
 on:
   release:
     types: [published]
@@ -30,7 +33,7 @@ jobs:
     permissions:
       contents: read
       pages: write # deploy to GitHub Pages
-      id-token: write # verify the deployment's origin
+      id-token: write # verify the deployment's origin, and sign the known-bad list (Sigstore, keyless)
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -50,6 +53,14 @@ jobs:
         run: |
           version=$(python3 -c "import json; print(json.load(open('site/builder/options.json'))['version'])")
           if [ "v$version" != "$TAG" ]; then echo "site/builder/options.json is for $version, not $TAG"; exit 1; fi
+      - name: The known-bad list, to sign
+        run: |
+          python3 -c "import json; d=json.load(open('src/oss_intake/data/known_bad.json')); assert d['schema'] == 1"
+          mkdir -p site/known-bad
+          cp src/oss_intake/data/known_bad.json site/known-bad/known_bad.json
+      - uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
+        with:
+          inputs: ./site/known-bad/known_bad.json
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
