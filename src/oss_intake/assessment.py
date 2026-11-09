@@ -40,6 +40,7 @@ from . import (
 from .enrich import (
     advisories,
     alpine,
+    cran,
     debian_releases,
     debian_tracker,
     epss,
@@ -292,6 +293,12 @@ def _enrich(args, net, findings: list, warnings: list[str]):
             fd_stats["packagist"] = pk
             if pk.get("errors"):
                 warnings.append(f"Packagist lookups failed for {pk['errors']} PHP packages")
+            cr = cran.enrich(net, ranked)
+            fd_stats["cran"] = cr
+            if cr.get("errors"):
+                warnings.append(f"crandb lookups failed for {cr['errors']} R packages; their fixes stay undated")
+            if cr.get("skipped_limit"):
+                warnings.append(f"{cr['skipped_limit']} R packages over the lookup limit were not dated")
             gos = golang_stdlib.enrich(net, ranked)
             fd_stats["go_stdlib"] = gos
             if gos.get("errors"):
