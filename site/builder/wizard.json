@@ -43,7 +43,7 @@
   {
    "id": "artifact",
    "label": "A file or folder you downloaded or built",
-   "hint": "A JAR or WAR, a wheel, an npm .tgz, a binary, or a folder: built files or a whole source checkout.",
+   "hint": "A JAR or WAR, a wheel, an npm .tgz, a binary, or a folder: built files or a whole source checkout, or a JetBrains IDE plugin (.zip or .jar) or an IDE's plugins folder.",
    "fields": [
     "path"
    ],
@@ -1617,11 +1617,20 @@
    "hosts": [
     "plugins.jetbrains.com"
    ],
-   "sends": "the ID and version of each JetBrains plugin (and downloads one with --jetbrains-plugin)",
+   "sends": "the ID and version of each JetBrains plugin, if the path is a plugin or an IDE's plugins folder (and downloads one with --jetbrains-plugin)",
    "when": {
     "all": [
      {
-      "set": "jetbrains_plugin"
+      "any": [
+       {
+        "set": "jetbrains_plugin"
+       },
+       {
+        "what": [
+         "artifact"
+        ]
+       }
+      ]
      },
      {
       "not": {

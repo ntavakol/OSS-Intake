@@ -166,6 +166,7 @@ def _same_name(name: str) -> str:
 
 
 _ZIP_ERRORS = (zipfile.BadZipFile, zlib.error, NotImplementedError, RuntimeError, EOFError, ValueError, OSError)
+ZIP_ERRORS = _ZIP_ERRORS
 
 
 def unpack(vsix: Path, dest: Path) -> Path:
