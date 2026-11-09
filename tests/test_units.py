@@ -4157,3 +4157,36 @@ def test_codeberg_says_it_does_not_report_a_licence():
     http = _ForgeHttp([(api, (200, {"archived": False, "updated_at": "2026-11-08T07:32:31+01:00"}))])
     status, meta = releases._meta(http, "codeberg", "forgejo/forgejo")
     assert meta["license"] is None and "does not report" in meta["license_note"]
+
+
+def test_cran_fix_dates_from_crandb():
+    """Backlog (done 9 Nov): renv.lock findings were always undated ("no dated source for CRAN"). crandb's
+    timeline gives when each version was published; each package is fetched once; a 404, an error or a version
+    it does not list leaves the finding undated."""
+    from oss_intake.enrich import cran
+    from oss_intake.http import HttpError
+
+    class H:
+        calls: list[str] = []
+
+        def get_json(self, url, params=None):
+            self.calls.append(url)
+            if url == "https://crandb.r-pkg.org/jsonlite/all":
+                return 200, {"name": "jsonlite", "timeline": {"1.8.8": "2023-12-04T12:57:14+00:00",
+                                                               "1.8.9": "2024-09-20T21:50:02+00:00"}}
+            if url == "https://crandb.r-pkg.org/broken/all":
+                raise HttpError("timeout")
+            return 404, {"error": "not_found"}
+
+    h = H()
+    a = _f(purl="pkg:cran/jsonlite@1.8.7", installed="1.8.7", fixed_versions=["1.8.8"])
+    b = _f(vuln_id="CVE-2099-2", purl="pkg:cran/jsonlite@1.8.7", installed="1.8.7", fixed_versions=["1.8.9"])
+    none = _f(purl="pkg:cran/gone@1.0", installed="1.0", fixed_versions=["1.1"])
+    broken = _f(purl="pkg:cran/broken@1.0", installed="1.0", fixed_versions=["1.1"])
+    odd = _f(purl="pkg:cran/..%2Fx@1.0", installed="1.0", fixed_versions=["1.1"])
+    stats = cran.enrich(h, [a, b, none, broken, odd])
+    assert a.fix_published == parse_datetime("2023-12-04T12:57:14+00:00") and a.fix_date_source == "CRAN (crandb)"
+    assert b.fix_published == parse_datetime("2024-09-20T21:50:02+00:00")
+    assert none.fix_published is None and broken.fix_published is None and odd.fix_published is None
+    assert stats == {"packages": 3, "found": 2, "errors": 1, "skipped_limit": 0}
+    assert h.calls.count("https://crandb.r-pkg.org/jsonlite/all") == 1 and not any(".." in u for u in h.calls)

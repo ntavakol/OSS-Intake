@@ -486,7 +486,8 @@ an older branch is not counted for a newer one) and looks up when that version w
 | Days a fix has been available | Assessment date minus the fixed version's publish date |
 | CVE published before release | Secondary signal. A CVE can be public before any fix exists, so this overstates lag on its own |
 
-Fix dates come from deps.dev for language packages, from Packagist for PHP Composer packages, falling back to the GitHub release date for Go modules
+Fix dates come from deps.dev for language packages, from Packagist for PHP Composer packages, from crandb
+(r-hub's database of CRAN releases) for R packages in an `renv.lock`, falling back to the GitHub release date for Go modules
 hosted on GitHub that deps.dev does not index. For Debian packages they come from the Debian security advisory
 that shipped the fix (DSA or DLA, by the scanner's advisory ID or the exact fixed version), dated from the Debian
 security tracker's advisory lists, with OSV as a fallback. Fixes that shipped without an advisory are dated from the
@@ -656,6 +657,7 @@ repository could add or hide exploit evidence, though never a vulnerability.
 | [OpenSSF Scorecard](https://scorecard.dev) | Project health (`--repo`) | See scorecard.dev |
 | [GitHub](https://github.com) | Project health and releases (`--repo`) | GitHub's API terms |
 | Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat | Checksums, fix dates | Each registry's or distribution's terms |
+| [crandb](https://github.com/r-hub/crandb) (r-hub) | R package fix dates | See the repository |
 | [VS Code Marketplace removal list](https://github.com/microsoft/vsmarketplace) * | Removed extensions | See the repository |
 | [Open VSX](https://open-vsx.org) | Extension metadata, `--extension` downloads | The Eclipse Foundation's Open VSX terms |
 

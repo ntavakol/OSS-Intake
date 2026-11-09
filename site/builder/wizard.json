@@ -1494,6 +1494,7 @@
     "api.launchpad.net",
     "access.redhat.com",
     "repo.packagist.org",
+    "crandb.r-pkg.org",
     "go.dev",
     "api.github.com"
    ],

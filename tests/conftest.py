@@ -30,6 +30,7 @@ class FakeHttp(Http):
         self.depsdev = load("depsdev.json")
         # Open VSX answers (URL to JSON) and downloads (URL to bytes or text) a test sets up; others are 404.
         self.openvsx: dict[str, dict] = {}
+        self.crandb: dict[str, dict] = {}  # crandb answers (URL to JSON) a test sets up; others are 404
         self.files: dict[str, bytes] = {}
 
     def _check(self, url: str):
@@ -75,6 +76,8 @@ class FakeHttp(Http):
             return 200, load("kev.json")
         if url.endswith("/db/modules_metadata_base.json"):
             return 200, load("metasploit.json")
+        if url.startswith("https://crandb.r-pkg.org/"):
+            return (200, self.crandb[url]) if url in self.crandb else (404, {"error": "not_found"})
         if url.startswith("https://open-vsx.org/api/"):
             return (200, self.openvsx[url]) if url in self.openvsx else (404, {"error": "not found"})
         if url.startswith("https://raw.githubusercontent.com/nomi-sec/PoC-in-GitHub/"):

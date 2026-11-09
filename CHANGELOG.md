@@ -10,6 +10,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (`pip install 'oss-intake[signatures]'`): for every `--extension` download (a mismatch stops the run) and for a
   `.vsix` given with `--path` that is the file Open VSX serves for its version. The VS Code Marketplace's own
   signatures are not checked (they need Microsoft's proprietary vsce-sign).
+- Fix dates for R packages in an `renv.lock`, from crandb (r-hub's database of CRAN releases), so their release
+  lag is measured; before, every CRAN finding was undated.
 
 ### Changed
 - Grype: `--grype-cosign-bundle` is the way to verify Grype 0.120.0 and later, which sign their checksums file

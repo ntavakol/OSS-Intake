@@ -27,8 +27,7 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Dependency-Track as a source: pull every project's SBOM through its API (it already takes oss-intake's VEX).
 
 ## Inputs
-- CRAN fix dates for `renv.lock` findings (from CRAN's archive or the CRAN package database), and Bioconductor
-  packages (OSV has a Bioconductor ecosystem).
+- Bioconductor packages in an `renv.lock` (OSV has a Bioconductor ecosystem).
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
 - JetBrains plugins (plugins.jetbrains.com has a public API).
