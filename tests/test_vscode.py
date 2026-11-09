@@ -1096,3 +1096,40 @@ def test_a_signature_that_cannot_be_read_is_not_checked_not_passed(tmp_path):
     assert openvsx.check_signature(http, data, body)["status"] == "not_checked"
     del data["files"]["signature"]
     assert openvsx.check_signature(http, data, body)["status"] == "unsigned"
+
+
+@pytest.mark.parametrize("damage", ["method", "encrypted", "deflate", "unknown_key"])
+def test_an_odd_signature_or_key_is_not_checked_rather_than_crashing(tmp_path, damage):
+    """Review (9 Nov): an unsupported zip method, an encrypted member, a corrupt deflate stream or a key of an
+    unknown algorithm escaped as an exception and stopped the run."""
+    import io
+    import struct
+    import zipfile
+
+    from oss_intake import openvsx
+
+    http = FakeHttp()
+    body = _openvsx(http, tmp_path)
+    _sign(http, tmp_path)
+    data = http.openvsx["https://open-vsx.org/api/example/ext/1.2.3"]
+    sig_url, key_url = data["files"]["signature"], data["files"]["publicKey"]
+    raw = bytearray(http.files[sig_url])
+    if damage in ("method", "encrypted", "deflate"):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr(".signature.sig", b"x" * 64)
+        raw = bytearray(buf.getvalue())
+        cd = raw.rfind(b"PK\x01\x02")
+        if damage == "method":
+            struct.pack_into("<H", raw, 8, 99)
+            struct.pack_into("<H", raw, cd + 10, 99)
+        elif damage == "encrypted":
+            struct.pack_into("<H", raw, 6, 1)
+            struct.pack_into("<H", raw, cd + 8, 1)
+        else:
+            raw[30 + len(".signature.sig")] ^= 0xFF  # the first byte of the deflate stream
+        http.files[sig_url] = bytes(raw)
+    else:
+        http.files[key_url] = (b"-----BEGIN PUBLIC KEY-----\nMA4wBQYDKgMEAwUAAQIDBA==\n"
+                               b"-----END PUBLIC KEY-----\n")
+    assert openvsx.check_signature(http, data, body)["status"] == "not_checked"
