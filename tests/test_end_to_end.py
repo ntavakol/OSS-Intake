@@ -2935,3 +2935,29 @@ def test_an_old_or_undated_scorecard_score_does_not_drive_the_likelihood():
 
     assert score({}) == 3.0
     assert score({"stale_days": 400}) is None and score({"date_unknown": True}) is None
+
+
+def test_grype_bundle_is_the_way_and_a_certificate_is_noted_as_deprecated(tmp_path, monkeypatch):
+    """Backlog (done 9 Nov): Grype signs its checksums file with a Sigstore bundle from 0.120.0 (grype#3759), so
+    --grype-cosign-bundle verifies it as for Trivy. A certificate and signature, cosign's deprecated flags, still
+    verify an older release, with a note saying to move to a bundle."""
+    from oss_intake import integrity, scanners
+
+    exe, archive, sums, pem, sig = _grype_release(tmp_path)
+    bundle = tmp_path / "grype_checksums.txt.sigstore.json"
+    bundle.write_text("{}", encoding="utf-8")
+    ran: list[list[str]] = []
+
+    def cosign(cmd, timeout, **kw):
+        ran.append(cmd)
+        return __import__("subprocess").CompletedProcess(cmd, 0, b"", b"Verified OK")
+
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(scanners, "capped_run", cosign)
+    done = integrity.verify_before_run("grype", str(exe), None, str(bundle), None, str(archive), str(sums))
+    assert done["signed"] == sums.name and "deprecated" not in done
+    assert ran[0][ran[0].index("--bundle") + 1] == str(bundle) and ran[0][-1] == str(sums)
+    old = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums), str(pem), str(sig))
+    assert "cosign has deprecated" in old["deprecated"] and "--grype-cosign-bundle" in old["deprecated"]
+    unsigned = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums))
+    assert "add --grype-cosign-bundle (Grype 0.120.0 and later" in unsigned["note"]

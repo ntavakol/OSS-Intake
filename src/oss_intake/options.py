@@ -172,12 +172,13 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument(f"--{tool}-cosign-bundle", help=f"Sigstore bundle for the {tool} release archive, or for "
                                                       f"--{tool}-checksums (requires cosign on PATH)")
         s.add_argument(f"--{tool}-cosign-certificate", metavar="FILE",
-                       help=f"instead of a bundle: the signing certificate for --{tool}-checksums (Grype publishes "
-                            f"checksums.txt.pem), with --{tool}-cosign-signature; checked against the Sigstore "
-                            "transparency log, so it needs the network")
+                       help=f"instead of a bundle: the signing certificate for --{tool}-checksums (Grype before "
+                            f"0.120.0 published checksums.txt.pem; later releases publish a bundle), with "
+                            f"--{tool}-cosign-signature; checked against the Sigstore transparency log, so it needs "
+                            "the network. Deprecated in cosign: use a bundle where there is one")
         s.add_argument(f"--{tool}-cosign-signature", metavar="FILE",
-                       help=f"the signature that goes with --{tool}-cosign-certificate (Grype publishes "
-                            "checksums.txt.sig)")
+                       help=f"the signature that goes with --{tool}-cosign-certificate (Grype before 0.120.0 "
+                            "published checksums.txt.sig)")
         s.add_argument(f"--{tool}-cosign-identity", help="certificate identity regexp override")
         s.add_argument(f"--{tool}-arg", action="append", default=[], metavar="ARG",
                        help=f"extra argument passed to {tool} (repeatable), e.g. --{tool}-arg=--db-repository=...")

@@ -6,6 +6,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Grype: `--grype-cosign-bundle` is the way to verify Grype 0.120.0 and later, which sign their checksums file
+  with a Sigstore bundle (`grype_<version>_checksums.txt.sigstore.json`) instead of a certificate and signature.
+  `--grype-cosign-certificate` and `--grype-cosign-signature` still verify an earlier release, with a note that
+  cosign has deprecated those flags.
 - A GitLab project's licence is given as its SPDX ID (`MIT`, `Apache-2.0`), as for GitHub, not GitLab's lower-case
   key; an unlisted key is kept as GitLab gives it. Codeberg does not report licences: `health.license_note` in
   `assessment.json` now says so, rather than leaving an unexplained empty licence.

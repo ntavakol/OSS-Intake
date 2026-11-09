@@ -54,8 +54,3 @@ a package that was clean when approved can later turn out vulnerable or compromi
 
 ## Scanner management
 - Fetch the known-bad list from a signed location instead of shipping it with each release.
-- Grype signature without cosign's deprecated flags (agreed 8 Nov): `--grype-cosign-certificate` and
-  `--grype-cosign-signature` call `cosign verify-blob --certificate --signature`, which cosign marks deprecated
-  in favour of `--bundle` with `--trusted-root`. Before cosign removes them, build a Sigstore bundle from Grype's
-  `.pem` and `.sig` and the transparency log entry, and verify that instead; or switch if Grype starts
-  publishing bundles.
