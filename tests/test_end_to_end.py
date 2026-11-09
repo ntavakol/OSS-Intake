@@ -2961,3 +2961,91 @@ def test_grype_bundle_is_the_way_and_a_certificate_is_noted_as_deprecated(tmp_pa
     assert "cosign has deprecated" in old["deprecated"] and "--grype-cosign-bundle" in old["deprecated"]
     unsigned = integrity.verify_before_run("grype", str(exe), None, None, None, str(archive), str(sums))
     assert "add --grype-cosign-bundle (Grype 0.120.0 and later" in unsigned["note"]
+
+
+# --- The signed known-bad list (9 Nov) --------------------------------------------------------------------------
+
+def _published_list(http, extra_tool_entry=None, bundle=b"{}"):
+    from oss_intake import integrity
+
+    data = integrity._bundled_known_bad()
+    if extra_tool_entry:
+        data["tools"]["grype"].append(extra_tool_entry)
+        data["updated"] = "2026-11-09"
+    http.files[integrity.KNOWN_BAD_URL] = json.dumps(data).encode()
+    http.files[integrity.KNOWN_BAD_URL + ".sigstore.json"] = bundle
+    return data
+
+
+@pytest.fixture
+def fresh_known_bad(monkeypatch):
+    from oss_intake import integrity
+
+    monkeypatch.setattr(integrity, "_published", None)
+    monkeypatch.setattr(integrity, "known_bad_status", {"source": "bundled", "detail": ""})
+    return integrity
+
+
+def test_the_published_known_bad_list_is_used_when_cosign_verifies_it(tmp_path, monkeypatch, fresh_known_bad):
+    """Backlog (done 9 Nov): a compromise found after a release reaches users through the list published on the
+    site, signed by OSS-Intake's own workflow; it adds to the bundled list, never replaces it."""
+    from oss_intake import scanners
+
+    integrity = fresh_known_bad
+    http = FakeHttp()
+    entry = {"versions": ["9.9.9"], "reference": "GHSA-test", "note": "found after the release"}
+    _published_list(http, entry)
+    ran: list[list[str]] = []
+
+    def cosign(cmd, timeout, **kw):
+        ran.append(cmd)
+        return __import__("subprocess").CompletedProcess(cmd, 0, b"", b"Verified OK")
+
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(scanners, "capped_run", cosign)
+    status = integrity.refresh_known_bad(http)
+    assert status["source"] == "published" and status["updated"] == "2026-11-09"
+    assert ran[0][ran[0].index("--certificate-identity-regexp") + 1] == integrity.KNOWN_BAD_IDENTITY
+    assert integrity.known_bad_entry("grype", "v9.9.9")["reference"] == "GHSA-test"
+    assert integrity.known_bad_entry("trivy", "0.69.4")  # the bundled entries stay
+    integrity.bundled_known_bad_only("--offline")
+    assert integrity.known_bad_entry("grype", "9.9.9") is None
+
+
+@pytest.mark.parametrize("case", ["no_cosign", "bad_signature", "not_found", "bad_shape"])
+def test_the_published_list_is_not_used_unless_it_is_verified(tmp_path, monkeypatch, fresh_known_bad, case):
+    """Without cosign, when the list cannot be fetched, fails its signature or is not in the expected form, the
+    bundled list is used; a failed signature is flagged (failed), as it is reported as a warning."""
+    from oss_intake import scanners
+
+    integrity = fresh_known_bad
+    http = FakeHttp()
+    if case != "not_found":
+        _published_list(http, {"versions": ["9.9.9"], "reference": "x", "note": "x"})
+    if case == "bad_shape":
+        http.files[integrity.KNOWN_BAD_URL] = b'{"schema": 2}'
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: None if case == "no_cosign" else "/usr/bin/cosign")
+    code = 1 if case == "bad_signature" else 0
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: __import__("subprocess").CompletedProcess(
+        cmd, code, b"", b"error: none of the expected identities matched"))
+    status = integrity.refresh_known_bad(http)
+    assert status["source"] == "bundled" and bool(status.get("failed")) is (case == "bad_signature")
+    assert integrity.known_bad_entry("grype", "9.9.9") is None
+
+
+def test_a_published_list_that_fails_its_signature_is_warned_about(tmp_path, fixtures, monkeypatch,
+                                                                   fresh_known_bad):
+    from oss_intake import scanners
+
+    integrity = fresh_known_bad
+    http = FakeHttp()
+    _published_list(http)
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    monkeypatch.setattr(scanners, "capped_run", lambda cmd, timeout, **kw: __import__("subprocess").CompletedProcess(
+        cmd, 1, b"", b"error: signature mismatch"))
+    out = tmp_path / "out"
+    code = cli.main(["--image", "owner/app:1.0", "--out", str(out), "--from-trivy-json", str(fixtures / "trivy.json"),
+                     "--from-grype-json", str(fixtures / "grype.json"), "--as-of", "2026-11-08"], http=http)
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert code == cli.EXIT_OK and a["known_bad_list"]["failed"]
+    assert any("published known-bad scanner list was not used" in w for w in a["warnings"])

@@ -1494,7 +1494,6 @@
     "api.launchpad.net",
     "access.redhat.com",
     "repo.packagist.org",
-    "crandb.r-pkg.org",
     "go.dev",
     "api.github.com"
    ],
@@ -1525,6 +1524,36 @@
     ]
    },
    "short": "Fix-date records"
+  },
+  {
+   "name": "crandb (R fix dates)",
+   "hosts": [
+    "crandb.r-pkg.org"
+   ],
+   "sends": "the names of R packages with a fix",
+   "if_found": true,
+   "when": {
+    "all": [
+     {
+      "what": [
+       "renv"
+      ]
+     },
+     {
+      "not": {
+       "any": [
+        {
+         "set": "offline"
+        },
+        {
+         "set": "no_fix_dates"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "short": "crandb"
   },
   {
    "name": "VS Code Marketplace removal list (GitHub)",
@@ -1569,6 +1598,19 @@
     ]
    },
    "short": "Open VSX"
+  },
+  {
+   "name": "oss-intake's signed known-bad list",
+   "hosts": [
+    "ntavakol.github.io"
+   ],
+   "sends": "nothing (only fetched when cosign is installed, to check its signature)",
+   "when": {
+    "not": {
+     "set": "offline"
+    }
+   },
+   "short": "known-bad list"
   }
  ],
  "scanner_notes": [

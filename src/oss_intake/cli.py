@@ -391,6 +391,12 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
         warnings.append(f"The output folder is not private: {shown}, so another user could replace or delete these "
                         "reports after the run. Use --out with a folder only you can write to")
     net = None if args.offline else (http or RequestsHttp(cache=cache))
+    # The published known-bad list, signed, before any scanner runs or workflow is audited (bundled when offline).
+    args.known_bad_list = (integrity.refresh_known_bad(net) if net
+                           else integrity.bundled_known_bad_only("--offline: the bundled list is used"))
+    if args.known_bad_list.get("failed"):
+        warnings.append(f"The published known-bad scanner list was not used: {args.known_bad_list['detail']}. The "
+                        "list that came with this version was used")
     scanners_meta: dict = {s: {"enabled": False} for s in ("trivy", "grype", "osv")}
 
     # Is the artifact the file the project released? Checked against the registry before scanning.

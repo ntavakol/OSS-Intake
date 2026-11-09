@@ -481,6 +481,7 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": as_of.isoformat(),
         # The target by its name: the reports describe what was assessed, not where it sat on this machine.
+        "known_bad_list": getattr(args, "known_bad_list", None),
         "inputs": {"image": args.image, "path": _target_name(args.path) if args.path else None,
                    "path_kind": args.path_kind, "repo": args.repo,
                    "packages": [e["purl"] for e in args.inventory] if args.package else None,
