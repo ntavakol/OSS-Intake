@@ -73,6 +73,18 @@
     {
      "choices": null,
      "default": null,
+     "dest": "jetbrains_plugin",
+     "exclusive_group": null,
+     "flag": "--jetbrains-plugin",
+     "help": "download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. The Marketplace publishes no checksum and its signature is not checked yet: HTTPS only",
+     "kind": "value",
+     "metavar": "PLUGIN_ID@VERSION",
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
      "dest": "package",
      "exclusive_group": null,
      "flag": "--package",

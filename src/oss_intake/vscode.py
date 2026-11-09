@@ -181,6 +181,24 @@ def unpack(vsix: Path, dest: Path) -> Path:
 
 
 def _unpack(vsix: Path, dest: Path) -> Path:
+    manifest = extract(vsix, dest, want="extension.vsixmanifest")
+    folder = dest / "extension"
+    if _manifest(folder) is None:
+        raise InputError(f"{vsix.name} has no extension/package.json with a publisher and engines.vscode")
+    # Kept beside the unpacked files under a name of ours, replacing any file of that name the .vsix brought.
+    kept = dest / MANIFEST_COPY
+    if kept.is_dir() and not kept.is_symlink():
+        raise InputError(f"refused: {vsix.name} has a folder named {MANIFEST_COPY}")
+    kept.unlink(missing_ok=True)
+    if manifest:
+        kept.write_text(manifest, encoding="utf-8")
+    return folder
+
+
+def extract(vsix: Path, dest: Path, want: str = "") -> str:
+    """Unpack a zip (a .vsix, or a JetBrains plugin) into dest with the limits above: no links, no member that
+    leaves dest or clashes by name on macOS or Windows, no zip bomb. Returns the text of the member named want
+    (up to 200 KB), or "". Raises InputError for a file that breaks a limit."""
     z = zipfile.ZipFile(vsix)
     with z:
         infos = z.infolist()
@@ -217,21 +235,11 @@ def _unpack(vsix: Path, dest: Path) -> Path:
                         raise InputError(f"refused: {vsix.name} unpacks to more than the limit "
                                          f"({MAX_FILE_BYTES} bytes a file, {MAX_TOTAL_BYTES} in all)")
                     out.write(chunk)
-        manifest = ""
-        if "extension.vsixmanifest" in z.namelist():
-            with z.open("extension.vsixmanifest") as fh:
-                manifest = fh.read(200_000).decode("utf-8", "replace")
-    folder = dest / "extension"
-    if _manifest(folder) is None:
-        raise InputError(f"{vsix.name} has no extension/package.json with a publisher and engines.vscode")
-    # Kept beside the unpacked files under a name of ours, replacing any file of that name the .vsix brought.
-    kept = dest / MANIFEST_COPY
-    if kept.is_dir() and not kept.is_symlink():
-        raise InputError(f"refused: {vsix.name} has a folder named {MANIFEST_COPY}")
-    kept.unlink(missing_ok=True)
-    if manifest:
-        kept.write_text(manifest, encoding="utf-8")
-    return folder
+        text = ""
+        if want and want in z.namelist():
+            with z.open(want) as fh:
+                text = fh.read(200_000).decode("utf-8", "replace")
+    return text
 
 
 # --------------------------------------------------------------------------------------------- reading

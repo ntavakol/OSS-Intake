@@ -295,6 +295,7 @@
      "path",
      "package",
      "extension",
+     "jetbrains_plugin",
      "repo"
     ]
    },
@@ -430,7 +431,7 @@
      }
     ]
    },
-   "message": "give --extension on its own, not with --image, --path or --package",
+   "message": "give --extension on its own, not with --image, --path, --package or another download",
    "args": [
     "--extension",
     "example.ext@1.2.3",
@@ -470,6 +471,76 @@
    "ok_args": [
     "--extension",
     "example.ext@1.2.3",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "jetbrains-plugin-alone",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "jetbrains_plugin"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       },
+       {
+        "set": "package"
+       },
+       {
+        "set": "extension"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "give --jetbrains-plugin on its own, not with --image, --path, --package or another download",
+   "args": [
+    "--jetbrains-plugin",
+    "mobi.hsz.idea.gitignore@4.5.7",
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--jetbrains-plugin",
+    "mobi.hsz.idea.gitignore@4.5.7",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "jetbrains-plugin-offline",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "jetbrains_plugin"
+     },
+     {
+      "set": "offline"
+     }
+    ]
+   },
+   "message": "--jetbrains-plugin downloads from the JetBrains Marketplace, which needs the network; drop --offline",
+   "args": [
+    "--jetbrains-plugin",
+    "mobi.hsz.idea.gitignore@4.5.7",
+    "--offline",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--jetbrains-plugin",
+    "mobi.hsz.idea.gitignore@4.5.7",
     "--out",
     "{out}"
    ]

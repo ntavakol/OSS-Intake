@@ -259,6 +259,40 @@ def _listed_extensions(info: dict, exts: list[dict], rl: dict) -> tuple[str, lis
     return f"VS Code extensions ({len(exts)})", blocks
 
 
+def jetbrains_section(a: dict) -> tuple[str, list] | None:
+    """JetBrains plugins: each plugin's identity, its findings, and what the Marketplace says of it."""
+    info = a.get("jetbrains")
+    if not info:
+        return None
+    plugins = info["plugins"]
+    rows = []
+    for p in plugins[:500]:
+        m = p.get("marketplace") or {}
+        f = p.get("findings") or {}
+        rows.append([p["id"], p.get("version") or "not given", p.get("vendor") or "not given",
+                     (("BLOCKED" if m.get("blocked") else "listed") + (", hidden" if m.get("hidden") else "")
+                      if m.get("found") else "not on the Marketplace" if m else "not looked up"),
+                     ("yes" if m.get("vendor_verified") else "no") if m.get("found") else "",
+                     (m.get("published") or "version not found") if m.get("found") else "",
+                     str(f.get("total", 0)) + (f" ({f['critical']} critical, {f['high']} high)"
+                                               if f.get("critical") or f.get("high") else "")])
+    blocks: list = [("p", f"{len(plugins)} JetBrains plugin{'s' if len(plugins) != 1 else ''}. The libraries "
+                          "their jars bundle were scanned; each plugin's identity comes from its plugin.xml. "
+                          "Nothing in them was run.")]
+    dl = info.get("download")
+    if dl:
+        blocks.append(("p", f"Downloaded from the JetBrains Marketplace ({dl['source']}) by --jetbrains-plugin; "
+                            f"SHA-256 {dl['sha256']}. {dl['integrity'][0].upper()}{dl['integrity'][1:]}."))
+    market = info.get("marketplace") or {}
+    if market.get("status") != "checked":
+        blocks.append(("p", "The JetBrains Marketplace was not asked (--offline)."))
+    blocks.append(("table", ["Plugin", "Version", "Vendor (plugin.xml)", "Marketplace", "Vendor verified",
+                             "Version published", "Findings"], rows))
+    if info.get("unmatched"):
+        blocks.append(("p", f"{info['unmatched']} finding(s) could not be tied to one plugin."))
+    return f"JetBrains plugins ({len(plugins)})", blocks
+
+
 def extensions_section(a: dict) -> tuple[str, list] | None:
     """VS Code extensions: the removal list's verdict, the behaviour indicators with where each was seen, whether
     the dependencies could be seen, and the repository each claims. None for any other input."""
@@ -462,6 +496,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     ext = extensions_section(a)
     if ext:
         secs.append(ext)
+    jb = jetbrains_section(a)
+    if jb:
+        secs.append(jb)
     inv = a.get("inventory")
     if inv:
         from .inventory_report import label_text

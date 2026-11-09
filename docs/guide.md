@@ -282,6 +282,28 @@ One that breaks a limit, or is damaged, is refused (exit 2) before anything is w
 signature is not checked. `--fail-on mismatch` is refused, as for a folder. The details are in the
 [threat model](threat-model.md).
 
+### JetBrains plugins
+
+```bash
+oss-intake --path ignore-4.5.7.zip --out ./reports                                   # a plugin file (.zip or .jar)
+oss-intake --path "$HOME/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins" --out ./reports
+oss-intake --jetbrains-plugin mobi.hsz.idea.gitignore@4.5.7 --out ./reports --fail-on high
+```
+
+A plugin is a folder with a `lib/` of jars, one of which holds `META-INF/plugin.xml`; a small plugin can be that
+one jar. oss-intake takes a plugin file, one installed plugin's folder, or an IDE's whole plugins folder (on
+Windows `%APPDATA%\JetBrains\<product><version>\plugins`, on Linux `~/.local/share/JetBrains/<product><version>`).
+The scanners find the libraries the jars bundle, and each finding is counted against the plugin that ships it.
+Each plugin's ID, version and vendor come from its `plugin.xml`, and online, the JetBrains Marketplace is asked
+about it (its ID and version are sent): whether its vendor is verified, whether the Marketplace has blocked it
+(which leads the report), and when this version was published. A plugin the Marketplace does not list (one from
+a private repository, say) is named, not counted as a problem. Nothing in a plugin is run.
+
+`--jetbrains-plugin ID@VERSION` downloads one exact version from the Marketplace, free or paid (a paid plugin's
+licence is checked by the IDE, not at download), and assesses it; the download is removed after the run. The
+Marketplace publishes no checksum, and its own signature on the file is not checked yet, so the download is
+protected by HTTPS only; the report says so.
+
 ### Package inventory
 
 To check the open source an organisation already uses, pass a CSV list of packages, for example exported from
@@ -411,6 +433,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--image` | Image with explicit tag or digest |
 | `--package ECOSYSTEM:NAME@VERSION` | Check one package version, no scanner needed (repeatable): `npm:chalk@5.6.1`, `pypi:django@2.2.0`, `maven:org.apache.logging.log4j:log4j-core@2.14.1`, or a package URL; prints a one-line verdict per package |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory (`.csv`, or `.xlsx` with the `xlsx` extra) instead of an image |
+| `--jetbrains-plugin PLUGIN_ID@VERSION` | Download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace and assess it as `--path` would its file (e.g. `mobi.hsz.idea.gitignore@4.5.7`). On its own, not with `--image`, `--path`, `--package` or `--extension`; needs the network. The Marketplace publishes no checksum and its signature is not checked yet: HTTPS only. The download is removed after the run |
 | `--extension PUBLISHER.NAME@VERSION` | Download one exact version of a VS Code extension from [Open VSX](https://open-vsx.org), check it against the SHA-256 Open VSX publishes for it, and assess it as `--path` would its `.vsix` (e.g. `redhat.java@1.36.0`). On its own, not with `--image`, `--path` or `--package`; needs the network. The download is removed after the run |
 | `--compare-with` | With `--path` to one VS Code extension (a `.vsix` or its folder): an older version of the same extension, so the report shows what the update changed: new indicators, native files, web addresses and npm packages, and a publisher or repository change. Most extension compromises arrive as an update to a trusted extension |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
@@ -667,6 +690,7 @@ repository could add or hide exploit evidence, though never a vulnerability.
 | Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat | Checksums, fix dates | Each registry's or distribution's terms |
 | [crandb](https://github.com/r-hub/crandb) (r-hub) | R package fix dates | See the repository |
 | [VS Code Marketplace removal list](https://github.com/microsoft/vsmarketplace) * | Removed extensions | See the repository |
+| [JetBrains Marketplace](https://plugins.jetbrains.com) | JetBrains plugin metadata, `--jetbrains-plugin` downloads | The JetBrains Marketplace Agreement |
 | [Open VSX](https://open-vsx.org) | Extension metadata, `--extension` downloads | The Eclipse Foundation's Open VSX terms |
 
 The test fixtures shipped in the source package include advisory records from the GitHub Advisory Database

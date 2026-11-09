@@ -1611,6 +1611,26 @@
     }
    },
    "short": "known-bad list"
+  },
+  {
+   "name": "JetBrains Marketplace",
+   "hosts": [
+    "plugins.jetbrains.com"
+   ],
+   "sends": "the ID and version of each JetBrains plugin (and downloads one with --jetbrains-plugin)",
+   "when": {
+    "all": [
+     {
+      "set": "jetbrains_plugin"
+     },
+     {
+      "not": {
+       "set": "offline"
+      }
+     }
+    ]
+   },
+   "short": "JetBrains Marketplace"
   }
  ],
  "scanner_notes": [

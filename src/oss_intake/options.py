@@ -145,6 +145,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--extension", metavar="PUBLISHER.NAME@VERSION",
                    help="download one exact version of a VS Code extension from Open VSX (e.g. redhat.java@1.36.0), "
                         "check it against the SHA-256 Open VSX publishes, and assess it like --path on its .vsix")
+    s.add_argument("--jetbrains-plugin", metavar="PLUGIN_ID@VERSION",
+                   help="download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. "
+                        "mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. The Marketplace "
+                        "publishes no checksum and its signature is not checked yet: HTTPS only")
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")
@@ -314,7 +318,7 @@ def ineffective_options(args, chosen: list[str]) -> list[str]:
     """Options that would have no effect in this run (B22): say so instead of ignoring them silently."""
     out = []
     run_live = [t for t in ("trivy", "grype") if t in chosen and not getattr(args, f"from_{t}_json")]
-    if args.sbom and (args.path or getattr(args, "extension", None) or "trivy" not in run_live):
+    if args.sbom and (args.path or getattr(args, "download_input", None) or "trivy" not in run_live):
         out.append("--sbom has no effect: the SBOM is written only when Trivy scans an image in this run")
     for t in ("trivy", "grype"):
         if getattr(args, f"{t}_arg") and t not in run_live:
@@ -344,7 +348,7 @@ def ineffective_options(args, chosen: list[str]) -> list[str]:
 def refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]) -> None:
     """A gate on a check that will not run would always pass (or always fail), so it is refused up front."""
     wanted = set(args.fail_on_set)
-    if wanted and not (args.image or args.path or args.package or getattr(args, "extension", None)):
+    if wanted and not (args.image or args.path or args.package or getattr(args, "download_input", None)):
         raise UsageError("--fail-on needs packages to check: give --image, --path or --package")
     kev_off = "--offline" if args.offline else "--no-kev" if args.no_kev else ""
     for gate in ("kev", "act"):
@@ -352,8 +356,9 @@ def refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]
             raise UsageError(f"--fail-on {gate} needs the CISA KEV check, which {kev_off} turns off")
     if "mismatch" in wanted and not (args.path and args.path_kind == "artifact"):
         # An image, --package, a folder, lockfile, SBOM or package list has no single file to compare.
-        what = (Path(args.path).name if args.path else f"--extension {args.extension}"
-                if getattr(args, "extension", None) else ("an image" if args.image else "--package"))
+        what = (Path(args.path).name if args.path else f"--extension {args.extension}" if args.extension
+                else f"--jetbrains-plugin {args.jetbrains_plugin}"
+                if getattr(args, "download_input", None) else ("an image" if args.image else "--package"))
         raise UsageError(f"--fail-on mismatch needs a single file to compare with its registry (a JAR, WAR, wheel, "
                          f"sdist or npm .tgz); {what} is not one")
     if args.max_db_age_days is not None:
