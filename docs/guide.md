@@ -221,7 +221,13 @@ oss-intake --extension redhat.java@1.36.0 --out ./reports --fail-on malicious
 ```
 
 The download is checked against the SHA-256 Open VSX publishes for that file (a mismatch stops the run, exit 2),
-assessed like any `.vsix`, and removed afterwards. The version must be exact: "latest" is not assessed. The VS
+assessed like any `.vsix`, and removed afterwards. With the optional `signatures` extra
+(`pip install 'oss-intake[signatures]'`, which adds `cryptography`), Open VSX's Ed25519 signature on the file is
+checked too: a mismatch stops the run. A `.vsix` given with `--path` gets the same check when it is the file Open
+VSX serves for that version; a VS Code Marketplace build is a different file, so the report says the signature
+does not apply rather than that it failed. The key is Open VSX's own, so the check shows the file is the one Open
+VSX signed, not that Open VSX itself is sound. The VS Code Marketplace's signatures are not checked: that needs
+Microsoft's proprietary `vsce-sign` and the Marketplace's unofficial API. The version must be exact: "latest" is not assessed. The VS
 Code Marketplace's own download API is not used: it is unofficial, and its terms tie it to Microsoft's products.
 
 A `.vsix` (recognised by its content: a zip with `extension/package.json`), an installed extension's folder, or a

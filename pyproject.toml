@@ -43,10 +43,12 @@ Issues = "https://github.com/ntavakol/OSS-Intake/issues"
 Changelog = "https://github.com/ntavakol/OSS-Intake/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "coverage>=7", "mypy>=2.4", "openpyxl>=3.1"]
+dev = ["pytest>=8", "ruff>=0.6", "coverage>=7", "mypy>=2.4", "openpyxl>=3.1", "cryptography>=42"]
 xlsx = ["openpyxl>=3.1"]
 # The PDF report; WeasyPrint also needs Pango from the system (not on PyPI), so it is not in dev.
 pdf = ["weasyprint>=62"]
+# Open VSX's Ed25519 signature on a .vsix.
+signatures = ["cryptography>=42"]
 
 [project.scripts]
 oss-intake = "oss_intake.cli:main"

@@ -5,6 +5,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Open VSX's Ed25519 signature on a `.vsix` is checked, with the optional `signatures` extra
+  (`pip install 'oss-intake[signatures]'`): for every `--extension` download (a mismatch stops the run) and for a
+  `.vsix` given with `--path` that is the file Open VSX serves for its version. The VS Code Marketplace's own
+  signatures are not checked (they need Microsoft's proprietary vsce-sign).
+
 ### Changed
 - Grype: `--grype-cosign-bundle` is the way to verify Grype 0.120.0 and later, which sign their checksums file
   with a Sigstore bundle (`grype_<version>_checksums.txt.sigstore.json`) instead of a certificate and signature.

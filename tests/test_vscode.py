@@ -1000,3 +1000,99 @@ def test_compare_with_says_so_when_files_of_the_new_version_were_not_read(tmp_pa
     ch = a["extensions"]["changes"]
     assert ch["new_files_not_read"] == 1 and ch["hosts_not_compared"]
     assert any("could not compare what is in 1 file(s) of the new version" in w for w in a["warnings"])
+
+
+# --- Open VSX signatures (9 Nov) ------------------------------------------------------------------------------
+
+def _sign(http, tmp_path, body=None, ns="example", name="ext", version="1.2.3", key=None):
+    """Sign the served .vsix (or body) as Open VSX does: Ed25519 over the whole file, in a .sigzip."""
+    import io
+    import zipfile
+
+    pytest.importorskip("cryptography")
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    base = f"https://open-vsx.org/api/{ns}/{name}/{version}"
+    files = http.openvsx[base]["files"]
+    key = key or Ed25519PrivateKey.generate()
+    signed = body if body is not None else http.files[files["download"]]
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(".signature.sig", key.sign(signed))
+        z.writestr(".signature.manifest", "{}")
+        z.writestr(".signature.p7s", "")
+    files["signature"], files["publicKey"] = f"{base}/file/x.sigzip", "https://open-vsx.org/api/-/public-key/k1"
+    http.files[files["signature"]] = buf.getvalue()
+    http.files[files["publicKey"]] = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return key
+
+
+def test_an_extension_download_has_its_open_vsx_signature_checked(tmp_path, fixtures):
+    """Backlog (done 9 Nov): Open VSX's Ed25519 signature on the .vsix is checked (signatures extra)."""
+    http = FakeHttp()
+    _openvsx(http, tmp_path)
+    _sign(http, tmp_path)
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["extensions"]["signature"]["status"] == "verified"
+    assert "Open VSX signature: verified." in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_an_extension_download_with_a_bad_signature_is_refused(tmp_path, fixtures, capsys):
+    http = FakeHttp()
+    _openvsx(http, tmp_path)
+    _sign(http, tmp_path, body=b"another file")
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    assert code == cli.EXIT_USAGE and "does not match Open VSX's Ed25519 signature" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_without_the_extra_the_signature_is_said_not_checked(tmp_path, fixtures, monkeypatch):
+    from oss_intake import openvsx
+
+    http = FakeHttp()
+    _openvsx(http, tmp_path)
+    _sign(http, tmp_path)
+    monkeypatch.setattr(openvsx, "_ed25519", lambda: None)
+    code, out = _ext_scan(tmp_path, fixtures, "example.ext@1.2.3", http)
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert code == cli.EXIT_OK and a["extensions"]["signature"]["status"] == "not_checked"
+    assert any("pip install 'oss-intake[signatures]'" in w for w in a["warnings"])
+
+
+def test_a_vsix_file_is_checked_against_open_vsx_only_when_it_is_open_vsx_s_file(tmp_path, fixtures):
+    """For a .vsix given with --path: the signature applies when the file is the one Open VSX serves (same
+    SHA-256); a different build (the VS Code Marketplace's, say) is named as such, not as a failure."""
+    http = FakeHttp()
+    served = _openvsx(http, tmp_path)
+    _sign(http, tmp_path)
+    same = tmp_path / "same.vsix"
+    same.write_bytes(served)
+    code, out = scan(tmp_path, fixtures, same, http)
+    assert json.loads((out / "assessment.json").read_text(encoding="utf-8"))["extensions"]["signature"][
+        "status"] == "verified"
+    other = make_vsix(tmp_path / "other.vsix", pkg=manifest("example", "ext", "1.2.3"),
+                      files={"extension/out/extension.js": "different"})
+    code, out = scan(tmp_path / "o2", fixtures, other, http)
+    assert json.loads((out / "assessment.json").read_text(encoding="utf-8"))["extensions"]["signature"][
+        "status"] == "other_build"
+
+
+def test_a_signature_that_cannot_be_read_is_not_checked_not_passed(tmp_path):
+    """Fail closed: a .sigzip that is not a zip, or a key that is not Ed25519, reads as not checked."""
+    from oss_intake import openvsx
+
+    http = FakeHttp()
+    body = _openvsx(http, tmp_path)
+    _sign(http, tmp_path)
+    data = http.openvsx["https://open-vsx.org/api/example/ext/1.2.3"]
+    http.files[data["files"]["signature"]] = b"not a zip"
+    assert openvsx.check_signature(http, data, body)["status"] == "not_checked"
+    _sign(http, tmp_path)
+    http.files[data["files"]["publicKey"]] = b"-----BEGIN PUBLIC KEY-----\nnope\n-----END PUBLIC KEY-----\n"
+    assert openvsx.check_signature(http, data, body)["status"] == "not_checked"
+    del data["files"]["signature"]
+    assert openvsx.check_signature(http, data, body)["status"] == "unsigned"

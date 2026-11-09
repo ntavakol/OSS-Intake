@@ -31,7 +31,6 @@ a package that was clean when approved can later turn out vulnerable or compromi
   packages (OSV has a Bioconductor ecosystem).
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
-- Check the Marketplace signature of a `.vsix`.
 - JetBrains plugins (plugins.jetbrains.com has a public API).
 
 ## Signals

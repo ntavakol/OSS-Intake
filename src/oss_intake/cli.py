@@ -407,8 +407,22 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     args.extension_info = None
     if args.path_kind == "vscode":
         args.extension_info = vscode.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())
+        info = args.extension_info
         if getattr(args, "extension_download", None):
-            args.extension_info["download"] = args.extension_download
+            info["download"] = args.extension_download
+            info["signature"] = args.extension_download["signature"]
+        elif Path(args.path).is_file() and len(info["extensions"]) == 1:
+            # A .vsix file: Open VSX's signature, when the file is the one Open VSX serves for that version.
+            e = info["extensions"][0]
+            info["signature"] = (openvsx.check_file(net, e["id"], e["version"], Path(args.path)) if net
+                                 else {"status": "not_checked", "detail": "--offline"})
+        sig = info.get("signature") or {}
+        if sig.get("status") == "failed":
+            warnings.insert(0, f"OPEN VSX SIGNATURE DOES NOT MATCH: {Path(args.path).name} has the SHA-256 Open VSX "
+                               "publishes for this version but not its signature. Do not install it; report it to "
+                               "Open VSX")
+        elif sig.get("status") == "not_checked" and "signatures extra" in sig.get("detail", ""):
+            warnings.append(f"Open VSX's signature was not checked: {sig['detail']}")
         if args.compare_with:
             new = args.extension_info["extensions"][0]
             old = vscode.assess(Path(args.compare_target), None, staged=Path(args.compare_with).is_file())

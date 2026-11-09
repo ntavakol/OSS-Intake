@@ -1,4 +1,5 @@
 coverage==7.17.0 ; python_version >= '3.11'  # measured on one Python 3.13 job only
+cryptography==50.0.2  # the optional Open VSX signature check, tested in CI
 mypy==2.4.1
 openpyxl==3.1.5  # the optional .xlsx inventory reader, tested in CI
 pytest==9.2.0
