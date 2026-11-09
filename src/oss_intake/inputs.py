@@ -63,7 +63,8 @@ class InputError(Exception):
 
 
 def classify(path: Path) -> str:
-    """Kind of input path: "sbom", "vscode" (a .vsix, an installed VS Code extension or a folder of them), "dir",
+    """Kind of input path: "sbom", "vscode" (a .vsix, an installed VS Code extension or a folder of them),
+    "jetbrains" (a JetBrains plugin file, one installed plugin or an IDE's plugins folder), "dir",
     "renv" (renv.lock), "inventory" (.csv), "lockfile" or "artifact"."""
     from . import sbom, vscode
 
@@ -71,6 +72,10 @@ def classify(path: Path) -> str:
         return "sbom"
     if vscode.is_extension_input(path):  # by content too: a .vsix is a zip with extension/package.json in it
         return "vscode"
+    from . import jetbrains
+
+    if jetbrains.is_plugin_input(path):  # a plugin .zip/.jar, one installed plugin or an IDE's plugins folder
+        return "jetbrains"
     if path.is_dir():
         return "dir"
     if path.name == "renv.lock":
@@ -89,11 +94,15 @@ def trivy_mode(kind: str) -> str:
 
 def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
     """Return (scan target, temporary directory to remove afterwards or None)."""
-    if kind == "dir" or (kind == "vscode" and path.is_dir()):
+    if kind == "dir" or (kind in ("vscode", "jetbrains") and path.is_dir()):
         return path, None
     tmp = Path(tempfile.mkdtemp(prefix="oss-intake-"))
     try:
-        if kind == "vscode":
+        if kind == "jetbrains":
+            from . import jetbrains
+
+            jetbrains.unpack(path, tmp)  # a plugin file: unpacked with limits, never run
+        elif kind == "vscode":
             from . import vscode
 
             vscode.unpack(path, tmp / path.stem)  # a .vsix: unpacked with limits, never run

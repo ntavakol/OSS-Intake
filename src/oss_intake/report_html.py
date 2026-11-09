@@ -686,9 +686,9 @@ def _blocks(sec: tuple[str, list] | None, num: set[int]) -> str:
 
 
 def _extensions(a: dict) -> str:
-    from .report import extensions_section
+    from .report import extensions_section, jetbrains_section
 
-    return _blocks(extensions_section(a), set())
+    return _blocks(extensions_section(a), set()) + _blocks(jetbrains_section(a), set())
 
 
 def _decisions(a: dict) -> str:

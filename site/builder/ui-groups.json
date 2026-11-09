@@ -5,7 +5,7 @@
    "label": "scan",
    "help": "Assess an image, a file or folder, single packages, or a GitHub project.",
    "groups": [
-    {"name": "What to check", "basic": true, "options": ["package", "path", "extension", "image", "repo", "label", "compare_with"]},
+    {"name": "What to check", "basic": true, "options": ["package", "path", "extension", "jetbrains_plugin", "image", "repo", "label", "compare_with"]},
     {"name": "Report", "basic": true, "options": ["out", "formats", "top", "quiet", "sbom", "as_of", "utc", "min_severity"]},
     {"name": "Gates for CI", "basic": true, "options": ["fail_on", "release_age_days", "likelihood", "likelihood_config", "fail_on_likelihood"]},
     {"name": "Scanners and image", "basic": false, "options": ["scanners", "image_src", "platform", "timeout", "max_db_age_days", "trivy_path", "trivy_version", "trivy_sha256", "trivy_archive", "trivy_checksums", "trivy_cosign_bundle", "trivy_cosign_certificate", "trivy_cosign_signature", "trivy_cosign_identity", "trivy_arg", "from_trivy_json", "scanner_env", "grype_path", "grype_version", "grype_sha256", "grype_archive", "grype_checksums", "grype_cosign_bundle", "grype_cosign_certificate", "grype_cosign_signature", "grype_cosign_identity", "grype_arg", "from_grype_json"]},

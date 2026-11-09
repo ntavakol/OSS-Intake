@@ -18,6 +18,7 @@ from . import (
     decisions,
     inputs,
     integrity,
+    jetbrains,
     likelihood,
     openvsx,
     registry_check,
@@ -142,19 +143,26 @@ def validate_scanner_env(pat: str) -> None:
 
 
 def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
-    """--extension is downloaded, once every option has been checked, to a temporary folder and then assessed as
-    --path on the .vsix; the folder is removed whatever happens."""
+    """--extension and --jetbrains-plugin are downloaded, once every option has been checked, to a temporary folder
+    and then assessed as --path on the file; the folder is removed whatever happens."""
     args.extension = getattr(args, "extension", None)
+    args.jetbrains_plugin = getattr(args, "jetbrains_plugin", None)
     args.ext_tmp = None
-    if args.extension:
-        if args.image or args.path or args.package:
-            raise UsageError("give --extension on its own, not with --image, --path or --package")
+    for flag, value, parse, where in (("--extension", args.extension, openvsx.parse_id, "Open VSX"),
+                                      ("--jetbrains-plugin", args.jetbrains_plugin, jetbrains.parse_id,
+                                       "the JetBrains Marketplace")):
+        if not value:
+            continue
+        if args.image or args.path or args.package or (args.extension and args.jetbrains_plugin):
+            raise UsageError(f"give {flag} on its own, not with --image, --path, --package or another download")
         if args.offline:
-            raise UsageError("--extension downloads from Open VSX, which needs the network; drop --offline")
+            raise UsageError(f"{flag} downloads from {where}, which needs the network; drop --offline")
         try:
-            openvsx.parse_id(args.extension)
+            parse(value)
         except ValueError as exc:
-            raise UsageError(f"--extension {args.extension}: {exc}") from None
+            raise UsageError(f"{flag} {value}: {exc}") from None
+    args.download_input = args.extension or args.jetbrains_plugin
+    if args.download_input:
         args.ext_tmp = Path(tempfile.mkdtemp(prefix="oss-intake-ext-"))
     try:
         return _cmd_scan(args, http)
@@ -165,7 +173,7 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
 
 def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     # 1. Validate everything before doing any work.
-    if not args.image and not args.repo and not args.path and not args.package and not args.extension:
+    if not args.image and not args.repo and not args.path and not args.package and not args.download_input:
         raise UsageError("give --image, --path, --package or --repo")
     if args.image and args.path:
         raise UsageError("give --image or --path, not both")
@@ -174,8 +182,8 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     if args.image:
         args.image = validate_image(args.image)
     args.path_kind, args.scan_target, tmp_dir, compare_tmp = None, None, None, None
-    if args.extension:
-        args.path_kind = "vscode"  # downloaded after every other check (below, before staging)
+    if args.download_input:  # downloaded after every other check (below, before staging)
+        args.path_kind = "vscode" if args.extension else "jetbrains"
     if args.path:
         p = Path(args.path).expanduser()
         if not p.exists():
@@ -315,11 +323,11 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             warnings.append(f"--label {k} has no effect: every package already has a {k} label"
                             + (" (from the SBOM)" if args.sbom_info else ""))
     else:
-        chosen, warnings = resolve_scanners(args) if (args.image or args.path or args.extension) else ([], [])
+        chosen, warnings = resolve_scanners(args) if (args.image or args.path or args.download_input) else ([], [])
     if args.label_list and args.path_kind != "inventory":
         raise UsageError("--label applies to a package inventory or SBOM, or to --package")
     refuse_gates_without_their_check(args, chosen)
-    if args.image is None and args.path is None and not args.extension and (args.from_trivy_json
+    if args.image is None and args.path is None and not args.download_input and (args.from_trivy_json
                                                                              or args.from_grype_json):
         raise UsageError("--from-*-json needs --image or --path to label the report")
     warnings += ineffective_options(args, chosen)
@@ -328,6 +336,13 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         if tool in chosen and not getattr(args, f"from_{tool}_json"):
             scanning.find_executable(tool, getattr(args, f"{tool}_path"))
     scanned_offline = args.from_trivy_json and args.from_grype_json
+    if args.path_kind == "jetbrains":
+        if args.jetbrains_plugin:  # every option is valid: now it is worth downloading
+            plugin, args.plugin_download = jetbrains.download(http or RequestsHttp(), args.jetbrains_plugin,
+                                                              args.ext_tmp)
+            args.path = str(plugin)
+        # A plugin file is unpacked (or a .jar laid out as a plugin folder) before anything is written.
+        args.scan_target, tmp_dir = inputs.stage(Path(args.path), "jetbrains")
     if args.path_kind == "vscode":
         if args.extension:  # every option is valid: now it is worth downloading
             vsix, args.extension_download = openvsx.download(http or RequestsHttp(), args.extension, args.ext_tmp)
@@ -345,7 +360,7 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
     try:
         out = prepare_out(args.out)
         args.raw_written = []  # the raw scanner files this run writes; _remove_stale keeps only these
-        if args.path and args.path_kind not in ("renv", "inventory", "vscode") and not scanned_offline:
+        if args.path and args.path_kind not in ("renv", "inventory", "vscode", "jetbrains") and not scanned_offline:
             args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
         return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)
     finally:  # S8: the temporary copy of the artifact is removed whatever happens
@@ -410,6 +425,16 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
         elif args.registry_result["status"] == "error":
             warnings.append("Registry checksum lookup failed: " + registry_check.summary(args.registry_result))
     # VS Code extensions: the removal list and what their own files show; nothing in them is run.
+    # JetBrains plugins: each plugin's identity and its Marketplace entry; nothing in them is run.
+    args.plugin_info = None
+    if args.path_kind == "jetbrains":
+        args.plugin_info = jetbrains.assess(Path(args.scan_target), net, single=Path(args.path).is_file()
+                                            or len(jetbrains.plugin_folders(Path(args.path))) == 1)
+        if getattr(args, "plugin_download", None):
+            args.plugin_info["download"] = args.plugin_download
+        alerts, more = jetbrains.warnings(args.plugin_info)
+        warnings[:0] = alerts
+        warnings.extend(more)
     args.extension_info = None
     if args.path_kind == "vscode":
         args.extension_info = vscode.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())

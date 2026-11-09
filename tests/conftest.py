@@ -31,6 +31,7 @@ class FakeHttp(Http):
         # Open VSX answers (URL to JSON) and downloads (URL to bytes or text) a test sets up; others are 404.
         self.openvsx: dict[str, dict] = {}
         self.crandb: dict[str, dict] = {}  # crandb answers (URL to JSON) a test sets up; others are 404
+        self.jetbrains: dict[str, object] = {}  # JetBrains Marketplace answers a test sets up; others are 404
         self.files: dict[str, bytes] = {}
 
     def _check(self, url: str):
@@ -76,6 +77,8 @@ class FakeHttp(Http):
             return 200, load("kev.json")
         if url.endswith("/db/modules_metadata_base.json"):
             return 200, load("metasploit.json")
+        if url.startswith("https://plugins.jetbrains.com/"):
+            return (200, self.jetbrains[url]) if url in self.jetbrains else (404, {"msg": "not found"})
         if url.startswith("https://crandb.r-pkg.org/"):
             return (200, self.crandb[url]) if url in self.crandb else (404, {"error": "not_found"})
         if url.startswith("https://open-vsx.org/api/"):
@@ -114,6 +117,8 @@ class FakeHttp(Http):
             return 200, self.files[url]
         if url.startswith("https://ntavakol.github.io/OSS-Intake/known-bad/"):
             return 404, b""  # the published known-bad list, unless a test sets it in files
+        if url.startswith("https://plugins.jetbrains.com/"):
+            return 404, b""  # a JetBrains download a test did not set up
         raise AssertionError(f"unexpected download {url}")
 
     def post_json(self, url, body):

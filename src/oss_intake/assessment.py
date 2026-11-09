@@ -23,6 +23,7 @@ from . import (
     gates,
     inputs,
     inventory_report,
+    jetbrains,
     jsonsafe,
     lag,
     likelihood,
@@ -476,6 +477,8 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
     """The assessment every report is written from, and the per-package rows for an inventory."""
     if args.extension_info and not args.extension_info.get("listed_only"):
         vscode.attribute(args.extension_info, findings)
+    if getattr(args, "plugin_info", None):
+        jetbrains.attribute(args.plugin_info, findings)
     assessment = {
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -511,6 +514,8 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
     }
     if args.extension_info:
         assessment["extensions"] = args.extension_info
+    if getattr(args, "plugin_info", None):
+        assessment["jetbrains"] = args.plugin_info
     if args.sbom_info:
         assessment["sbom"] = args.sbom_info
     pkg_rows = None

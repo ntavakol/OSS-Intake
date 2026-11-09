@@ -6,6 +6,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- JetBrains IDE plugins: `--path` to a plugin file (`.zip` or `.jar`), one installed plugin, or an IDE's whole
+  plugins folder. The libraries the plugins bundle are scanned and each finding is counted against its plugin;
+  each plugin's ID, version and vendor come from its `plugin.xml`, and online the JetBrains Marketplace is asked
+  whether its vendor is verified, whether it has blocked the plugin (which leads the report) and when this version
+  was published. `--jetbrains-plugin ID@VERSION` downloads one exact version from the Marketplace (HTTPS only: the
+  Marketplace publishes no checksum, and its signature is not checked yet).
 - Open VSX's Ed25519 signature on a `.vsix` is checked, with the optional `signatures` extra
   (`pip install 'oss-intake[signatures]'`): for every `--extension` download (a mismatch stops the run) and for a
   `.vsix` given with `--path` that is the file Open VSX serves for its version. The VS Code Marketplace's own
