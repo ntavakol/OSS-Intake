@@ -4,8 +4,8 @@
 The release workflow installs the built wheel and the hash-pinned runtime requirements into a fresh virtual
 environment, then runs this script with that environment's Python:
 
-    .venv-sbom/bin/python scripts/release_sbom.py --wheel dist/oss_intake-0.19.0-py3-none-any.whl \\
-        --out sbom/oss-intake-0.19.0.cdx.json
+    .venv-sbom/bin/python scripts/release_sbom.py --wheel dist/oss_intake-0.20.0-py3-none-any.whl \\
+        --out sbom/oss-intake-0.20.0.cdx.json
 
 The SBOM lists what the release was built and tested with: oss-intake (the subject, with the wheel's SHA-256)
 and every distribution its requirements reach in that environment, walked through each package's Requires-Dist.
