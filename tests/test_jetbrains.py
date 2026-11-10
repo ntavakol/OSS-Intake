@@ -247,3 +247,54 @@ def test_a_download_that_is_not_the_plugin_asked_for_is_refused(tmp_path, fixtur
                      "--from-trivy-json", str(fixtures / "trivy.json"), "--from-grype-json",
                      str(fixtures / "grype.json")], http=http)
     assert code == cli.EXIT_USAGE and "not the plugin and version asked for" in capsys.readouterr().err
+
+
+# --- Pre-release review, 0.20.0 (10 Nov) -------------------------------------------------------------------------
+
+def test_a_source_folder_with_a_plugin_jar_keeps_its_lockfile_scan(tmp_path, monkeypatch):
+    """A folder holding a plugin jar (a plugin's source checkout with its build output, say) is taken as JetBrains;
+    it must still be scanned in both Trivy modes, so its lockfiles are read, and its findings are not all given to
+    the plugin."""
+    import stat
+
+    folder = tmp_path / "repo"
+    make_folder(folder.parent, "repo")
+    (folder / "package-lock.json").write_text("{}", encoding="utf-8")
+    fake = tmp_path / "trivy"
+    fake.write_bytes(b"stand-in trivy binary")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    modes = []
+
+    def run(cmd, timeout):
+        if "--version" in cmd:
+            return json.dumps({"Version": "0.76.1"}).encode()
+        modes.append(cmd[1])
+        return json.dumps({"SchemaVersion": 2, "ArtifactName": "repo", "Results": []}).encode()
+
+    monkeypatch.setattr(cli.trivy_mod, "run", run)
+    out = tmp_path / "o"
+    assert cli.main(["--path", str(folder), "--out", str(out), "--offline", "--scanners", "trivy",
+                     "--trivy-path", str(fake), "--formats", "json"]) == 0
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["inputs"]["path_kind"] == "jetbrains" and sorted(modes) == ["fs", "rootfs"]
+
+
+def test_one_plugin_inside_a_bigger_folder_is_not_given_every_finding(tmp_path):
+    root = tmp_path / "checkout"
+    root.mkdir()
+    (root / "helper.jar").write_bytes(jar_bytes(plugin_xml("com.example.helper", "Helper", "1.0")))
+    info = jetbrains.assess(root, None)
+    assert len(info["plugins"]) == 1 and not info["single"]
+    plugin_dir = make_folder(tmp_path / "p")
+    assert jetbrains.assess(plugin_dir, None)["single"]
+
+
+def test_a_single_plugin_with_repo_takes_its_version_as_the_scanned_release(tmp_path, fixtures):
+    """A plugin file used to be an artifact, whose version came from its name for --repo's release lag; it now comes
+    from its plugin.xml."""
+    http = FakeHttp()
+    marketplace(http)
+    code, out = scan(tmp_path, fixtures, make_zip(tmp_path / "ignore.zip"), http, "--repo", "example/webapp")
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    # The fixture repository has no 4.5.7 release: that it looked for one shows the version was taken.
+    assert any("No GitHub release matches '4.5.7'" in w for w in a["health"]["warnings"])

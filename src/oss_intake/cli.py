@@ -78,7 +78,10 @@ def prepare_out(path: str) -> Path:
 
 # ---------------------------------------------------------------- commands
 
-def cmd_doctor(args: argparse.Namespace) -> int:
+def cmd_doctor(args: argparse.Namespace, http: Http | None = None) -> int:
+    # The published known-bad list too, as a scan uses it (the shipped one alone with --offline).
+    known_bad_list = (integrity.bundled_known_bad_only("--offline: the bundled list is used") if args.offline
+                      else integrity.refresh_known_bad(http or RequestsHttp()))
     rows = []
     for tool, mod in (("trivy", trivy_mod), ("grype", grype_mod)):
         try:
@@ -100,7 +103,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         except ScannerError as exc:
             rows.append({"tool": tool, "error": str(exc)})
     report_ = {"oss_intake": __version__, "python": sys.version.split()[0], "scanners": rows,
-               "cosign_on_path": bool(shutil.which("cosign")),
+               "cosign_on_path": bool(shutil.which("cosign")), "known_bad_list": known_bad_list,
                "github_token_set": bool(os.environ.get("GITHUB_TOKEN"))}
     print(json.dumps(report_, indent=2))
     return EXIT_ERROR if any(r.get("known_bad") for r in rows) else EXIT_OK
@@ -428,7 +431,7 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     # JetBrains plugins: each plugin's identity and its Marketplace entry; nothing in them is run.
     args.plugin_info = None
     if args.path_kind == "jetbrains":
-        args.plugin_info = jetbrains.assess(Path(args.scan_target), net)
+        args.plugin_info = jetbrains.assess(Path(args.scan_target), net, staged=Path(args.path).is_file())
         if getattr(args, "plugin_download", None):
             args.plugin_info["download"] = args.plugin_download
         alerts, more = jetbrains.warnings(args.plugin_info)
@@ -488,7 +491,7 @@ def main(argv: list[str] | None = None, http: Http | None = None) -> int:
         return EXIT_USAGE
     try:
         if args.command == "doctor":
-            return cmd_doctor(args)
+            return cmd_doctor(args, http)
         if args.command == "verify":
             return cmd_verify(args)
         return cmd_scan(args, http)

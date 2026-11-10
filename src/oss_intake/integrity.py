@@ -134,6 +134,7 @@ MAX_KNOWN_BAD_BYTES = 1024 * 1024
 _COSIGN_COULD_NOT_CHECK = re.compile(r"unknown flag|unknown command|tuf|trusted root|trust root|dial tcp|no such host|"
                                      r"timeout|connection|unsupported|unrecognized|could not parse", re.I)
 KNOWN_BAD_COSIGN_TIMEOUT = 30  # every online run checks it: a slow trust-root fetch must not hold the run up
+KNOWN_BAD_FETCH_TIMEOUT = 15  # per download, and the whole answer within twice that
 _published: dict | None = None
 known_bad_status: dict = {"source": "bundled", "detail": "the published list was not fetched"}
 
@@ -187,9 +188,10 @@ def refresh_known_bad(http) -> dict:
     from .http import HttpError
 
     try:
-        st, body = http.get_bytes(KNOWN_BAD_URL, MAX_KNOWN_BAD_BYTES)
-        bst, bundle = http.get_bytes(KNOWN_BAD_URL + ".sigstore.json", MAX_KNOWN_BAD_BYTES)
-    except HttpError as exc:
+        st, body = http.get_bytes(KNOWN_BAD_URL, MAX_KNOWN_BAD_BYTES, timeout=KNOWN_BAD_FETCH_TIMEOUT)
+        bst, bundle = http.get_bytes(KNOWN_BAD_URL + ".sigstore.json", MAX_KNOWN_BAD_BYTES,
+                                     timeout=KNOWN_BAD_FETCH_TIMEOUT)
+    except (HttpError, NotImplementedError) as exc:  # NotImplementedError: a client that cannot download
         known_bad_status = {"source": "bundled", "bundled_updated": bundled,
                             "detail": f"the published list could not be fetched ({exc})"}
         return known_bad_status

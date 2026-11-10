@@ -285,7 +285,7 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
 
 # ------------------------------------------------------------------------------------------- assessing
 
-def assess(target: Path, http: Http | None) -> dict:
+def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
     """Each plugin under target: its identity and, online, its Marketplace metadata. "single" (everything scanned
     is that plugin's) when target is one plugin."""
     found = find_plugins(target)
@@ -293,7 +293,10 @@ def assess(target: Path, http: Http | None) -> dict:
     market = {"status": "not_checked", "detail": "--offline"}
     if http is not None and plugins:
         market = {"status": "checked", **lookup(http, plugins)}
-    return {"plugins": plugins, "single": len(plugins) == 1, "marketplace": market}
+    # Everything scanned is one plugin's only when target is that plugin (its folder, or a staged file's); a folder
+    # that holds a plugin and other things (a source checkout with a plugin jar) attributes by path.
+    single = len(found) == 1 and (found[0][0] == target or staged)
+    return {"plugins": plugins, "single": single, "marketplace": market}
 
 
 def attribute(info: dict, findings: list) -> None:

@@ -28,7 +28,8 @@ MAX_LOOKUPS = 300  # metadata lookups per run (a folder of installed extensions)
 # A .sigzip holds a 64-byte signature and a manifest of every file's hash (tens of bytes each); the signature
 # member itself is held to 1 KB.
 MAX_SIGZIP_BYTES = 16 * 1024 * 1024
-INSTALL_SIGNATURES = "pip install 'oss-intake[signatures]'"
+INSTALL_SIGNATURES = ("pip install 'oss-intake[signatures]' (with pipx: pipx inject oss-intake cryptography, "
+                      "or pipx install --force 'oss-intake[signatures]')")
 # publisher.name@version, as VS Code shows an extension's ID; the version exact, never "latest".
 _ID = re.compile(r"^(?P<ns>[A-Za-z0-9][\w-]{0,99})\.(?P<name>[A-Za-z0-9][\w.-]{0,199})@(?P<version>\d[\w.+-]{0,99})$")
 

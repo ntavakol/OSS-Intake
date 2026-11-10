@@ -10,8 +10,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 A feature release: upgrade from 0.19.0. JetBrains IDE plugins, Open VSX signatures, fix dates for R packages, and
 a signed known-bad scanner list published between releases. Two things to know: with cosign on PATH, every online
 scan now fetches and verifies the published known-bad list (two small downloads and a cosign check of up to 30
-seconds; `--offline` skips it), and a JetBrains plugin given as a `.jar` or `.zip` is now assessed as a plugin
-rather than as an artifact.
+seconds each at most; `--offline` skips it), and a JetBrains plugin given as a `.jar` or `.zip`, or a folder
+holding one, is now assessed as JetBrains plugins rather than as an artifact or a plain folder (a folder is still
+scanned for lockfiles too; a plugin's version from its `plugin.xml` is the release `--repo` compares with).
 
 ### Added
 - JetBrains IDE plugins: `--path` to a plugin file (`.zip` or `.jar`), one installed plugin, or an IDE's whole
@@ -27,7 +28,8 @@ rather than as an artifact.
 - The known-bad scanner list is also published on the project site, signed by the project's own workflow with
   Sigstore (keyless), so an entry added after a release reaches users without upgrading. With cosign on PATH,
   oss-intake verifies it and adds its entries to the shipped ones (never dropping one); otherwise the shipped list
-  is used, as before. `assessment.json` records which (`known_bad_list`).
+  is used, as before. `assessment.json` records which (`known_bad_list`). `doctor` checks against it too, and
+  takes `--offline` to use the shipped list alone.
 - Fix dates for R packages in an `renv.lock`, from crandb (r-hub's database of CRAN releases), so their release
   lag is measured; before, every CRAN finding was undated.
 
