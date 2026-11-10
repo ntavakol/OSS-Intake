@@ -5,6 +5,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-10
+
+A feature release: upgrade from 0.19.0. JetBrains IDE plugins, Open VSX signatures, fix dates for R packages, and
+a signed known-bad scanner list published between releases. Two things to know: with cosign on PATH, every online
+scan now fetches and verifies the published known-bad list (two small downloads and a cosign check of up to 30
+seconds; `--offline` skips it), and a JetBrains plugin given as a `.jar` or `.zip` is now assessed as a plugin
+rather than as an artifact.
+
 ### Added
 - JetBrains IDE plugins: `--path` to a plugin file (`.zip` or `.jar`), one installed plugin, or an IDE's whole
   plugins folder. The libraries the plugins bundle are scanned and each finding is counted against its plugin;
