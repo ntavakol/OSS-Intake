@@ -138,7 +138,8 @@ def run_or_load(tool: str, mod, args: argparse.Namespace, out: Path, scanners_me
     log(f"running {tool} {info['version']} on {target}", args.quiet)
     if args.path:
         extra = getattr(args, f"{tool}_arg")
-        if tool == "trivy" and args.path_kind == "dir":
+        if tool == "trivy" and (args.path_kind == "dir" or (args.path_kind == "jetbrains"
+                                                             and Path(args.path).is_dir())):
             # A folder may be a source checkout (lockfiles, which only 'fs' reads) or built artifacts (JARs and
             # binaries, which only 'rootfs' reads): both are run and their results put together.
             raw = merge_trivy_reports(

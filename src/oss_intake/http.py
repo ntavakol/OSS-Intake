@@ -309,8 +309,9 @@ class Http:
     def get_text(self, url: str) -> tuple[int, str]:
         raise NotImplementedError
 
-    def get_bytes(self, url: str, limit: int) -> tuple[int, bytes]:
-        """A file download, up to limit bytes (over it is an HttpError). Never cached."""
+    def get_bytes(self, url: str, limit: int, timeout: int | None = None) -> tuple[int, bytes]:
+        """A file download, up to limit bytes (over it is an HttpError). Never cached. A timeout (seconds) sets
+        both the wait for an answer and, doubled, the deadline for the whole download."""
         raise NotImplementedError
 
     def prefetch(self, urls) -> None:
@@ -502,11 +503,14 @@ class RequestsHttp(Http):
         # Decode explicitly; servers often send text/plain without a charset.
         return r.status_code, self._body(r, "GET", url, deadline).decode("utf-8", errors="replace")
 
-    def get_bytes(self, url: str, limit: int) -> tuple[int, bytes]:
+    def get_bytes(self, url: str, limit: int, timeout: int | None = None) -> tuple[int, bytes]:
         with self._count_lock:
             self.requests_made += 1
-        timeout = max(self._timeout, 120)
-        deadline = time.monotonic() + max(DOWNLOAD_DEADLINE_SECONDS, 2 * timeout)
+        if timeout is not None:  # a small file that must not hold the run up
+            deadline = time.monotonic() + 2 * timeout
+        else:
+            timeout = max(self._timeout, 120)
+            deadline = time.monotonic() + max(DOWNLOAD_DEADLINE_SECONDS, 2 * timeout)
         r, url = self._send("GET", url, "application/octet-stream", timeout)
         return r.status_code, self._body(r, "GET", url, deadline, limit)
 

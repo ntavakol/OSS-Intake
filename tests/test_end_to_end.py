@@ -3116,3 +3116,28 @@ def test_the_deprecation_note_for_trivy_does_not_give_grype_s_history(tmp_path, 
     done = integrity.verify_before_run("trivy", str(exe), None, None, None, str(archive), str(sums), str(pem),
                                        str(sig))
     assert "0.120.0" not in done["deprecated"] and "--trivy-cosign-bundle" in done["deprecated"]
+
+
+def test_doctor_uses_the_published_known_bad_list_unless_offline(monkeypatch, capsys, fresh_known_bad):
+    """Pre-release review (0.20.0): doctor checked only the shipped list, so a scanner listed after the release
+    passed there while a scan refused it."""
+    integrity = fresh_known_bad
+    seen = []
+    monkeypatch.setattr(integrity, "refresh_known_bad",
+                        lambda http: seen.append(http) or {"source": "published", "detail": "test"})
+    monkeypatch.setattr(cli.scanning, "find_executable", lambda tool, given: (_ for _ in ()).throw(
+        cli.ScannerError(f"{tool} not found")))
+    cli.main(["doctor"], http=FakeHttp())
+    assert seen and json.loads(capsys.readouterr().out)["known_bad_list"]["source"] == "published"
+    seen.clear()
+    cli.main(["doctor", "--offline"], http=FakeHttp())
+    assert not seen and json.loads(capsys.readouterr().out)["known_bad_list"]["source"] == "bundled"
+
+
+def test_a_client_that_cannot_download_leaves_the_shipped_list(monkeypatch, fresh_known_bad):
+    """Pre-release review (0.20.0): an HTTP client without downloads stopped the run (seen in a test client)."""
+    from oss_intake.http import Http
+
+    integrity = fresh_known_bad
+    monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
+    assert integrity.refresh_known_bad(Http())["source"] == "bundled"

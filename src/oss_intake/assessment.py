@@ -171,6 +171,9 @@ def _health(args, net, as_of: datetime, warnings: list[str]):
     if args.repo and net:
         try:
             name_tag = (inputs.version_from_name(Path(args.path)) if args.path_kind == "artifact" else None)
+            plugins = (getattr(args, "plugin_info", None) or {}).get("plugins") or []
+            if args.path_kind == "jetbrains" and len(plugins) == 1:  # one plugin: its plugin.xml's version
+                name_tag = plugins[0].get("version") or None
             health = releases.fetch(net, args.repo, as_of, image_tag(args.image) if args.image else name_tag,
                                     args.release_tag)
             warnings += health.get("warnings", [])

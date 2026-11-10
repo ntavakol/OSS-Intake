@@ -109,7 +109,7 @@ class FakeHttp(Http):
             return (200, p.read_text(encoding="utf-8")) if p.exists() else (404, "")
         raise AssertionError(f"unexpected GET (text) {url}")
 
-    def get_bytes(self, url, limit):
+    def get_bytes(self, url, limit, timeout=None):
         self._check(url)
         if url in self.files:
             if len(self.files[url]) > limit:

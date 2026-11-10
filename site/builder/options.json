@@ -27,6 +27,18 @@
      "metavar": null,
      "required": false,
      "upper": false
+    },
+    {
+     "choices": null,
+     "default": false,
+     "dest": "offline",
+     "exclusive_group": null,
+     "flag": "--offline",
+     "help": "check against the known-bad list that came with this version only, not the published one",
+     "kind": "flag",
+     "metavar": null,
+     "required": false,
+     "upper": false
     }
    ]
   },

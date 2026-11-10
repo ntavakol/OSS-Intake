@@ -27,7 +27,7 @@
    "label": "doctor",
    "help": "Show the scanners oss-intake finds: paths, versions, hashes and known-bad status.",
    "groups": [
-    {"name": "Scanner paths", "basic": true, "options": ["trivy_path", "grype_path"]}
+    {"name": "Scanner paths", "basic": true, "options": ["trivy_path", "grype_path", "offline"]}
    ]
   }
  },

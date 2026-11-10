@@ -283,6 +283,8 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="show scanner paths, versions, hashes and known-bad status", allow_abbrev=False)
     d.add_argument("--trivy-path", help="explicit path to the trivy executable")
     d.add_argument("--grype-path", help="explicit path to the grype executable")
+    d.add_argument("--offline", action="store_true",
+                   help="check against the known-bad list that came with this version only, not the published one")
 
     v = sub.add_parser("verify", help="verify a downloaded file against a checksums file, hash or cosign bundle",
                        allow_abbrev=False)
