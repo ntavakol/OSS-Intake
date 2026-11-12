@@ -91,6 +91,15 @@ repository name, sent to public services such as OSV, deps.dev, the package regi
 Scorecard and GitHub (with your `GITHUB_TOKEN`, if set, sent only to api.github.com). It does not prove a vulnerability is exploitable in your environment, and it says so in
 every report; see [What it does not do](#what-it-does-not-do) below.
 
+## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-dark.png">
+  <img alt="oss-intake architecture: it reads container images, source repos, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS for package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
+</picture>
+
+The code behind each step is described in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
+
 ## Install
 
 Python 3.10 or later on Windows, macOS or Linux. No administrator rights are needed.
