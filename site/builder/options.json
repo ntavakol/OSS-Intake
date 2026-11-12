@@ -88,7 +88,7 @@
      "dest": "jetbrains_plugin",
      "exclusive_group": null,
      "flag": "--jetbrains-plugin",
-     "help": "download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. With the signatures extra, the Marketplace's signature on the file is checked, and a mismatch stops the run; without it, HTTPS only",
+     "help": "download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. With the signatures extra, the Marketplace's signature on the file is checked; a mismatch, or no Marketplace signature, stops the run. Without it, HTTPS only",
      "kind": "value",
      "metavar": "PLUGIN_ID@VERSION",
      "required": false,

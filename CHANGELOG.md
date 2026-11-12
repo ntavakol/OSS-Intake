@@ -9,9 +9,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 - The JetBrains Marketplace's signature on a plugin file is checked, with the optional `signatures` extra, as the IDE
   checks it: the file matches its signed digest, and a signer's certificate chain ends at JetBrains' certificate
-  (bundled). A `--jetbrains-plugin` download that does not match stops the run (exit 2), so it is no longer
-  "HTTPS only"; a plugin `.zip` or `.jar` given with `--path` that does not match leads the report. An unsigned file,
-  or one signed only by someone other than the Marketplace, is a warning. In a plugins folder, one-jar plugins are checked; plugins the IDE unpacked have lost their
+  (bundled). The Marketplace signs every file it serves, old versions too, so a `--jetbrains-plugin` download that
+  does not match, has no signature, or is signed by someone else stops the run (exit 2); a verified one is no longer
+  "HTTPS only". A plugin `.zip` or `.jar` given with `--path` that does not match leads the report; an unsigned one,
+  or one signed by someone other than the Marketplace, is a warning. In a plugins folder, one-jar plugins are checked; plugins the IDE unpacked have lost their
   signature, which the report says.
 
 ## [0.20.0] - 2026-11-10

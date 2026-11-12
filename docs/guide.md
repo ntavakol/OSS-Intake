@@ -313,9 +313,10 @@ the IDE, certificate dates and revocation are not checked). The check needs no n
 match its signature stops the run (exit 2). A plugin `.zip` or `.jar` given with `--path` gets the same check, and
 one that does not match leads the report; an unsigned file, or one signed only by its author, is a warning. An
 installed plugin the IDE unpacked has lost its signature, so only one-jar plugins in a plugins folder can be checked;
-the report says which. A download with no signature, or signed by someone other than the Marketplace, is assessed with a
-warning. Without the extra, only the file's digest is checked, which shows accidental damage but not tampering: the
-download is protected by HTTPS only, and the report says so.
+the report says which. The Marketplace signs every file it serves, old versions too, so a download with no signature,
+or signed by someone other than the Marketplace, also stops the run. Without the extra, only the file's digest and
+that it has a signing block are checked, which shows damage but not deliberate tampering: the download is protected
+by HTTPS only, and the report says so.
 
 ### Package inventory
 
@@ -446,7 +447,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--image` | Image with explicit tag or digest |
 | `--package ECOSYSTEM:NAME@VERSION` | Check one package version, no scanner needed (repeatable): `npm:chalk@5.6.1`, `pypi:django@2.2.0`, `maven:org.apache.logging.log4j:log4j-core@2.14.1`, or a package URL; prints a one-line verdict per package |
 | `--path` | A JAR, WAR, binary, folder, lockfile, `renv.lock` or package inventory (`.csv`, or `.xlsx` with the `xlsx` extra) instead of an image |
-| `--jetbrains-plugin PLUGIN_ID@VERSION` | Download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace and assess it as `--path` would its file (e.g. `mobi.hsz.idea.gitignore@4.5.7`). On its own, not with `--image`, `--path`, `--package` or `--extension`; needs the network. With the `signatures` extra, the Marketplace's signature on the file is checked and a mismatch stops the run (exit 2); without it, HTTPS only. The download is removed after the run |
+| `--jetbrains-plugin PLUGIN_ID@VERSION` | Download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace and assess it as `--path` would its file (e.g. `mobi.hsz.idea.gitignore@4.5.7`). On its own, not with `--image`, `--path`, `--package` or `--extension`; needs the network. With the `signatures` extra, the Marketplace's signature on the file is checked; a mismatch, or no Marketplace signature, stops the run (exit 2). Without it, HTTPS only. The download is removed after the run |
 | `--extension PUBLISHER.NAME@VERSION` | Download one exact version of a VS Code extension from [Open VSX](https://open-vsx.org), check it against the SHA-256 Open VSX publishes for it, and assess it as `--path` would its `.vsix` (e.g. `redhat.java@1.36.0`). On its own, not with `--image`, `--path` or `--package`; needs the network. The download is removed after the run |
 | `--compare-with` | With `--path` to one VS Code extension (a `.vsix` or its folder): an older version of the same extension, so the report shows what the update changed: new indicators, native files, web addresses and npm packages, and a publisher or repository change. Most extension compromises arrive as an update to a trusted extension |
 | `--reachability`, `--govulncheck-path` | Check Go binaries with govulncheck (see Go reachability) |
