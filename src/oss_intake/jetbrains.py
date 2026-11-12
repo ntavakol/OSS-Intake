@@ -325,9 +325,10 @@ def assess(target: Path, http: Http | None, staged: bool = False, source: Path |
     the plugin file target was staged from (its signature is source_signature when already checked)."""
     found = find_plugins(target)
     plugins = [{**ident, "folder": f.name} for f, ident in found]
+    got_source = signature(source) if staged and source is not None and not source_signature else None
     for (folder, _), p in zip(found, plugins, strict=True):
-        if staged and source is not None and len(found) == 1:
-            p["signature"] = source_signature or signature(source)
+        if staged and source is not None:  # every plugin in a file has that file's signature
+            p["signature"] = source_signature or got_source
         elif folder.is_file():  # a single-jar plugin, installed as the file the Marketplace served
             p["signature"] = signature(folder)
         else:

@@ -427,3 +427,18 @@ def test_without_the_signatures_extra_the_check_is_named_once(tmp_path, fixtures
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     hits = [w for w in a["warnings"] if "signatures extra" in w]
     assert len(hits) == 1 and "2 plugin file(s)" in hits[0] and "oss-intake[signatures]" in hits[0]
+
+
+def test_a_plugin_file_holding_two_plugins_is_still_checked(tmp_path, fixtures, signer):
+    """Review finding: a .zip with two plugin folders gave both "unpacked", so a second folder hid a mismatch."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("ignore/lib/ignore.jar", jar_bytes(plugin_xml()))
+        z.writestr("other/lib/other.jar", jar_bytes(plugin_xml("com.example.other", "Other", "2.0")))
+    f = tmp_path / "two.zip"
+    f.write_bytes(changed(signer(buf.getvalue())))
+    code, out = scan(tmp_path, fixtures, f, FakeHttp(), "--offline")
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert {p["signature"]["status"] for p in a["jetbrains"]["plugins"]} == {"failed"}
+    assert sum(w.startswith("JETBRAINS SIGNATURE DOES NOT MATCH") for w in a["warnings"]) == 2

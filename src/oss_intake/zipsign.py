@@ -94,17 +94,14 @@ def _fields(buf: bytes) -> list[tuple[int, int | bytes]]:
 
 
 def _bytes(fields: list, number: int) -> list[bytes]:
-    got = [v for n, v in fields if n == number]
-    if any(not isinstance(v, bytes) for v in got):
-        raise _Unreadable(f"field {number} of the signing block has the wrong type")
-    return got
+    # A known field sent with another wire type is an unknown field to protobuf: skipped, as Java's reader does.
+    return [v for n, v in fields if n == number and isinstance(v, bytes)]
 
 
 def _int(fields: list, number: int) -> int:
-    got = [v for n, v in fields if n == number]
-    if any(not isinstance(v, int) for v in got):
-        raise _Unreadable(f"field {number} of the signing block has the wrong type")
-    return got[-1] if got else 0  # proto3: a missing number is 0; the last one given wins
+    """A uint32 or enum (int32) field, as Java reads it: the low 32 bits; a missing one is 0, the last one wins."""
+    got = [v for n, v in fields if n == number and isinstance(v, int)]
+    return (got[-1] & 0xFFFFFFFF) if got else 0
 
 
 def _parse(block: bytes) -> tuple[list[tuple[int, bytes]], list[tuple[list[bytes], list[tuple[int, bytes]]]]]:
@@ -113,8 +110,8 @@ def _parse(block: bytes) -> tuple[list[tuple[int, bytes]], list[tuple[list[bytes
     version = _int(top, 1)
     if version != 1:
         raise _Unsupported(f"signature scheme version {version} (this check knows version 1)")
-    contents = _bytes(top, 2)
-    content = _fields(contents[-1]) if contents else []
+    # Repeated occurrences of a message field are merged (their fields concatenated), as protobuf does.
+    content = _fields(b"".join(_bytes(top, 2)))
     digests = []
     for d in _bytes(content, 1)[:MAX_ITEMS + 1]:
         f = _fields(d)
@@ -149,7 +146,9 @@ def _read(fh, offset: int, size: int) -> bytes:
 
 def _eocd(fh, size: int) -> tuple[int, int, int]:
     """(end record offset, central directory offset, central directory size), as the signer finds them: the end
-    record whose comment length matches its distance from the end of the file, nearest the end."""
+    record whose comment length matches its distance from the end of the file, nearest the end. The digest does
+    not cover bytes between the central directory and the end record, so check() refuses a signed file with any
+    (zipfile finds the directory from the end record, so such bytes could be a second directory it reads)."""
     if size < _EOCD_MIN:
         raise _Layout("the file is too short to be a zip")
     tail_size = min(size, _EOCD_MIN + 0xFFFF)
@@ -229,8 +228,8 @@ def _verify_signature(c, key, signature: bytes, data: bytes, kind: str, digest: 
 def _signed_by(c, cert, issuer) -> bool:
     """Whether cert's signature verifies with issuer's key (the IDE's Certificate.verify: the signature only)."""
     x509, invalid, hashes, dsa, ec, ed448, ed25519, padding, rsa = c
-    key = issuer.public_key()
     try:
+        key = issuer.public_key()  # an unknown key algorithm raises UnsupportedAlgorithm
         if isinstance(key, rsa.RSAPublicKey):
             params = cert.signature_algorithm_parameters
             key.verify(cert.signature, cert.tbs_certificate_bytes,
@@ -268,6 +267,7 @@ def check(path: Path, trusted: bytes | None = None) -> dict:
         with path.open("rb") as fh:
             size = path.stat().st_size
             eocd, cd_offset, cd_size = _eocd(fh, size)
+            gap = eocd - (cd_offset + cd_size)
             if cd_offset < _FOOTER + 8:
                 return {"status": "unsigned", "detail": "the file has no signing block", "signers": []}
             block_size, lo, hi = struct.unpack("<QQQ", _read(fh, cd_offset - _FOOTER, _FOOTER))
@@ -278,6 +278,10 @@ def check(path: Path, trusted: bytes | None = None) -> dict:
             start = cd_offset - total
             if struct.unpack("<Q", _read(fh, start, 8))[0] != block_size:
                 return {"status": "unsigned", "detail": "the file has no signing block", "signers": []}
+            if gap:
+                return {"status": "failed", "detail": f"the file has {gap} byte(s) between its central directory "
+                                                      "and end record, which the signature does not cover (a "
+                                                      "signer never leaves any)", "signers": []}
             if total - 32 > MAX_BLOCK:
                 raise _Unreadable(f"the signing block is over {MAX_BLOCK // 1024} KB")
             digests, signers = _parse(_read(fh, start + 8, total - 32))
@@ -312,8 +316,8 @@ def check(path: Path, trusted: bytes | None = None) -> dict:
                 raise _Unreadable("a signer has no certificates")
             try:
                 chain = [x509.load_der_x509_certificate(d) for d in certs]
-            except ValueError as exc:
-                raise _Unreadable(f"a certificate cannot be read ({exc})") from None
+            except Exception as exc:  # noqa: BLE001 - ValueError, InvalidVersion, anything a hostile DER causes
+                raise _Unreadable(f"a certificate cannot be read ({type(exc).__name__})") from None
             for alg, signature in sigs:
                 if alg not in _SIGNATURES:
                     raise _Unsupported(f"signature algorithm {alg}")
@@ -339,6 +343,9 @@ def check(path: Path, trusted: bytes | None = None) -> dict:
         return {"status": "failed", "detail": f"the signing block cannot be read: {exc}", "signers": []}
     except (OSError, ValueError, struct.error) as exc:
         return {"status": "not_checked", "detail": f"the file could not be read ({type(exc).__name__}: {exc})"[:300],
+                "signers": []}
+    except Exception as exc:  # noqa: BLE001 - "never raises on a bad file": anything else is no verdict either
+        return {"status": "not_checked", "detail": f"the signature could not be checked ({type(exc).__name__})",
                 "signers": []}
     names = [_name(chain[0]) for chain, _ in chains]
     if any(certs[-1] == trusted for _, certs in chains):

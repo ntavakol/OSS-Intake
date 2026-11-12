@@ -199,3 +199,48 @@ def test_default_trust_is_jetbrains_only(tmp_path, pki):
     p = tmp_path / "p.zip"
     p.write_bytes(sign(plugin_zip(), pki["chain"], pki["leaf_key"]))
     assert zipsign.check(p)["status"] == "not_jetbrains"
+
+
+# ------------------------------------------------------------------------------------------- the review (12 Nov)
+
+
+def test_bytes_between_the_directory_and_end_record_fail(tmp_path, pki):
+    """Review finding: the digest skips bytes between the central directory and the end record, and zipfile finds
+    the directory from the end record, so a second directory placed there would be read instead of the signed one.
+    A signer never leaves such bytes: a signed file with any fails."""
+    import zlib
+
+    signed = sign(plugin_zip(), pki["chain"], pki["leaf_key"])
+    eocd = signed.rfind(b"PK\x05\x06")
+    cd_size, cd_off = struct.unpack_from("<II", signed, eocd + 12)
+    name, data = b"demo/lib/demo.jar", b"EVIL CONTENT"
+    crc = zlib.crc32(data)
+    local = struct.pack("<IHHHHHIIIHH", 0x04034B50, 20, 0, 0, 0, 0, crc, len(data), len(data), len(name), 0)
+    local += name + data
+    comment = b"x" * (cd_size - 46 - len(name))
+    at = cd_off + cd_size - (len(local) + cd_size)
+    entry = struct.pack("<IHHHHHHIIIHHHHHII", 0x02014B50, 20, 20, 0, 0, 0, 0, crc, len(data), len(data), len(name),
+                        0, len(comment), 0, 0, 0, at) + name + comment
+    evil = signed[:eocd] + local + entry + signed[eocd:]
+    with zipfile.ZipFile(io.BytesIO(evil)) as z:
+        assert z.read("demo/lib/demo.jar") == b"EVIL CONTENT"  # what a reader would see
+    got = check(tmp_path, evil, pki)
+    assert got["status"] == "failed" and "does not cover" in got["detail"]
+
+
+def _hostile(der: bytes, find: bytes, offset: int, value: int) -> bytes:
+    out = bytearray(der)
+    out[out.find(find) + offset] = value
+    return bytes(out)
+
+
+@pytest.mark.parametrize("where", ["leaf_version", "issuer_version", "issuer_key_algorithm"])
+def test_hostile_certificates_are_a_verdict_not_a_crash(tmp_path, pki, where):
+    """Review finding: a certificate with version 5 (x509.InvalidVersion) or an unknown key algorithm
+    (UnsupportedAlgorithm) must not stop the run: one crafted jar in a plugins folder would abort everything."""
+    bad_version = _hostile(pki["mid"], bytes.fromhex("a003020102"), 4, 5)
+    bad_key = _hostile(pki["mid"], bytes.fromhex("2a864886f70d010101"), 8, 0x63)
+    chain = {"leaf_version": [bad_version], "issuer_version": [pki["chain"][0], bad_version],
+             "issuer_key_algorithm": [pki["chain"][0], bad_key]}[where]
+    got = check(tmp_path, sign(plugin_zip(), chain, pki["leaf_key"]), pki)
+    assert got["status"] == "failed", got
