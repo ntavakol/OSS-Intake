@@ -41,6 +41,15 @@ findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
   <img alt="oss-intake executive summary: 3 packages checked, 2 to act on now, chalk 5.6.1 malicious (remove, do not patch), log4j-core 2.14.1 known exploited (upgrade to 2.25.4)" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/executive-summary-light.png" width="800">
 </picture>
 
+## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-dark.png">
+  <img alt="oss-intake architecture: it reads container images, project releases, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS with package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
+</picture>
+
+How the code is put together is in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
+
 ## Build the command
 
 oss-intake has 70 options; most runs need three. The [command builder](https://ntavakol.github.io/OSS-Intake/builder/)
@@ -90,15 +99,6 @@ where they are: what leaves the machine is package names and versions, vulnerabi
 repository name, sent to public services such as OSV, deps.dev, the package registries, FIRST EPSS, OpenSSF
 Scorecard and GitHub (with your `GITHUB_TOKEN`, if set, sent only to api.github.com). It does not prove a vulnerability is exploitable in your environment, and it says so in
 every report; see [What it does not do](#what-it-does-not-do) below.
-
-## How it works
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-dark.png">
-  <img alt="oss-intake architecture: it reads container images, project releases, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS with package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
-</picture>
-
-How the code is put together is in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
 
 ## Install
 
