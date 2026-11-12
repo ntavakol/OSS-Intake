@@ -2,13 +2,17 @@
 
 Trivy finds Amazon Linux's vulnerable packages but reports no ALAS advisory IDs. AWS publishes every advisory in
 the repository metadata dnf reads, as well as on alas.aws.amazon.com: each <update> has its ID (ALAS2023-...,
-ALAS2-...), an issued date (AWS's "Advisory Released Date": when the fix was first available in the repository),
-its CVEs, and the fixed packages by name, version and release. The path is the one dnf follows: mirror.list names
-the repository, its repodata/repomd.xml gives updateinfo.xml.gz with its SHA-256, which is checked. It is always
-the "latest" repository: AL2023's versioned repositories are frozen at release and miss later advisories.
+ALAS2-...), an issued date, its CVEs, and the fixed packages by name, version and release. The path is the one
+dnf follows: mirror.list names the repository, its repodata/repomd.xml gives updateinfo.xml.gz with its SHA-256,
+which is checked. It is always the "latest" repository: AL2023's versioned repositories are frozen at release and
+miss later advisories.
 
-A finding is dated by the advisory that lists its CVE for its package at exactly the fixed version Trivy reports
+A finding is matched to the advisories that list its CVE for its package at exactly the fixed version Trivy reports
 (many CVEs appear in several advisories, a later one fixing the same CVE again, so the CVE alone is not enough).
+It is dated by the "Advisory Released Date" on the advisory's alas.aws.amazon.com page, which AWS defines as when
+the update was first publicly available in the repository. The metadata's issued date is earlier, by 3 to 4 days at
+the median (ALAS2023-2023-375: issued 27 Sep 2023, released 3 Oct 2023), and its updated date can be a year later,
+so neither is used when the page can be read; when it cannot, the issued date is used and the source says so.
 Covered: Amazon Linux 2023 and Amazon Linux 2's core repository. Not covered: AL2 Extras (kernel-5.10, docker and
 others, whose advisories are in their own repositories) and the original Amazon Linux AMI (end of life). The
 format was checked against the live files of 12 Nov 2026 (AL2023: 2,409 advisories from Feb 2023; AL2: 2,539
@@ -23,8 +27,8 @@ import io
 import re
 import xml.etree.ElementTree as ET  # noqa: S405 - DOCTYPE refused before parsing; sizes capped
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 
 from ..http import Http, HttpError
 from ..models import Finding
@@ -34,11 +38,20 @@ CDN = "https://cdn.amazonlinux.com"
 MIRROR_LISTS = {"2023": f"{CDN}/al2023/core/mirrors/latest/x86_64/mirror.list",
                 "2": f"{CDN}/2/core/latest/x86_64/mirror.list"}
 NAMES = {"2023": "Amazon Linux 2023", "2": "Amazon Linux 2"}
+ALAS = "https://alas.aws.amazon.com"
+MAX_PAGES = 300  # advisory pages read per run; the rest are dated by their issued date
+PAGE_WORKERS = 8
+MAX_PAGE_FAILURES = 3  # then the site is taken as down, and the rest are dated by their issued date
+_RELEASED = re.compile(r"Advisory\s+Released\s+Date:\s*(\d{4}-\d{2}-\d{2})")
 MAX_GZ = 64 * 1024 * 1024  # the files were 2.0 and 1.6 MB compressed
 MAX_XML = 256 * 1024 * 1024  # and 19 and 16 MB unpacked
 _REPO_NS = "{http://linux.duke.edu/metadata/repo}"
 _EPOCH = re.compile(r"^\d+:")
-_RELEASE = re.compile(r"(?:amazon\s*linux|amazonlinux|amazon|amzn)[\s:-]*(\d{4}|\d)(?![\d])")
+_RELEASE = re.compile(r"(?:amazon\s*linux|amazonlinux|amazon|amzn)(?:\s+release)?[\s:-]*(\d{4}|\d)(?![\d])")
+# A repository on the CDN, as requests will fetch it: no userinfo, port, backslash, percent-encoding or "..",
+# which urlparse and requests read differently (https://evil.example\@cdn.amazonlinux.com/ is evil.example).
+_REPOSITORY = re.compile(r"https://cdn\.amazonlinux\.com(?:/[A-Za-z0-9_.-]+)+")
+_XML_DECL = re.compile(rb'\A<\?xml[^>]*?encoding\s*=\s*["\']([^"\']+)["\']')
 
 
 class _Bad(Exception):
@@ -50,7 +63,8 @@ def release_of(f: Finding) -> str | None:
     original Amazon Linux AMI). From Trivy's os_release ("amazon 2 (karoo)", "amazon 2023.6.20241031 (...)"),
     Grype's ("amazonlinux 2023"), or the purl's distro qualifier."""
     purl = (f.purl or "").lower()
-    if not (purl.startswith(("pkg:rpm/amazon/", "pkg:rpm/amzn/")) or "amazon" in (f.os_release or "").lower()):
+    os_release = (f.os_release or "").lower()
+    if not (purl.startswith(("pkg:rpm/amazon/", "pkg:rpm/amzn/")) or "amazon" in os_release or "amzn" in os_release):
         return None
     for text in (f.os_release or "", purl.split("distro=", 1)[1].split("&", 1)[0] if "distro=" in purl else ""):
         m = _RELEASE.search(text.lower())
@@ -77,8 +91,7 @@ def _repository(http: Http, release: str) -> str:
     if status != 200:
         raise _Bad(f"mirror.list answered HTTP {status}")
     base = next((line.strip() for line in text.splitlines() if line.strip()), "").rstrip("/")
-    u = urlparse(base)
-    if u.scheme != "https" or u.hostname != "cdn.amazonlinux.com" or u.query or u.fragment or ".." in u.path:
+    if not _REPOSITORY.fullmatch(base) or "/../" in base + "/" or "/./" in base + "/":
         raise _Bad("mirror.list does not name a repository on cdn.amazonlinux.com")
     return base
 
@@ -89,7 +102,7 @@ def _updateinfo_location(repomd: str) -> tuple[str, str, int]:
         raise _Bad("repomd.xml declares a DOCTYPE")
     try:
         root = ET.fromstring(repomd)  # noqa: S314 - a few KB, DOCTYPE refused above
-    except ET.ParseError as exc:
+    except (ET.ParseError, ValueError) as exc:  # ValueError: an encoding expat does not support
         raise _Bad(f"repomd.xml cannot be read ({exc})") from None
     for data in root.findall(f"{_REPO_NS}data"):
         if data.get("type") != "updateinfo":
@@ -110,7 +123,11 @@ def _updateinfo_location(repomd: str) -> tuple[str, str, int]:
 
 def parse(xml: bytes) -> dict[tuple[str, str], list[tuple[str, datetime, str]]]:
     """Map (CVE, binary package name) to [(version-release, issued date, advisory ID)] from updateinfo.xml."""
-    if b"<!DOCTYPE" in xml[:4096] or b"<!ENTITY" in xml:
+    xml = xml.removeprefix(b"\xef\xbb\xbf")
+    decl = _XML_DECL.match(xml)
+    if not xml.lstrip().startswith(b"<") or (decl and decl.group(1).lower() not in (b"utf-8", b"us-ascii")):
+        raise _Bad("updateinfo.xml is not UTF-8 XML")  # also keeps a UTF-16 DOCTYPE from hiding from the check
+    if b"<!DOCTYPE" in xml or b"<!ENTITY" in xml:
         raise _Bad("updateinfo.xml declares a DOCTYPE")
     out: dict[tuple[str, str], list[tuple[str, datetime, str]]] = {}
     try:
@@ -132,7 +149,7 @@ def parse(xml: bytes) -> dict[tuple[str, str], list[tuple[str, datetime, str]]]:
                             if entry not in got:
                                 got.append(entry)
             el.clear()
-    except ET.ParseError as exc:
+    except (ET.ParseError, ValueError) as exc:  # ValueError: an encoding expat does not support
         raise _Bad(f"updateinfo.xml cannot be read ({exc})") from None
     return out
 
@@ -161,13 +178,53 @@ def load(http: Http, release: str) -> dict[tuple[str, str], list[tuple[str, date
     return parse(xml)
 
 
+def page_url(adv: str) -> str | None:
+    """The advisory's page, by its ID (/AL2023/ALAS2023-2023-001.html, /AL2/ALAS2-2022-1803.html: no redirect, as
+    checked on 12 Nov 2026; /AL2/ALAS-2022-1803.html redirects there)."""
+    if re.fullmatch(r"ALAS2023-\d{4}-\d+", adv):
+        return f"{ALAS}/AL2023/{adv}.html"
+    return f"{ALAS}/AL2/{adv}.html" if re.fullmatch(r"ALAS2-\d{4}-\d+", adv) else None
+
+
+def released(html: str) -> datetime | None:
+    """The "Advisory Released Date" on an advisory page (markup removed first)."""
+    m = _RELEASED.search(re.sub(r"<[^>]{0,500}>", " ", html[:2_000_000]))
+    return _date(f"{m.group(1)} 00:00:00") if m else None
+
+
+def _released_dates(http: Http, advs: list[str], stats: dict) -> dict[str, datetime]:
+    """Each advisory's released date from its page, read in parallel, at most MAX_PAGES."""
+    todo = [a for a in dict.fromkeys(advs) if page_url(a)][:MAX_PAGES]
+    stats["skipped_limit"] = max(0, len(dict.fromkeys(advs)) - len(todo))
+    failures = [0]
+
+    def one(adv: str) -> tuple[str, datetime | None]:
+        if failures[0] >= MAX_PAGE_FAILURES:
+            return adv, None
+        try:
+            status, html = http.get_text(page_url(adv) or "")
+        except HttpError:
+            failures[0] += 1
+            return adv, None
+        return adv, released(html) if status == 200 else None
+
+    with ThreadPoolExecutor(max_workers=PAGE_WORKERS, thread_name_prefix="oss-intake-alas") as pool:
+        got = dict(pool.map(one, todo))
+    stats["pages"] = len(todo)
+    stats["pages_unread"] = sum(1 for v in got.values() if v is None) + stats["skipped_limit"]
+    return {a: d for a, d in got.items() if d}
+
+
 def enrich(http: Http, findings: list[Finding]) -> dict:
     """Set fix_published on Amazon Linux 2023 and Amazon Linux 2 findings to the issued date of the ALAS advisory
     that lists the finding's CVE for its package at exactly the fixed version (cdn.amazonlinux.com). Mutates
     findings in place; returns stats: candidates, found, releases (loaded), errors (releases that could not be
-    loaded), error (the last reason)."""
-    stats: dict = {"candidates": 0, "found": 0, "releases": [], "errors": 0}
+    loaded), error (the reasons), pages (advisory pages read), pages_unread (dated by their issued date instead),
+    skipped_limit (over MAX_PAGES)."""
+    stats: dict = {"candidates": 0, "found": 0, "releases": [], "errors": 0, "pages": 0, "pages_unread": 0,
+                   "skipped_limit": 0}
     index: dict[str, dict | None] = {}
+    matched: list[tuple[Finding, str, list[tuple[datetime, str]]]] = []
     for f in findings:
         if f.fix_published or f.likely_fixed or f.excluded or not f.fixed_versions:
             continue
@@ -183,7 +240,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
             except (_Bad, HttpError) as exc:
                 index[release] = None
                 stats["errors"] += 1
-                stats["error"] = f"{NAMES[release]}: {exc}"
+                stats["error"] = "; ".join(filter(None, [stats.get("error"), f"{NAMES[release]}: {exc}"]))
         advisories = index[release]
         if not advisories:
             continue
@@ -192,9 +249,14 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
         hits = [(when, adv) for c in cves for name in dict.fromkeys(n for n in (f.package, f.src_name) if n)
                 for vr, when, adv in advisories.get((c, name), []) if vr == want]
         if hits:
-            when, adv = min(hits)
-            f.fix_published = when
-            f.fix_version_used = fix
-            f.fix_date_source = f"advisory {adv} (Amazon Linux)"
-            stats["found"] += 1
+            matched.append((f, fix, hits))
+    pages = _released_dates(http, [adv for _, _, hits in matched for _, adv in sorted(hits)], stats) if matched else {}
+    for f, fix, hits in matched:
+        # The earliest release among the advisories that list it (by page date, else issued date).
+        when, adv = min((pages.get(adv, issued), adv) for issued, adv in hits)
+        f.fix_published = when
+        f.fix_version_used = fix
+        f.fix_date_source = (f"advisory {adv} (Amazon Linux)" if adv in pages
+                             else f"advisory {adv} (Amazon Linux, issued date: its page could not be read)")
+        stats["found"] += 1
     return stats

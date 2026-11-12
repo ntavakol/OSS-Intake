@@ -274,6 +274,10 @@ def _enrich(args, net, findings: list, warnings: list[str]):
             if amz.get("errors"):
                 warnings.append(f"Amazon Linux advisories (ALAS) could not be loaded ({amz['error']}); Amazon Linux "
                                 "fixes stay undated")
+            if amz.get("pages_unread"):
+                warnings.append(f"{amz['pages_unread']} Amazon Linux advisory pages (alas.aws.amazon.com) were not "
+                                "read; those fixes are dated by the advisory's issued date, which is usually a few "
+                                "days before its release")
             ubu = ubuntu.enrich(net, ranked)
             fd_stats["ubuntu"] = ubu
             ulp = ubuntu_launchpad.enrich(net, ranked)
