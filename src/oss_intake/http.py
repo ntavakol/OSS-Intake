@@ -385,6 +385,8 @@ class RequestsHttp(Http):
             except self._requests.RequestException as exc:
                 # str(exc) can include the URL but not headers; the token is never in the URL.
                 raise HttpError(f"{where}: {type(exc).__name__}") from None
+            except ValueError:  # an address the HTTP library cannot read (a redirect to "https://[bad/x")
+                raise HttpError(f"{where}: an address that cannot be read") from None
             location = (getattr(r, "headers", None) or {}).get("Location")
             if r.status_code not in REDIRECT_CODES or not location:
                 return r, url
@@ -394,8 +396,12 @@ class RequestsHttp(Http):
             if method != "GET":
                 raise HttpError(f"{where}: redirected ({r.status_code}); a request with a body is never redirected, "
                                 "as that would send it on")
-            url = urljoin(url, location)
-            if urlparse(url).scheme != "https":
+            try:
+                url = urljoin(url, location)
+                scheme = urlparse(url).scheme
+            except ValueError:  # e.g. "https://[bad/x": an unparseable target is the source failing
+                raise HttpError(f"{where}: redirected to an address that cannot be read") from None
+            if scheme != "https":
                 raise HttpError(f"{where}: redirected to a non-https address, which is refused")
         raise HttpError(f"{method} {urlparse(url).netloc}: more than {MAX_REDIRECTS} redirects")
 

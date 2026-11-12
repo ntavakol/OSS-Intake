@@ -9,8 +9,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 A feature release: upgrade from 0.20.0. Amazon Linux findings get fix dates, and the JetBrains Marketplace's
 signature on a plugin is checked. One thing to know: a `--jetbrains-plugin` download without the Marketplace's
-signature, or with someone else's, now stops the run (exit 2), even without the `signatures` extra, because the
-Marketplace signs every file it serves.
+signature, or with someone else's, now stops the run (exit 2), because the Marketplace signs every file it serves.
+A missing signature is caught even without the `signatures` extra; who signed it needs the extra.
 
 ### Added
 

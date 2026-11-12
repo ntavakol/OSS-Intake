@@ -1106,3 +1106,16 @@ def test_a_launchpad_answer_only_in_proposed_is_not_kept(tmp_path):
                     [{"pocket": "Security", "date_published": None}]):
         c.put(url, 200, {"entries": entries})
         assert c.get(url) is None
+
+
+def test_an_unreadable_redirect_target_is_the_source_failing(monkeypatch):
+    """Pre-release review (0.21.0): a Location urljoin cannot parse raised ValueError out of the request, which no
+    caller expects; with the ALAS page lookups in threads, it ended the run with a traceback."""
+    bases, seen, servers = _servers(monkeypatch, {("a", "/bad"): (302, {"Location": "https://[bad/x"}, b"")})
+    try:
+        h = RequestsHttp(github_token="")
+        with pytest.raises(HttpError, match="cannot be read"):  # by urljoin, or by requests when it fetches
+            h.get_text(f"{bases['a']}/bad")
+    finally:
+        for s in servers:
+            s.shutdown()

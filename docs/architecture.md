@@ -48,7 +48,7 @@ The numbers match the stage comments in `src/oss_intake/cli.py` and `assessment.
    (`health.releases`), OpenSSF Scorecard (`health.scorecard`), and an audit of the project's GitHub Actions
    workflows (`health.workflows`).
 4. **Enrichment** (`enrich/`, `release_age`, `decisions`). Fix publication dates from deps.dev, Packagist and
-   the distro sources (Debian, Ubuntu, Red Hat and Alpine trackers and security advisories), CISA KEV, EPSS,
+   the distro sources (Debian, Ubuntu, Red Hat, Alpine and Amazon Linux trackers and security advisories), CISA KEV, EPSS,
    exploit evidence (Metasploit, Nuclei, Exploit-DB, GitHub proofs of concept), release dates of the package
    versions, and the assessor's decisions from an earlier run. Findings are looked up most severe first, since
    some sources cap their lookups.
