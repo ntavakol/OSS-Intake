@@ -8,9 +8,9 @@ import json
 import zipfile
 from pathlib import Path
 
-from oss_intake import likelihood
+from oss_intake import likelihood, zipsign
 
-from .harnesses import _VSIXMANIFEST, SEP, VSIX_MEMBERS
+from .harnesses import _VSIXMANIFEST, PLUGIN_ZIP, SEP, VSIX_MEMBERS, framed
 
 FIX = Path(__file__).resolve().parent.parent / "fixtures"
 _SBOMS = sorted((FIX / "sbom").glob("*-fixture.json"))
@@ -31,6 +31,28 @@ def _vsix(members: dict[str, bytes]) -> bytes:
         for name, data in members.items():
             z.writestr(name, data)
     return buf.getvalue()
+
+
+def _pb(number: int, value: int | bytes) -> bytes:
+    def varint(n: int) -> bytes:
+        out = bytearray()
+        while True:
+            out.append((n & 0x7F) | (0x80 if n > 0x7F else 0))
+            n >>= 7
+            if not n:
+                return bytes(out)
+    if isinstance(value, int):
+        return varint(number << 3) + varint(value)
+    return varint(number << 3 | 2) + varint(len(value)) + value
+
+
+def _signing_block() -> bytes:
+    """A signing block message for PLUGIN_ZIP with its real SHA-256 digest and a signer whose certificate and
+    signature are placeholders: it reads, matches the file, and stops at the signer."""
+    _, before, cd, end = framed(b"")
+    digest = zipsign._chunked(None, [before, cd, end], {"sha256"})["sha256"]
+    signer = _pb(1, b"0\x82placeholder certificate") + _pb(2, _pb(1, 0) + _pb(2, b"placeholder signature"))
+    return _pb(1, 1) + _pb(2, _pb(1, _pb(1, 0) + _pb(2, digest)) + _pb(2, signer))
 
 
 def seeds(name: str) -> list[bytes]:
@@ -69,4 +91,6 @@ def seeds(name: str) -> list[bytes]:
     if name == "service_data":
         return [(FIX / n).read_bytes() for n in ("exploitdb.csv", "debian_DLA_list.txt", "vscode_removed.md",
                                                   "metasploit.json", "go_release.html")]
+    if name == "plugin_signature":
+        return [PLUGIN_ZIP, _signing_block()]
     raise KeyError(name)

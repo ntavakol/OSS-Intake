@@ -30,10 +30,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
 - Bioconductor packages in an `renv.lock` (OSV has a Bioconductor ecosystem).
 
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
-- JetBrains plugins, next steps (agreed 9 Nov): check the Marketplace's signature on a downloaded plugin (a signing
-  block inside the zip, chained to JetBrains' certificate; the Marketplace publishes no checksum, so
-  `--jetbrains-plugin` downloads are HTTPS only until then); a fleet view (osquery has no JetBrains table, so it
-  needs its own collector).
+- JetBrains plugins, next step (agreed 9 Nov): a fleet view (osquery has no JetBrains table, so it needs its own
+  collector).
 
 ## Signals
 - Optional VirusTotal lookup for `--path` artifacts (parked 8 Nov): hash only, never an upload (uploads are

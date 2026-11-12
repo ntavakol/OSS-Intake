@@ -259,6 +259,11 @@ def _listed_extensions(info: dict, exts: list[dict], rl: dict) -> tuple[str, lis
     return f"VS Code extensions ({len(exts)})", blocks
 
 
+_SIGNATURE_WORDS = {"verified": "verified (JetBrains Marketplace)", "failed": "DOES NOT MATCH",
+                    "not_jetbrains": "not the Marketplace's", "unsigned": "none", "unpacked": "unpacked (installed)",
+                    "not_checked": "not checked"}
+
+
 def jetbrains_section(a: dict) -> tuple[str, list] | None:
     """JetBrains plugins: each plugin's identity, its findings, and what the Marketplace says of it."""
     info = a.get("jetbrains")
@@ -275,6 +280,7 @@ def jetbrains_section(a: dict) -> tuple[str, list] | None:
                      ("yes" if m.get("vendor_verified") else "no") if m.get("found") else "",
                      (m.get("published") or m.get("version_lookup") or "version not found")
                      if m.get("found") else "",
+                     _SIGNATURE_WORDS.get((p.get("signature") or {}).get("status", ""), "not checked"),
                      str(f.get("total", 0)) + (f" ({f['critical']} critical, {f['high']} high)"
                                                if f.get("critical") or f.get("high") else "")])
     blocks: list = [("p", f"{len(plugins)} JetBrains plugin{'s' if len(plugins) != 1 else ''}. The libraries "
@@ -284,11 +290,22 @@ def jetbrains_section(a: dict) -> tuple[str, list] | None:
     if dl:
         blocks.append(("p", f"Downloaded from the JetBrains Marketplace ({dl['source']}) by --jetbrains-plugin; "
                             f"SHA-256 {dl['sha256']}. {dl['integrity'][0].upper()}{dl['integrity'][1:]}."))
+    signed = [p for p in plugins if (p.get("signature") or {}).get("status") not in (None, "unpacked")]
+    blocks.append(("p", "Signature: the JetBrains Marketplace signs each plugin file it serves; the check is the IDE's "
+                        "(the file matches its signed digest, and the signer's certificate chain ends at JetBrains' "
+                        "certificate). "
+                   + ("Installed plugins the IDE unpacked have lost their signature, so it cannot be checked for them."
+                      if len(signed) < len(plugins) else "")))
+    for p in signed:
+        sig = p["signature"]
+        if sig["status"] != "verified":
+            blocks.append(("p", f"{p['id']}: {sig['detail']}"
+                           + (f" (signed by {'; '.join(sig['signers'])})" if sig.get("signers") else "") + "."))
     market = info.get("marketplace") or {}
     if market.get("status") != "checked":
         blocks.append(("p", "The JetBrains Marketplace was not asked (--offline)."))
     blocks.append(("table", ["Plugin", "Version", "Vendor (plugin.xml)", "Marketplace", "Vendor verified",
-                             "Version published", "Findings"], rows))
+                             "Version published", "Signature", "Findings"], rows))
     if info.get("unmatched"):
         blocks.append(("p", f"{info['unmatched']} finding(s) could not be tied to one plugin."))
     return f"JetBrains plugins ({len(plugins)})", blocks

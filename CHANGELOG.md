@@ -5,6 +5,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The JetBrains Marketplace's signature on a plugin file is checked, with the optional `signatures` extra, as the IDE
+  checks it: the file matches its signed digest, and a signer's certificate chain ends at JetBrains' certificate
+  (bundled). A `--jetbrains-plugin` download that does not match stops the run (exit 2), so it is no longer
+  "HTTPS only"; a plugin `.zip` or `.jar` given with `--path` that does not match leads the report, and an unsigned
+  one is a warning. In a plugins folder, one-jar plugins are checked; plugins the IDE unpacked have lost their
+  signature, which the report says.
+
 ## [0.20.0] - 2026-11-10
 
 A feature release: upgrade from 0.19.0. JetBrains IDE plugins, Open VSX signatures, fix dates for R packages, and

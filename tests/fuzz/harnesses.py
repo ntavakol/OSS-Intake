@@ -13,11 +13,12 @@ import io
 import json
 import os
 import shutil
+import struct
 import tempfile
 import zipfile
 from pathlib import Path
 
-from oss_intake import cli, conditions, decisions, inputs, integrity, likelihood, merge, sbom, vscode
+from oss_intake import cli, conditions, decisions, inputs, integrity, likelihood, merge, sbom, vscode, zipsign
 
 # cli.main turns an unexpected exception into exit 1 for users; the fuzzer must see it as the crash it is.
 os.environ["OSS_INTAKE_DEBUG"] = "1"
@@ -164,6 +165,42 @@ def vsix_files(data: bytes) -> None:
     _assess_vsix(_file(buf.getvalue(), "files.vsix"))
 
 
+def _plugin_zip() -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("demo/lib/demo.jar", b"jar bytes")
+    return buf.getvalue()
+
+
+PLUGIN_ZIP = _plugin_zip()
+SIGNATURE_STATUSES = {"verified", "not_jetbrains", "unsigned", "failed", "not_checked"}
+
+
+def framed(proto: bytes, data: bytes = PLUGIN_ZIP) -> tuple[bytes, bytes, bytes, bytes]:
+    """(the zip with proto as its signing block's message, and the unsigned zip's three digested sections:
+    before the block, the central directory, the end record with its offset where the block starts)."""
+    eocd = data.rfind(b"PK\x05\x06")
+    cd_size, cd_offset = struct.unpack_from("<II", data, eocd + 12)
+    before, cd, end = data[:cd_offset], data[cd_offset:cd_offset + cd_size], bytearray(data[eocd:])
+    size = len(proto) + 24
+    block = struct.pack("<Q", size) + proto + struct.pack("<QQQ", size, zipsign._MAGIC_LO, zipsign._MAGIC_HI)
+    struct.pack_into("<I", end, 16, len(before) + len(block))
+    original = bytearray(end)
+    struct.pack_into("<I", original, 16, len(before))
+    return before + block + cd + bytes(end), before, cd, bytes(original)
+
+
+def plugin_signature(data: bytes) -> None:
+    """A plugin file's JetBrains signing block (zipsign.check): the bytes as the whole file, and as the message in a
+    well-formed block, so the fuzzer reaches the block reader rather than stopping at the zip layout. The check
+    returns a verdict for any file and never raises. (The fuzzing job has no cryptography: certificates and
+    signatures are checked by the unit tests.)"""
+    for path in (_file(data, "plugin.zip"), _file(framed(data)[0], "framed.zip")):
+        got = zipsign.check(path, trusted=b"")
+        if got["status"] not in SIGNATURE_STATUSES:
+            raise AssertionError(got)
+
+
 def checksums(data: bytes) -> None:
     integrity.parse_checksums(data)
 
@@ -200,7 +237,7 @@ def service_data(data: bytes) -> None:
 
 TARGETS = {f.__name__: f for f in (sbom_file, inventory_csv, decisions_file, renv_lock, scanner_report,
                                    scanner_report_run, osv_advisory, vsix_archive, vsix_files, checksums,
-                                   likelihood_config, govulncheck_output, service_data)}
+                                   likelihood_config, govulncheck_output, service_data, plugin_signature)}
 
 
 def run(name: str):
