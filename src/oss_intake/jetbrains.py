@@ -9,10 +9,11 @@ Nothing in a plugin is run.
 --jetbrains-plugin ID@VERSION downloads one exact version from the Marketplace (free and paid plugins alike: a
 paid plugin's licence is checked by the IDE, not at download). The Marketplace publishes no checksum; it signs each
 plugin file instead (a signing block in the zip, chained to JetBrains' certificate), and with the signatures extra
-that signature is checked as the IDE checks it (zipsign.py): a download that does not match it is refused, and a
-plugin file given with --path gets the same check. An installed plugin the IDE unpacked has lost its signature;
-one installed as a single .jar keeps it. The Marketplace answers were captured from the live service on
-9 Nov 2026 (plugins/{id}, plugins/intellij/{xmlId}, plugins/{id}/updates, plugin/download).
+that signature is checked as the IDE checks it (zipsign.py): a download that does not match it, or has none, or
+has someone else's, is refused, and a plugin file given with --path gets the same check. An installed plugin the
+IDE unpacked has lost its signature; one installed as a single .jar keeps it. The Marketplace answers were
+captured from the live service on 9 Nov 2026 (plugins/{id}, plugins/intellij/{xmlId}, plugins/{id}/updates,
+plugin/download).
 """
 
 from __future__ import annotations
@@ -312,6 +313,18 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
     if sig["status"] == "failed":
         raise InputError(f"--jetbrains-plugin {ident}: the download does not match its JetBrains Marketplace "
                          f"signature ({sig['detail']}); nothing was assessed")
+    # The Marketplace signs every file it serves, old versions too (checked on 12 Nov 2026 against
+    # mobi.hsz.idea.gitignore 4.5.7 and 4.0.2, from 2020), so a download without its signature, or with someone
+    # else's, is not the file the Marketplace signed. Only a check that needs the signatures extra is left to it.
+    if sig["status"] in ("unsigned", "not_jetbrains"):
+        signers = "; ".join(sig.get("signers") or [])
+        raise InputError(f"--jetbrains-plugin {ident}: the download is "
+                         + ("not signed" if sig["status"] == "unsigned" else f"signed by {signers}, not")
+                         + " by the JetBrains Marketplace, which signs every plugin file it serves; nothing was "
+                           "assessed")
+    if sig["status"] == "not_checked" and "signatures extra" not in sig["detail"]:
+        raise InputError(f"--jetbrains-plugin {ident}: the download's JetBrains Marketplace signature could not be "
+                         f"checked ({sig['detail']}); nothing was assessed. A newer oss-intake may know it")
     return path, {"source": url, "sha256": hashlib.sha256(body).hexdigest(), "integrity": integrity(sig),
                   "signature": sig}
 

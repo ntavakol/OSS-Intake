@@ -148,8 +148,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--jetbrains-plugin", metavar="PLUGIN_ID@VERSION",
                    help="download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. "
                         "mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. With the signatures "
-                        "extra, the Marketplace's signature on the file is checked, and a mismatch stops the run; "
-                        "without it, HTTPS only")
+                        "extra, the Marketplace's signature on the file is checked; a mismatch, or no Marketplace "
+                        "signature, stops the run. Without it, HTTPS only")
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")

@@ -122,21 +122,24 @@ def test_a_failed_lookup_is_not_a_verdict(tmp_path):
     assert stats["errors"] == 1 and "marketplace" not in plugins[0]
 
 
-def test_a_plugin_is_downloaded_by_id_and_version(tmp_path, fixtures):
+def test_a_plugin_is_downloaded_by_id_and_version(tmp_path, fixtures, signer):
+    # Changed with Ned's OK (12 Nov): the Marketplace signs every file, so the fake download is signed (by the test
+    # certificates standing in for JetBrains'); an unsigned one is now refused.
     http = FakeHttp()
     marketplace(http)
     url = f"{API}/plugin/download?pluginId=mobi.hsz.idea.gitignore&version=4.5.7"
     buf = io.BytesIO()
     make_zip(buf)
-    http.files[url] = buf.getvalue()
+    http.files[url] = signer(buf.getvalue())
     out = tmp_path / "reports"
     code = cli.main(["--jetbrains-plugin", "mobi.hsz.idea.gitignore@4.5.7", "--out", str(out), "--from-trivy-json",
                      str(fixtures / "trivy.json"), "--from-grype-json", str(fixtures / "grype.json"),
                      "--as-of", AS_OF], http=http)
     assert code == cli.EXIT_OK
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
-    assert a["jetbrains"]["download"]["source"] == url and "HTTPS only" in a["jetbrains"]["download"]["integrity"]
-    assert any("downloaded from the JetBrains Marketplace over HTTPS" in w for w in a["warnings"])
+    assert a["jetbrains"]["download"]["source"] == url
+    assert a["jetbrains"]["download"]["integrity"] == "its JetBrains Marketplace signature verifies"
+    assert not any("downloaded from the JetBrains Marketplace over HTTPS" in w for w in a["warnings"])
 
 
 @pytest.mark.parametrize("ident, extra, msg", [
@@ -365,12 +368,31 @@ def test_a_download_that_does_not_match_its_signature_is_refused(tmp_path, fixtu
     assert not (out / "assessment.json").exists()
 
 
-def test_a_download_signed_only_by_its_author_stays_https_only(tmp_path, fixtures, signer):
+def test_a_download_signed_only_by_its_author_is_refused(tmp_path, fixtures, signer, capsys):
+    """Ned's rule (12 Nov): the Marketplace signs every file it serves (old versions too), so a download signed by
+    someone else is not the file it signed."""
     code, out = download_run(tmp_path, fixtures, signer(plugin_zip_bytes(), by="author"))
+    assert code == cli.EXIT_USAGE
+    assert "signed by CN=Plugin Author, not by the JetBrains Marketplace" in capsys.readouterr().err
+    assert not (out / "assessment.json").exists()
+
+
+def test_an_unsigned_download_is_refused_even_without_the_extra(tmp_path, fixtures, signer, capsys, monkeypatch):
+    """No signing block at all needs no cryptography to see."""
+    monkeypatch.setattr("oss_intake.zipsign._crypto", lambda: None)
+    code, _ = download_run(tmp_path, fixtures, plugin_zip_bytes())
+    assert code == cli.EXIT_USAGE
+    assert "not signed by the JetBrains Marketplace" in capsys.readouterr().err
+
+
+def test_without_the_extra_a_signed_download_is_https_only(tmp_path, fixtures, signer, monkeypatch):
+    """Without cryptography, who signed it cannot be checked: assessed, with HTTPS named as its only protection."""
+    monkeypatch.setattr("oss_intake.zipsign._crypto", lambda: None)
+    code, out = download_run(tmp_path, fixtures, signer(plugin_zip_bytes()))
     assert code == cli.EXIT_OK
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
-    assert a["jetbrains"]["download"]["signature"]["status"] == "not_jetbrains"
-    assert any("over HTTPS" in w and "not by the JetBrains Marketplace" in w for w in a["warnings"])
+    assert "HTTPS only" in a["jetbrains"]["download"]["integrity"]
+    assert any("over HTTPS" in w and "signatures extra" in w for w in a["warnings"])
 
 
 def test_a_plugin_file_that_does_not_match_its_signature_leads_the_report(tmp_path, fixtures, signer):
