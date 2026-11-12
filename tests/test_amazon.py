@@ -396,3 +396,52 @@ def test_a_whole_run_warns_when_pages_were_not_read(tmp_path, fixtures):
     assert code == cli.EXIT_OK
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     assert any("1 Amazon Linux advisory pages" in w and "issued date" in w for w in a["warnings"])
+
+
+# ------------------------------------------------------------------------------------------- pre-release review
+
+
+def test_a_site_refusing_with_http_statuses_stops_being_asked(monkeypatch):
+    """Pre-release review (0.21.0): only exceptions counted as failures, so a site answering 403 or 429 was still
+    asked for every page."""
+    monkeypatch.setattr(amazon, "PAGE_WORKERS", 1)
+
+    class Refusing(FakeHttp):
+        def get_text(self, url, *a, **kw):
+            if urlparse(url).hostname == "alas.aws.amazon.com":
+                self.calls.append(url)
+                return 403, "Request blocked"
+            return super().get_text(url, *a, **kw)
+
+    http = Refusing()
+    serve(http)
+    fs = [finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903"),
+          finding("openssl", "3.0.8-1.amzn2023.0.1", "CVE-2022-2097"),
+          finding("openssl", "3.0.5-1.amzn2023.0.4", "CVE-2022-2097"),
+          finding("kernel-libbpf-static", "6.1.23-36.46.amzn2023", "CVE-2023-1583")]
+    stats = amazon.enrich(http, fs)
+    assert sum(urlparse(u).hostname == "alas.aws.amazon.com" for u in http.calls) == amazon.MAX_PAGE_FAILURES
+    assert stats["pages"] == 0 and stats["pages_unread"] == 5 and stats["found"] == 4
+
+
+def test_a_value_error_from_a_page_fetch_is_a_failure_not_a_crash():
+    class Odd(FakeHttp):
+        def get_text(self, url, *a, **kw):
+            if urlparse(url).hostname == "alas.aws.amazon.com":
+                raise ValueError("Invalid IPv6 URL")
+            return super().get_text(url, *a, **kw)
+
+    http = Odd()
+    serve(http)
+    f = finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")
+    stats = amazon.enrich(http, [f])
+    assert "issued date" in f.fix_date_source and stats["pages_unread"] == 1
+
+
+def test_the_report_no_longer_says_amazon_linux_is_undated():
+    """Pre-release review (0.21.0): the release-lag note in every report still said Amazon Linux had no dated
+    source."""
+    from oss_intake import report
+
+    note = report.lag_note({"grace_days": 7, "unshipped_days": 30})
+    assert "Amazon Linux advisories (ALAS" in note and "Amazon Linux has no dated source" not in note

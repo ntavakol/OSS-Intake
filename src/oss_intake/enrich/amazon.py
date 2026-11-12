@@ -203,14 +203,17 @@ def _released_dates(http: Http, advs: list[str], stats: dict) -> dict[str, datet
             return adv, None
         try:
             status, html = http.get_text(page_url(adv) or "")
-        except HttpError:
+        except (HttpError, ValueError):
             failures[0] += 1
             return adv, None
-        return adv, released(html) if status == 200 else None
+        if status != 200:  # a block or rate limit (403, 429, 5xx) counts too, so a refusing site is not asked 300 times
+            failures[0] += 1
+            return adv, None
+        return adv, released(html)
 
     with ThreadPoolExecutor(max_workers=PAGE_WORKERS, thread_name_prefix="oss-intake-alas") as pool:
         got = dict(pool.map(one, todo))
-    stats["pages"] = len(todo)
+    stats["pages"] = sum(1 for v in got.values() if v is not None)
     stats["pages_unread"] = sum(1 for v in got.values() if v is None) + stats["skipped_limit"]
     return {a: d for a, d in got.items() if d}
 
@@ -219,8 +222,8 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
     """Set fix_published on Amazon Linux 2023 and Amazon Linux 2 findings to the issued date of the ALAS advisory
     that lists the finding's CVE for its package at exactly the fixed version (cdn.amazonlinux.com). Mutates
     findings in place; returns stats: candidates, found, releases (loaded), errors (releases that could not be
-    loaded), error (the reasons), pages (advisory pages read), pages_unread (dated by their issued date instead),
-    skipped_limit (over MAX_PAGES)."""
+    loaded), error (the reasons), pages (advisory pages whose date was read), pages_unread (dated by their issued
+    date instead), skipped_limit (over MAX_PAGES)."""
     stats: dict = {"candidates": 0, "found": 0, "releases": [], "errors": 0, "pages": 0, "pages_unread": 0,
                    "skipped_limit": 0}
     index: dict[str, dict | None] = {}
@@ -237,7 +240,7 @@ def enrich(http: Http, findings: list[Finding]) -> dict:
             try:
                 index[release] = load(http, release)
                 stats["releases"].append(NAMES[release])
-            except (_Bad, HttpError) as exc:
+            except (_Bad, HttpError, ValueError) as exc:
                 index[release] = None
                 stats["errors"] += 1
                 stats["error"] = "; ".join(filter(None, [stats.get("error"), f"{NAMES[release]}: {exc}"]))

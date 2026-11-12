@@ -478,8 +478,9 @@ def lag_note(lag: dict) -> str:
             "come from deps.dev and Packagist for language packages (GitHub release dates for Go modules deps.dev "
             "lacks), from Debian advisories (DSA, DLA) and point releases, Ubuntu Security Notices and "
             "Launchpad publishing history, Red Hat "
-            "advisories (RHSA), Alpine aports commits, and the Go release history for the Go standard library. "
-            "Amazon Linux has no dated source yet and is counted as unknown; see the fix date coverage table.")
+            "advisories (RHSA), Alpine aports commits, Amazon Linux advisories (ALAS, for AL2023 and AL2 core), "
+            "and the Go release history for the Go standard library. A fix with no dated source is counted as "
+            "unknown; see the fix date coverage table.")
 
 def _v(x: object, suffix: str = "") -> str:
     return "n/a" if x is None or x == "" else f"{x}{suffix}"

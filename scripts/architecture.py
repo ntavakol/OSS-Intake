@@ -15,7 +15,7 @@ from pathlib import Path
 
 INPUTS = [
     ("Container images", "Docker, containerd, Podman, registries"),
-    ("Source repos", "GitHub, GitLab, Codeberg (--repo)"),
+    ("Project releases (--repo)", "GitHub, GitLab, Codeberg; code is not read"),
     ("Folders and artifacts", "lockfiles, JARs, wheels, npm packages"),
     ("SBOMs and inventories", "CycloneDX, SPDX, CSV, Excel"),
     ("IDE extensions", "VS Code via Open VSX, JetBrains plugins"),
@@ -25,8 +25,8 @@ STEPS = [
     ("1  Verify scanners", ["checksums, Sigstore,", "signed known-bad list"]),
     ("2  Scan", ["Trivy, Grype,", "govulncheck, OSV"]),
     ("3  Merge", ["one finding per", "CVE and package"]),
-    ("4  Enrich", ["fix dates, KEV, EPSS,", "exploits, project health"]),
-    ("5  Judge", ["release lag, likelihood,", "your decisions"]),
+    ("4  Enrich", ["fix dates, KEV, EPSS,", "exploits, health,", "your decisions"]),
+    ("5  Judge", ["release lag, likelihood,", "reading order"]),
     ("6  Gate", ["--fail-on rules set", "the exit code"]),
 ]
 SERVICES = [
@@ -58,7 +58,7 @@ PALETTES = {
 FONT = "Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
 PAD, TITLE_H, GAP = 24, 56, 14
 COL_W, BLOCK_W, BLOCK_H = 420, 372, 74
-STEP_W, STEP_H, STEP_GAP = 224, 104, 56
+STEP_W, STEP_H, STEP_GAP = 224, 112, 56
 MARGIN = 20
 SVC_H = 112
 CORE_X = COL_W + 72
@@ -129,8 +129,8 @@ def svg(p: dict) -> str:
         y = SVC_Y + TITLE_H + (0 if i < 3 else SVC_H + GAP)
         block(x, y, STEP_W, SVC_H, p["svc"], t, lines)
     cx = CORE_X + CORE_W / 2
-    arrow([(cx, CORE_H), (cx, SVC_Y - 2)], ["package names and versions, never files;", "none with --offline"],
-          cx + 16, CORE_H + 46)
+    arrow([(cx, CORE_H), (cx, SVC_Y - 2)],
+          ["package names and versions, never files;", "--offline stops these lookups"], cx + 16, CORE_H + 46)
 
     panel(OUT_X, 0, COL_W, SIDE_H, "What it produces")
     for i, (t, s) in enumerate(OUTPUTS):

@@ -95,10 +95,10 @@ every report; see [What it does not do](#what-it-does-not-do) below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-dark.png">
-  <img alt="oss-intake architecture: it reads container images, source repos, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS for package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
+  <img alt="oss-intake architecture: it reads container images, project releases, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS with package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
 </picture>
 
-The code behind each step is described in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
+How the code is put together is in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
 
 ## Install
 
