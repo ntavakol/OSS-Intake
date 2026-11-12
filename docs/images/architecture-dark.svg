@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1856" height="816" viewBox="0 0 1856 816" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9198a1"/></marker></defs>
+<rect width="1856" height="816" fill="#0d1117"/>
+<g transform="translate(20,20)">
+<rect x="0" y="0" width="420" height="594" rx="14" fill="#161b22" stroke="#30363d"/>
+<text x="24" y="36" font-size="21" font-weight="700" fill="#e6edf3" text-anchor="start">What it reads</text>
+<rect x="24" y="56" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="84" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Container images</text>
+<text x="38" y="108" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Docker, containerd, Podman, registries</text>
+<rect x="24" y="144" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="172" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Source repos</text>
+<text x="38" y="196" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">GitHub, GitLab, Codeberg (--repo)</text>
+<rect x="24" y="232" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="260" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Folders and artifacts</text>
+<text x="38" y="284" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">lockfiles, JARs, wheels, npm packages</text>
+<rect x="24" y="320" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="348" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">SBOMs and inventories</text>
+<text x="38" y="372" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CycloneDX, SPDX, CSV, Excel</text>
+<rect x="24" y="408" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="436" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">IDE extensions</text>
+<text x="38" y="460" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">VS Code via Open VSX, JetBrains plugins</text>
+<rect x="24" y="496" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
+<text x="38" y="524" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Collectors</text>
+<text x="38" y="548" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">osquery fleet, Nexus proxy cache</text>
+<rect x="492" y="0" width="832" height="348" rx="14" fill="#161b22" stroke="#30363d"/>
+<text x="516" y="36" font-size="21" font-weight="700" fill="#e6edf3" text-anchor="start">oss-intake, on your machine or in CI</text>
+<rect x="516" y="56" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="530" y="84" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">1  Verify scanners</text>
+<text x="530" y="108" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">checksums, Sigstore,</text>
+<text x="530" y="129" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">signed known-bad list</text>
+<rect x="796" y="56" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="810" y="84" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">2  Scan</text>
+<text x="810" y="108" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Trivy, Grype,</text>
+<text x="810" y="129" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">govulncheck, OSV</text>
+<rect x="1076" y="56" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="1090" y="84" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">3  Merge</text>
+<text x="1090" y="108" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">one finding per</text>
+<text x="1090" y="129" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CVE and package</text>
+<rect x="516" y="220" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="530" y="248" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">4  Enrich</text>
+<text x="530" y="272" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">fix dates, KEV, EPSS,</text>
+<text x="530" y="293" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">exploits, project health</text>
+<rect x="796" y="220" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="810" y="248" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">5  Judge</text>
+<text x="810" y="272" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">release lag, likelihood,</text>
+<text x="810" y="293" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">your decisions</text>
+<rect x="1076" y="220" width="224" height="104" rx="10" fill="#0f3d1e" stroke="#2ea043" stroke-width="1.5"/>
+<text x="1090" y="248" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">6  Gate</text>
+<text x="1090" y="272" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">--fail-on rules set</text>
+<text x="1090" y="293" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">the exit code</text>
+<path d="M740,108.0 L794,108.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<path d="M1020,108.0 L1074,108.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<path d="M740,272.0 L794,272.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<path d="M1020,272.0 L1074,272.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<path d="M1188.0,160 L1188.0,190 L628.0,190 L628.0,218" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<rect x="492" y="458" width="832" height="318" rx="14" fill="#161b22" stroke="#30363d"/>
+<text x="516" y="494" font-size="21" font-weight="700" fill="#e6edf3" text-anchor="start">Public services it asks, over HTTPS</text>
+<rect x="516" y="514" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="530" y="542" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Vulnerabilities</text>
+<text x="530" y="566" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">OSV, deps.dev,</text>
+<text x="530" y="587" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CISA KEV, FIRST EPSS</text>
+<rect x="796" y="514" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="810" y="542" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Exploit indexes</text>
+<text x="810" y="566" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">PoC-in-GitHub, Nuclei,</text>
+<text x="810" y="587" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Exploit-DB, Metasploit</text>
+<rect x="1076" y="514" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="1090" y="542" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Project health</text>
+<text x="1090" y="566" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">GitHub, GitLab,</text>
+<text x="1090" y="587" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Codeberg, OpenSSF</text>
+<text x="1090" y="608" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Scorecard</text>
+<rect x="516" y="640" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="530" y="668" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Fix dates</text>
+<text x="530" y="692" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Debian, Ubuntu, Red Hat,</text>
+<text x="530" y="713" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Amazon Linux, Alpine,</text>
+<text x="530" y="734" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CRAN, Go</text>
+<rect x="796" y="640" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="810" y="668" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Registries</text>
+<text x="810" y="692" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">PyPI, npm, Maven</text>
+<text x="810" y="713" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Central, Packagist</text>
+<rect x="1076" y="640" width="224" height="112" rx="10" fill="#3b2e05" stroke="#9e6a03" stroke-width="1.5"/>
+<text x="1090" y="668" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Extension stores</text>
+<text x="1090" y="692" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Open VSX, JetBrains</text>
+<text x="1090" y="713" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">Marketplace, VS Code</text>
+<text x="1090" y="734" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">removal list</text>
+<path d="M908.0,348 L908.0,456" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<text x="924.0" y="394" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">package names and versions, never files;</text>
+<text x="924.0" y="415" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">none with --offline</text>
+<rect x="1396" y="0" width="420" height="594" rx="14" fill="#161b22" stroke="#30363d"/>
+<text x="1420" y="36" font-size="21" font-weight="700" fill="#e6edf3" text-anchor="start">What it produces</text>
+<rect x="1420" y="56" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="84" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Reports</text>
+<text x="1434" y="108" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">HTML, PDF, Markdown, CSV, JSON</text>
+<rect x="1420" y="144" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="172" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">SARIF</text>
+<text x="1434" y="196" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">GitHub code scanning and other CI</text>
+<rect x="1420" y="232" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="260" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Exit codes</text>
+<text x="1434" y="284" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">0 clear, 3 gate failed, 1 or 2 error</text>
+<rect x="1420" y="320" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="348" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Executive summary</text>
+<text x="1434" y="372" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">act now, malicious, likelihood</text>
+<rect x="1420" y="408" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="436" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">SBOM</text>
+<text x="1434" y="460" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CycloneDX of what was scanned</text>
+<rect x="1420" y="496" width="372" height="74" rx="10" fill="#2e1a52" stroke="#8957e5" stroke-width="1.5"/>
+<text x="1434" y="524" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Scheduled re-scans</text>
+<text x="1434" y="548" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">GitHub Actions example workflow</text>
+<path d="M420,174.0 L490,174.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+<path d="M1324,174.0 L1394,174.0" fill="none" stroke="#9198a1" stroke-width="2" marker-end="url(#head)"/>
+</g></svg>
