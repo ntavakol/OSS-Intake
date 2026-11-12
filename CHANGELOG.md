@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-12
+
+A feature release: upgrade from 0.20.0. Amazon Linux findings get fix dates, and the JetBrains Marketplace's
+signature on a plugin is checked. One thing to know: a `--jetbrains-plugin` download without the Marketplace's
+signature, or with someone else's, now stops the run (exit 2), even without the `signatures` extra, because the
+Marketplace signs every file it serves.
+
 ### Added
 
 - Fix dates for Amazon Linux 2023 and Amazon Linux 2, from the ALAS advisories in the repository metadata dnf
@@ -19,8 +26,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (bundled). The Marketplace signs every file it serves, old versions too, so a `--jetbrains-plugin` download that
   does not match, has no signature, or is signed by someone else stops the run (exit 2); a verified one is no longer
   "HTTPS only". A plugin `.zip` or `.jar` given with `--path` that does not match leads the report; an unsigned one,
-  or one signed by someone other than the Marketplace, is a warning. In a plugins folder, one-jar plugins are checked; plugins the IDE unpacked have lost their
-  signature, which the report says.
+  or one signed by someone other than the Marketplace, is a warning. In a plugins folder, one-jar plugins are
+  checked; plugins the IDE unpacked have lost their signature, which the report says.
+- The README shows how oss-intake works: what it reads, its steps, the services it asks and what it produces.
 
 ## [0.20.0] - 2026-11-10
 
