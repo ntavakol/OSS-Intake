@@ -47,7 +47,7 @@ dev = ["pytest>=8", "ruff>=0.6", "coverage>=7", "mypy>=2.4", "openpyxl>=3.1", "c
 xlsx = ["openpyxl>=3.1"]
 # The PDF report; WeasyPrint also needs Pango from the system (not on PyPI), so it is not in dev.
 pdf = ["weasyprint>=62"]
-# Open VSX's Ed25519 signature on a .vsix.
+# Open VSX's Ed25519 signature on a .vsix, and the JetBrains Marketplace's signature on a plugin.
 signatures = ["cryptography>=42"]
 
 [project.scripts]
@@ -57,7 +57,7 @@ oss-intake = "oss_intake.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-oss_intake = ["data/*.json"]
+oss_intake = ["data/*.json", "data/*.pem"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

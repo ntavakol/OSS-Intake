@@ -298,3 +298,132 @@ def test_a_single_plugin_with_repo_takes_its_version_as_the_scanned_release(tmp_
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     # The fixture repository has no 4.5.7 release: that it looked for one shows the version was taken.
     assert any("No GitHub release matches '4.5.7'" in w for w in a["health"]["warnings"])
+
+
+# ------------------------------------------------------------------------------------------- signatures (12 Nov)
+
+@pytest.fixture
+def signer(monkeypatch):
+    """A test PKI whose root stands in for JetBrains' certificate, and the signer from tests/zipsigner.py."""
+    pytest.importorskip("cryptography")
+    from . import zipsigner
+
+    pki = zipsigner.make_pki()
+    if hasattr(jetbrains, "zipsign"):
+        monkeypatch.setattr(jetbrains.zipsign, "jetbrains_ca", lambda: pki["root"])
+
+    def sign(data: bytes, by: str = "marketplace") -> bytes:
+        if by == "author":
+            return zipsigner.sign(data, pki["author"], pki["author_key"])
+        return zipsigner.sign(data, pki["chain"], pki["leaf_key"])
+    return sign
+
+
+def plugin_zip_bytes(**kw) -> bytes:
+    buf = io.BytesIO()
+    make_zip(buf, **kw)
+    return buf.getvalue()
+
+
+def changed(data: bytes) -> bytes:
+    """data with its first entry's modification time changed: still the same plugin to every reader, but not the
+    file that was signed."""
+    out = bytearray(data)
+    out[10] ^= 1
+    return bytes(out)
+
+
+def download_run(tmp_path, fixtures, body):
+    http = FakeHttp()
+    marketplace(http)
+    http.files[f"{API}/plugin/download?pluginId=mobi.hsz.idea.gitignore&version=4.5.7"] = body
+    out = tmp_path / "reports"
+    code = cli.main(["--jetbrains-plugin", "mobi.hsz.idea.gitignore@4.5.7", "--out", str(out), "--from-trivy-json",
+                     str(fixtures / "trivy.json"), "--from-grype-json", str(fixtures / "grype.json"),
+                     "--as-of", AS_OF], http=http)
+    return code, out
+
+
+def test_a_signed_download_is_verified(tmp_path, fixtures, signer):
+    """Backlog (agreed 9 Nov, done 12 Nov): the Marketplace's signature on a downloaded plugin is checked; a verified
+    one is no longer "HTTPS only"."""
+    code, out = download_run(tmp_path, fixtures, signer(plugin_zip_bytes()))
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    dl = a["jetbrains"]["download"]
+    assert dl["signature"]["status"] == "verified" and "HTTPS only" not in dl["integrity"]
+    assert a["jetbrains"]["plugins"][0]["signature"]["status"] == "verified"
+    assert not any("over HTTPS" in w for w in a["warnings"])
+    assert "verified (JetBrains Marketplace)" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_a_download_that_does_not_match_its_signature_is_refused(tmp_path, fixtures, signer, capsys):
+    """Fail closed: a download changed after the Marketplace signed it is not assessed at all."""
+    code, out = download_run(tmp_path, fixtures, changed(signer(plugin_zip_bytes())))
+    assert code == cli.EXIT_USAGE
+    assert "does not match its JetBrains Marketplace signature" in capsys.readouterr().err
+    assert not (out / "assessment.json").exists()
+
+
+def test_a_download_signed_only_by_its_author_stays_https_only(tmp_path, fixtures, signer):
+    code, out = download_run(tmp_path, fixtures, signer(plugin_zip_bytes(), by="author"))
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["jetbrains"]["download"]["signature"]["status"] == "not_jetbrains"
+    assert any("over HTTPS" in w and "not by the JetBrains Marketplace" in w for w in a["warnings"])
+
+
+def test_a_plugin_file_that_does_not_match_its_signature_leads_the_report(tmp_path, fixtures, signer):
+    f = tmp_path / "ignore-4.5.7.zip"
+    f.write_bytes(changed(signer(plugin_zip_bytes())))
+    http = FakeHttp()
+    marketplace(http)
+    code, out = scan(tmp_path, fixtures, f, http)
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["jetbrains"]["plugins"][0]["signature"]["status"] == "failed"
+    assert a["warnings"][0].startswith("JETBRAINS SIGNATURE DOES NOT MATCH: mobi.hsz.idea.gitignore 4.5.7")
+
+
+def test_a_signed_plugin_file_is_verified_offline(tmp_path, fixtures, signer):
+    """The check needs no network: the signature and JetBrains' certificate are in hand."""
+    f = tmp_path / "ignore-4.5.7.zip"
+    f.write_bytes(signer(plugin_zip_bytes()))
+    code, out = scan(tmp_path, fixtures, f, FakeHttp(), "--offline")
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["jetbrains"]["plugins"][0]["signature"]["status"] == "verified"
+
+
+def test_an_unsigned_plugin_file_is_warned_about(tmp_path, fixtures, signer):
+    code, out = scan(tmp_path, fixtures, make_zip(tmp_path / "ignore-4.5.7.zip"), FakeHttp(), "--offline")
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert a["jetbrains"]["plugins"][0]["signature"]["status"] == "unsigned"
+    assert any("carries no JetBrains Marketplace signature" in w for w in a["warnings"])
+
+
+def test_a_plugins_folder_checks_single_jars_and_marks_unpacked_ones(tmp_path, fixtures, signer):
+    """An installed one-jar plugin keeps the file the Marketplace served; an unpacked one has lost its signature,
+    which is said once in the report, not warned about per plugin."""
+    plugins = tmp_path / "plugins"
+    make_folder(plugins)
+    (plugins / "small.jar").write_bytes(signer(jar_bytes(plugin_xml("com.example.small", "Small", "1.0"))))
+    code, out = scan(tmp_path, fixtures, plugins, FakeHttp(), "--offline")
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    by = {p["id"]: p["signature"]["status"] for p in a["jetbrains"]["plugins"]}
+    assert by == {"mobi.hsz.idea.gitignore": "unpacked", "com.example.small": "verified"}
+    assert not any("signature" in w.lower() for w in a["warnings"])
+    assert "lost their signature" in (out / "summary.md").read_text(encoding="utf-8")
+
+
+def test_without_the_signatures_extra_the_check_is_named_once(tmp_path, fixtures, signer, monkeypatch):
+    monkeypatch.setattr("oss_intake.zipsign._crypto", lambda: None)
+    plugins = tmp_path / "plugins"
+    plugins.mkdir()
+    for n in ("a", "b"):
+        (plugins / f"{n}.jar").write_bytes(signer(jar_bytes(plugin_xml(f"com.example.{n}", n, "1.0"))))
+    code, out = scan(tmp_path, fixtures, plugins, FakeHttp(), "--offline")
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    hits = [w for w in a["warnings"] if "signatures extra" in w]
+    assert len(hits) == 1 and "2 plugin file(s)" in hits[0] and "oss-intake[signatures]" in hits[0]

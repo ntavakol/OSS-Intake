@@ -7,9 +7,11 @@ whether the vendor is verified, whether the Marketplace has blocked it, and when
 Nothing in a plugin is run.
 
 --jetbrains-plugin ID@VERSION downloads one exact version from the Marketplace (free and paid plugins alike: a
-paid plugin's licence is checked by the IDE, not at download). The Marketplace publishes no checksum, and its
-signature (a signing block in the zip, chained to JetBrains' certificate) is not checked yet, so the download is
-protected by HTTPS only; the report says so. The Marketplace answers were captured from the live service on
+paid plugin's licence is checked by the IDE, not at download). The Marketplace publishes no checksum; it signs each
+plugin file instead (a signing block in the zip, chained to JetBrains' certificate), and with the signatures extra
+that signature is checked as the IDE checks it (zipsign.py): a download that does not match it is refused, and a
+plugin file given with --path gets the same check. An installed plugin the IDE unpacked has lost its signature;
+one installed as a single .jar keeps it. The Marketplace answers were captured from the live service on
 9 Nov 2026 (plugins/{id}, plugins/intellij/{xmlId}, plugins/{id}/updates, plugin/download).
 """
 
@@ -25,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
+from . import zipsign
 from .http import Http, HttpError, prefetch
 from .inputs import InputError
 
@@ -35,7 +38,8 @@ MAX_PLUGIN_XML = 2 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024
 MAX_LOOKUPS = 300
 UPDATES_PAGE = 100  # versions asked for at once; a version older than these is "not among the latest"
-NOT_SIGNED = "the JetBrains Marketplace publishes no checksum, and its signature is not checked yet: HTTPS only"
+UNPACKED = {"status": "unpacked", "detail": "installed: the IDE unpacked the plugin file, and its signature does not "
+                                         "survive that", "signers": []}
 # xmlId@version as the Marketplace writes them; the version exact.
 _ID = re.compile(r"^(?P<id>[A-Za-z0-9][\w.\-]{0,199})@(?P<version>[0-9A-Za-z][\w.+\-]{0,99})$")
 
@@ -188,6 +192,30 @@ def unpack(path: Path, dest: Path) -> Path:
 
 # ------------------------------------------------------------------------------------------- Marketplace
 
+def signature(path: Path) -> dict:
+    """The JetBrains Marketplace signature on a plugin file (zipsign.check), with how to get the check when the
+    signatures extra is missing."""
+    from .openvsx import INSTALL_SIGNATURES
+
+    got = zipsign.check(path)
+    if got["status"] == "not_checked" and "signatures extra" in got["detail"]:
+        got["detail"] += f": {INSTALL_SIGNATURES}"
+    return got
+
+
+def integrity(sig: dict) -> str:
+    """What protected a download, in words, from its signature check."""
+    if sig["status"] == "verified":
+        return "its JetBrains Marketplace signature verifies"
+    if sig["status"] == "not_jetbrains":
+        return ("it is signed, but not by the JetBrains Marketplace, so its signature does not show it came from "
+                "there: HTTPS only")
+    if sig["status"] == "unsigned":
+        return ("it carries no JetBrains Marketplace signature (and the Marketplace publishes no checksum): "
+                "HTTPS only")
+    return f"its JetBrains Marketplace signature was not checked ({sig['detail']}): HTTPS only"
+
+
 def _ms_date(value: object) -> str:
     try:
         return datetime.fromtimestamp(int(str(value)) / 1000, tz=timezone.utc).date().isoformat()
@@ -280,16 +308,30 @@ def download(http: Http, ident: str, dest: Path) -> tuple[Path, dict]:
     if got["id"] != plugin_id or (got["version"] and got["version"] != version):
         raise InputError(f"--jetbrains-plugin {ident}: the download is {got['id']} {got['version'] or ''}, not the "
                          "plugin and version asked for; nothing was assessed")
-    return path, {"source": url, "sha256": hashlib.sha256(body).hexdigest(), "integrity": NOT_SIGNED}
+    sig = signature(path)
+    if sig["status"] == "failed":
+        raise InputError(f"--jetbrains-plugin {ident}: the download does not match its JetBrains Marketplace "
+                         f"signature ({sig['detail']}); nothing was assessed")
+    return path, {"source": url, "sha256": hashlib.sha256(body).hexdigest(), "integrity": integrity(sig),
+                  "signature": sig}
 
 
 # ------------------------------------------------------------------------------------------- assessing
 
-def assess(target: Path, http: Http | None, staged: bool = False) -> dict:
-    """Each plugin under target: its identity and, online, its Marketplace metadata. "single" (everything scanned
-    is that plugin's) when target is one plugin."""
+def assess(target: Path, http: Http | None, staged: bool = False, source: Path | None = None,
+           source_signature: dict | None = None) -> dict:
+    """Each plugin under target: its identity, its Marketplace signature where the file still has one, and, online,
+    its Marketplace metadata. "single" (everything scanned is that plugin's) when target is one plugin. source is
+    the plugin file target was staged from (its signature is source_signature when already checked)."""
     found = find_plugins(target)
     plugins = [{**ident, "folder": f.name} for f, ident in found]
+    for (folder, _), p in zip(found, plugins, strict=True):
+        if staged and source is not None and len(found) == 1:
+            p["signature"] = source_signature or signature(source)
+        elif folder.is_file():  # a single-jar plugin, installed as the file the Marketplace served
+            p["signature"] = signature(folder)
+        else:
+            p["signature"] = dict(UNPACKED)
     market = {"status": "not_checked", "detail": "--offline"}
     if http is not None and plugins:
         market = {"status": "checked", **lookup(http, plugins)}
@@ -329,11 +371,36 @@ def attribute(info: dict, findings: list) -> None:
 def warnings(info: dict) -> tuple[list[str], list[str]]:
     """(alerts for the top of the report, ordinary warnings)."""
     alerts, other = [], []
+    dl = info.get("download")
+    no_extra = 0
     for p in info["plugins"]:
         m = p.get("marketplace") or {}
         if m.get("blocked"):
             alerts.append(f"JETBRAINS MARKETPLACE HAS BLOCKED THIS PLUGIN: {p['id']} {p.get('version', '')}. Find "
                           "out why before using it, and remove it if the reason is a security one")
+        sig = p.get("signature") or {}
+        name = f"{p['id']} {p.get('version', '')}".strip()
+        if sig.get("status") == "failed":
+            alerts.append(f"JETBRAINS SIGNATURE DOES NOT MATCH: {name} ({p['folder']}): {sig['detail']}. Do not "
+                          "install it; find out where this file came from")
+        elif dl:
+            continue  # a download's signature is reported with the download, below
+        elif sig.get("status") == "not_jetbrains":
+            other.append(f"{name} is signed, but not by the JetBrains Marketplace (by "
+                         f"{'; '.join(sig.get('signers') or []) or 'no one'}), so nothing shows it came from there")
+        elif sig.get("status") == "unsigned":
+            other.append(f"{name} carries no JetBrains Marketplace signature: it did not come from the Marketplace "
+                         "as is, or its signature was removed")
+        elif sig.get("status") == "not_checked":
+            if "signatures extra" in sig.get("detail", ""):
+                no_extra += 1
+            else:
+                other.append(f"The JetBrains signature of {name} was not checked: {sig.get('detail', '')}")
+    if no_extra:
+        from .openvsx import INSTALL_SIGNATURES
+
+        other.append(f"The JetBrains Marketplace signature of {no_extra} plugin file(s) was not checked: the check "
+                     f"needs the signatures extra: {INSTALL_SIGNATURES}")
     stats = info.get("marketplace") or {}
     if stats.get("errors"):
         other.append(f"JetBrains Marketplace lookups failed for {stats['errors']} plugin(s): whether they are "
@@ -341,7 +408,6 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
     if stats.get("skipped_limit"):
         other.append(f"{stats['skipped_limit']} plugin(s) over the lookup limit ({MAX_LOOKUPS}) were not checked on "
                      "the JetBrains Marketplace, so a blocked one among them would not be seen")
-    dl = info.get("download")
-    if dl:
-        other.append(f"The plugin was downloaded from the JetBrains Marketplace over HTTPS; {NOT_SIGNED}")
+    if dl and (dl.get("signature") or {}).get("status") != "verified":
+        other.append(f"The plugin was downloaded from the JetBrains Marketplace over HTTPS; {dl['integrity']}")
     return alerts, other

@@ -147,8 +147,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "check it against the SHA-256 Open VSX publishes, and assess it like --path on its .vsix")
     s.add_argument("--jetbrains-plugin", metavar="PLUGIN_ID@VERSION",
                    help="download one exact version of a JetBrains IDE plugin from the JetBrains Marketplace (e.g. "
-                        "mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. The Marketplace "
-                        "publishes no checksum and its signature is not checked yet: HTTPS only")
+                        "mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. With the signatures "
+                        "extra, the Marketplace's signature on the file is checked, and a mismatch stops the run; "
+                        "without it, HTTPS only")
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")
