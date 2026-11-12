@@ -12,6 +12,7 @@ import gzip
 import hashlib
 import json
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import pytest
 
@@ -180,7 +181,7 @@ def test_each_release_is_loaded_once_and_others_are_not_asked():
     stats = amazon.enrich(http, fs)
     assert stats["found"] == 2
     assert sum(u.endswith("updateinfo.xml.gz") for u in http.calls) == 1
-    assert not any("/2/core/" in u for u in http.calls)
+    assert not any(urlparse(u).path.startswith("/2/core/") for u in http.calls)
 
 
 # ------------------------------------------------------------------------------------------- fail closed
@@ -290,7 +291,7 @@ def test_a_mirror_list_naming_anything_but_the_cdn_is_refused(mirror):
     f = finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")
     stats = amazon.enrich(http, [f])
     assert f.fix_published is None and "mirror.list does not name" in stats["error"]
-    assert not any("evil" in u or "8443" in u for u in http.calls)
+    assert {urlparse(u).netloc for u in http.calls} == {"cdn.amazonlinux.com"}  # only mirror.list was asked
 
 
 @pytest.mark.parametrize("xml", [
@@ -358,7 +359,7 @@ def test_the_site_failing_stops_asking(monkeypatch):
           finding("kernel-libbpf-static", "6.1.23-36.46.amzn2023", "CVE-2023-1583")]
     stats = amazon.enrich(http, fs)
     assert stats["found"] == 4 and stats["pages_unread"] == 5
-    assert sum("alas.aws.amazon.com" in u for u in http.calls) == amazon.MAX_PAGE_FAILURES
+    assert sum(urlparse(u).hostname == "alas.aws.amazon.com" for u in http.calls) == amazon.MAX_PAGE_FAILURES
     assert all("issued date" in f.fix_date_source for f in fs)
 
 
