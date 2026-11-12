@@ -3,6 +3,15 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
+## Next release (agreed 12 Nov)
+- Check the GPG signature Amazon Linux 2023 publishes for its repository metadata (`repodata/repomd.xml.asc`)
+  before trusting the SHA-256 it gives for updateinfo.xml.gz. Needs `gpg` on PATH and Amazon's public key
+  bundled, pinned by fingerprint, as cosign is for the scanners; without gpg, say the metadata was protected by
+  HTTPS only. AL2 publishes no signature, so it stays HTTPS only.
+- The command builder's "Fix-date records" service names the sources it covers but not Amazon Linux (its hosts
+  already include cdn.amazonlinux.com and alas.aws.amazon.com). Add it to the name; the wizard's expected
+  summaries change with it (Ned agreed).
+
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
 a small collector or a documented recipe that produces one of them, so the core stays vendor-neutral, needs no
