@@ -9,7 +9,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 - Fix dates for Amazon Linux 2023 and Amazon Linux 2, from the ALAS advisories in the repository metadata dnf
   reads (cdn.amazonlinux.com, checked against the SHA-256 in repomd.xml): a finding is dated by the advisory that
-  lists its CVE for its package at exactly the fixed version. Amazon Linux findings were "fix date unknown" before,
+  lists its CVE for its package at exactly the fixed version, on the release date shown on its
+  alas.aws.amazon.com page. Amazon Linux findings were "fix date unknown" before,
   so their release lag and OS lag are now measured. AL2 Extras packages and the original Amazon Linux AMI are not
   covered yet.
 

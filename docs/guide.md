@@ -545,9 +545,11 @@ For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy 
 CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the
 CVE, or the fixed version for a new upstream release (set `GITHUB_TOKEN`, one request per package).
 For Amazon Linux 2023 and Amazon Linux 2 they come from the ALAS advisory that lists the CVE for that package at
-exactly the fixed version, dated by its release date, from the advisories in the repository metadata dnf reads
-(cdn.amazonlinux.com: mirror.list, then repomd.xml, then updateinfo.xml.gz, checked against the SHA-256 in
-repomd.xml; always the latest repository). AL2 Extras packages (kernel-5.10, docker and others) and the original
+exactly the fixed version, found in the repository metadata dnf reads (cdn.amazonlinux.com: mirror.list, then
+repomd.xml, then updateinfo.xml.gz, checked against the SHA-256 in repomd.xml; always the latest repository), and
+dated by the "Advisory Released Date" on its alas.aws.amazon.com page (one request per advisory, up to 300). The
+metadata's own issued date is usually a few days earlier than the release; it is used only when a page cannot be
+read, and the date's source says so. AL2 Extras packages (kernel-5.10, docker and others) and the original
 Amazon Linux AMI are not covered yet.
 For the Go standard library they come from the Go release history (go.dev/doc/devel/release).
 Packages with no dated source yet, such as runtimes detected only from a binary, are counted as

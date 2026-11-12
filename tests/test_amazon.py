@@ -38,9 +38,27 @@ def repomd(gz: bytes, href: str = "repodata/updateinfo.xml.gz", digest: str | No
 </repomd>""".encode()
 
 
+# Each fixture advisory's "Advisory Released Date", as its live page showed it on 12 Nov 2026 (the markup too:
+# <b>Advisory Released Date:</b> 2022-06-07).
+RELEASED = {"ALAS2023-2023-001": "2023-03-22", "ALAS2023-2023-051": "2023-03-22", "ALAS2023-2023-054": "2023-03-22",
+            "ALAS2023-2023-160": "2023-04-19", "ALAS2023-2025-1054": "2025-07-10", "ALAS2-2022-1803": "2022-06-07"}
+
+
+def page(adv: str, date: str | None) -> bytes:
+    body = f"<p><b>Advisory Released Date:</b> {date}</p>" if date else "<p>no date here</p>"
+    return f"<html><body><h1>{adv}</h1>{body}<p><b>Advisory Updated Date:</b> 2026-01-01</p></body></html>".encode()
+
+
+def serve_pages(http: FakeHttp, released: dict | None = None) -> None:
+    for adv, date in (RELEASED if released is None else released).items():
+        http.files[amazon.page_url(adv)] = page(adv, date)
+
+
 def serve(http: FakeHttp, release: str = "2023", xml: bytes | None = None, *, base: str | None = None,
           gz: bytes | None = None, digest: str | None = None, mirror: str | None = None) -> None:
-    """Answers for one release, as the CDN gives them: mirror.list (with a trailing slash), repomd.xml, updateinfo."""
+    """Answers for one release, as the CDN gives them: mirror.list (with a trailing slash), repomd.xml, updateinfo;
+    and the advisory pages."""
+    serve_pages(http)
     base = base or (AL2023_BASE if release == "2023" else AL2_BASE)
     name = "al2023" if release == "2023" else "al2"
     xml = xml if xml is not None else (FIX / "amazon" / f"{name}-updateinfo.xml").read_bytes()
@@ -71,6 +89,8 @@ def dt(*a):
     ("amazonlinux 2023", "pkg:rpm/amzn/curl@8.5.0-1.amzn2023?distro=amzn-2023", "2023"),  # Grype
     ("", "pkg:rpm/amzn/curl@7.88.1-1.amzn2?distro=amzn-2", "2"),
     ("amazon 2018.03", "pkg:rpm/amazon/curl@7.61.1-12.95.amzn1", None),  # the original AMI: not covered
+    ("amzn 2023", "", "2023"),  # review (12 Nov): "amzn" alone in the release, no purl
+    ("amazon linux release 2 (karoo)", "", "2"),  # and /etc/system-release's wording
     ("ubuntu 24.04", "pkg:deb/ubuntu/curl@8.5.0", None),
 ])
 def test_release_of(os_release, purl, want):
@@ -86,10 +106,11 @@ def test_a_fix_is_dated_by_its_advisory():
     serve(http)
     f = finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")
     stats = amazon.enrich(http, [f])
-    assert f.fix_published == dt(2023, 2, 17, 20, 41)
+    assert f.fix_published == dt(2023, 3, 22)  # the page's released date, not the metadata's issued 2023-02-17
     assert f.fix_date_source == "advisory ALAS2023-2023-001 (Amazon Linux)"
     assert f.fix_version_used == "8.2204.0-3.amzn2023.0.2"
-    assert stats == {"candidates": 1, "found": 1, "releases": ["Amazon Linux 2023"], "errors": 0}
+    assert stats == {"candidates": 1, "found": 1, "releases": ["Amazon Linux 2023"], "errors": 0, "pages": 1,
+                     "pages_unread": 0, "skipped_limit": 0}
 
 
 def test_amazon_linux_2():
@@ -98,7 +119,8 @@ def test_amazon_linux_2():
     f = finding("rsyslog", "8.24.0-57.amzn2.2.0.1", "CVE-2022-24903", release="amazon 2 (karoo)")
     amazon.enrich(http, [f])
     assert f.fix_date_source == "advisory ALAS2-2022-1803 (Amazon Linux)"
-    assert f.fix_published == dt(2022, 5, 31, 23, 50)
+    assert f.fix_published == dt(2022, 6, 7)
+    assert any(u == "https://alas.aws.amazon.com/AL2/ALAS2-2022-1803.html" for u in http.calls)
 
 
 @pytest.mark.parametrize("fixed, adv", [("3.0.8-1.amzn2023.0.1", "ALAS2023-2023-054"),
@@ -118,7 +140,7 @@ def test_a_cve_listed_again_later_keeps_the_first_date():
     serve(http)
     f = finding("kernel-libbpf-static", "6.1.23-36.46.amzn2023", "CVE-2023-1583")
     amazon.enrich(http, [f])
-    assert f.fix_published.date().isoformat() == "2023-04-13"
+    assert f.fix_published == dt(2023, 4, 19)
     assert f.fix_date_source == "advisory ALAS2023-2023-160 (Amazon Linux)"
 
 
@@ -246,5 +268,130 @@ def test_a_whole_run_dates_an_amazon_linux_finding(tmp_path, fixtures):
     a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
     f = next(x for x in a["findings"] if x["package"] == "rsyslog")
     assert f["fix_date_source"] == "advisory ALAS2023-2023-001 (Amazon Linux)"
-    assert f["fix_published"].startswith("2023-02-17")
+    assert f["fix_published"].startswith("2023-03-22")
     assert a["fix_dates"]["amazon"]["found"] == 1
+
+
+# ------------------------------------------------------------------------------------------- the review (12 Nov)
+
+
+@pytest.mark.parametrize("mirror", [
+    "https://evil.example\\@cdn.amazonlinux.com/al2023/x86_64/",  # urlparse: the CDN; requests: evil.example
+    "https://user:pass@cdn.amazonlinux.com/al2023/x86_64/",
+    "https://cdn.amazonlinux.com:8443/al2023/x86_64/",
+    "https://cdn.amazonlinux.com/al2023/%2e%2e/%2e%2e/x86_64/",
+    "https://cdn.amazonlinux.com/al2023/../../x86_64/",
+    "https://cdn.amazonlinux.com.evil.example/al2023/x86_64/",
+])
+def test_a_mirror_list_naming_anything_but_the_cdn_is_refused(mirror):
+    """Review finding: the host was checked with urlparse, which reads some URLs differently from requests."""
+    http = FakeHttp()
+    serve(http, mirror=mirror + "\n")
+    f = finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")
+    stats = amazon.enrich(http, [f])
+    assert f.fix_published is None and "mirror.list does not name" in stats["error"]
+    assert not any("evil" in u or "8443" in u for u in http.calls)
+
+
+@pytest.mark.parametrize("xml", [
+    b'<?xml version="1.0" encoding="cp932"?><updates/>',  # expat: ValueError, which crashed the run
+    '<?xml version="1.0" encoding="utf-16"?><!DOCTYPE u [<!ENTITY a "x">]><updates/>'.encode("utf-16"),
+    b"<!-- " + b"x" * 5000 + b' --><!DOCTYPE u [<!ENTITY a "x">]><updates/>',  # behind a long comment
+])
+def test_updateinfo_in_another_encoding_or_with_a_late_doctype_is_refused_not_a_crash(xml):
+    """Review finding: an encoding expat does not support raised ValueError out of enrich(), stopping the run; a
+    DOCTYPE after the first 4 KB, or in UTF-16, passed the byte check."""
+    http = FakeHttp()
+    serve(http, xml=xml)
+    stats = amazon.enrich(http, [finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")])
+    assert stats["errors"] == 1
+
+
+def test_a_repomd_in_another_encoding_is_refused_not_a_crash():
+    http = FakeHttp()
+    serve(http)
+    http.files[f"{AL2023_BASE}/repodata/repomd.xml"] = b'<?xml version="1.0" encoding="cp932"?><repomd/>'
+    stats = amazon.enrich(http, [finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")])
+    assert stats["errors"] == 1 and "repomd.xml" in stats["error"]
+
+
+def test_both_releases_failing_name_both():
+    http = FakeHttp(fail_hosts=("cdn.amazonlinux.com",))
+    stats = amazon.enrich(http, [finding("rsyslog", "1-1.amzn2023", "CVE-2022-24903"),
+                                 finding("rsyslog", "1-1.amzn2", "CVE-2022-24903", release="amazon 2 (karoo)")])
+    assert stats["errors"] == 2
+    assert "Amazon Linux 2023: " in stats["error"] and "; Amazon Linux 2: " in stats["error"]
+
+
+# ------------------------------------------------------------------------------------------- released dates
+
+
+def test_a_page_that_cannot_be_read_falls_back_to_the_issued_date_and_says_so():
+    http = FakeHttp()
+    serve(http)
+    del http.files[amazon.page_url("ALAS2023-2023-001")]
+    http.files[amazon.page_url("ALAS2023-2023-001")] = page("ALAS2023-2023-001", None)  # no date on the page
+    f = finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903")
+    stats = amazon.enrich(http, [f])
+    assert f.fix_published == dt(2023, 2, 17, 20, 41)
+    assert f.fix_date_source == "advisory ALAS2023-2023-001 (Amazon Linux, issued date: its page could not be read)"
+    assert stats["pages_unread"] == 1
+
+
+def test_the_earliest_release_among_the_advisories_is_used_by_page_date():
+    """The kernel case: listed in 2023 and again in 2025; the 2023 advisory's page date wins."""
+    http = FakeHttp()
+    serve(http)
+    f = finding("kernel-libbpf-static", "6.1.23-36.46.amzn2023", "CVE-2023-1583")
+    stats = amazon.enrich(http, [f])
+    assert f.fix_date_source == "advisory ALAS2023-2023-160 (Amazon Linux)" and stats["pages"] == 2
+
+
+def test_the_site_failing_stops_asking(monkeypatch):
+    """After MAX_PAGE_FAILURES connection failures the rest are dated by their issued date, without waiting."""
+    monkeypatch.setattr(amazon, "PAGE_WORKERS", 1)
+    http = FakeHttp(fail_hosts=("alas.aws.amazon.com",))
+    serve(http)
+    fs = [finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903"),
+          finding("openssl", "3.0.8-1.amzn2023.0.1", "CVE-2022-2097"),
+          finding("openssl", "3.0.5-1.amzn2023.0.4", "CVE-2022-2097"),
+          finding("kernel-libbpf-static", "6.1.23-36.46.amzn2023", "CVE-2023-1583")]
+    stats = amazon.enrich(http, fs)
+    assert stats["found"] == 4 and stats["pages_unread"] == 5
+    assert sum("alas.aws.amazon.com" in u for u in http.calls) == amazon.MAX_PAGE_FAILURES
+    assert all("issued date" in f.fix_date_source for f in fs)
+
+
+def test_pages_over_the_limit_are_not_read(monkeypatch):
+    monkeypatch.setattr(amazon, "MAX_PAGES", 1)
+    http = FakeHttp()
+    serve(http)
+    fs = [finding("rsyslog", "8.2204.0-3.amzn2023.0.2", "CVE-2022-24903"),
+          finding("openssl", "3.0.8-1.amzn2023.0.1", "CVE-2022-2097")]
+    stats = amazon.enrich(http, fs)
+    assert stats["pages"] == 1 and stats["skipped_limit"] == 1 and stats["pages_unread"] == 1
+
+
+@pytest.mark.parametrize("adv, url", [("ALAS2023-2023-375", "https://alas.aws.amazon.com/AL2023/ALAS2023-2023-375.html"),
+                                      ("ALAS2-2023-1976", "https://alas.aws.amazon.com/AL2/ALAS2-2023-1976.html"),
+                                      ("ALAS2KERNEL-5.10-2023-001", None), ("../x", None)])
+def test_page_url(adv, url):
+    assert amazon.page_url(adv) == url
+
+
+def test_released_reads_the_date_through_markup():
+    assert amazon.released("<b>Advisory Released Date:</b>\n  <span>2023-10-03</span>") == dt(2023, 10, 3)
+    assert amazon.released("Advisory Updated Date: 2023-10-03") is None
+
+
+def test_a_whole_run_warns_when_pages_were_not_read(tmp_path, fixtures):
+    http = FakeHttp()
+    serve(http)
+    http.files[amazon.page_url("ALAS2023-2023-001")] = page("ALAS2023-2023-001", None)
+    out = tmp_path / "out"
+    code = cli.main(["--image", "amazonlinux:2023", "--out", str(out), "--from-trivy-json", str(trivy_report(tmp_path)),
+                     "--from-grype-json", str(fixtures / "grype.json"), "--release-date", "2026-11-01",
+                     "--no-scorecard", "--as-of", "2026-11-12"], http=http)
+    assert code == cli.EXIT_OK
+    a = json.loads((out / "assessment.json").read_text(encoding="utf-8"))
+    assert any("1 Amazon Linux advisory pages" in w and "issued date" in w for w in a["warnings"])
