@@ -22,7 +22,7 @@ from oss_intake import cli, conditions, decisions, inputs, integrity, likelihood
 
 # cli.main turns an unexpected exception into exit 1 for users; the fuzzer must see it as the crash it is.
 os.environ["OSS_INTAKE_DEBUG"] = "1"
-from oss_intake.enrich import debian_releases, debian_tracker, exploits, golang_stdlib
+from oss_intake.enrich import amazon, debian_releases, debian_tracker, exploits, golang_stdlib
 from oss_intake.models import Finding
 from oss_intake.scanners import (
     ReportShapeError,
@@ -214,9 +214,15 @@ def govulncheck_output(data: bytes) -> None:
 
 
 def service_data(data: bytes) -> None:
-    """Text from public services: Debian, Go release notes, the exploit indexes and the Marketplace removal list.
-    Their callers treat ValueError as the source failing."""
+    """Text from public services: Debian, Go release notes, the exploit indexes, the Marketplace removal list and
+    Amazon Linux's repository metadata. Their callers treat ValueError (amazon: its own refusal) as the source
+    failing."""
     text = data.decode("utf-8", "replace")
+    for amazon_part in (lambda: amazon.parse(data), lambda: amazon._updateinfo_location(text)):
+        try:
+            amazon_part()
+        except amazon._Bad:
+            pass
     debian_releases.parse(text)
     debian_tracker.parse(text)
     debian_tracker.parse_versions(text)

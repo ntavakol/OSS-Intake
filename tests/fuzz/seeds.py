@@ -90,7 +90,8 @@ def seeds(name: str) -> list[bytes]:
                 b'{"finding": {"osv": "GO-2099-0001", "trace": [{"module": "m", "package": "p", "function": "f"}]}}\n']
     if name == "service_data":
         return [(FIX / n).read_bytes() for n in ("exploitdb.csv", "debian_DLA_list.txt", "vscode_removed.md",
-                                                  "metasploit.json", "go_release.html")]
+                                                  "metasploit.json", "go_release.html",
+                                                  "amazon/al2023-updateinfo.xml")]
     if name == "plugin_signature":
         return [PLUGIN_ZIP, _signing_block()]
     raise KeyError(name)

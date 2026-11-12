@@ -544,8 +544,13 @@ the Release, Security or Updates pocket.
 For RHEL and UBI packages they come from the Red Hat advisory (RHSA) that Trivy reports, dated from Red Hat's
 CSAF document. For Alpine packages they come from the aports commit history on the image's release branch: a commit naming the
 CVE, or the fixed version for a new upstream release (set `GITHUB_TOKEN`, one request per package).
+For Amazon Linux 2023 and Amazon Linux 2 they come from the ALAS advisory that lists the CVE for that package at
+exactly the fixed version, dated by its release date, from the advisories in the repository metadata dnf reads
+(cdn.amazonlinux.com: mirror.list, then repomd.xml, then updateinfo.xml.gz, checked against the SHA-256 in
+repomd.xml; always the latest repository). AL2 Extras packages (kernel-5.10, docker and others) and the original
+Amazon Linux AMI are not covered yet.
 For the Go standard library they come from the Go release history (go.dev/doc/devel/release).
-Packages with no dated source yet, currently Amazon Linux and runtimes detected only from a binary, are counted as
+Packages with no dated source yet, such as runtimes detected only from a binary, are counted as
 "fix date unknown" rather than guessed. The `fix_date_source` column in findings.csv shows where each date came from.
 
 ## Example output
@@ -701,7 +706,7 @@ repository could add or hide exploit evidence, though never a vulnerability.
 | [deps.dev](https://deps.dev) | Release dates, latest versions | See deps.dev |
 | [OpenSSF Scorecard](https://scorecard.dev) | Project health (`--repo`) | See scorecard.dev |
 | [GitHub](https://github.com) | Project health and releases (`--repo`) | GitHub's API terms |
-| Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat | Checksums, fix dates | Each registry's or distribution's terms |
+| Package registries (npm, PyPI, Maven Central, Packagist), Debian, Ubuntu (Launchpad), Red Hat, Amazon Linux (ALAS) | Checksums, fix dates | Each registry's or distribution's terms |
 | [crandb](https://github.com/r-hub/crandb) (r-hub) | R package fix dates | See the repository |
 | [VS Code Marketplace removal list](https://github.com/microsoft/vsmarketplace) * | Removed extensions | See the repository |
 | [JetBrains Marketplace](https://plugins.jetbrains.com) | JetBrains plugin metadata, `--jetbrains-plugin` downloads | The JetBrains Marketplace Agreement |
@@ -740,7 +745,8 @@ NOTICE credits them.
   (disable with `--no-image-date`). When the image was built after the release it is matched to (official images
   are rebuilt with newer OS packages under the same tag), the OS packages are also measured against the build:
   how many of their fixes were public before the image was rebuilt, beside the lag against the release.
-- Fix dates are unavailable for Amazon Linux and for runtimes found only in binaries. When more than half of the fixes lack
+- Fix dates are unavailable for Amazon Linux 2 Extras packages, the original Amazon Linux AMI and runtimes found only
+  in binaries. When more than half of the fixes lack
   a date, the likelihood suggestion is marked low confidence: read it as "not enough evidence", not "low risk".
 - Health signals come from GitHub, GitLab and Codeberg; Scorecard covers GitHub and GitLab, and the workflow
   audit GitHub Actions only.

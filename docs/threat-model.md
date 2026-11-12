@@ -76,7 +76,7 @@ nothing, or output that is not what it seems).
 **What crosses:** JSON and text from OSV, deps.dev, the GitHub API and raw.githubusercontent.com, GitLab (exploit
 indexes, and a GitLab `--repo`'s releases), Codeberg (a Codeberg `--repo`'s releases), CISA
 KEV, FIRST EPSS, OpenSSF Scorecard, the package registries (PyPI, npm, Maven Central, Packagist), Debian, Ubuntu,
-Red Hat and go.dev. oss-intake trusts these services for facts, so a wrong answer can change the verdict; it does
+Red Hat, Amazon Linux's repository metadata (cdn.amazonlinux.com) and go.dev. oss-intake trusts these services for facts, so a wrong answer can change the verdict; it does
 not trust them to be up, or to answer in the right shape.
 
 **Assets at risk:** the verdict, the GitHub token, and the run's time and memory.
@@ -91,6 +91,7 @@ not trust them to be up, or to answer in the right shape.
 | A service that is down makes the run wait out every timeout | Parallel lookups stop after three connection failures and report the rest as errors (HTTP error statuses do not count). | `http.RequestsHttp.prefetch` |
 | A slow or huge answer stalls or exhausts the run | Every answer is read in chunks: over its source's limit (32 MB for an API, 128 MB for a bulk index read from a repository), or still arriving after 5 minutes (or twice the timeout, if longer), it is a failed request, so that source counts as failed, never as clean. | `http.RequestsHttp._body`, `http.answer_limit`, `http.DEADLINE_SECONDS` |
 | A redirect sends the package list elsewhere, or downgrades to plain http | Redirects are followed by hand. A request with a body (the OSV batch query, which carries the package list) is never redirected: a redirect is a failed request. A GET follows at most 5, and only to https; the GitHub token goes only to api.github.com at each hop. | `http.RequestsHttp._send` |
+| Amazon Linux repository metadata is swapped or malformed, giving wrong fix dates | The repository comes from mirror.list only if it is an https URL on cdn.amazonlinux.com; updateinfo.xml.gz must match the SHA-256 in repomd.xml (as dnf checks it), is at most 64 MB, unpacks to at most 256 MB, and is refused if it declares a DOCTYPE. Any failure leaves Amazon Linux findings undated, with a warning, never dated wrongly. repomd.xml itself is protected by HTTPS only. | `enrich.amazon.load` |
 | A check that needs the network is trusted offline | With `--offline` oss-intake itself fetches nothing (the scanners may still use the network), the cache is off, and gates that need a lookup are refused (exit 2). | `options.refuse_gates_without_their_check` |
 | Text from a service attacks the report's reader | See "Reports" below: every value is escaped. | `report`, `report_html` |
 

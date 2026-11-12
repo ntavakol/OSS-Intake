@@ -41,6 +41,7 @@ from . import (
 from .enrich import (
     advisories,
     alpine,
+    amazon,
     cran,
     debian_releases,
     debian_tracker,
@@ -268,6 +269,11 @@ def _enrich(args, net, findings: list, warnings: list[str]):
             fd_stats["redhat"] = rh
             if rh.get("errors"):
                 warnings.append(f"Red Hat advisory lookups failed for {rh['errors']} advisories; dates may be partial")
+            amz = amazon.enrich(net, ranked)
+            fd_stats["amazon"] = amz
+            if amz.get("errors"):
+                warnings.append(f"Amazon Linux advisories (ALAS) could not be loaded ({amz['error']}); Amazon Linux "
+                                "fixes stay undated")
             ubu = ubuntu.enrich(net, ranked)
             fd_stats["ubuntu"] = ubu
             ulp = ubuntu_launchpad.enrich(net, ranked)

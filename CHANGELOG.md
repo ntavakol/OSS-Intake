@@ -7,6 +7,12 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Fix dates for Amazon Linux 2023 and Amazon Linux 2, from the ALAS advisories in the repository metadata dnf
+  reads (cdn.amazonlinux.com, checked against the SHA-256 in repomd.xml): a finding is dated by the advisory that
+  lists its CVE for its package at exactly the fixed version. Amazon Linux findings were "fix date unknown" before,
+  so their release lag and OS lag are now measured. AL2 Extras packages and the original Amazon Linux AMI are not
+  covered yet.
+
 - The JetBrains Marketplace's signature on a plugin file is checked, with the optional `signatures` extra, as the IDE
   checks it: the file matches its signed digest, and a signer's certificate chain ends at JetBrains' certificate
   (bundled). The Marketplace signs every file it serves, old versions too, so a `--jetbrains-plugin` download that

@@ -47,6 +47,5 @@ a package that was clean when approved can later turn out vulnerable or compromi
   licences, and shipped rules would need keeping current). Rule files are input: size and time limits, and a
   rule that does not compile is a clear error. Not rule generation: for a known-bad package the hash is the
   better indicator.
-- Amazon Linux fix dates: Trivy reports no ALAS IDs, so findings would need matching to ALAS by CVE and package.
-  Kept here (8 Nov): AWS publishes no ALAS API, only the RSS feeds and the bulletin pages, and their format has
-  not been checked against real samples yet.
+- Amazon Linux fix dates, next step (ALAS for AL2023 and AL2 core shipped 12 Nov): AL2 Extras repositories
+  (kernel-5.10, docker and others), whose advisories (ALAS2KERNEL-5.10-...) are in their own updateinfo.

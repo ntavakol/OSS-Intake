@@ -11,7 +11,8 @@ GAP_REASON = {
     "ubuntu": "fixed version not published to the release in Launchpad (Ubuntu Pro/ESM fixes are not public)",
     "alpine": "no aports commit named the CVE or the fixed version (common for -rN rebuilds)",
     "redhat": "fixes without a Red Hat advisory ID, or the advisory could not be fetched",
-    "amazon": "Trivy reports no ALAS advisory IDs for Amazon Linux; no dated source yet",
+    "amazon": "no ALAS advisory lists the CVE for the package at its fixed version (AL2 Extras packages and the "
+              "original Amazon Linux AMI are not covered), or the advisories could not be loaded",
     "go-stdlib": "fixed Go version not found in the Go release history",
     "binary": "runtime detected from a binary, no package registry to date it",
     "cran": "fixed version not found in crandb (r-hub's CRAN database), or the lookup failed",
