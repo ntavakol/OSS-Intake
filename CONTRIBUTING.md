@@ -111,7 +111,7 @@ Fixtures in `tests/fixtures/real` come only from public images and keep only the
 
 `tests/fuzz/harnesses.py` has fuzz targets for the parsers of files a user gives (SBOMs, inventories, decisions
 files, renv.lock, scanner reports, also imported into a whole offline run, .vsix files as an archive and as the
-files inside one, a JetBrains plugin file's signing block), and for checksums files, likelihood configurations, govulncheck output, OSV advisories and
+files inside one, a JetBrains plugin file's signing block, Amazon Linux repository metadata), and for checksums files, likelihood configurations, govulncheck output, OSV advisories and
 text from other public services. A target may raise only the errors the CLI reports cleanly; anything else, a
 hang over 10 seconds or using over 2 GB is a bug. Answers from the other services (KEV, EPSS, deps.dev, the
 distro trackers, the GitHub API) have no target yet.
