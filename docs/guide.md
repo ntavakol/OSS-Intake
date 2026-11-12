@@ -313,7 +313,9 @@ the IDE, certificate dates and revocation are not checked). The check needs no n
 match its signature stops the run (exit 2). A plugin `.zip` or `.jar` given with `--path` gets the same check, and
 one that does not match leads the report; an unsigned file, or one signed only by its author, is a warning. An
 installed plugin the IDE unpacked has lost its signature, so only one-jar plugins in a plugins folder can be checked;
-the report says which. Without the extra, a download is protected by HTTPS only, and the report says so.
+the report says which. A download with no signature, or signed by someone other than the Marketplace, is assessed with a
+warning. Without the extra, only the file's digest is checked, which shows accidental damage but not tampering: the
+download is protected by HTTPS only, and the report says so.
 
 ### Package inventory
 
