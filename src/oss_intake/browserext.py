@@ -873,7 +873,8 @@ def compare(old: dict, new: dict) -> dict:
 
 
 def change_warnings(diff: dict, name: str) -> list[str]:
-    """Warnings for what an update adds that is worth a person's look."""
+    """Warnings for what an update adds that is worth a person's look. name: the extension, without its version
+    (name_and_id); the versions come from diff."""
     out = []
     if not diff["same_extension"]:
         out.append(f"--compare-with names a different extension than {name}: the comparison may mean little")
@@ -900,8 +901,12 @@ def change_warnings(diff: dict, name: str) -> list[str]:
     return out
 
 
+def name_and_id(e: dict) -> str:
+    return f"{e.get('name') or e.get('id') or e['folder']} ({e['id'] or 'no ID'})"
+
+
 def label(e: dict) -> str:
-    return f"{e.get('name') or e.get('id') or e['folder']} ({e['id'] or 'no ID'}) {e.get('version', '')}".strip()
+    return f"{name_and_id(e)} {e.get('version', '')}".strip()
 
 
 def warnings(info: dict) -> tuple[list[str], list[str]]:

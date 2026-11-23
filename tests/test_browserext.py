@@ -735,6 +735,9 @@ def test_compare_and_the_drift_gate_end_to_end(tmp_path):
     assert "hosts_all" not in a["browser_extensions"]["extensions"][0]
     md = (tmp_path / "out" / "summary.md").read_text(encoding="utf-8")
     assert "asks for more than the older version" in md
+    # Found running the test kit (23 Nov): the warning named the new version twice.
+    (adds,) = [w for w in a["warnings"] if "adds since" in w]
+    assert adds.startswith("Example helper (no ID) 1.1.0 adds since 1.0.0: permissions debugger")
     same = write_ext(tmp_path / "same", {**MV3, "version": "1.1.0"})
     assert run(tmp_path, "--path", str(same), "--compare-with", str(old), "--fail-on",
                "permission-drift") == cli.EXIT_OK
