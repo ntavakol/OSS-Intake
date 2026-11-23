@@ -119,7 +119,8 @@ PERMISSIONS: dict[str, tuple[str, str]] = {
 ALL_SITES = "high", "can read and change every site you visit"
 SOME_SITES = "medium", "can read and change the sites listed"
 TIERS = ("high", "medium", "low", "not graded")
-_ALL_HOSTS = re.compile(r"^(?:<all_urls>|(?:\*|https?|wss?|ftp|file)://\*/.*|(?:\*|https?|wss?)://\*)$")
+_ALL_HOSTS = re.compile(r"^(?:<all_urls>|(?:\*|https?|wss?|ftp|file)://\*(?::(?:\*|[0-9]{1,5}))?/.*"
+                        r"|(?:\*|https?|wss?)://\*(?::(?:\*|[0-9]{1,5}))?)$")
 
 # What a manifest is checked for, besides its permissions. Each is a signal for a person to look at, not a verdict.
 SIGNALS = {
@@ -193,19 +194,29 @@ _LOCAL_SOURCES = re.compile(r"^(?:'self'|'none'|'wasm-unsafe-eval'|'unsafe-eval'
 # ------------------------------------------------------------------------------------------- reading a manifest
 
 def lenient_json(text: str) -> str:
-    """The text with // and /* */ comments and trailing commas removed outside strings, so a manifest that uses
-    them is read rather than missed. Linear in the length of the text."""
+    """The text as strict JSON, read as Chromium reads a manifest (JSON_PARSE_CHROMIUM_EXTENSIONS): // and /* */
+    comments removed, raw carriage returns and newlines inside strings escaped, \\xNN escapes turned into \\u00NN;
+    trailing commas, which Chromium refuses, are also dropped, so nothing it reads is missed here. Linear in the
+    length of the text."""
     out: list[str] = []
     i, n = 0, len(text)
     in_str = False
     while i < n:
         c = text[i]
         if in_str:
-            out.append(c)
             if c == "\\" and i + 1 < n:
-                out.append(text[i + 1])
+                if text[i + 1] == "x" and re.fullmatch(r"[0-9A-Fa-f]{2}", text[i + 2:i + 4]):
+                    out.append("\\u00" + text[i + 2:i + 4])  # Chromium's \xNN escape
+                    i += 4
+                    continue
+                out.append(c + text[i + 1])
                 i += 2
                 continue
+            if c in "\r\n":
+                out.append("\\r" if c == "\r" else "\\n")  # Chromium allows these two raw in a string
+                i += 1
+                continue
+            out.append(c)
             if c == '"':
                 in_str = False
             i += 1
@@ -457,7 +468,7 @@ def unpack(path: Path, dest: Path) -> Path:
         with open(path, "rb") as src, open(zipped, "wb") as out:
             src.seek(offset)
             shutil.copyfileobj(src, out, 1 << 20)
-        folder = dest / (path.stem or "extension")
+        folder = dest / "extension"  # a fixed name: one taken from the file (".x.crx") could be skipped as hidden
         try:
             vscode.extract(zipped, folder, label=path.name)
         except InputError:
@@ -515,14 +526,16 @@ def permissions(data: dict) -> list[dict]:
 
 
 def _csp_sources(policy: str) -> tuple[bool, list[str]]:
-    """(allows unsafe-eval, the remote script sources) of a policy: script-src, or default-src without one."""
+    """(allows unsafe-eval, the remote script sources) of a policy: every directive that governs scripts
+    (script-src, script-src-elem, script-src-attr, worker-src), or default-src when there is none."""
     directives: dict[str, list[str]] = {}
     for part in policy.split(";"):
         words = part.split()
         if words:
             directives.setdefault(words[0].lower(), words[1:])
-    sources = directives.get("script-src", directives.get("default-src", []))
-    remote = [s for s in sources if not _LOCAL_SOURCES.match(s)]
+    governing = [d for d in ("script-src", "script-src-elem", "script-src-attr", "worker-src") if d in directives]
+    sources = [x for d in governing for x in directives[d]] if governing else directives.get("default-src", [])
+    remote = list(dict.fromkeys(x for x in sources if not _LOCAL_SOURCES.match(x)))
     return "'unsafe-eval'" in (s.lower() for s in sources), remote[:MAX_ROWS]
 
 
@@ -630,7 +643,46 @@ def _entropy(text: str) -> float:
     return -sum(k / n * math.log2(k / n) for k in counts.values())
 
 
-def code_checks(folder: Path, budget: list[int]) -> dict:
+def _referenced(data: dict) -> set[str]:
+    """The files the manifest tells the browser to load (scripts, pages), as paths inside the extension: these are
+    read whatever their name or bytes."""
+    names: list[object] = []
+    bg = data.get("background")
+    if isinstance(bg, dict):
+        names += [bg.get("service_worker"), bg.get("page"), *_strings(bg.get("scripts"))]
+    scripts = data.get("content_scripts")
+    for cs in scripts if isinstance(scripts, list) else []:
+        if isinstance(cs, dict):
+            names += _strings(cs.get("js"))
+    for key in ("action", "browser_action", "page_action"):
+        if isinstance(data.get(key), dict):
+            names.append(data[key].get("default_popup"))
+    if isinstance(data.get("options_ui"), dict):
+        names.append(data["options_ui"].get("page"))
+    if isinstance(data.get("side_panel"), dict):
+        names.append(data["side_panel"].get("default_path"))
+    if isinstance(data.get("sandbox"), dict):
+        names += _strings(data["sandbox"].get("pages"))
+    if isinstance(data.get("chrome_url_overrides"), dict):
+        names += list(data["chrome_url_overrides"].values())
+    names += [data.get("options_page"), data.get("devtools_page")]
+    return {str(n).split("?")[0].split("#")[0].replace("\\", "/").lstrip("/") for n in names
+            if isinstance(n, str) and n.strip()}
+
+
+def _binary(head: bytes) -> bool:
+    """Not text: the start is not UTF-8 (allowing a character cut off at the end). A NUL alone does not make a
+    file binary: a browser runs a UTF-8 script that holds one."""
+    for cut in range(4):
+        try:
+            head[:len(head) - cut].decode("utf-8")
+            return False
+        except UnicodeDecodeError:
+            continue
+    return True
+
+
+def code_checks(folder: Path, budget: list[int], referenced: set[str] | None = None) -> dict:
     """The extension's own files read as text (binary files and source maps excepted, nothing run): the code
     signals with each place seen, the web hosts each file names, and facts about how readable the code is."""
     from . import vscode
@@ -641,8 +693,9 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
     hosts_capped = False
     unread: list[str] = []
     minified: list[str] = []
-    files = longest = 0
+    files = longest = read = 0
     node_modules = False
+    referenced = referenced or set()
 
     def add(kind: str, file: str, line: int | None, detail: str) -> bool:
         bucket = hits.setdefault(kind, [])
@@ -659,7 +712,8 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
             continue
         rel = p.relative_to(folder).as_posix()
         node_modules = node_modules or rel.startswith("node_modules/") or "/node_modules/" in rel
-        if rel == "manifest.json" or rel.startswith("_metadata/") or p.suffix.lower() == ".map":
+        named = rel in referenced
+        if not named and (rel == "manifest.json" or rel.startswith("_metadata/") or p.suffix.lower() == ".map"):
             continue  # checked as a manifest; the store's signed hashes; source maps (their sources do not run)
         try:
             with open(p, "rb") as fh:
@@ -667,7 +721,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
             size = p.stat().st_size
         except OSError:
             continue
-        if b"\0" in head:
+        if not named and _binary(head):
             continue
         if size > READ_FILE_BYTES or budget[0] <= 0:
             unread.append(rel)
@@ -677,6 +731,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
             text = p.read_bytes().decode("utf-8", "replace")
         except OSError:
             continue
+        read += 1
         where = vscode._Lines(text)
         line_max = max((len(x) for x in text.split("\n")), default=0)
         longest = max(longest, line_max)
@@ -705,11 +760,13 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
             elif _entropy(run) >= HIGH_ENTROPY_BITS:
                 if not add("code-high-entropy", rel, where(m.start()), f"{len(run)} characters"):
                     break
-        found = []
+        found: list[str] = []
+        in_file: set[str] = set()  # beside the list, so each address is checked in constant time
         for m in vscode._URL.finditer(text):
             h = m.group(1).lower()
-            if h in _NAMESPACE_HOSTS or h in found:
+            if h in _NAMESPACE_HOSTS or h in in_file:
                 continue
+            in_file.add(h)
             if h not in all_hosts and len(all_hosts) >= MAX_HOSTS:
                 hosts_capped = True
                 break
@@ -726,7 +783,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
                                   f"{first['detail']}", "seen": seen, "capped": len(seen) >= MAX_HITS})
     return {"signals": signals, "hosts_by_file": hosts, "hosts_all": sorted(all_hosts), "hosts_capped": hosts_capped,
             "node_modules": node_modules,
-            "facts": {"files_read": files - len(unread), "minified_files": minified[:50],
+            "facts": {"files_read": read, "minified_files": minified[:50],
                       "minified_total": len(minified), "longest_line": longest, "not_read": unread[:20],
                       "not_read_total": len(unread)}}
 
@@ -756,13 +813,14 @@ def analyse(folder: Path, rel: str = "", budget: list[int] | None = None) -> dic
     if mismatch:
         signals.insert(0, {"id": "identity", "title": SIGNALS["identity"], "tier": SIGNAL_TIER["identity"],
                            "file": folder.name, "line": None, "detail": "; ".join(mismatch)})
-    code = code_checks(folder, budget if budget is not None else [READ_TOTAL_BYTES])
+    code = code_checks(folder, budget if budget is not None else [READ_TOTAL_BYTES], _referenced(data))
     order = {t: i for i, t in enumerate(TIERS)}
     signals += sorted(code["signals"], key=lambda x: (order[x["tier"]], x["id"]))
     perms = permissions(data)
     scripts = data.get("content_scripts")
+    # Every pattern, for --compare-with (the manifest is capped at 5 MB); removed before the reports (attribute).
     matches = sorted({m for cs in (scripts if isinstance(scripts, list) else []) if isinstance(cs, dict)
-                      for m in _strings(cs.get("matches"))})[:MAX_ROWS * 4]
+                      for m in _strings(cs.get("matches"))})
     given = data.get("update_url")
     update = given if isinstance(given, str) else ""
     author = data.get("author")
@@ -812,17 +870,29 @@ def assess(target: Path, staged: bool = False, browser: str | None = None) -> di
 
 
 def apply_signature(info: dict, crx: Path) -> None:
-    """For a staged .crx (one extension): check its CRX3 signature (crxsign.check), keep it on info, and when its
-    developer's key signed it, take the extension's ID from it and look that ID up in the known-bad list."""
+    """For a staged .crx (one extension): check its CRX3 signature (crxsign.check) and keep it on info. The browser
+    installs a .crx under the ID its signer's key gives, replacing any key in the manifest, so a verified signature's
+    ID is the extension's ID, and a manifest key that gives another is an identity signal. Without the signatures
+    extra the signature's ID is only a claim: the extension is looked up in the known-bad list under both IDs."""
     from . import crxsign, integrity
 
     sig = crxsign.check(crx)
     info["signature"] = sig
-    if sig["id"] and sig["status"] in ("verified", "not_checked") and len(info["extensions"]) == 1:
-        e = info["extensions"][0]
-        if not e["id"]:
-            e["id"] = sig["id"]
-            e["known_bad"] = integrity.known_bad_extension(e["id"], e["version"])
+    if not sig["id"] or sig["status"] not in ("verified", "not_checked") or len(info["extensions"]) != 1:
+        return
+    e = info["extensions"][0]
+    if e.get("unreadable"):
+        return
+    claimed = e["id"]
+    if claimed and claimed != sig["id"]:
+        e["signals"].insert(0, {"id": "identity", "title": SIGNALS["identity"], "tier": SIGNAL_TIER["identity"],
+                                "file": "manifest.json", "line": None,
+                                "detail": f"its manifest's key gives {claimed}; the browser installs it under its "
+                                          f"signer's ID {sig['id']}"})
+        e["tier"] = "high"
+    ids = [sig["id"]] + ([claimed] if claimed and claimed != sig["id"] and sig["status"] == "not_checked" else [])
+    e["id"] = sig["id"]
+    e["known_bad"] = next((hit for hit in (integrity.known_bad_extension(i, e["version"]) for i in ids) if hit), None)
 
 
 def attribute(info: dict, findings: list) -> None:
@@ -833,6 +903,7 @@ def attribute(info: dict, findings: list) -> None:
     for e in exts:
         e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
         e.pop("hosts_all", None)  # for --compare-with only: the report lists hosts by file
+        e.pop("content_matches", None)
     unmatched = 0
     for f in findings:
         owners = [only] if only else []

