@@ -175,6 +175,14 @@ def _tiles(a: dict) -> str:
                      else ("g", "Removed extensions", "0", f"{len(ext['extensions'])} checked against the list")
                      if ext["removed_list"]["status"] == "checked"
                      else ("n", "Removed extensions", "not checked", ext["removed_list"]["detail"]))
+    be = a.get("browser_extensions")
+    if be:
+        bad = sum(1 for e in be["extensions"] if e.get("known_bad"))
+        high = sum(1 for e in be["extensions"] if e.get("tier") == "high")
+        n = len(be["extensions"])
+        tiles.append(("c", "Known-bad extensions", str(bad), "on the known-bad list: remove") if bad
+                     else ("a", "Browser extensions", str(high), f"of {n} ask for high-grade access") if high
+                     else ("g", "Browser extensions", str(n), "none asks for high-grade access"))
     chk = a.get("checks") or {}
     mal = lag.get("malicious_packages") or []
     if mal:
@@ -686,9 +694,10 @@ def _blocks(sec: tuple[str, list] | None, num: set[int]) -> str:
 
 
 def _extensions(a: dict) -> str:
-    from .report import extensions_section, jetbrains_section
+    from .report import browser_section, extensions_section, jetbrains_section
 
-    return _blocks(extensions_section(a), set()) + _blocks(jetbrains_section(a), set())
+    return (_blocks(extensions_section(a), set()) + _blocks(jetbrains_section(a), set())
+            + _blocks(browser_section(a), set()))
 
 
 def _decisions(a: dict) -> str:
@@ -752,6 +761,7 @@ def render(a: dict, findings: list[Finding], top: int, caveat: str, heuristic_no
     lk = a.get("likelihood")
     mismatch = (a.get("registry_check") or {}).get("status") == "mismatch"
     mismatch = mismatch or any(e["malicious"] for e in (a.get("extensions") or {}).get("extensions", []))
+    mismatch = mismatch or any(e.get("known_bad") for e in (a.get("browser_extensions") or {}).get("extensions", []))
     accent = "c" if a["lag"].get("malicious") or mismatch else tone_level(lk["level"]) if lk else "n"
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
              CSP_META,

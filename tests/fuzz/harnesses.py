@@ -18,7 +18,20 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from oss_intake import cli, conditions, decisions, inputs, integrity, likelihood, merge, sbom, vscode, zipsign
+from oss_intake import (
+    browserext,
+    cli,
+    conditions,
+    decisions,
+    inputs,
+    integrity,
+    likelihood,
+    merge,
+    report,
+    sbom,
+    vscode,
+    zipsign,
+)
 
 # cli.main turns an unexpected exception into exit 1 for users; the fuzzer must see it as the crash it is.
 os.environ["OSS_INTAKE_DEBUG"] = "1"
@@ -165,6 +178,47 @@ def vsix_files(data: bytes) -> None:
     _assess_vsix(_file(buf.getvalue(), "files.vsix"))
 
 
+def _assess_browser(path: Path, staged_input: bool) -> None:
+    """As the CLI does: classify the path, stage it (a .crx's header read and its zip unpacked with limits),
+    assess it, attribute a finding to it, make its warnings and its report section."""
+    staged = Path(tempfile.mkdtemp(dir=_TMP))
+    try:
+        if inputs.classify(path) != "browser":
+            return
+        if staged_input:
+            browserext.unpack(path, staged)
+        info = browserext.assess(staged if staged_input else path, staged=staged_input)
+        browserext.attribute(info, [_FINDING])
+        browserext.warnings(info)
+        report.browser_section({"browser_extensions": info})
+    finally:
+        shutil.rmtree(staged, ignore_errors=True)
+
+
+def crx_archive(data: bytes) -> None:
+    """The bytes as a .crx: the Cr24 header, then zip handling and safe unpacking, then the manifest's checks."""
+    _assess_browser(_file(data, "input.crx"), True)
+
+
+# Where each part of an ext_manifest input goes: an installed extension in a profile, read where it is.
+EXT_MEMBERS = ("manifest.json", "_locales/en/messages.json")
+_EXT_ID = "a" * 32
+
+
+def ext_manifest(data: bytes) -> None:
+    """The bytes as an installed browser extension's manifest.json and its default locale's messages.json (split on
+    SEP), in a profile's Extensions folder, so the fuzzer reaches the manifest, locale and permission readers."""
+    profile = Path(tempfile.mkdtemp(dir=_TMP))
+    try:
+        folder = profile / "Extensions" / _EXT_ID / "1.0_0"
+        for name, part in zip(EXT_MEMBERS, data.split(SEP), strict=False):
+            (folder / name).parent.mkdir(parents=True, exist_ok=True)
+            (folder / name).write_bytes(part)
+        _assess_browser(profile, False)
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
+
+
 def _plugin_zip() -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
@@ -243,7 +297,8 @@ def service_data(data: bytes) -> None:
 
 TARGETS = {f.__name__: f for f in (sbom_file, inventory_csv, decisions_file, renv_lock, scanner_report,
                                    scanner_report_run, osv_advisory, vsix_archive, vsix_files, checksums,
-                                   likelihood_config, govulncheck_output, service_data, plugin_signature)}
+                                   likelihood_config, govulncheck_output, service_data, plugin_signature,
+                                   crx_archive, ext_manifest)}
 
 
 def run(name: str):

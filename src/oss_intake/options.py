@@ -150,6 +150,13 @@ def build_parser() -> argparse.ArgumentParser:
                         "mobi.hsz.idea.gitignore@4.5.7) and assess it like --path on its file. With the signatures "
                         "extra, the Marketplace's signature on the file is checked; a mismatch, or no Marketplace "
                         "signature, stops the run. Without it, HTTPS only")
+    s.add_argument("--browser", choices=["chrome", "edge", "brave"],
+                   help="assess the browser extensions installed in this browser's default profile, for the user "
+                        "running oss-intake (read only: only the profile's Extensions folder is read). For another "
+                        "profile, give --path to its folder")
+    s.add_argument("--browser-extension", metavar="ID",
+                   help="with --browser: only the installed extension with this ID (32 letters a to p, as shown on "
+                        "the browser's extensions page)")
     s.add_argument("--package", action="append", default=[], metavar="ECOSYSTEM:NAME@VERSION",
                    help="check one package version, e.g. npm:chalk@5.6.1 or pkg:pypi/django@2.2.0 (repeatable); "
                         "no scanner needed: checked against OSV like an inventory")

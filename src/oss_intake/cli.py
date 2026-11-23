@@ -15,6 +15,7 @@ from pathlib import Path
 from . import (
     __version__,
     assessment,
+    browserext,
     decisions,
     inputs,
     integrity,
@@ -174,7 +175,40 @@ def cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             shutil.rmtree(args.ext_tmp, ignore_errors=True)
 
 
+def _browser_path(args: argparse.Namespace) -> None:
+    """--browser (and --browser-extension): the default profile's Extensions folder, or one extension's folder in
+    it, as --path. Only read, never written."""
+    args.browser = getattr(args, "browser", None)
+    args.browser_extension = getattr(args, "browser_extension", None)
+    if args.browser_extension and not args.browser:
+        raise UsageError("--browser-extension needs --browser (or give --path to the extension's folder)")
+    if not args.browser:
+        return
+    if args.image or args.path or args.package or args.download_input:
+        raise UsageError("give --browser on its own, not with --image, --path, --package or a download")
+    if args.browser_extension and not browserext.ID_RE.match(args.browser_extension):
+        raise UsageError(f"--browser-extension {args.browser_extension}: an extension ID is 32 letters a to p, as "
+                         "shown on the browser's extensions page")
+    name = browserext.BROWSERS[args.browser]
+    try:
+        profile = browserext.profile_dir(args.browser)
+    except inputs.InputError as exc:
+        raise UsageError(f"--browser {args.browser}: {exc}") from None
+    folder = profile / "Extensions"
+    if not folder.is_dir():
+        raise UsageError(f"--browser {args.browser}: no {name} extensions folder at "
+                         f"{assessment.shown_path(folder)}. Is {name} installed for this user? For another profile, "
+                         "give --path to its folder")
+    if args.browser_extension:
+        folder = folder / args.browser_extension
+        if not folder.is_dir():
+            raise UsageError(f"--browser-extension {args.browser_extension} is not installed in {name}'s default "
+                             "profile")
+    args.path = str(folder)
+
+
 def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
+    _browser_path(args)
     # 1. Validate everything before doing any work.
     if not args.image and not args.repo and not args.path and not args.package and not args.download_input:
         raise UsageError("give --image, --path, --package or --repo")
@@ -195,6 +229,10 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
             raise UsageError(f"--path {args.path} is not a file or folder")
         args.path = str(p)
         args.path_kind = inputs.classify(p)
+        if args.browser and args.path_kind != "browser":
+            raise UsageError(f"--browser {args.browser}: no extensions are installed in "
+                             f"{browserext.BROWSERS[args.browser]}'s default profile"
+                             + (" with that ID" if args.browser_extension else ""))
     if args.compare_with:
         old = Path(args.compare_with).expanduser()
         if args.path_kind != "vscode" or (args.path and not vscode.is_single(Path(args.path))):
@@ -360,10 +398,15 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                 if tmp_dir:
                     shutil.rmtree(tmp_dir, ignore_errors=True)
                 raise
+    if args.path_kind == "browser":
+        # A .crx's header is read and its zip unpacked here, before anything is written: one that breaks a limit is
+        # refused (exit 2). A folder is read where it is.
+        args.scan_target, tmp_dir = inputs.stage(Path(args.path), "browser")
     try:
         out = prepare_out(args.out)
         args.raw_written = []  # the raw scanner files this run writes; _remove_stale keeps only these
-        if args.path and args.path_kind not in ("renv", "inventory", "vscode", "jetbrains") and not scanned_offline:
+        if args.path and args.path_kind not in ("renv", "inventory", "vscode", "jetbrains", "browser") \
+                and not scanned_offline:
             args.scan_target, tmp_dir = inputs.stage(Path(args.path), args.path_kind)
         return _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_override, lk_cfg)
     finally:  # S8: the temporary copy of the artifact is removed whatever happens
@@ -438,6 +481,14 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
         if download:
             args.plugin_info["download"] = download
         alerts, more = jetbrains.warnings(args.plugin_info)
+        warnings[:0] = alerts
+        warnings.extend(more)
+    # Browser extensions: each manifest's permissions and set-up, and the known-bad list; nothing in them is run.
+    args.browser_info = None
+    if args.path_kind == "browser":
+        args.browser_info = browserext.assess(Path(args.scan_target), staged=Path(args.path).is_file(),
+                                              browser=args.browser)
+        alerts, more = browserext.warnings(args.browser_info)
         warnings[:0] = alerts
         warnings.extend(more)
     args.extension_info = None
