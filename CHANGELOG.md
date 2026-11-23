@@ -28,8 +28,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
   RedDirection campaign (July 2025). oss-intake versions before this one ignore the section. JavaScript libraries copied in as plain files are not recognised by the scanners, and the
   report says so. Nothing in an extension is run.
 
+- A `.crx` file's CRX3 signature is checked as Chromium checks it, with the optional `signatures` extra: every
+  signature verifies, one is by the developer's key the extension's ID comes from, and a file from the Chrome Web
+  Store also carries the store's signature. A file that fails leads the report; one signed only by its developer is
+  a warning. The ID is taken from the signed header, so a `.crx` is looked up in the known-bad list too.
+- The report notes when an extension ships a `node_modules` folder, as its findings may include packages the
+  browser never loads.
+
 ### Changed
 
+- No "No release date known" warning for browser extensions and VS Code extensions: a profile or an extensions
+  folder has no single release to measure against (as for a package inventory).
 - The command builder no longer says oss-intake does not check browser extensions: for a `.crx` or a store link it
   gives the command to run. Firefox extensions are still not checked.
 

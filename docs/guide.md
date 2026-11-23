@@ -375,6 +375,19 @@ Each extension is reported with:
   packages a `package.json` or lockfile describes: a JavaScript library copied in as a plain file (such as
   `jquery.min.js`), which is how most extensions ship them, is not recognised, and the report says so.
 
+A `.crx` file's signature is checked as Chromium checks it before installing one, with the optional `signatures`
+extra (`pip install 'oss-intake[signatures]'`; with pipx, `pipx inject oss-intake cryptography`): every signature in
+it verifies, one of them is by the key the extension's ID comes from (the developer's key), and a file from the
+Chrome Web Store also carries the store's own signature, by the key Chromium pins. The ID is then taken from the
+signed header, so a `.crx` is looked up in the known-bad list too. A file that fails (changed after it was signed, an
+ID no signer owns, a header Chromium would refuse) leads the report; one signed only by its developer, not by the
+Chrome Web Store, is a warning, as it did not come from the store as is. Without the extra, what needs no
+cryptography is still checked, and the report says the signatures were not. Installed extensions are kept unpacked,
+so there is no signature to check for them.
+
+An extension that ships a `node_modules` folder often ships build and command-line tools with it; the report says
+so beside its findings, as some of those packages may never be loaded in the browser.
+
 Most compromises arrive as an update to an extension people already trust. `--compare-with` takes an older version
 of the same extension (a `.crx` or its folder) and reports what the update changed: permissions and site patterns
 added and removed, new content-script sites, new code signals or ones seen more often, new web hosts, and a changed
@@ -388,7 +401,7 @@ oss-intake --path ./helper-1.4.0.crx --compare-with ./helper-1.3.2.crx --out ./r
 
 A `.crx` is untrusted input: its header is read with limits (CRX3 only; an old CRX2 file is refused), and the zip
 after it is unpacked with the same limits as a `.vsix`. One that breaks a limit, or is damaged, is refused (exit 2)
-before anything is written. The `.crx` signature is not checked yet. Manifest comments and trailing commas are
+before anything is written. Manifest comments and trailing commas are
 accepted, so a manifest that uses them is read rather than missed.
 
 ### Package inventory
