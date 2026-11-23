@@ -67,7 +67,10 @@ GitHub project or a container image?". When it cannot help, it says why and what
 - `package.json` or `build.gradle`: these list ranges, so it tells you which lockfile to check instead;
 - a VS Code Marketplace link: the page downloads nothing, so it says how to get the `.vsix` without installing
   (Download VSIX in VS Code), or to paste `~/.vscode/extensions` for everything installed;
-- a browser extension: oss-intake does not check browser extensions.
+- a browser extension: the guided steps do not set it up yet, so it gives the command to run instead
+  (`oss-intake --path` with a `.crx`, or `oss-intake --browser chrome` for what a browser has installed); a store
+  link gets the same advice, as neither the page nor oss-intake downloads from a store. Firefox extensions are
+  not checked yet.
 
 ## Check a container image
 
