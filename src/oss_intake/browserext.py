@@ -642,6 +642,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
     unread: list[str] = []
     minified: list[str] = []
     files = longest = 0
+    node_modules = False
 
     def add(kind: str, file: str, line: int | None, detail: str) -> bool:
         bucket = hits.setdefault(kind, [])
@@ -657,6 +658,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
         if p.is_symlink() or not p.is_file():
             continue
         rel = p.relative_to(folder).as_posix()
+        node_modules = node_modules or rel.startswith("node_modules/") or "/node_modules/" in rel
         if rel == "manifest.json" or rel.startswith("_metadata/") or p.suffix.lower() == ".map":
             continue  # checked as a manifest; the store's signed hashes; source maps (their sources do not run)
         try:
@@ -723,6 +725,7 @@ def code_checks(folder: Path, budget: list[int]) -> dict:
                         "detail": f"{len(seen)}{'+' if len(seen) >= MAX_HITS else ''} place(s); first: "
                                   f"{first['detail']}", "seen": seen, "capped": len(seen) >= MAX_HITS})
     return {"signals": signals, "hosts_by_file": hosts, "hosts_all": sorted(all_hosts), "hosts_capped": hosts_capped,
+            "node_modules": node_modules,
             "facts": {"files_read": files - len(unread), "minified_files": minified[:50],
                       "minified_total": len(minified), "longest_line": longest, "not_read": unread[:20],
                       "not_read_total": len(unread)}}
@@ -777,7 +780,7 @@ def analyse(folder: Path, rel: str = "", budget: list[int] | None = None) -> dic
         "folder": rel or folder.name, "installed": bool(installed),
         "permissions": perms, "signals": signals, "content_matches": matches,
         "hosts_by_file": code["hosts_by_file"], "hosts_all": code["hosts_all"], "hosts_capped": code["hosts_capped"],
-        "code_facts": code["facts"],
+        "code_facts": code["facts"], "node_modules": code["node_modules"],
         "tier": _highest([p["tier"] for p in perms if not p["optional"]] + [s["tier"] for s in signals]),
         "known_bad": None,
     }
@@ -806,6 +809,20 @@ def assess(target: Path, staged: bool = False, browser: str | None = None) -> di
     return {"extensions": found, "single": single, "browser": BROWSERS.get(browser or ""),
             "known_bad_list": {"updated": listed.get("updated"),
                                "entries": len(listed.get("browser_extensions") or [])}}
+
+
+def apply_signature(info: dict, crx: Path) -> None:
+    """For a staged .crx (one extension): check its CRX3 signature (crxsign.check), keep it on info, and when its
+    developer's key signed it, take the extension's ID from it and look that ID up in the known-bad list."""
+    from . import crxsign, integrity
+
+    sig = crxsign.check(crx)
+    info["signature"] = sig
+    if sig["id"] and sig["status"] in ("verified", "not_checked") and len(info["extensions"]) == 1:
+        e = info["extensions"][0]
+        if not e["id"]:
+            e["id"] = sig["id"]
+            e["known_bad"] = integrity.known_bad_extension(e["id"], e["version"])
 
 
 def attribute(info: dict, findings: list) -> None:
@@ -927,4 +944,16 @@ def warnings(info: dict) -> tuple[list[str], list[str]]:
             elif s["id"] == "update-url":
                 other.append(f"{label(e)} updates from {s['detail']}, not from a store: whoever runs that server can "
                              "change it without store review")
+    sig = info.get("signature")
+    if sig and info["extensions"]:
+        name = label(info["extensions"][0])
+        if sig["status"] == "failed":
+            alerts.append(f"CRX SIGNATURE DOES NOT MATCH: {name}: {sig['detail']}. Do not install it; find out where "
+                          "this file came from")
+        elif sig["status"] == "verified" and not sig["store"]:
+            other.append(f"{name} is signed by its developer's key only, not by the Chrome Web Store: it did not come "
+                         "from the Chrome Web Store as is (another store, a self-hosted update server, or a "
+                         "developer's own build)")
+        elif sig["status"] == "not_checked":
+            other.append(f"The CRX signature of {name} was not checked: {sig['detail']}")
     return alerts, other

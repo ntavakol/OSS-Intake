@@ -239,7 +239,9 @@ def _release_date(args, findings: list, health: dict, scan_info: dict, release_o
             hint = f"the {forge} release lookup did not return a date; pass --release-tag or --release-date."
         else:
             hint = "pass --repo, or --release-date."
-        if args.path_kind != "inventory":  # an inventory has no single release to compare against
+        # An inventory has no single release to compare against, and nor do extensions (a browser profile or a
+        # VS Code extensions folder holds many, and one extension's release is rarely what is being judged).
+        if args.path_kind not in ("inventory", "browser", "vscode"):
             warnings.append("No release date known, so 'fix existed before release' cannot be computed: " + hint)
     return release_date, release_date_source
 
