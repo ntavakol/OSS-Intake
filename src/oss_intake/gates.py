@@ -80,12 +80,13 @@ def hidden_warnings(args, all_findings: list, shown: list, age_info: dict) -> li
 
 
 def met(wanted: list[str], findings: list, age_info: dict, registry: dict | None,
-          extensions: dict | None = None, unchecked: int = 0) -> list[str]:
+          extensions: dict | None = None, unchecked: int = 0, browser: dict | None = None) -> list[str]:
     """The --fail-on conditions met. Findings set aside (evidence or an assessor decision) do not count, except
-    a malicious package, which no decision sets aside. An extension the Marketplace removed as malware counts
-    as malicious."""
+    a malicious package, which no decision sets aside. An extension the Marketplace removed as malware, and a
+    browser extension on the known-bad list, count as malicious."""
     live = [f for f in findings if f.triage_group != "aside"]
-    removed = any(e["malicious"] for e in (extensions or {}).get("extensions", []))
+    removed = any(e["malicious"] for e in (extensions or {}).get("extensions", [])) \
+        or any(e.get("known_bad") for e in (browser or {}).get("extensions", []))
     met = {
         "malicious": removed or any(f.malicious for f in findings),
         "kev": any(f.kev for f in live),

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import io
 import json
+import struct
 import zipfile
 from pathlib import Path
 
@@ -55,6 +56,34 @@ def _signing_block() -> bytes:
     return _pb(1, 1) + _pb(2, _pb(1, _pb(1, 0) + _pb(2, digest)) + _pb(2, signer))
 
 
+# A Manifest V3 extension that reaches every manifest check: permissions of each grade, site access, content
+# scripts, pages other sites can reach, policies, an update address that is not a store, settings overrides.
+_EXT_MANIFEST = {
+    "manifest_version": 3, "name": "__MSG_name__", "version": "1.0", "default_locale": "en",
+    "permissions": ["cookies", "tabs", "storage", "notAPermission"], "optional_permissions": ["history"],
+    "host_permissions": ["<all_urls>", "https://example.com/*"],
+    "content_scripts": [{"matches": ["*://*/*"], "js": ["cs.js"], "run_at": "document_start", "all_frames": True,
+                         "world": "MAIN"}],
+    "externally_connectable": {"ids": ["*"], "matches": ["https://example.com/*"]},
+    "web_accessible_resources": [{"resources": ["img/*"], "matches": ["<all_urls>"]}],
+    "content_security_policy": {"extension_pages": "script-src 'self' 'wasm-unsafe-eval'",
+                                "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval' https://x.example"},
+    "update_url": "https://updates.example.net/crx",
+    "chrome_settings_overrides": {"homepage": "https://example.com"}, "chrome_url_overrides": {"newtab": "n.html"},
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA",
+}
+_MESSAGES = b'{"name": {"message": "Example extension"}}'
+
+
+def _crx(members: dict[str, bytes]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for n, data in members.items():
+            z.writestr(n, data)
+    header = b"\x12\x00"  # a header the reader skips: its checks are on the zip after it
+    return b"Cr24" + struct.pack("<II", 3, len(header)) + header + buf.getvalue()
+
+
 def seeds(name: str) -> list[bytes]:
     if name == "sbom_file":
         return [p.read_bytes() for p in _SBOMS]
@@ -94,4 +123,11 @@ def seeds(name: str) -> list[bytes]:
                                                   "amazon/al2023-updateinfo.xml")]
     if name == "plugin_signature":
         return [PLUGIN_ZIP, _signing_block()]
+    if name == "crx_archive":
+        return [_crx({"manifest.json": json.dumps(_EXT_MANIFEST).encode(), "_locales/en/messages.json": _MESSAGES,
+                      "cs.js": b"console.log(1);"})]
+    if name == "ext_manifest":
+        return [SEP.join([b"// comment\n" + json.dumps(_EXT_MANIFEST, indent=1).encode(), _MESSAGES]),
+                SEP.join([json.dumps({**_EXT_MANIFEST, "manifest_version": 2,
+                                      "content_security_policy": "script-src 'self' https://cdn.example.com"}).encode()])]
     raise KeyError(name)

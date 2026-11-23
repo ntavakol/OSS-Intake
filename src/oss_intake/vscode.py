@@ -144,18 +144,19 @@ def is_extension_input(path: Path) -> bool:
 
 # --------------------------------------------------------------------------------------------- unpacking
 
-def _member_path(name: str) -> PurePosixPath:
+def _member_path(name: str, label: str = "the .vsix") -> PurePosixPath:
     """The member's path inside the destination, refusing anything that could land outside it on any system, or
     that Windows would read as another name: a drive or colon anywhere, a backslash, a root, '..' or '.', an empty
-    part, a part ending in a dot or space, a reserved device name, or a control character."""
+    part, a part ending in a dot or space, a reserved device name, or a control character. label names the archive
+    in the refusal."""
     bare = name[:-1] if name.endswith("/") else name
     if (not bare or "\\" in name or ":" in name or name.startswith("/") or any(ord(c) < 32 for c in name)
             or PureWindowsPath(bare).drive or PureWindowsPath(bare).root):
-        raise InputError(f"refused: the .vsix has an unsafe file name ({name[:120]!r})")
+        raise InputError(f"refused: {label} has an unsafe file name ({name[:120]!r})")
     parts = bare.split("/")
     for part in parts:
         if part in ("", ".", "..") or part != part.rstrip(". ") or _RESERVED.match(part):
-            raise InputError(f"refused: the .vsix has a file name that could leave its folder ({name[:120]!r})")
+            raise InputError(f"refused: {label} has a file name that could leave its folder ({name[:120]!r})")
     return PurePosixPath(*parts)
 
 
@@ -196,10 +197,11 @@ def _unpack(vsix: Path, dest: Path) -> Path:
     return folder
 
 
-def extract(vsix: Path, dest: Path, want: str = "") -> str:
-    """Unpack a zip (a .vsix, or a JetBrains plugin) into dest with the limits above: no links, no member that
-    leaves dest or clashes by name on macOS or Windows, no zip bomb. Returns the text of the member named want
-    (up to 200 KB), or "". Raises InputError for a file that breaks a limit."""
+def extract(vsix: Path, dest: Path, want: str = "", label: str = "the .vsix") -> str:
+    """Unpack a zip (a .vsix, a JetBrains plugin, or a browser extension's .crx after its header) into dest with
+    the limits above: no links, no member that leaves dest or clashes by name on macOS or Windows, no zip bomb.
+    Returns the text of the member named want (up to 200 KB), or "". Raises InputError for a file that breaks a
+    limit; label names the archive in a refusal of a member's name."""
     z = zipfile.ZipFile(vsix)
     with z:
         infos = z.infolist()
@@ -208,7 +210,7 @@ def extract(vsix: Path, dest: Path, want: str = "") -> str:
         total = 0
         seen: set[str] = set()
         for info in infos:
-            rel = _member_path(info.filename)
+            rel = _member_path(info.filename, label)
             key = _same_name(info.filename)
             if key in seen:
                 raise InputError(f"refused: {vsix.name} has two files that would be the same file on macOS or "

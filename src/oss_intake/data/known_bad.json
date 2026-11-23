@@ -34,5 +34,6 @@
       "reference": "CVE-2026-33634, GHSA-69fq-xp46-6x23",
       "note": "All tags before the recreated 0.2.6 were replaced with malicious commits. Use 0.2.6 or later, pinned by SHA."
     }
-  ]
+  ],
+  "browser_extensions": []
 }

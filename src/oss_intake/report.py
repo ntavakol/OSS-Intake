@@ -311,6 +311,63 @@ def jetbrains_section(a: dict) -> tuple[str, list] | None:
     return f"JetBrains plugins ({len(plugins)})", blocks
 
 
+def browser_section(a: dict) -> tuple[str, list] | None:
+    """Browser extensions: each one's identity, the known-bad list's verdict, the permissions and site access it
+    asks for (graded), and the signals in its manifest, with where each was seen."""
+    info = a.get("browser_extensions")
+    if not info:
+        return None
+    exts = info["extensions"]
+    kb = info.get("known_bad_list") or {}
+    where = f" in {info['browser']}'s default profile" if info.get("browser") else ""
+    blocks: list = [("p", f"{len(exts)} browser extension{'s' if len(exts) != 1 else ''}{where} (Chromium: Chrome, "
+                          "Edge, Brave). These checks are static: what each manifest asks for and how the extension "
+                          "is set up. Nothing in them was run, and what they do once running is not assessed. "
+                          "Permissions are graded high, medium or low by what they let an extension do; a high "
+                          "grade is a reason to look, not a verdict."),
+                    ("p", f"Known-bad list: {kb.get('entries', 0)} browser extension entr"
+                          f"{'y' if kb.get('entries') == 1 else 'ies'} (list of {kb.get('updated') or 'unknown date'})"
+                          ". The packages the extensions ship were scanned, but only those a package.json or lockfile "
+                          "describes: a JavaScript library copied in as a plain file (such as jquery.min.js) is not "
+                          "recognised, so no findings does not mean the libraries it ships have none.")]
+    rows = []
+    for e in exts[:500]:
+        f = e.get("findings") or {}
+        if e.get("unreadable"):
+            rows.append([e["folder"], e["id"] or "", "", "", "not checked: manifest.json could not be read", "", "",
+                         ""])
+            continue
+        hit = e.get("known_bad")
+        counts = {t: sum(1 for x in e["permissions"] if x["tier"] == t and not x["optional"]) for t in
+                  ("high", "medium")}
+        rows.append([e["name"] or e["folder"], e["id"] or "none (unpacked)", e["version"],
+                     f"V{e['manifest_version']}",
+                     f"LISTED: {hit['note']}" if hit else "not listed",
+                     (f"{counts['high']} high, {counts['medium']} medium"
+                      if counts["high"] or counts["medium"] else "none high or medium"),
+                     e["update_source"],
+                     str(f.get("total", 0)) + (f" ({f['critical']} critical, {f['high']} high)"
+                                               if f.get("critical") or f.get("high") else "")])
+    blocks.append(("table", ["Extension", "ID", "Version", "Manifest", "Known-bad list", "Permissions asked for",
+                             "Updates from", "Findings"], rows))
+    perms = [[e["name"] or e["folder"], p["name"] + (" (optional)" if p["optional"] else ""),
+              "site access" if p["kind"] == "site" else "permission", p["tier"], p["why"]]
+             for e in exts for p in e["permissions"] if p["tier"] in ("high", "medium", "not graded")]
+    if perms:
+        blocks.append(("p", "High and medium permissions, and any oss-intake does not grade. An optional permission "
+                            "is asked for only when the extension needs it, and the user is asked first."))
+        blocks.append(("table", ["Extension", "Permission", "Kind", "Grade", "What it allows"], perms[:1000]))
+    sigs = [[e["name"] or e["folder"], s["title"], s["tier"],
+             s["file"] + (f":{s['line']}" if s["line"] else "") + (f" ({s['detail']})" if s["detail"] else "")]
+            for e in exts for s in e["signals"]]
+    if sigs:
+        blocks.append(("table", ["Extension", "Signal", "Grade", "Seen in"], sigs[:1000]))
+    if info.get("unmatched"):
+        blocks.append(("p", f"{info['unmatched']} finding(s) could not be tied to one extension; findings.csv has "
+                            "them all."))
+    return f"Browser extensions ({len(exts)})", blocks
+
+
 def extensions_section(a: dict) -> tuple[str, list] | None:
     """VS Code extensions: the removal list's verdict, the behaviour indicators with where each was seen, whether
     the dependencies could be seen, and the repository each claims. None for any other input."""
@@ -518,6 +575,9 @@ def summary_sections(a: dict, findings: list[Finding], top: int) -> list[tuple[s
     jb = jetbrains_section(a)
     if jb:
         secs.append(jb)
+    be = browser_section(a)
+    if be:
+        secs.append(be)
     inv = a.get("inventory")
     if inv:
         from .inventory_report import label_text

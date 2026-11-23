@@ -160,9 +160,18 @@ def _valid_known_bad(data: object) -> bool:
     def action_entry(a: object) -> bool:
         return isinstance(a, dict) and text(a, "action", "below", "reference", "note")
 
+    def extension_entry(e: object) -> bool:
+        # A browser extension by its ID (32 letters a to p) and the versions that were bad ("*" for every one).
+        return (isinstance(e, dict) and text(e, "id", "name", "reference", "note")
+                and re.fullmatch(r"[a-p]{32}", e["id"]) is not None and isinstance(e.get("versions"), list)
+                and bool(e["versions"]) and all(isinstance(v, str) and v for v in e["versions"]))
+
+    # browser_extensions is optional, and older versions of oss-intake ignore it: the list stays schema 1.
+    extensions = data.get("browser_extensions", [])
     return (isinstance(tools, dict) and all(isinstance(v, list) and all(tool_entry(e) for e in v)
                                             for v in tools.values())
-            and isinstance(actions, list) and all(action_entry(a) for a in actions))
+            and isinstance(actions, list) and all(action_entry(a) for a in actions)
+            and isinstance(extensions, list) and all(extension_entry(e) for e in extensions))
 
 
 def bundled_known_bad_only(why: str) -> dict:
@@ -248,8 +257,20 @@ def load_known_bad() -> dict:
                 data["tools"].setdefault(tool, []).append(e)
     known = {json.dumps(a, sort_keys=True) for a in data["actions"]}
     data["actions"] += [a for a in _published["actions"] if json.dumps(a, sort_keys=True) not in known]
+    listed = {json.dumps(e, sort_keys=True) for e in data.setdefault("browser_extensions", [])}
+    data["browser_extensions"] += [e for e in _published.get("browser_extensions", [])
+                                   if json.dumps(e, sort_keys=True) not in listed]
     data["updated"] = max(data["updated"], _published["updated"])
     return data
+
+
+def known_bad_extension(ext_id: str, version: str) -> dict | None:
+    """The known_bad.json entry for this version of a browser extension (by its ID; "*" lists every version), or
+    None."""
+    for entry in load_known_bad().get("browser_extensions", []):
+        if entry["id"] == ext_id and ("*" in entry["versions"] or version in entry["versions"]):
+            return entry
+    return None
 
 
 def known_bad_entry(tool: str, version: str) -> dict | None:
