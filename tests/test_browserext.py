@@ -777,3 +777,111 @@ def test_the_shipped_known_bad_extensions():
     assert integrity.known_bad_extension("pajkjnmeojmbapicmbpliphjmcekeaac", "24.10.4")
     assert integrity.known_bad_extension("pajkjnmeojmbapicmbpliphjmcekeaac", "24.10.5") is None
     assert integrity.known_bad_extension("eokjikchkppnkdipbiggnmlkahcdkikp", "1.0")  # every version
+
+
+# ------------------------------------------------------------------------------------------- the CRX signature (PR 3)
+
+@pytest.fixture(scope="module")
+def signer_keys():
+    pytest.importorskip("cryptography")
+    from .crxsigner import rsa_key
+
+    return {"dev": rsa_key(), "store": rsa_key()}
+
+
+def signed_crx(tmp_path, keys, manifest=MV3, store=True, name="signed.crx") -> Path:
+    from .crxsigner import sign, zip_of
+
+    f = tmp_path / name
+    f.write_bytes(sign(zip_of({"manifest.json": json.dumps(manifest)}), keys["dev"],
+                       [keys["store"]] if store else []))
+    return f
+
+
+@pytest.fixture
+def test_store(monkeypatch, signer_keys):
+    from oss_intake import crxsign
+
+    from .crxsigner import spki
+
+    monkeypatch.setattr(crxsign, "STORE_KEY_SHA256", hashlib.sha256(spki(signer_keys["store"])).digest())
+
+
+def test_a_store_signed_crx_end_to_end(tmp_path, signer_keys, test_store):
+    from .crxsigner import id_of
+
+    assert run(tmp_path, "--path", str(signed_crx(tmp_path, signer_keys))) == cli.EXIT_OK
+    a = assessment(tmp_path)
+    info = a["browser_extensions"]
+    assert info["signature"]["status"] == "verified" and info["signature"]["store"]
+    assert info["extensions"][0]["id"] == id_of(signer_keys["dev"])  # the ID comes from the signed header
+    assert not any("CRX" in w or "Chrome Web Store" in w for w in a["warnings"])
+    assert "CRX signature: verified" in (tmp_path / "out" / "summary.md").read_text(encoding="utf-8")
+
+
+def test_a_developer_signed_crx_is_a_warning(tmp_path, signer_keys, test_store):
+    assert run(tmp_path, "--path", str(signed_crx(tmp_path, signer_keys, store=False))) == cli.EXIT_OK
+    assert any("not by the Chrome Web Store" in w for w in assessment(tmp_path)["warnings"])
+
+
+def test_a_changed_crx_leads_the_report(tmp_path, signer_keys, test_store):
+    from .crxsigner import zip_of
+
+    f = signed_crx(tmp_path, signer_keys)
+    data = f.read_bytes()
+    end = 12 + struct.unpack("<I", data[8:12])[0]
+    # The signed header of the real file over another, valid zip: a swapped payload.
+    f.write_bytes(data[:end] + zip_of({"manifest.json": json.dumps({**MV3, "permissions": ["debugger"]})}))
+    assert run(tmp_path, "--path", str(f)) == cli.EXIT_OK
+    w = assessment(tmp_path)["warnings"]
+    assert w[0].startswith("CRX SIGNATURE DOES NOT MATCH") and "changed after it was signed" in w[0]
+
+
+def test_a_crx_on_the_known_bad_list_is_found_by_its_signed_id(tmp_path, signer_keys, test_store, monkeypatch):
+    from .crxsigner import id_of
+
+    real = integrity._bundled_known_bad
+    bad_id = id_of(signer_keys["dev"])
+
+    def listed():
+        data = real()
+        data["browser_extensions"] = [{"id": bad_id, "name": "n", "versions": ["1.0.0"], "reference": "https://r",
+                                       "note": "a test entry"}]
+        return data
+    monkeypatch.setattr(integrity, "_bundled_known_bad", listed)
+    monkeypatch.setattr(integrity, "_published", None)
+    assert run(tmp_path, "--path", str(signed_crx(tmp_path, signer_keys)), "--fail-on", "malicious",
+               "--scanners", "trivy,osv") == cli.EXIT_THRESHOLD
+
+
+def test_without_the_extra_a_crx_is_not_checked_and_says_so(tmp_path, signer_keys, monkeypatch):
+    from oss_intake import crxsign
+
+    monkeypatch.setattr(crxsign, "_crypto", lambda: None)
+    assert run(tmp_path, "--path", str(signed_crx(tmp_path, signer_keys))) == cli.EXIT_OK
+    a = assessment(tmp_path)
+    assert a["browser_extensions"]["signature"]["status"] == "not_checked"
+    assert any("CRX signature of" in w and "signatures extra" in w for w in a["warnings"])
+
+
+def test_no_release_date_warning_for_extensions(tmp_path):
+    """Agreed 23 Nov: a profile or an extension has no single release, so the release-lag warning is noise."""
+    prof = profile(tmp_path, {ID_A: MV3})
+    assert run(tmp_path, "--path", str(prof)) == cli.EXIT_OK
+    assert not any("No release date known" in w for w in assessment(tmp_path)["warnings"])
+
+
+def test_a_shipped_node_modules_folder_is_noted_beside_its_findings(tmp_path):
+    from oss_intake.models import Finding
+
+    folder = write_ext(tmp_path / "Default" / "Extensions" / ID_A / "1.0.0_0", MV3)
+    (folder / "node_modules" / "minimist").mkdir(parents=True)
+    (folder / "node_modules" / "minimist" / "package.json").write_text('{"name": "minimist", "version": "1.2.5"}',
+                                                                      encoding="utf-8")
+    info = browserext.assess(tmp_path / "Default")
+    assert info["extensions"][0]["node_modules"]
+    browserext.attribute(info, [Finding(vuln_id="CVE-2099-0001", package="minimist", installed="1.2.5",
+                                        severity="CRITICAL",
+                                        target=f"Extensions/{ID_A}/1.0.0_0/node_modules/minimist/package.json")])
+    _, blocks = report.browser_section({"browser_extensions": info})
+    assert "ships a node_modules folder" in json.dumps(blocks)

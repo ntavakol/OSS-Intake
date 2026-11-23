@@ -505,9 +505,13 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     if args.path_kind == "browser":
         args.browser_info = browserext.assess(Path(args.scan_target), staged=Path(args.path).is_file(),
                                               browser=args.browser)
+        if Path(args.path).is_file():  # a .crx: its CRX3 signature, and the ID its developer's key gives
+            browserext.apply_signature(args.browser_info, Path(args.path))
         if args.compare_with:
             new = args.browser_info["extensions"][0]
             old = browserext.assess(Path(args.compare_target), staged=Path(args.compare_with).is_file())
+            if Path(args.compare_with).is_file():
+                browserext.apply_signature(old, Path(args.compare_with))
             diff = browserext.compare(old["extensions"][0], new)
             args.browser_info["changes"] = diff
             warnings.extend(browserext.change_warnings(diff, browserext.name_and_id(new)))

@@ -24,8 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         # Must list every harnesses.TARGETS name (tests/test_fuzz_harnesses.py checks).
-        target: [checksums, crx_archive, decisions_file, ext_manifest, govulncheck_output, inventory_csv,
-          likelihood_config, osv_advisory, plugin_signature, renv_lock, sbom_file, scanner_report,
+        target: [checksums, crx_archive, crx_signature, decisions_file, ext_manifest, govulncheck_output,
+          inventory_csv, likelihood_config, osv_advisory, plugin_signature, renv_lock, sbom_file, scanner_report,
           scanner_report_run, service_data, vsix_archive, vsix_files]
     steps:
       # Pinned by full commit SHA, as in ci.yml.

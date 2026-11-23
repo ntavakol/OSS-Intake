@@ -4,6 +4,7 @@ like a project's dependencies (OpenSSF Scorecard and OSV-Scanner would read it a
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import struct
@@ -12,7 +13,7 @@ from pathlib import Path
 
 from oss_intake import likelihood, zipsign
 
-from .harnesses import _VSIXMANIFEST, PLUGIN_ZIP, SEP, VSIX_MEMBERS, framed
+from .harnesses import _VSIXMANIFEST, CRX_ZIP, PLUGIN_ZIP, SEP, VSIX_MEMBERS, framed
 
 FIX = Path(__file__).resolve().parent.parent / "fixtures"
 _SBOMS = sorted((FIX / "sbom").glob("*-fixture.json"))
@@ -82,6 +83,15 @@ _EXT_CODE = (b"eval(x); setTimeout('go()', 1); importScripts('https://cdn.exampl
              + b"'; fetch('https://api.example.com/v1');\n")
 
 
+def _crx_header() -> bytes:
+    """A CRX3 header whose developer key gives its ID, with placeholder key and signature bytes: it reads, the ID
+    matches, and the check stops at loading the key."""
+    key = b"0\x82placeholder developer key"
+    crx_id = hashlib.sha256(key).digest()[:16]
+    proof = _pb(1, key) + _pb(2, b"placeholder signature")
+    return _pb(2, proof) + _pb(3, proof) + _pb(10000, _pb(1, crx_id))
+
+
 def _crx(members: dict[str, bytes]) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
@@ -133,6 +143,8 @@ def seeds(name: str) -> list[bytes]:
     if name == "crx_archive":
         return [_crx({"manifest.json": json.dumps(_EXT_MANIFEST).encode(), "_locales/en/messages.json": _MESSAGES,
                       "cs.js": b"console.log(1);"})]
+    if name == "crx_signature":
+        return [_crx_header(), b"Cr24" + struct.pack("<II", 3, len(_crx_header())) + _crx_header() + CRX_ZIP]
     if name == "ext_manifest":
         return [SEP.join([b"// comment\n" + json.dumps(_EXT_MANIFEST, indent=1).encode(), _MESSAGES, _EXT_CODE,
                           b'<script src="https://cdn.example.com/a.js"></script>']),

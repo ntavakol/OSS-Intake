@@ -22,6 +22,7 @@ from oss_intake import (
     browserext,
     cli,
     conditions,
+    crxsign,
     decisions,
     inputs,
     integrity,
@@ -220,6 +221,23 @@ def ext_manifest(data: bytes) -> None:
         shutil.rmtree(profile, ignore_errors=True)
 
 
+def crx_signature(data: bytes) -> None:
+    """A .crx's CRX3 signature (crxsign.check): the bytes as the whole file, and as the header of a file around a
+    small zip, so the fuzzer reaches the header's protobuf, the ID and key checks and the signature verification."""
+    crxsign.check(_file(data, "sig.crx"))
+    crxsign.check(_file(b"Cr24" + struct.pack("<II", 3, len(data)) + data + CRX_ZIP, "framed.crx"))
+
+
+def _crx_zip() -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("manifest.json", '{"manifest_version": 3, "name": "x", "version": "1"}')
+    return buf.getvalue()
+
+
+CRX_ZIP = _crx_zip()
+
+
 def _plugin_zip() -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
@@ -299,7 +317,7 @@ def service_data(data: bytes) -> None:
 TARGETS = {f.__name__: f for f in (sbom_file, inventory_csv, decisions_file, renv_lock, scanner_report,
                                    scanner_report_run, osv_advisory, vsix_archive, vsix_files, checksums,
                                    likelihood_config, govulncheck_output, service_data, plugin_signature,
-                                   crx_archive, ext_manifest)}
+                                   crx_archive, ext_manifest, crx_signature)}
 
 
 def run(name: str):

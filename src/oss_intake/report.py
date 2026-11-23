@@ -350,6 +350,21 @@ def browser_section(a: dict) -> tuple[str, list] | None:
                                                if f.get("critical") or f.get("high") else "")])
     blocks.append(("table", ["Extension", "ID", "Version", "Manifest", "Known-bad list", "Permissions asked for",
                              "Updates from", "Findings"], rows))
+    shipped = [e["name"] or e["folder"] for e in exts
+               if e.get("node_modules") and (e.get("findings") or {}).get("total")]
+    if shipped:
+        blocks.append(("p", f"{', '.join(shipped[:10])}{' and others' if len(shipped) > 10 else ''} "
+                            f"ship{'s' if len(shipped) == 1 else ''} a node_modules folder. Their findings may include "
+                            "packages the browser never loads, such as build and command-line tools: check whether a "
+                            "package's files are used by the extension before acting on its findings."))
+    sig = info.get("signature")
+    if sig:
+        words = {"verified": "verified", "failed": "DOES NOT MATCH", "not_checked": "not checked"}[sig["status"]]
+        blocks.append(("p", f"CRX signature: {words}. {sig['detail'][0].upper()}{sig['detail'][1:]}."
+                            + (f" Signed by {len(sig['other_keys'])} other key(s) as well." if sig.get("other_keys")
+                               else "")
+                            + " The check is Chromium's: every signature verifies, one is by the key the extension's "
+                              "ID comes from, and a file from the Chrome Web Store also carries the store's."))
     perms = [[e["name"] or e["folder"], p["name"] + (" (optional)" if p["optional"] else ""),
               "site access" if p["kind"] == "site" else "permission", p["tier"], p["why"]]
              for e in exts for p in e["permissions"] if p["tier"] in ("high", "medium", "not graded")]
