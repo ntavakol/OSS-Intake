@@ -109,6 +109,26 @@
    "status": "no"
   },
   {
+   "input": "https://microsoftedge.microsoft.com/addons/detail/abc",
+   "status": "no",
+   "says": "--browser edge"
+  },
+  {
+   "input": "https://addons.mozilla.org/firefox/addon/abc/",
+   "status": "no",
+   "says": "not Firefox ones yet"
+  },
+  {
+   "input": "./downloads/helper.crx",
+   "status": "no",
+   "says": "oss-intake --path helper.crx"
+  },
+  {
+   "input": "helper.xpi",
+   "status": "no",
+   "says": "not Firefox ones yet"
+  },
+  {
    "input": "https://example.com/x",
    "status": "unknown"
   },
