@@ -239,6 +239,11 @@
    "id": "unchecked",
    "label": "An SBOM component that couldn't be checked (SBOMs only, not a .csv or .xlsx)",
    "summary": "an SBOM component or renv.lock package that could not be checked"
+  },
+  {
+   "id": "permission-drift",
+   "label": "A browser extension update asks for more than the older version (with --compare-with)",
+   "summary": "a browser extension update that asks for new permissions, sites or an update address"
   }
  ],
  "summary": [

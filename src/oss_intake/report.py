@@ -357,11 +357,58 @@ def browser_section(a: dict) -> tuple[str, list] | None:
         blocks.append(("p", "High and medium permissions, and any oss-intake does not grade. An optional permission "
                             "is asked for only when the extension needs it, and the user is asked first."))
         blocks.append(("table", ["Extension", "Permission", "Kind", "Grade", "What it allows"], perms[:1000]))
-    sigs = [[e["name"] or e["folder"], s["title"], s["tier"],
-             s["file"] + (f":{s['line']}" if s["line"] else "") + (f" ({s['detail']})" if s["detail"] else "")]
-            for e in exts for s in e["signals"]]
+    def seen(s: dict) -> str:
+        if "seen" not in s:
+            return s["file"] + (f":{s['line']}" if s["line"] else "") + (f" ({s['detail']})" if s["detail"] else "")
+        places = "; ".join(f"{x['file']}{':' + str(x['line']) if x['line'] else ''} ({x['detail']})"
+                           for x in s["seen"][:3])
+        more = len(s["seen"]) - 3
+        return places + (f"; and {more}{' or more' if s.get('capped') else ''} more" if more > 0 else "")
+
+    sigs = [[e["name"] or e["folder"], s["title"], s["tier"], seen(s)] for e in exts for s in e["signals"]]
     if sigs:
-        blocks.append(("table", ["Extension", "Signal", "Grade", "Seen in"], sigs[:1000]))
+        blocks.append(("p", "Signals in the manifest and in the code. The code signals are heuristics, patterns in "
+                            "text: a reason to read the code, not a verdict, and a determined author can avoid "
+                            "them."))
+        blocks.append(("table", ["Extension", "Signal", "Grade", "Seen in (first 3)"], sigs[:1000]))
+    facts = [e for e in exts if (e.get("code_facts") or {}).get("minified_total")
+             or (e.get("code_facts") or {}).get("not_read_total")]
+    if facts:
+        blocks.append(("table", ["Extension", "Files read", "Minified files (a line over 5,000 characters)",
+                                 "Not read"],
+                       [[e["name"] or e["folder"], str(e["code_facts"]["files_read"]),
+                         str(e["code_facts"]["minified_total"]) + (
+                             f": {', '.join(e['code_facts']['minified_files'][:5])}"
+                             if e["code_facts"]["minified_files"] else ""),
+                         str(e["code_facts"]["not_read_total"])] for e in facts[:500]]))
+    hosts = [[e["name"] or e["folder"], f, ", ".join(h[:15]) + (f" and {len(h) - 15} more" if len(h) > 15 else "")]
+             for e in exts for f, h in sorted((e.get("hosts_by_file") or {}).items())]
+    if hosts:
+        blocks.append(("p", "Web hosts named in each file (standards namespaces such as www.w3.org left out). Naming "
+                            "a host is not the same as contacting it."))
+        blocks.append(("table", ["Extension", "File", "Hosts"], hosts[:1000]))
+    ch = info.get("changes")
+    if ch:
+        def listed(xs: list, n: int = 10) -> str:
+            return (", ".join(str(x) for x in xs[:n]) + (f" and {len(xs) - n} more" if len(xs) > n else "")) or "none"
+
+        crows = [
+            ["Permissions added", listed([p["name"] + (" (optional)" if p["optional"] else "")
+                                          for p in ch["permissions_added"]])],
+            ["Permissions removed", listed([p["name"] + (" (optional)" if p["optional"] else "")
+                                            for p in ch["permissions_removed"]])],
+            ["Content scripts on new sites", listed(ch["content_sites_added"])],
+            ["New code signals", listed([f"{x['title']} ({x['where']})" for x in ch["signals_added"]], 5)],
+            ["Code signals seen more often", listed([f"{x['title']}: {x['from']} to {x['to']}"
+                                                     for x in ch["signals_grew"]], 5)],
+            ["New web hosts", "not compared (too many in a version)" if ch["hosts_not_compared"]
+             else listed(ch["hosts_added"], 15)],
+        ] + [[k.replace("_", " ").capitalize(), f"CHANGED from {v['from'] or 'none'} to {v['to'] or 'none'}"]
+             for k, v in ch["changed"].items()]
+        blocks.append(("p", f"What the update from {ch['from_version']} to {ch['to_version']} changed (--compare-with)."
+                            + (" It asks for more than the older version (permission drift)." if ch["drift"]
+                               else "")))
+        blocks.append(("table", ["Change", "Detail"], crows))
     if info.get("unmatched"):
         blocks.append(("p", f"{info['unmatched']} finding(s) could not be tied to one extension; findings.csv has "
                             "them all."))

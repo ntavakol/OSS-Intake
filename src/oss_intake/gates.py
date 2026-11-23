@@ -29,6 +29,9 @@ def not_evaluated(wanted: list[str], age_info: dict, registry: dict | None, args
         for gate in ("malicious", "act"):
             if gate in wanted and not any(g == gate for g, _ in out):
                 out.append((gate, f"the VS Code Marketplace removal list was {ext['removed_list']['detail']}"))
+    browser = getattr(args, "browser_info", None)
+    if "permission-drift" in wanted and not (browser or {}).get("changes"):
+        out.append(("permission-drift", "the two versions were not compared"))
     if "recent" in wanted and age_info.get("status") != "ok" and not age_info.get("recent"):
         out.append(("recent", age_info.get("reason") or f"{age_info.get('errors', 0)} lookups failed, "
                                                          f"{age_info.get('skipped_limit', 0)} over the limit"))
@@ -97,5 +100,6 @@ def met(wanted: list[str], findings: list, age_info: dict, registry: dict | None
         "unknown-age": unknown_age(age_info),
         "mismatch": bool(registry and registry.get("status") == "mismatch"),
         "unchecked": unchecked > 0,
+        "permission-drift": bool(((browser or {}).get("changes") or {}).get("drift")),
     }
     return [w for w in wanted if met[w]]

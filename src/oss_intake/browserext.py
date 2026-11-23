@@ -24,6 +24,7 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import math
 import os
 import re
 import shutil
@@ -148,6 +149,40 @@ SIGNAL_TIER = {"mv2": "medium", "manifest-version": "medium", "cs-all-sites": "h
                "external-pages": "low", "web-accessible": "low", "csp-eval": "high", "csp-remote": "high",
                "csp-sandbox": "medium", "update-url": "high", "overrides-settings": "high",
                "overrides-page": "medium", "identity": "high"}
+# What the extension's own files are checked for: heuristics, reported as signals with each place they were seen.
+CODE_SIGNALS = {
+    "code-eval": ("medium", "Runs code built from text at run time (eval or new Function)"),
+    "code-string-timer": ("medium", "Passes text to setTimeout or setInterval, which runs it as code"),
+    "code-import-remote": ("high", "Loads a script from the internet into a worker (importScripts with a web address)"),
+    "code-remote-script": ("high", "Loads a script from the internet into a page (a script tag or src with a web "
+                                   "address)"),
+    "code-execute-string": ("high", "Runs text as code in a tab (executeScript with code, Manifest V2)"),
+    "code-packed": ("medium", "Packed code (the eval(function(p,a,c,k,e,...)) packer), which hides what it does"),
+    "code-obfuscated": ("medium", "Obfuscated code (many _0x names, as javascript-obfuscator writes them)"),
+    "code-high-entropy": ("medium", "A long string of near-random characters, which can hide a payload"),
+    "code-blob": ("low", "A long encoded string (base64 or hex), which can hide a payload"),
+    "code-hidden": ("high", "Hidden characters that can carry code, or characters that reorder how text reads"),
+}
+MAX_HITS = 20  # places kept per signal
+READ_FILE_BYTES = 20_000_000
+READ_TOTAL_BYTES = 400_000_000  # for one run, across every extension
+MAX_FILES = 50_000
+MINIFIED_LINE = 5_000  # a line this long is not code a person wrote to be read
+_STRING_TIMER = re.compile(r"\bset(?:Timeout|Interval)\s*\(\s*['\"`]")
+_IMPORT_REMOTE = re.compile(r"\bimportScripts\s*\(\s*['\"`]https?://", re.I)
+_REMOTE_SCRIPT = re.compile(r"<script\b[^>]{0,500}?\bsrc\s*=\s*['\"]?(?:https?:)?//|"
+                            r"\.src\s*=\s*['\"`]https?://[^'\"`\s]{1,500}?\.js\b", re.I)
+_EXECUTE_STRING = re.compile(r"\bexecuteScript\s*\([^)]{0,300}?\bcode\s*:")
+_PACKED = re.compile(r"eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,")
+_OBFUSCATOR_NAME = re.compile(r"\b_0x[0-9a-f]{4,6}\b")
+OBFUSCATOR_NAMES = 20  # distinct _0x names in one file
+HIGH_ENTROPY_CHARS = 200
+HIGH_ENTROPY_BITS = 5.2
+# Addresses that are names of standards, not places an extension talks to.
+_NAMESPACE_HOSTS = {"www.w3.org", "w3.org", "schema.org", "json-schema.org", "purl.org", "ns.adobe.com",
+                    "schemas.microsoft.com", "schemas.openxmlformats.org", "www.apache.org", "opensource.org"}
+MAX_HOSTS = 1000
+
 # Script sources in a policy that load nothing from the internet. Anything else (a host, a scheme such as https:,
 # *) is a remote source; localhost is allowed for development and is not counted.
 _LOCAL_SOURCES = re.compile(r"^(?:'self'|'none'|'wasm-unsafe-eval'|'unsafe-eval'|'unsafe-inline'|'strict-dynamic'|"
@@ -587,7 +622,113 @@ def _highest(tiers: list[str]) -> str:
     return "none"
 
 
-def analyse(folder: Path, rel: str = "") -> dict:
+def _entropy(text: str) -> float:
+    counts: dict[str, int] = {}
+    for c in text:
+        counts[c] = counts.get(c, 0) + 1
+    n = len(text)
+    return -sum(k / n * math.log2(k / n) for k in counts.values())
+
+
+def code_checks(folder: Path, budget: list[int]) -> dict:
+    """The extension's own files read as text (binary files and source maps excepted, nothing run): the code
+    signals with each place seen, the web hosts each file names, and facts about how readable the code is."""
+    from . import vscode
+
+    hits: dict[str, list[dict]] = {}
+    hosts: dict[str, list[str]] = {}
+    all_hosts: set[str] = set()
+    hosts_capped = False
+    unread: list[str] = []
+    minified: list[str] = []
+    files = longest = 0
+
+    def add(kind: str, file: str, line: int | None, detail: str) -> bool:
+        bucket = hits.setdefault(kind, [])
+        if len(bucket) < MAX_HITS:
+            bucket.append({"file": file, "line": line, "detail": detail[:200]})
+        return len(bucket) < MAX_HITS
+
+    for p in vscode._files(folder):
+        files += 1
+        if files > MAX_FILES:
+            unread.append(f"more than {MAX_FILES} files: the rest were not read")
+            break
+        if p.is_symlink() or not p.is_file():
+            continue
+        rel = p.relative_to(folder).as_posix()
+        if rel == "manifest.json" or rel.startswith("_metadata/") or p.suffix.lower() == ".map":
+            continue  # checked as a manifest; the store's signed hashes; source maps (their sources do not run)
+        try:
+            with open(p, "rb") as fh:
+                head = fh.read(8192)
+            size = p.stat().st_size
+        except OSError:
+            continue
+        if b"\0" in head:
+            continue
+        if size > READ_FILE_BYTES or budget[0] <= 0:
+            unread.append(rel)
+            continue
+        budget[0] -= size
+        try:
+            text = p.read_bytes().decode("utf-8", "replace")
+        except OSError:
+            continue
+        where = vscode._Lines(text)
+        line_max = max((len(x) for x in text.split("\n")), default=0)
+        longest = max(longest, line_max)
+        if line_max >= MINIFIED_LINE:
+            minified.append(rel)
+        for kind, rx in (("code-eval", vscode._EVAL), ("code-string-timer", _STRING_TIMER),
+                         ("code-import-remote", _IMPORT_REMOTE), ("code-remote-script", _REMOTE_SCRIPT),
+                         ("code-execute-string", _EXECUTE_STRING), ("code-packed", _PACKED),
+                         ("code-hidden", vscode._INVISIBLE), ("code-hidden", vscode._BIDI)):
+            for m in rx.finditer(text):
+                detail = (f"{len(m.group(0))} hidden character(s)" if kind == "code-hidden"
+                          else m.group(0).strip())
+                if not add(kind, rel, where(m.start()), detail):
+                    break
+        names = set(_OBFUSCATOR_NAME.findall(text))
+        if len(names) >= OBFUSCATOR_NAMES:
+            at = _OBFUSCATOR_NAME.search(text)
+            add("code-obfuscated", rel, where(at.start()) if at else None, f"{len(names)} distinct _0x names")
+        for m in vscode._RUN.finditer(text):
+            run = m.group(0)
+            if len(run) < HIGH_ENTROPY_CHARS or vscode._DATA_URI.search(text, max(0, m.start() - 80), m.start()):
+                continue
+            if len(run) >= vscode.BLOB_CHARS:
+                if not add("code-blob", rel, where(m.start()), f"{len(run)} characters"):
+                    break
+            elif _entropy(run) >= HIGH_ENTROPY_BITS:
+                if not add("code-high-entropy", rel, where(m.start()), f"{len(run)} characters"):
+                    break
+        found = []
+        for m in vscode._URL.finditer(text):
+            h = m.group(1).lower()
+            if h in _NAMESPACE_HOSTS or h in found:
+                continue
+            if h not in all_hosts and len(all_hosts) >= MAX_HOSTS:
+                hosts_capped = True
+                break
+            all_hosts.add(h)
+            found.append(h)
+        if found:
+            hosts[rel] = sorted(found)[:100]
+    signals = []
+    for kind, seen in hits.items():
+        tier, title = CODE_SIGNALS[kind]
+        first = seen[0]
+        signals.append({"id": kind, "title": title, "tier": tier, "file": first["file"], "line": first["line"],
+                        "detail": f"{len(seen)}{'+' if len(seen) >= MAX_HITS else ''} place(s); first: "
+                                  f"{first['detail']}", "seen": seen, "capped": len(seen) >= MAX_HITS})
+    return {"signals": signals, "hosts_by_file": hosts, "hosts_all": sorted(all_hosts), "hosts_capped": hosts_capped,
+            "facts": {"files_read": files - len(unread), "minified_files": minified[:50],
+                      "minified_total": len(minified), "longest_line": longest, "not_read": unread[:20],
+                      "not_read_total": len(unread)}}
+
+
+def analyse(folder: Path, rel: str = "", budget: list[int] | None = None) -> dict:
     """One extension: identity, graded permissions and signals. rel is its folder relative to what was given (to
     match findings to it)."""
     got = read_manifest(folder)
@@ -595,7 +736,8 @@ def analyse(folder: Path, rel: str = "") -> dict:
     folder_id = folder.parent.name if installed else ""
     if got is None:
         return {"id": folder_id, "name": "", "version": "", "folder": rel or folder.name, "unreadable": True,
-                "permissions": [], "signals": [], "tier": "none", "known_bad": None}
+                "permissions": [], "signals": [], "tier": "none", "known_bad": None, "hosts_by_file": {},
+                "hosts_all": [], "hosts_capped": False, "content_matches": []}
     data, raw = got
     messages = _messages(folder, data)
     key_id = id_from_key(data.get("key"))
@@ -611,7 +753,13 @@ def analyse(folder: Path, rel: str = "") -> dict:
     if mismatch:
         signals.insert(0, {"id": "identity", "title": SIGNALS["identity"], "tier": SIGNAL_TIER["identity"],
                            "file": folder.name, "line": None, "detail": "; ".join(mismatch)})
+    code = code_checks(folder, budget if budget is not None else [READ_TOTAL_BYTES])
+    order = {t: i for i, t in enumerate(TIERS)}
+    signals += sorted(code["signals"], key=lambda x: (order[x["tier"]], x["id"]))
     perms = permissions(data)
+    scripts = data.get("content_scripts")
+    matches = sorted({m for cs in (scripts if isinstance(scripts, list) else []) if isinstance(cs, dict)
+                      for m in _strings(cs.get("matches"))})[:MAX_ROWS * 4]
     given = data.get("update_url")
     update = given if isinstance(given, str) else ""
     author = data.get("author")
@@ -627,7 +775,9 @@ def analyse(folder: Path, rel: str = "") -> dict:
         "update_source": STORE_UPDATE_URLS.get(update.strip().rstrip("/"), "not a store" if update.strip()
                                                else "none given"),
         "folder": rel or folder.name, "installed": bool(installed),
-        "permissions": perms, "signals": signals,
+        "permissions": perms, "signals": signals, "content_matches": matches,
+        "hosts_by_file": code["hosts_by_file"], "hosts_all": code["hosts_all"], "hosts_capped": code["hosts_capped"],
+        "code_facts": code["facts"],
         "tier": _highest([p["tier"] for p in perms if not p["optional"]] + [s["tier"] for s in signals]),
         "known_bad": None,
     }
@@ -642,12 +792,13 @@ def assess(target: Path, staged: bool = False, browser: str | None = None) -> di
 
     folders = [p for p in target.iterdir() if p.is_dir() and not p.name.startswith(".")] if staged else find(target)
     found = []
+    budget = [READ_TOTAL_BYTES]  # shared, as for VS Code: one run reads at most this much code
     for f in folders:
         try:
             rel = f.relative_to(target).as_posix()
         except ValueError:
             rel = f.name
-        found.append(analyse(f, "" if staged else rel))
+        found.append(analyse(f, "" if staged else rel, budget))
     listed = integrity.load_known_bad()
     for e in found:
         e["known_bad"] = integrity.known_bad_extension(e["id"], e["version"]) if e["id"] else None
@@ -664,6 +815,7 @@ def attribute(info: dict, findings: list) -> None:
     only = exts[0] if info.get("single") and len(exts) == 1 else None
     for e in exts:
         e["findings"] = {"total": 0, "critical": 0, "high": 0, "malicious": 0}
+        e.pop("hosts_all", None)  # for --compare-with only: the report lists hosts by file
     unmatched = 0
     for f in findings:
         owners = [only] if only else []
@@ -682,6 +834,70 @@ def attribute(info: dict, findings: list) -> None:
             c["high"] += f.severity == "HIGH"
             c["malicious"] += bool(f.malicious)
     info["unmatched"] = unmatched
+
+
+def compare(old: dict, new: dict) -> dict:
+    """What an update changed, for two versions of one extension (analyse() results): permissions and site
+    patterns added and removed, new content-script sites, new web hosts in the code, new code signals, and a
+    changed update address, author or homepage. drift: the update asks for more (a permission or site pattern
+    added, optional ones included, or a new update address), which --fail-on permission-drift fails on."""
+    def perm_set(e: dict) -> set[tuple[str, bool]]:
+        return {(p["name"], p["optional"]) for p in e["permissions"]}
+
+    op, np = perm_set(old), perm_set(new)
+    added = sorted(np - op)
+    removed = sorted(op - np)
+    sites_added = sorted(set(new.get("content_matches", [])) - set(old.get("content_matches", [])))
+    hosts_full = not old.get("hosts_capped") and not new.get("hosts_capped")
+    hosts_added = sorted(set(new.get("hosts_all", [])) - set(old.get("hosts_all", []))) if hosts_full else []
+    ok = {s["id"]: s for s in old["signals"]}
+    signals_added = [{"id": s["id"], "title": s["title"], "tier": s["tier"],
+                      "where": s["file"] + (f":{s['line']}" if s["line"] else "")}
+                     for s in new["signals"] if s["id"] not in ok]
+    grew = [{"id": s["id"], "title": s["title"], "from": len(ok[s["id"]]["seen"]), "to": len(s["seen"])}
+            for s in new["signals"] if s["id"] in ok and "seen" in s and "seen" in ok[s["id"]]
+            and not ok[s["id"]].get("capped") and len(s["seen"]) > len(ok[s["id"]]["seen"])]
+    changed = {k: (old.get(k, ""), new.get(k, "")) for k in ("update_url", "author", "homepage")
+               if old.get(k, "") != new.get(k, "")}
+    return {
+        "from_version": old["version"], "to_version": new["version"],
+        "same_extension": not (old["id"] and new["id"]) or old["id"] == new["id"],
+        "permissions_added": [{"name": n, "optional": o} for n, o in added],
+        "permissions_removed": [{"name": n, "optional": o} for n, o in removed],
+        "content_sites_added": sites_added,
+        "hosts_added": hosts_added[:100], "hosts_added_total": len(hosts_added), "hosts_not_compared": not hosts_full,
+        "signals_added": signals_added, "signals_grew": grew,
+        "changed": {k: {"from": a, "to": b} for k, (a, b) in changed.items()},
+        "drift": bool(added or sites_added or "update_url" in changed),
+    }
+
+
+def change_warnings(diff: dict, name: str) -> list[str]:
+    """Warnings for what an update adds that is worth a person's look."""
+    out = []
+    if not diff["same_extension"]:
+        out.append(f"--compare-with names a different extension than {name}: the comparison may mean little")
+    adds = []
+    if diff["permissions_added"]:
+        adds.append("permissions " + ", ".join(p["name"] + (" (optional)" if p["optional"] else "")
+                                               for p in diff["permissions_added"][:10]))
+    if diff["content_sites_added"]:
+        adds.append("content scripts on " + ", ".join(diff["content_sites_added"][:5]))
+    if diff["signals_added"]:
+        adds.append("; ".join(s["title"].split(" (")[0] for s in diff["signals_added"][:5]))
+    if diff["hosts_added_total"]:
+        adds.append(f"{diff['hosts_added_total']} new web host(s) in its code")
+    if adds:
+        out.append(f"{name} {diff['to_version']} adds since {diff['from_version']}: {'; '.join(adds)}. Read what "
+                   "changed before you take the update")
+    for key, words in (("update_url", "update address"), ("author", "author"), ("homepage", "homepage")):
+        if key in diff["changed"]:
+            c = diff["changed"][key]
+            out.append(f"{name} {diff['to_version']} changes its {words} from {c['from'] or 'none'} to "
+                       f"{c['to'] or 'none'}: check who publishes it now")
+    if diff["hosts_not_compared"]:
+        out.append(f"--compare-with could not compare web hosts (over {MAX_HOSTS} in a version)")
+    return out
 
 
 def label(e: dict) -> str:
