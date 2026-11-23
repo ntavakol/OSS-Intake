@@ -510,7 +510,7 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
             old = browserext.assess(Path(args.compare_target), staged=Path(args.compare_with).is_file())
             diff = browserext.compare(old["extensions"][0], new)
             args.browser_info["changes"] = diff
-            warnings.extend(browserext.change_warnings(diff, browserext.label(new)))
+            warnings.extend(browserext.change_warnings(diff, browserext.name_and_id(new)))
         alerts, more = browserext.warnings(args.browser_info)
         warnings[:0] = alerts
         warnings.extend(more)
