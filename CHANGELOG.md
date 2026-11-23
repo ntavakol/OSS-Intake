@@ -5,6 +5,25 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Browser extensions for Chrome, Edge and Brave, checked statically: `--path` takes a `.crx` file, an unpacked or
+  installed extension, or a browser profile, and `--browser chrome`, `edge` or `brave` reads the default profile
+  (only its Extensions folder, never written; `--browser-extension ID` for one extension). Each extension's
+  permissions and site access are graded high, medium or low, and its manifest is checked for Manifest V2, content
+  scripts on every site or before the page's own scripts, pages other sites or extensions can reach, a content
+  security policy that allows `eval` or scripts from the internet, an update address that is not a store, replaced
+  search or startup settings, and an installed folder whose ID or version does not match its manifest. An extension
+  on oss-intake's known-bad list leads the report and counts for `--fail-on malicious`; the list's new
+  `browser_extensions` section is empty in this change. A `.crx` is read with limits (CRX3 only) and unpacked with
+  the `.vsix` limits. JavaScript libraries copied in as plain files are not recognised by the scanners, and the
+  report says so. Nothing in an extension is run.
+
+### Changed
+
+- The command builder no longer says oss-intake does not check browser extensions: for a `.crx` or a store link it
+  gives the command to run. Firefox extensions are still not checked.
+
 ## [0.21.0] - 2026-11-12
 
 A feature release: upgrade from 0.20.0. Amazon Linux findings get fix dates, and the JetBrains Marketplace's

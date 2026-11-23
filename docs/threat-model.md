@@ -303,6 +303,43 @@ machine if the extension ever ran.
   not that Open VSX itself was not compromised. Open VSX's own signature (`.sigzip`) is not checked.
 - Bundled code is read for indicators but its dependencies cannot be named, so they are not checked.
 
+## Browser extensions (`--path` with a .crx, an extension or a profile; `--browser`)
+
+**What enters:** a `.crx` file, an unpacked or installed extension's files, or a browser profile's `Extensions`
+folder. A `.crx` and an extension's files are written by whoever published the extension and are treated as
+hostile. A profile folder belongs to the user running oss-intake but holds personal data beside the extensions.
+
+**Assets at risk:** the files of the user running oss-intake (a hostile `.crx` could try to write outside the folder
+it is unpacked into), the machine's disk and memory, the user's personal data in the profile (browsing history,
+cookies, the extensions' stored data), the profile itself (a tool that wrote to it could break the browser), and
+the honesty of the report (an extension that hides what it asks for, or claims another's identity).
+
+| Threat | Mitigation | Where |
+|---|---|---|
+| The extension's code runs during the check | Nothing in an extension is run, installed or imported: its manifest and locale files are parsed as JSON, and its other files are left to the scanners. | `browserext.py` |
+| A hostile `.crx` header: a huge stated size, a size past the end of the file, an unknown version | The header is read with limits before anything else: the `Cr24` magic, version 3 only (an old CRX2 file is refused), a header of at most 1 MB that ends before the file does, a file of at most 500 MB. Any of these refuses the file (exit 2) before anything is written. | `browserext.crx_header` |
+| Path traversal, links, names that clash on macOS or Windows, zip bombs in the zip after the header | The zip is copied out of the `.crx` into a new temporary folder and unpacked with the `.vsix` limits (the same member-name checks, no links, at most 50,000 members, 300 MB a member and 1 GB in all as written, no member over 1 MB that expands more than 200 times); a refusal names the `.crx`. The copy and the unpacked files are removed in a `finally`. | `browserext.unpack`, `vscode.extract` |
+| A hostile manifest or locale file: deep nesting, a huge file, comments crafted to make reading slow | `manifest.json` and `messages.json` are read up to 5 MB, nesting is bounded (`jsonsafe`), and comments and trailing commas are removed in one linear pass. A locale name is checked against a strict pattern before it is used as a folder name, so it cannot lead out of the extension. Both readers are fuzzed (`ext_manifest`, `crx_archive`). | `browserext.parse_manifest`, `browserext.lenient_json`, `browserext._messages` |
+| A manifest the reader refuses (a comment, a trailing comma, odd types) hides an extension from the checks | Comments and trailing commas are accepted. In a profile, an installed extension whose manifest cannot be read is listed and named in a warning, not skipped. Fields of an unexpected type are ignored, never a crash. | `browserext.find`, `browserext.analyse` |
+| Personal data in the profile is read, or the profile is changed | Only the profile's `Extensions` folder is read: `Preferences`, `Local Extension Settings` and the rest are never opened. Nothing in the profile is written (a test checks that no file's modification time changes). Folders inside it that are links are not followed. Reports show a path under the home folder as `~/...`. | `browserext.find`, `cli._browser_path` |
+| An installed extension claims another's identity, or was changed after it was installed | The folder's ID is compared with the ID its manifest's `key` gives (the browser's own derivation), and the folder's version with the manifest's; a mismatch is a high signal and a warning. | `browserext.analyse` |
+| The known-bad list is tampered with | It is the same signed list as the known-bad scanner versions: the published copy is used only when cosign verifies it was signed by OSS-Intake's own workflow, and it only adds to the bundled list. A published list whose browser extension entries are malformed is not used at all. | `integrity.refresh_known_bad`, `integrity._valid_known_bad` |
+| A known-bad extension passes `--fail-on malicious` | An extension on the list counts for the gate, as a malicious package does. The bundled list is always there, so the gate is never left unevaluated by it. | `gates.met` |
+| The report is used to attack its reader (a name, a description or a pattern with markup) | Every value from a manifest goes through the same escaping as other report values, and is cut to a fixed length. | `report.browser_section`, `report._md_cell`, `report_html` |
+
+**Left open:**
+
+- The checks read the manifest, not the code: an extension can load and run code it fetches (in Manifest V2) or
+  do harm with the permissions it was given, and none of that shows here. What an extension does once running is
+  for behaviour analysis, which oss-intake does not do.
+- The `.crx` signature is not checked yet, so a `.crx` repackaged after publication is not detected.
+- JavaScript libraries copied in as plain files are not recognised by the scanners, so their known
+  vulnerabilities are not reported; the report says so.
+- The known-bad list names only what has been publicly reported; a malicious extension no one has reported, or one
+  republished under a new ID, is not on it.
+- Which extensions are turned on is in the profile's `Preferences`, which is not read, so a turned-off extension is
+  assessed like any other.
+
 ## Open items that could be fixed
 
 The open items agreed on 6 Nov are all fixed (CHANGELOG.md). What is not listed here (a

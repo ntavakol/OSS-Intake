@@ -318,6 +318,55 @@ or signed by someone other than the Marketplace, also stops the run. Without the
 that it has a signing block are checked, which shows damage but not deliberate tampering: the download is protected
 by HTTPS only, and the report says so.
 
+### Browser extensions
+
+```bash
+oss-intake --browser chrome --out ./reports --fail-on malicious        # every extension in Chrome's default profile
+oss-intake --browser edge --browser-extension aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --out ./reports   # one, by its ID
+oss-intake --path ./extension.crx --out ./reports                      # a .crx file
+oss-intake --path ./my-extension --out ./reports                       # an unpacked extension's folder
+```
+
+Extensions for Chromium browsers (Chrome, Edge and Brave) are checked statically: what each extension's manifest asks
+for and how it is set up. Nothing in an extension is run, and what it does once running is not assessed. oss-intake
+takes a `.crx` file (recognised by its `Cr24` header), an unpacked extension's folder (a `manifest.json` with a name,
+a version and a `manifest_version`), one installed extension's folder, or a profile's whole `Extensions` folder.
+
+`--browser chrome`, `edge` or `brave` reads the default profile of the user running oss-intake (on macOS under
+`~/Library/Application Support`, on Linux under `~/.config`, on Windows under `%LOCALAPPDATA%`), and
+`--browser-extension ID` narrows it to one extension, by the ID the browser's extensions page shows. For another
+profile, give `--path` to its folder (`Profile 1`, say). Only the profile's `Extensions` folder is read, and nothing
+is written to it: the profile's settings and the extensions' stored data hold personal data and are not opened.
+Installed extensions are kept unpacked, so there is no `.crx` to read for them.
+
+Each extension is reported with:
+
+- **The permissions and site access it asks for**, each graded high, medium or low by what it lets the extension do
+  (debugger, native messaging, proxy, management, cookies and access to every site are high; tabs, history,
+  scripting and access to listed sites are medium). A permission oss-intake does not know is listed as not graded,
+  never dropped. Optional permissions are listed apart: the browser asks the user before granting them.
+- **Signals in its manifest**, each with the line: Manifest V2 (which Chrome no longer runs, and Edge is turning
+  off); content scripts on every site, before the page's own scripts (`run_at` `document_start`), in every frame,
+  or in the page's own JavaScript (`world` `MAIN`); `externally_connectable` (any extension, or web pages, can send
+  it messages); `web_accessible_resources` open to every site; a content security policy that allows `eval` or
+  scripts from the internet (for Manifest V3 extension pages, the report adds that Chrome does not load such an
+  extension), or a sandbox policy that does; an `update_url` that is not the Chrome Web Store's or Edge Add-ons';
+  and replacing the search engine, home page, startup pages or a browser page such as the new tab page. An
+  installed extension whose folder, key and version do not agree is flagged too. These are signals for a person to
+  read, not verdicts. `'wasm-unsafe-eval'` is not flagged (Manifest V3 allows it by default), and neither is an
+  extension without an `update_url` (an unpacked copy has none).
+- **oss-intake's known-bad list**: an extension listed there, by its ID and version, leads the report and counts
+  for `--fail-on malicious`. Each entry names its public source. The list is the same signed list as the known-bad
+  scanner versions (bundled, and updated between releases when cosign can verify the published copy).
+- **The packages it ships**, scanned like any folder and counted against the extension. The scanners find only
+  packages a `package.json` or lockfile describes: a JavaScript library copied in as a plain file (such as
+  `jquery.min.js`), which is how most extensions ship them, is not recognised, and the report says so.
+
+A `.crx` is untrusted input: its header is read with limits (CRX3 only; an old CRX2 file is refused), and the zip
+after it is unpacked with the same limits as a `.vsix`. One that breaks a limit, or is damaged, is refused (exit 2)
+before anything is written. The `.crx` signature is not checked yet. Manifest comments and trailing commas are
+accepted, so a manifest that uses them is read rather than missed.
+
 ### Package inventory
 
 To check the open source an organisation already uses, pass a CSV list of packages, for example exported from
