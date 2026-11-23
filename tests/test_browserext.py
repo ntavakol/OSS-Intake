@@ -763,3 +763,14 @@ def test_the_drift_gate_is_not_evaluated_without_a_comparison():
     gaps = gates.not_evaluated(["permission-drift"], {"status": "ok"}, None, Args())
     assert gaps == [("permission-drift", "the two versions were not compared")]
 
+
+# ------------------------------------------------------------------------------------------- the shipped list
+
+def test_the_shipped_known_bad_extensions():
+    data = integrity._bundled_known_bad()
+    entries = data["browser_extensions"]
+    assert integrity._valid_known_bad(data) and len({e["id"] for e in entries}) == len(entries) >= 19
+    assert all(r.strip().startswith("https://") for e in entries for r in e["reference"].split(","))
+    assert integrity.known_bad_extension("pajkjnmeojmbapicmbpliphjmcekeaac", "24.10.4")
+    assert integrity.known_bad_extension("pajkjnmeojmbapicmbpliphjmcekeaac", "24.10.5") is None
+    assert integrity.known_bad_extension("eokjikchkppnkdipbiggnmlkahcdkikp", "1.0")  # every version

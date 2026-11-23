@@ -35,5 +35,177 @@
       "note": "All tags before the recreated 0.2.6 were replaced with malicious commits. Use 0.2.6 or later, pinned by SHA."
     }
   ],
-  "browser_extensions": []
+  "browser_extensions": [
+    {
+      "id": "pajkjnmeojmbapicmbpliphjmcekeaac",
+      "name": "Cyberhaven security extension V3 (Chrome)",
+      "versions": [
+        "24.10.4"
+      ],
+      "reference": "https://techcrunch.com/2024/12/27/cyberhaven-says-it-was-hacked-to-publish-a-malicious-update-to-its-chrome-extension/, https://www.esentire.com/security-advisories/update-malicious-chrome-extension-campaign",
+      "note": "A malicious update published on 2024-12-25 after the developer's account was compromised, built to steal users' data; 24.10.5 replaced it. Treat a browser that ran 24.10.4 as compromised: sign out of its sessions and change its passwords."
+    },
+    {
+      "id": "kgmeffmlnkfnjpgmdndccklfigfhajen",
+      "name": "Emoji keyboard online - copy&past your emoji. (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "dpdibkjjgbaadnnjhkmmnenkmbnhpobj",
+      "name": "Free Weather Forecast (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "gaiceihehajjahakcglkhmdbbdclbnlf",
+      "name": "Video Speed Controller - Video manager (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "mlgbkfnjdmaoldgagamcnommbbnhfnhf",
+      "name": "Unlock Discord - VPN Proxy to Unblock Discord Anywhere (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "eckokfcjbjbgjifpcbdmengnabecdakp",
+      "name": "Dark Theme - Dark Reader for Chrome (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "mgbhdehiapbjamfgekfpebmhmnmcmemg",
+      "name": "Volume Max - Ultimate Sound Booster (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "cbajickflblmpjodnjoldpiicfmecmif",
+      "name": "Unblock TikTok - Seamless Access with One-Click Proxy (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "pdbfcnhlobhoahcamoefbfodpmklgmjm",
+      "name": "Unlock YouTube VPN (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "eokjikchkppnkdipbiggnmlkahcdkikp",
+      "name": "Color Picker, Eyedropper - Geco colorpick (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "ihbiedpeaicgipncdnnkikeehnjiddck",
+      "name": "Weather (Chrome)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "jjdajogomggcjifnjgkpghcijgkbcjdi",
+      "name": "Unlock TikTok (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "mmcnmppeeghenglmidpmjkaiamcacmgm",
+      "name": "Volume Booster - Increase your sound (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "ojdkklpgpacpicaobnhankbalkkgaafp",
+      "name": "Web Sound Equalizer (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "lodeighbngipjjedfelnboplhgediclp",
+      "name": "Header Value (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "hkjagicdaogfgdifaklcgajmgefjllmd",
+      "name": "Flash Player - games emulator (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "gflkbgebojohihfnnplhbdakoipdbpdm",
+      "name": "Youtube Unblocked (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "kpilmncnoafddjpnbhepaiilgkdcieaf",
+      "name": "SearchGPT - ChatGPT for Search Engine (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    },
+    {
+      "id": "caibdnkmpnjhjdfnomfhijhmebigcelo",
+      "name": "Unlock Discord (Edge)",
+      "versions": [
+        "*"
+      ],
+      "reference": "https://www.esentire.com/security-advisories/reddirection-browser-extension-campaign, https://www.theregister.com/2025/07/08/browser_hijacking_campaign/",
+      "note": "Turned malicious by an update in the RedDirection browser hijacking campaign, disclosed by Koi Security on 2025-07-08; removed from the store. Remove it and review what the browser was used for while it was installed."
+    }
+  ]
 }
