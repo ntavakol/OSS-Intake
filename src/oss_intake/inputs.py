@@ -64,7 +64,8 @@ class InputError(Exception):
 
 def classify(path: Path) -> str:
     """Kind of input path: "sbom", "vscode" (a .vsix, an installed VS Code extension or a folder of them),
-    "jetbrains" (a JetBrains plugin file, one installed plugin or an IDE's plugins folder), "dir",
+    "jetbrains" (a JetBrains plugin file, one installed plugin or an IDE's plugins folder), "browser" (a .crx,
+    an unpacked or installed Chromium extension, or a browser profile's extensions), "dir",
     "renv" (renv.lock), "inventory" (.csv), "lockfile" or "artifact"."""
     from . import sbom, vscode
 
@@ -76,6 +77,10 @@ def classify(path: Path) -> str:
 
     if jetbrains.is_plugin_input(path):  # a plugin .zip/.jar, one installed plugin or an IDE's plugins folder
         return "jetbrains"
+    from . import browserext
+
+    if browserext.is_browser_input(path):  # by content: a Cr24 header, or a manifest.json with manifest_version
+        return "browser"
     if path.is_dir():
         return "dir"
     if path.name == "renv.lock":
@@ -94,7 +99,7 @@ def trivy_mode(kind: str) -> str:
 
 def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
     """Return (scan target, temporary directory to remove afterwards or None)."""
-    if kind == "dir" or (kind in ("vscode", "jetbrains") and path.is_dir()):
+    if kind == "dir" or (kind in ("vscode", "jetbrains", "browser") and path.is_dir()):
         return path, None
     tmp = Path(tempfile.mkdtemp(prefix="oss-intake-"))
     try:
@@ -106,6 +111,10 @@ def stage(path: Path, kind: str) -> tuple[Path, Path | None]:
             from . import vscode
 
             vscode.unpack(path, tmp / path.stem)  # a .vsix: unpacked with limits, never run
+        elif kind == "browser":
+            from . import browserext
+
+            browserext.unpack(path, tmp)  # a .crx: its header read, its zip unpacked with limits, never run
         else:
             shutil.copy2(path, tmp / path.name)
     except BaseException:

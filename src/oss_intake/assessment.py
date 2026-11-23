@@ -15,6 +15,7 @@ from pathlib import Path
 
 from . import (
     __version__,
+    browserext,
     checks,
     conditions,
     coverage,
@@ -492,6 +493,8 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
         vscode.attribute(args.extension_info, findings)
     if getattr(args, "plugin_info", None):
         jetbrains.attribute(args.plugin_info, findings)
+    if getattr(args, "browser_info", None):
+        browserext.attribute(args.browser_info, findings)
     assessment = {
         "tool": {"name": "oss-intake", "version": __version__},
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -529,6 +532,8 @@ def _document(args, net, findings: list, all_findings: list, as_of: datetime, sc
         assessment["extensions"] = args.extension_info
     if getattr(args, "plugin_info", None):
         assessment["jetbrains"] = args.plugin_info
+    if getattr(args, "browser_info", None):
+        assessment["browser_extensions"] = args.browser_info
     if args.sbom_info:
         assessment["sbom"] = args.sbom_info
     pkg_rows = None
@@ -693,9 +698,10 @@ def _finish(args, out: Path, findings: list, all_findings: list, pkg_rows, age_i
     registry, extensions = getattr(args, "registry_result", None), getattr(args, "extension_info", None)
     n_unchecked = (len((getattr(args, "sbom_info", None) or {}).get("not_checked") or [])
                    + len(getattr(args, "renv_unchecked", None) or []))
-    tripped = gates.met(args.fail_on_set, all_findings, age_info, registry, extensions, n_unchecked)
+    browser = getattr(args, "browser_info", None)
+    tripped = gates.met(args.fail_on_set, all_findings, age_info, registry, extensions, n_unchecked, browser)
     hidden_only = {t for t in tripped
-                   if t not in gates.met([t], findings, age_info, registry, extensions, n_unchecked)}
+                   if t not in gates.met([t], findings, age_info, registry, extensions, n_unchecked, browser)}
     for t in tripped:
         log(f"--fail-on {t}: found {FAIL_ON[t]}"
             + (f" (only among findings below --min-severity {args.min_severity}, left out of the reports; "
