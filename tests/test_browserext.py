@@ -172,7 +172,7 @@ def test_csp_eval_and_remote_scripts_in_manifest_v2():
     found = signals({**MV3, "manifest_version": 2,
                      "content_security_policy": "script-src 'self' 'unsafe-eval' https://cdn.example.com; "
                                                 "object-src 'self'"})
-    assert found["csp-eval"]["tier"] == "high" and "https://cdn.example.com" in found["csp-remote"]["detail"]
+    assert found["csp-eval"]["tier"] == "high" and found["csp-remote"]["detail"] == "https://cdn.example.com"
     assert "Chrome does not load" not in found["csp-eval"]["detail"]
 
 
