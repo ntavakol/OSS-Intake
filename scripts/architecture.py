@@ -18,7 +18,7 @@ INPUTS = [
     ("Project releases (--repo)", "GitHub, GitLab, Codeberg; code is not read"),
     ("Folders and artifacts", "lockfiles, JARs, wheels, npm packages"),
     ("SBOMs and inventories", "CycloneDX, SPDX, CSV, Excel"),
-    ("IDE extensions", "VS Code via Open VSX, JetBrains plugins"),
+    ("IDE and browser extensions", "VS Code, JetBrains, Chrome, Edge, Brave"),
     ("Collectors", "osquery fleet, Nexus proxy cache"),
 ]
 STEPS = [

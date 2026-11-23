@@ -17,8 +17,8 @@
 <text x="38" y="348" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">SBOMs and inventories</text>
 <text x="38" y="372" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">CycloneDX, SPDX, CSV, Excel</text>
 <rect x="24" y="408" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
-<text x="38" y="436" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">IDE extensions</text>
-<text x="38" y="460" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">VS Code via Open VSX, JetBrains plugins</text>
+<text x="38" y="436" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">IDE and browser extensions</text>
+<text x="38" y="460" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">VS Code, JetBrains, Chrome, Edge, Brave</text>
 <rect x="24" y="496" width="372" height="74" rx="10" fill="#0c2d6b" stroke="#1f6feb" stroke-width="1.5"/>
 <text x="38" y="524" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start">Collectors</text>
 <text x="38" y="548" font-size="16" font-weight="400" fill="#9198a1" text-anchor="start">osquery fleet, Nexus proxy cache</text>

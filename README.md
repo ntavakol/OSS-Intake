@@ -45,7 +45,7 @@ findings=9 critical=2 high=1 with_fix=8 fix_before_release=0 fix_date_unknown=0
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-dark.png">
-  <img alt="oss-intake architecture: it reads container images, project releases, folders and artifacts, SBOMs and inventories, IDE extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS with package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
+  <img alt="oss-intake architecture: it reads container images, project releases, folders and artifacts, SBOMs and inventories, IDE and browser extensions and collector output; runs six steps on your machine or in CI (verify scanners, scan, merge, enrich, judge, gate), asking public services over HTTPS with package names and versions only; and produces reports, SARIF, exit codes, an executive summary, an SBOM and scheduled re-scans" src="https://raw.githubusercontent.com/ntavakol/OSS-Intake/main/docs/images/architecture-light.png" width="900">
 </picture>
 
 How the code is put together is in [docs/architecture.md](https://github.com/ntavakol/OSS-Intake/blob/main/docs/architecture.md).
@@ -91,6 +91,7 @@ Questions a security or engineering manager gets asked, and what answering them 
 | A JAR, WAR, EAR or binary, also checked against the registry's published checksum | `--path app.jar` | Trivy |
 | VS Code extensions: a `.vsix`, or everything installed, also checked against the Marketplace's removal list | `--path ~/.vscode/extensions` | Trivy |
 | JetBrains IDE plugins: a plugin file, or an IDE's plugins folder, also looked up on the JetBrains Marketplace | `--path plugin.zip` | Trivy |
+| Chrome, Edge or Brave extensions: a `.crx`, an extension's folder, or everything a browser has installed, checked statically (permissions, manifest, the known-bad list) | `--browser chrome` | Trivy |
 | A container image | `--image owner/app:1.2.3` | Trivy (Grype optional) |
 | A GitHub project | `--repo owner/name`: alone for project health; with an image, artifact or lockfile, also release lag | No |
 
