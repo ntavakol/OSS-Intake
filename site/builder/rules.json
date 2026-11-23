@@ -296,6 +296,7 @@
      "package",
      "extension",
      "jetbrains_plugin",
+     "browser",
      "repo"
     ]
    },
@@ -541,6 +542,82 @@
    "ok_args": [
     "--jetbrains-plugin",
     "mobi.hsz.idea.gitignore@4.5.7",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "browser-alone",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "browser"
+     },
+     {
+      "any": [
+       {
+        "set": "image"
+       },
+       {
+        "set": "path"
+       },
+       {
+        "set": "package"
+       },
+       {
+        "set": "extension"
+       },
+       {
+        "set": "jetbrains_plugin"
+       }
+      ]
+     }
+    ]
+   },
+   "message": "give --browser on its own, not with --image, --path, --package or a download",
+   "args": [
+    "--browser",
+    "chrome",
+    "--package",
+    "npm:chalk@5.6.1",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--browser",
+    "chrome",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "browser-extension-needs-browser",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "set": "browser_extension"
+     },
+     {
+      "none": [
+       "browser"
+      ]
+     }
+    ]
+   },
+   "message": "--browser-extension needs --browser (or give --path to the extension's folder)",
+   "args": [
+    "--browser-extension",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--browser",
+    "chrome",
+    "--browser-extension",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "--out",
     "{out}"
    ]

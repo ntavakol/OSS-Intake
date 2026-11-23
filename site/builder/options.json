@@ -95,6 +95,34 @@
      "upper": false
     },
     {
+     "choices": [
+      "chrome",
+      "edge",
+      "brave"
+     ],
+     "default": null,
+     "dest": "browser",
+     "exclusive_group": null,
+     "flag": "--browser",
+     "help": "assess the browser extensions installed in this browser's default profile, for the user running oss-intake (read only: only the profile's Extensions folder is read). For another profile, give --path to its folder",
+     "kind": "choice",
+     "metavar": null,
+     "required": false,
+     "upper": false
+    },
+    {
+     "choices": null,
+     "default": null,
+     "dest": "browser_extension",
+     "exclusive_group": null,
+     "flag": "--browser-extension",
+     "help": "with --browser: only the installed extension with this ID (32 letters a to p, as shown on the browser's extensions page)",
+     "kind": "value",
+     "metavar": "ID",
+     "required": false,
+     "upper": false
+    },
+    {
      "choices": null,
      "default": null,
      "dest": "package",

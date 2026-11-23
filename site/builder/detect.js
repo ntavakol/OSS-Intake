@@ -168,7 +168,12 @@ function fileResult(text, ctx) {
   }
   if (OTHER_LOCKS.test(name)) return no(`${name} is not a lockfile oss-intake reads. Check the built app or an SBOM made from it instead.`);
   if (lower.endsWith(".vsix")) return ok("vscode", { path: text }, `a VS Code extension: ${name}`);
-  if (lower.endsWith(".crx") || lower.endsWith(".xpi")) return no("a browser extension. oss-intake does not check browser extensions.");
+  if (lower.endsWith(".crx")) {
+    return no("a Chrome, Edge or Brave extension. The guided steps do not set this up yet: run oss-intake --path "
+      + `${name} --out ./reports. For the extensions a browser has installed, run oss-intake --browser chrome (or edge, `
+      + "or brave) --out ./reports.");
+  }
+  if (lower.endsWith(".xpi")) return no("a Firefox extension. oss-intake checks Chrome, Edge and Brave extensions, not Firefox ones yet.");
   if (BUILT.test(lower)) return ok("artifact", { path: text }, `a file you downloaded or built: ${name}`);
   if (/\.(zip|tar|tgz|tar\.gz|tar\.xz|7z|rar|nupkg|gem|crate)$/.test(lower)) {
     return no(`${name} is an archive. Unpack it, then paste the folder it unpacked to.`);
@@ -267,8 +272,14 @@ function fromUrl(url, ctx) {
       + "choose Download VSIX, then paste the path of the .vsix file. To check what is installed already, paste "
       + "~/.vscode/extensions.");
   }
-  if (["chromewebstore.google.com", "chrome.google.com", "addons.mozilla.org", "microsoftedge.microsoft.com"].includes(host)) {
-    return no("a browser extension. oss-intake does not check browser extensions.");
+  if (host === "addons.mozilla.org") {
+    return no("a Firefox extension. oss-intake checks Chrome, Edge and Brave extensions, not Firefox ones yet.");
+  }
+  if (["chromewebstore.google.com", "chrome.google.com", "microsoftedge.microsoft.com"].includes(host)) {
+    const browser = host === "microsoftedge.microsoft.com" ? "edge" : "chrome (or brave)";
+    return no("a browser extension in a store. Neither this page nor oss-intake downloads extensions from a store. "
+      + `Once it is installed, run oss-intake --browser ${browser} --out ./reports; add --browser-extension with its `
+      + "ID (the last part of this link) for that one alone.");
   }
   return null;
 }
