@@ -11,11 +11,8 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 - The command builder's "Fix-date records" service names the sources it covers but not Amazon Linux (its hosts
   already include cdn.amazonlinux.com and alas.aws.amazon.com). Add it to the name; the wizard's expected
   summaries change with it (Ned agreed).
-- Browser extensions, the rest of the first version (agreed 23 Nov; ahead of YARA): heuristic signals in the code
-  (code built from text or loaded from the internet, obfuscation, the web addresses each file names), the first
-  known-bad entries (public, citable reports only, each with its source), `--compare-with` for two versions of
-  one extension with `--fail-on permission-drift`, and an optional check of the `.crx` signature (valid, invalid
-  or not checked; never fail open).
+- Browser extensions, the rest of the first version (agreed 23 Nov; ahead of YARA): an optional check of the
+  `.crx` signature (valid, invalid or not checked; never fail open), following the Open VSX signature check.
 
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is

@@ -14,9 +14,18 @@ and the project uses [Semantic Versioning](https://semver.org/).
   scripts on every site or before the page's own scripts, pages other sites or extensions can reach, a content
   security policy that allows `eval` or scripts from the internet, an update address that is not a store, replaced
   search or startup settings, and an installed folder whose ID or version does not match its manifest. An extension
-  on oss-intake's known-bad list leads the report and counts for `--fail-on malicious`; the list's new
-  `browser_extensions` section is empty in this change. A `.crx` is read with limits (CRX3 only) and unpacked with
-  the `.vsix` limits. JavaScript libraries copied in as plain files are not recognised by the scanners, and the
+  on oss-intake's known-bad list leads the report and counts for `--fail-on malicious`. A `.crx` is read with limits
+  (CRX3 only) and unpacked with the `.vsix` limits.
+- Browser extensions' code is checked for signals, each with the file and line: `eval` and `new Function`, text
+  passed to timers, scripts loaded from the internet, `executeScript` with code, packed or obfuscated code, long
+  near-random or encoded strings, and hidden characters. The web hosts each file names are listed, and minified
+  files counted. These are heuristics, not verdicts.
+- `--compare-with` takes an older version of a browser extension and reports what the update changed, and
+  `--fail-on permission-drift` fails when the update asks for more (a permission or site pattern, new
+  content-script sites, or a new update address).
+- The known-bad list gains a `browser_extensions` section, from public reports with each source named: the
+  Cyberhaven extension's malicious 24.10.4 update (December 2024) and the 18 Chrome and Edge extensions of the
+  RedDirection campaign (July 2025). oss-intake versions before this one ignore the section. JavaScript libraries copied in as plain files are not recognised by the scanners, and the
   report says so. Nothing in an extension is run.
 
 ### Changed

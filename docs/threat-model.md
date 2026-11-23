@@ -320,6 +320,8 @@ the honesty of the report (an extension that hides what it asks for, or claims a
 | A hostile `.crx` header: a huge stated size, a size past the end of the file, an unknown version | The header is read with limits before anything else: the `Cr24` magic, version 3 only (an old CRX2 file is refused), a header of at most 1 MB that ends before the file does, a file of at most 500 MB. Any of these refuses the file (exit 2) before anything is written. | `browserext.crx_header` |
 | Path traversal, links, names that clash on macOS or Windows, zip bombs in the zip after the header | The zip is copied out of the `.crx` into a new temporary folder and unpacked with the `.vsix` limits (the same member-name checks, no links, at most 50,000 members, 300 MB a member and 1 GB in all as written, no member over 1 MB that expands more than 200 times); a refusal names the `.crx`. The copy and the unpacked files are removed in a `finally`. | `browserext.unpack`, `vscode.extract` |
 | A hostile manifest or locale file: deep nesting, a huge file, comments crafted to make reading slow | `manifest.json` and `messages.json` are read up to 5 MB, nesting is bounded (`jsonsafe`), and comments and trailing commas are removed in one linear pass. A locale name is checked against a strict pattern before it is used as a folder name, so it cannot lead out of the extension. Both readers are fuzzed (`ext_manifest`, `crx_archive`). | `browserext.parse_manifest`, `browserext.lenient_json`, `browserext._messages` |
+| Reading an extension's code exhausts memory or time, or leaves the extension's folder | Files over 20 MB are not read, reading stops at 400 MB in a run and at 50,000 files an extension, and what was not read is listed. The patterns are bounded and matched in linear time, encoded strings are found as whole runs and measured in code, each signal stops at 20 places, and line numbers come from one pass. Links inside an extension are not followed. The code reader is fuzzed (`ext_manifest`, `crx_archive`). | `browserext.code_checks` |
+| An update hides behind an extension's good name | `--compare-with` lists what an update adds (permissions, sites, code signals, web hosts, update address), and `--fail-on permission-drift` fails a pipeline on an update that asks for more. Web hosts over the 1,000 limit are reported as not compared, not as unchanged. | `browserext.compare`, `gates.met` |
 | A manifest the reader refuses (a comment, a trailing comma, odd types) hides an extension from the checks | Comments and trailing commas are accepted. In a profile, an installed extension whose manifest cannot be read is listed and named in a warning, not skipped. Fields of an unexpected type are ignored, never a crash. | `browserext.find`, `browserext.analyse` |
 | Personal data in the profile is read, or the profile is changed | Only the profile's `Extensions` folder is read: `Preferences`, `Local Extension Settings` and the rest are never opened. Nothing in the profile is written (a test checks that no file's modification time changes). Folders inside it that are links are not followed. Reports show a path under the home folder as `~/...`. | `browserext.find`, `cli._browser_path` |
 | An installed extension claims another's identity, or was changed after it was installed | The folder's ID is compared with the ID its manifest's `key` gives (the browser's own derivation), and the folder's version with the manifest's; a mismatch is a high signal and a warning. | `browserext.analyse` |
@@ -329,9 +331,11 @@ the honesty of the report (an extension that hides what it asks for, or claims a
 
 **Left open:**
 
-- The checks read the manifest, not the code: an extension can load and run code it fetches (in Manifest V2) or
-  do harm with the permissions it was given, and none of that shows here. What an extension does once running is
-  for behaviour analysis, which oss-intake does not do.
+- The code signals are patterns in text: an extension can fetch and run code in ways they do not match, or do harm
+  with the permissions it was given, and none of that shows here. What an extension does once running is for
+  behaviour analysis, which oss-intake does not do.
+- `--compare-with` needs the older version: the stores serve only the latest, so a version nobody kept cannot be
+  compared.
 - The `.crx` signature is not checked yet, so a `.crx` repackaged after publication is not detected.
 - JavaScript libraries copied in as plain files are not recognised by the scanners, so their known
   vulnerabilities are not reported; the report says so.
