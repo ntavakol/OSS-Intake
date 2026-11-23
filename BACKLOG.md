@@ -11,6 +11,11 @@ Finished items are removed in the commit that ships them; CHANGELOG.md records w
 - The command builder's "Fix-date records" service names the sources it covers but not Amazon Linux (its hosts
   already include cdn.amazonlinux.com and alas.aws.amazon.com). Add it to the name; the wizard's expected
   summaries change with it (Ned agreed).
+- Browser extensions, the rest of the first version (agreed 23 Nov; ahead of YARA): heuristic signals in the code
+  (code built from text or loaded from the internet, obfuscation, the web addresses each file names), the first
+  known-bad entries (public, citable reports only, each with its source), `--compare-with` for two versions of
+  one extension with `--fail-on permission-drift`, and an optional check of the `.crx` signature (valid, invalid
+  or not checked; never fail open).
 
 ## Next: the organisation view (agreed 28 Oct)
 Design: oss-intake reads two inventory formats only, CSV and SBOM (CycloneDX or SPDX JSON). Every other source is
@@ -38,6 +43,19 @@ a package that was clean when approved can later turn out vulnerable or compromi
 ## Inputs
 - Bioconductor packages in an `renv.lock` (OSV has a Bioconductor ecosystem).
 
+## Browser extensions (agreed 23 Nov)
+Scope: oss-intake checks browser extensions statically (what the files ask for and contain). What an extension
+does once running is behaviour analysis, which belongs to Ashprint, a separate project, not to oss-intake.
+- Firefox `.xpi` extensions, then Safari.
+- Downloading an extension by its store ID.
+- Store metadata: owner changes, ratings, removal from the store.
+- Lookalike extensions: names and icons that copy a known extension's.
+- A fleet view: osquery's `chrome_extensions` table, as the osquery collector already does for VS Code.
+- Installed extensions: check their files against the store-signed `_metadata/verified_contents.json`, to see
+  whether they were changed after install.
+- JavaScript libraries copied in as plain files (such as `jquery.min.js`): recognise them by their banner and
+  check them against OSV. The scanners see only packages a `package.json` or lockfile describes.
+
 ## VS Code extensions (agreed 5 Nov; files and folders shipped first)
 - JetBrains plugins, next step (agreed 9 Nov): a fleet view (osquery has no JetBrains table, so it needs its own
   collector).
@@ -58,3 +76,8 @@ a package that was clean when approved can later turn out vulnerable or compromi
   better indicator.
 - Amazon Linux fix dates, next step (ALAS for AL2023 and AL2 core shipped 12 Nov): AL2 Extras repositories
   (kernel-5.10, docker and others), whose advisories (ALAS2KERNEL-5.10-...) are in their own updateinfo.
+
+## Ideas (not agreed)
+- An approved-baseline store: keep what was approved (an extension's permissions, hosts and signals at the version
+  approved), so a later version can be compared with it and a change in behaviour seen even when the store only
+  serves the latest version.

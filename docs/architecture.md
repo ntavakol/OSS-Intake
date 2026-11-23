@@ -73,6 +73,7 @@ The numbers match the stage comments in `src/oss_intake/cli.py` and `assessment.
 | Assessment | `assessment.py` | Stages 3 to 5, as named steps: merge, health, enrichment, decisions, triage, lag, likelihood, reports |
 | Gates | `gates.py` | Which `--fail-on` conditions a run met, and which it could not evaluate |
 | Inputs | `inputs.py`, `sbom.py`, `os_packages.py` | What a path is, inventory and `--package` validation, SBOM reading, OS packages to OSV ecosystems |
+| Extensions and plugins | `vscode.py`, `openvsx.py`, `jetbrains.py`, `zipsign.py`, `browserext.py` | VS Code extensions, JetBrains plugins and Chromium browser extensions: finding them, unpacking with limits, the checks on each, signatures, and matching findings to them |
 | Scanners | `scanners/trivy.py`, `scanners/grype.py`, `scanners/osv.py`, `scanners/govulncheck.py` | Run a tool or query OSV, and turn its output into `Finding` objects |
 | Integrity | `integrity.py`, `registry_check.py`, `data/known_bad.json` | Scanner version pins, SHA-256 and cosign checks, known-bad versions; artifact checksums against registries |
 | Model and merge | `models.py`, `merge.py`, `versions.py`, `cvss.py` | The `Finding` dataclass, merge keys, version comparison, CVSS parsing |
