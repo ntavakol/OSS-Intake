@@ -556,3 +556,210 @@ def test_the_profile_is_only_read(tmp_path):
     before = {p: p.stat().st_mtime_ns for p in prof.rglob("*")}
     assert run(tmp_path, "--path", str(prof)) == cli.EXIT_OK
     assert {p: p.stat().st_mtime_ns for p in prof.rglob("*")} == before
+
+
+# ------------------------------------------------------------------------------------------- code signals (PR 2)
+
+FILE_NAMES = {"bg__js": "bg.js", "page__html": "page.html", "inject__js": "inject.js", "packed__js": "packed.js",
+              "obf__js": "obf.js", "entropy__js": "entropy.js", "blob__js": "blob.js", "popup__html": "popup.html",
+              "bundle__js": "bundle.js", "big__js": "big.js", "bg__js__map": "bg.js.map", "c__js": "c.js",
+              "a__js": "a.js", "_metadata__verified_contents__json": "_metadata/verified_contents.json"}
+
+
+def files_in(folder: Path, manifest: dict, files: dict) -> Path:
+    """An extension with these files, named by FILE_NAMES (keyword arguments cannot hold a dot)."""
+    write_ext(folder, manifest)
+    for key, text in files.items():
+        p = folder / FILE_NAMES[key]
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return folder
+
+
+def code(tmp_path: Path, **files: str) -> dict:
+    folder = files_in(tmp_path / "code-ext", MV3, files)
+    return {s["id"]: s for s in browserext.analyse(folder)["signals"] if s["id"].startswith("code-")}
+
+
+def test_code_signals_each_with_file_and_line(tmp_path):
+    found = code(tmp_path, bg__js="const a = 1;\neval(atob(x));\nnew Function('return 1')();\n"
+                                  "setTimeout('alert(1)', 5);\nimportScripts('https://cdn.example.com/w.js');\n"
+                                  "chrome.tabs.executeScript(id, {code: payload});\n",
+                 page__html='<script src="https://cdn.example.com/lib.js"></script>',
+                 inject__js="var s = document.createElement('script'); s.src = 'https://x.example/a.js';")
+    assert set(found) == {"code-eval", "code-string-timer", "code-import-remote", "code-remote-script",
+                          "code-execute-string"}
+    assert found["code-eval"]["seen"][0] == {"file": "bg.js", "line": 2, "detail": "eval("}
+    assert len(found["code-eval"]["seen"]) == 2 and found["code-remote-script"]["tier"] == "high"
+    assert {x["file"] for x in found["code-remote-script"]["seen"]} == {"page.html", "inject.js"}
+
+
+def test_ordinary_code_has_no_code_signals(tmp_path):
+    found = code(tmp_path, bg__js="setTimeout(() => run(), 5);\nchrome.scripting.executeScript({target, func});\n"
+                                  "importScripts('lib.js');\nconst logo = 'data:image/png;base64," + "A" * 3000
+                                  + "';\nconst url = 'https://api.example.com/v1';\n")
+    assert found == {}
+
+
+def test_packed_obfuscated_high_entropy_and_blobs(tmp_path):
+    noise = base64.b64encode(b"".join(hashlib.sha256(bytes([i])).digest() for i in range(10))).decode()
+    names = " ".join(f"var _0x{i:04x}=1;" for i in range(25))
+    found = code(tmp_path, packed__js="eval(function(p,a,c,k,e,d){return p}('x',1,1,'x'.split('|'),0,{}))",
+                 obf__js=names, entropy__js=f"var k='{noise}';", blob__js="var b='" + "QUJD" * 600 + "';")
+    assert {"code-packed", "code-obfuscated", "code-high-entropy", "code-blob"} <= set(found)
+    assert found["code-obfuscated"]["seen"][0]["detail"] == "25 distinct _0x names"
+
+
+def test_hidden_characters_are_a_high_signal(tmp_path):
+    found = code(tmp_path, bg__js="const x = 1;‮// reversed\nconst y = '︀︁︂︃';")
+    assert found["code-hidden"]["tier"] == "high" and len(found["code-hidden"]["seen"]) == 2
+
+
+def test_hosts_are_listed_per_file_without_standards_namespaces(tmp_path):
+    folder = files_in(tmp_path / "e", MV3, dict(bg__js="fetch('https://api.example.com/a'); const ns = "
+                                                   "'http://www.w3.org/2000/svg';",
+                                                popup__html='<a href="https://help.example.org/x">help</a>'))
+    e = browserext.analyse(folder)
+    assert e["hosts_by_file"] == {"bg.js": ["api.example.com"], "popup.html": ["help.example.org"]}
+    assert not e["hosts_capped"]
+
+
+def test_hosts_are_capped(tmp_path, monkeypatch):
+    monkeypatch.setattr(browserext, "MAX_HOSTS", 2)
+    folder = files_in(tmp_path / "e", MV3, dict(bg__js=" ".join(f"https://h{i}.example.com" for i in range(5))))
+    e = browserext.analyse(folder)
+    assert e["hosts_capped"] and len(e["hosts_all"]) == 2
+
+
+def test_minified_files_are_a_fact_not_a_signal(tmp_path):
+    folder = files_in(tmp_path / "e", MV3, dict(bundle__js="var a=1;" * 1000))
+    e = browserext.analyse(folder)
+    assert e["code_facts"]["minified_files"] == ["bundle.js"] and e["code_facts"]["longest_line"] == 8000
+    assert not [s for s in e["signals"] if s["id"].startswith("code-")]
+
+
+def test_what_is_not_read(tmp_path, monkeypatch):
+    folder = files_in(tmp_path / "e", MV3, dict(bg__js="eval(1)", big__js="eval(2)" * 10,
+                                                _metadata__verified_contents__json='"eval(3)"',
+                                                bg__js__map='"eval(4)"'))
+    (folder / "bin.dat").write_bytes(b"\0eval(5)")
+    monkeypatch.setattr(browserext, "READ_FILE_BYTES", 30)
+    e = browserext.analyse(folder)
+    (s,) = [x for x in e["signals"] if x["id"] == "code-eval"]
+    assert [x["file"] for x in s["seen"]] == ["bg.js"]
+    assert e["code_facts"]["not_read"] == ["big.js"]
+
+
+def test_the_reading_budget_is_shared_across_extensions(tmp_path, monkeypatch):
+    monkeypatch.setattr(browserext, "READ_TOTAL_BYTES", 10)
+    prof = profile(tmp_path, {ID_A: MV3, ID_B: MV3})
+    for i in (ID_A, ID_B):
+        (prof / "Extensions" / i / "1.0.0_0" / "a.js").write_text("eval(1); // padding", encoding="utf-8")
+    info = browserext.assess(prof)
+    assert sum(e["code_facts"]["not_read_total"] for e in info["extensions"]) >= 1
+
+
+def test_a_linked_file_inside_an_extension_is_not_read(tmp_path):
+    outside = tmp_path / "secret.js"
+    outside.write_text("eval(1)", encoding="utf-8")
+    folder = write_ext(tmp_path / "e", MV3)
+    try:
+        (folder / "link.js").symlink_to(outside)
+    except OSError:
+        pytest.skip("this system cannot make links")
+    assert not [s for s in browserext.analyse(folder)["signals"] if s["id"] == "code-eval"]
+
+
+# ------------------------------------------------------------------------------------------- comparing versions
+
+def versions(tmp_path, old: dict, new: dict, old_files: dict | None = None, new_files: dict | None = None):
+    o = browserext.analyse(files_in(tmp_path / "old", old, old_files or {}))
+    n = browserext.analyse(files_in(tmp_path / "new", new, new_files or {}))
+    return browserext.compare(o, n)
+
+
+def test_an_update_that_asks_for_more_is_drift(tmp_path):
+    diff = versions(tmp_path, {**MV3, "permissions": ["storage", "tabs"]},
+                    {**MV3, "version": "1.1.0", "permissions": ["storage", "cookies"],
+                     "optional_permissions": ["history"], "host_permissions": ["<all_urls>"],
+                     "content_scripts": [{"matches": ["https://bank.example/*"], "js": ["c.js"]}]},
+                    new_files={"c__js": "eval(x); fetch('https://collect.example.net')"})
+    assert diff["drift"]
+    assert diff["permissions_added"] == [{"name": "<all_urls>", "optional": False},
+                                         {"name": "cookies", "optional": False}, {"name": "history", "optional": True}]
+    assert diff["permissions_removed"] == [{"name": "tabs", "optional": False}]
+    assert diff["content_sites_added"] == ["https://bank.example/*"]
+    assert diff["hosts_added"] == ["collect.example.net"]
+    assert [s["id"] for s in diff["signals_added"]] == ["code-eval"]
+    warns = browserext.change_warnings(diff, "Example helper")
+    assert len(warns) == 1 and "cookies" in warns[0] and "1.1.0 adds since 1.0.0" in warns[0]
+
+
+def test_an_update_that_only_removes_is_not_drift(tmp_path):
+    diff = versions(tmp_path, {**MV3, "permissions": ["storage", "tabs"]}, {**MV3, "version": "1.1.0"})
+    assert not diff["drift"] and diff["permissions_removed"]
+    assert browserext.change_warnings(diff, "x") == []
+
+
+def test_a_new_update_address_is_drift_and_an_author_change_is_a_warning(tmp_path):
+    diff = versions(tmp_path, {**MV3, "author": "Alice"},
+                    {**MV3, "update_url": "https://updates.example.net/crx", "author": "Mallory"})
+    assert diff["drift"] and set(diff["changed"]) == {"update_url", "author"}
+    warns = browserext.change_warnings(diff, "x")
+    assert any("update address" in w for w in warns) and any("author from Alice to Mallory" in w for w in warns)
+    diff = versions(tmp_path / "2", {**MV3, "author": "Alice"}, {**MV3, "author": "Mallory"})
+    assert not diff["drift"]
+
+
+def test_a_signal_seen_more_often_is_reported(tmp_path):
+    diff = versions(tmp_path, MV3, MV3, {"a__js": "eval(1)"}, {"a__js": "eval(1)\neval(2)\neval(3)"})
+    assert diff["signals_grew"] == [{"id": "code-eval", "title": browserext.CODE_SIGNALS["code-eval"][1],
+                                     "from": 1, "to": 3}]
+
+
+def test_comparing_two_different_extensions_is_said(tmp_path):
+    o = {**browserext.analyse(write_ext(tmp_path / "o", MV3)), "id": ID_A}
+    n = {**browserext.analyse(write_ext(tmp_path / "n", MV3)), "id": ID_B}
+    diff = browserext.compare(o, n)
+    assert not diff["same_extension"] and "different extension" in browserext.change_warnings(diff, "x")[0]
+
+
+def test_compare_and_the_drift_gate_end_to_end(tmp_path):
+    old = tmp_path / "old.crx"
+    old.write_bytes(crx({"manifest.json": json.dumps(MV3)}))
+    new = write_ext(tmp_path / "new", {**MV3, "version": "1.1.0", "permissions": ["storage", "debugger"]})
+    assert run(tmp_path, "--path", str(new), "--compare-with", str(old), "--fail-on", "permission-drift",
+               "--scanners", "trivy,osv") == cli.EXIT_THRESHOLD
+    a = assessment(tmp_path)
+    assert a["browser_extensions"]["changes"]["permissions_added"] == [{"name": "debugger", "optional": False}]
+    assert "hosts_all" not in a["browser_extensions"]["extensions"][0]
+    md = (tmp_path / "out" / "summary.md").read_text(encoding="utf-8")
+    assert "asks for more than the older version" in md
+    same = write_ext(tmp_path / "same", {**MV3, "version": "1.1.0"})
+    assert run(tmp_path, "--path", str(same), "--compare-with", str(old), "--fail-on",
+               "permission-drift") == cli.EXIT_OK
+
+
+@pytest.mark.parametrize("which, words", [
+    ("profile", "not a profile or a folder of extensions"),
+    ("old-not-ext", "not a browser extension"),
+    ("no-compare", "--fail-on permission-drift needs --compare-with"),
+])
+def test_compare_misuse_is_a_usage_error(tmp_path, capsys, which, words):
+    prof = profile(tmp_path, {ID_A: MV3})
+    one = write_ext(tmp_path / "one", MV3)
+    args = {"profile": ["--path", str(prof), "--compare-with", str(one)],
+            "old-not-ext": ["--path", str(one), "--compare-with", str(tmp_path / "Default" / "Preferences")],
+            "no-compare": ["--path", str(one), "--fail-on", "permission-drift"]}[which]
+    assert run(tmp_path, *args) == cli.EXIT_USAGE
+    assert words in capsys.readouterr().err
+
+
+def test_the_drift_gate_is_not_evaluated_without_a_comparison():
+    class Args:
+        no_exploits = False
+        browser_info = {"extensions": []}
+
+    gaps = gates.not_evaluated(["permission-drift"], {"status": "ok"}, None, Args())
+    assert gaps == [("permission-drift", "the two versions were not compared")]
+

@@ -74,6 +74,12 @@ _EXT_MANIFEST = {
     "key": base64.b64encode(b"an example public key").decode(),  # built here: a literal reads as a secret
 }
 _MESSAGES = b'{"name": {"message": "Example extension"}}'
+# Code that reaches every code signal: eval, a string timer, importScripts from the web, executeScript with code,
+# the packer, _0x names, a long encoded string and a web address.
+_EXT_CODE = (b"eval(x); setTimeout('go()', 1); importScripts('https://cdn.example.com/w.js');\n"
+             b"chrome.tabs.executeScript(1, {code: c}); eval(function(p,a,c,k,e,d){return p}('',0,0,[],0,{}));\n"
+             + b" ".join(b"var _0x%04x=1;" % i for i in range(25)) + b"\nvar b='" + b"QUJD" * 600
+             + b"'; fetch('https://api.example.com/v1');\n")
 
 
 def _crx(members: dict[str, bytes]) -> bytes:
@@ -128,7 +134,8 @@ def seeds(name: str) -> list[bytes]:
         return [_crx({"manifest.json": json.dumps(_EXT_MANIFEST).encode(), "_locales/en/messages.json": _MESSAGES,
                       "cs.js": b"console.log(1);"})]
     if name == "ext_manifest":
-        return [SEP.join([b"// comment\n" + json.dumps(_EXT_MANIFEST, indent=1).encode(), _MESSAGES]),
+        return [SEP.join([b"// comment\n" + json.dumps(_EXT_MANIFEST, indent=1).encode(), _MESSAGES, _EXT_CODE,
+                          b'<script src="https://cdn.example.com/a.js"></script>']),
                 SEP.join([json.dumps({**_EXT_MANIFEST, "manifest_version": 2,
                                       "content_security_policy": "script-src 'self' https://cdn.example.com"}).encode()])]
     raise KeyError(name)

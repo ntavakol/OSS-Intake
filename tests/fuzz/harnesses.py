@@ -201,13 +201,14 @@ def crx_archive(data: bytes) -> None:
 
 
 # Where each part of an ext_manifest input goes: an installed extension in a profile, read where it is.
-EXT_MEMBERS = ("manifest.json", "_locales/en/messages.json")
+EXT_MEMBERS = ("manifest.json", "_locales/en/messages.json", "bg.js", "popup.html")
 _EXT_ID = "a" * 32
 
 
 def ext_manifest(data: bytes) -> None:
-    """The bytes as an installed browser extension's manifest.json and its default locale's messages.json (split on
-    SEP), in a profile's Extensions folder, so the fuzzer reaches the manifest, locale and permission readers."""
+    """The bytes as an installed browser extension's manifest.json, its default locale's messages.json and two of its
+    own files (split on SEP, in EXT_MEMBERS order), in a profile's Extensions folder, so the fuzzer reaches the
+    manifest, locale, permission and code readers."""
     profile = Path(tempfile.mkdtemp(dir=_TMP))
     try:
         folder = profile / "Extensions" / _EXT_ID / "1.0_0"

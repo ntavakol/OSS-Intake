@@ -235,10 +235,20 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
                              + (" with that ID" if args.browser_extension else ""))
     if args.compare_with:
         old = Path(args.compare_with).expanduser()
-        if args.path_kind != "vscode" or (args.path and not vscode.is_single(Path(args.path))):
-            raise UsageError("--compare-with needs --path to one VS Code extension (a .vsix or its folder)")
-        if not old.exists() or not vscode.is_single(old):
-            raise UsageError(f"--compare-with {args.compare_with}: not a VS Code extension (a .vsix or its folder)")
+        if args.path_kind == "browser":
+            if not browserext.is_single(Path(args.path)):
+                raise UsageError("--compare-with needs --path to one browser extension (a .crx or its folder), not "
+                                 "a profile or a folder of extensions")
+            if not old.exists() or not browserext.is_single(old):
+                raise UsageError(f"--compare-with {args.compare_with}: not a browser extension (a .crx or its "
+                                 "folder)")
+        else:
+            if args.path_kind != "vscode" or (args.path and not vscode.is_single(Path(args.path))):
+                raise UsageError("--compare-with needs --path to one VS Code extension (a .vsix or its folder) or "
+                                 "one browser extension (a .crx or its folder)")
+            if not old.exists() or not vscode.is_single(old):
+                raise UsageError(f"--compare-with {args.compare_with}: not a VS Code extension (a .vsix or its "
+                                 "folder)")
         args.compare_with = str(old)
     if args.repo:
         args.repo = validate_repo(args.repo)
@@ -402,6 +412,13 @@ def _cmd_scan(args: argparse.Namespace, http: Http | None = None) -> int:
         # A .crx's header is read and its zip unpacked here, before anything is written: one that breaks a limit is
         # refused (exit 2). A folder is read where it is.
         args.scan_target, tmp_dir = inputs.stage(Path(args.path), "browser")
+        if args.compare_with:
+            try:
+                args.compare_target, compare_tmp = inputs.stage(Path(args.compare_with), "browser")
+            except BaseException:
+                if tmp_dir:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                raise
     try:
         out = prepare_out(args.out)
         args.raw_written = []  # the raw scanner files this run writes; _remove_stale keeps only these
@@ -488,6 +505,12 @@ def _plan_and_scan(args, chosen, out, http, warnings, formats, as_of, release_ov
     if args.path_kind == "browser":
         args.browser_info = browserext.assess(Path(args.scan_target), staged=Path(args.path).is_file(),
                                               browser=args.browser)
+        if args.compare_with:
+            new = args.browser_info["extensions"][0]
+            old = browserext.assess(Path(args.compare_target), staged=Path(args.compare_with).is_file())
+            diff = browserext.compare(old["extensions"][0], new)
+            args.browser_info["changes"] = diff
+            warnings.extend(browserext.change_warnings(diff, browserext.label(new)))
         alerts, more = browserext.warnings(args.browser_info)
         warnings[:0] = alerts
         warnings.extend(more)

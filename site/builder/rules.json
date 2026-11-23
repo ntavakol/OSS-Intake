@@ -92,7 +92,8 @@
     "mismatch",
     "recent",
     "unchecked",
-    "unknown-age"
+    "unknown-age",
+    "permission-drift"
    ],
    "message": "unknown value",
    "valid": [
@@ -1185,6 +1186,42 @@
    "ok_args": [
     "--image",
     "owner/app:1.0",
+    "--out",
+    "{out}"
+   ]
+  },
+  {
+   "id": "permission-drift-needs-compare-with",
+   "command": "scan",
+   "when": {
+    "all": [
+     {
+      "has": [
+       "fail_on",
+       "permission-drift"
+      ]
+     },
+     {
+      "none": [
+       "compare_with"
+      ]
+     }
+    ]
+   },
+   "message": "--fail-on permission-drift needs --compare-with and --path to one browser extension",
+   "args": [
+    "--path",
+    "{file}",
+    "--fail-on",
+    "permission-drift",
+    "--out",
+    "{out}"
+   ],
+   "ok_args": [
+    "--path",
+    "{file}",
+    "--fail-on",
+    "malicious",
     "--out",
     "{out}"
    ]

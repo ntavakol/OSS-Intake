@@ -31,6 +31,8 @@ FAIL_ON = {
     "mismatch": "an artifact that does not match its registry checksum",
     "unchecked": "an SBOM component or renv.lock package that could not be checked (a type no source covers, no "
                  "version, or not from CRAN), so a clean result would not cover it",
+    "permission-drift": "a browser extension update (--compare-with) that asks for more: a new permission or site "
+                        "pattern, optional ones included, or a new update address",
 }
 
 
@@ -208,7 +210,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--compare-with", metavar="PATH",
                    help="with --path to one VS Code extension (.vsix or its folder): an older version of it, to "
                         "show what the update changed (new indicators, native files, web addresses, packages, "
-                        "publisher)")
+                        "publisher). With --path to one browser extension (.crx or its folder): an older version "
+                        "(permissions and sites added or removed, new code signals and web hosts, a changed update "
+                        "address, author or homepage)")
     s.add_argument("--include-kernel-headers", action="store_true",
                    help="for a container image, count kernel CVEs on kernel header packages (linux-libc-dev...) in lag "
                         "and likelihood; for other targets they always count")
@@ -379,6 +383,9 @@ def refuse_gates_without_their_check(args: argparse.Namespace, chosen: list[str]
                              "the report does not say how old Trivy's database was")
         if not {"trivy", "grype"} & set(chosen):
             raise UsageError("--max-db-age-days needs Trivy or Grype: no scanner database is used on this run")
+    if "permission-drift" in wanted and not (args.path_kind == "browser" and args.compare_with):
+        raise UsageError("--fail-on permission-drift needs --compare-with and --path to one browser extension (a "
+                         ".crx or its folder): it compares two versions")
     if "unchecked" in wanted and not (getattr(args, "sbom_info", None) is not None or args.path_kind == "renv"):
         # Scanners do not say what they could not read in an image or folder, so the gate could never be met.
         raise UsageError("--fail-on unchecked needs an SBOM or an renv.lock (--path): only they list what could not "
