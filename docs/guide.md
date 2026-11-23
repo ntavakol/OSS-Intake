@@ -355,12 +355,36 @@ Each extension is reported with:
   installed extension whose folder, key and version do not agree is flagged too. These are signals for a person to
   read, not verdicts. `'wasm-unsafe-eval'` is not flagged (Manifest V3 allows it by default), and neither is an
   extension without an `update_url` (an unpacked copy has none).
+- **Signals in its code**, each with the files and lines it was seen in (the first 20): `eval` or `new Function`;
+  text passed to `setTimeout` or `setInterval`; `importScripts` or a script tag loading a script from the internet;
+  `executeScript` with `code` (Manifest V2); the `eval(function(p,a,c,k,e,...))` packer; many `_0x` names, as
+  javascript-obfuscator writes them; a long string of near-random characters (200 or more, high entropy) or a long
+  encoded string (2,000 or more, not an image or font `data:` URI); and hidden or text-reordering characters. These
+  are heuristics: a reason to read the code, not a verdict, and a determined author can avoid them. Every file of
+  the extension's own is read as text, except binary files, source maps, `manifest.json` (checked as a manifest) and
+  the store's `_metadata` folder, up to 20 MB a file and 400 MB in a run. Minified files (a line over 5,000
+  characters, which is most bundled extensions) are counted, not flagged.
+- **The web hosts each file names**, file by file (standards namespaces such as `www.w3.org` left out). Naming a host
+  is not the same as contacting it.
 - **oss-intake's known-bad list**: an extension listed there, by its ID and version, leads the report and counts
   for `--fail-on malicious`. Each entry names its public source. The list is the same signed list as the known-bad
-  scanner versions (bundled, and updated between releases when cosign can verify the published copy).
+  scanner versions (bundled, and updated between releases when cosign can verify the published copy). It starts with
+  the Cyberhaven extension's malicious 24.10.4 update (December 2024) and the 18 Chrome and Edge extensions of the
+  RedDirection campaign (July 2025), which are listed for every version, as they were removed from the stores.
 - **The packages it ships**, scanned like any folder and counted against the extension. The scanners find only
   packages a `package.json` or lockfile describes: a JavaScript library copied in as a plain file (such as
   `jquery.min.js`), which is how most extensions ship them, is not recognised, and the report says so.
+
+Most compromises arrive as an update to an extension people already trust. `--compare-with` takes an older version
+of the same extension (a `.crx` or its folder) and reports what the update changed: permissions and site patterns
+added and removed, new content-script sites, new code signals or ones seen more often, new web hosts, and a changed
+update address, author or homepage. `--fail-on permission-drift` fails (exit 3) when the update asks for more: a
+permission or site pattern added, optional ones included, new content-script sites, or a new update address. A
+store serves only the latest version, so keep the `.crx` or folder you approved to compare later ones with.
+
+```bash
+oss-intake --path ./helper-1.4.0.crx --compare-with ./helper-1.3.2.crx --out ./reports --fail-on permission-drift
+```
 
 A `.crx` is untrusted input: its header is read with limits (CRX3 only; an old CRX2 file is refused), and the zip
 after it is unpacked with the same limits as a `.vsix`. One that breaks a limit, or is damaged, is refused (exit 2)
@@ -536,7 +560,7 @@ All inputs are validated before any scanner runs. The image must carry an explic
 | `--quiet` | Print only the result line and errors |
 | `--likelihood`, `--likelihood-config FILE` | Add the 5x5 likelihood heuristic, with optional custom rules |
 | `--fail-on-likelihood N` | Exit code 3 when the suggestion is N or higher, for pipelines. When a rule at N or higher depends on evidence from a source that failed on this run (CISA KEV, malicious package data, EPSS or the exploit indexes did not load), the gate fails with exit 1 rather than passing on the lower result, and names what was missing. A source you turned off (`--offline`, `--no-kev`) is your choice, reported in the run, and does not do this |
-| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`; a version in a registry deps.dev covers that has no date there yet, as for a release only hours old, fails it with exit 1, while registries deps.dev does not cover are left to `unknown-age`), `unknown-age` (a language package version with no release date on deps.dev: not indexed yet, as for a release only hours old, or a registry deps.dev does not cover, such as RubyGems and CRAN; versions that could not be looked up are named, and components without a usable package URL are listed as not checked instead), `mismatch` (registry checksum: fails with exit 1 when the file could not be compared, and is refused for an image, `--package`, a folder, lockfile, SBOM, renv.lock or package list), `unchecked` (an SBOM component or renv.lock package that could not be checked: a type no source covers, no usable package URL, or an renv.lock package not from CRAN; refused for anything but an SBOM or renv.lock, as only they list what was left out). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
+| `--fail-on LIST` | Exit code 3 when any is found, for CI: `malicious`, `kev`, `act` (Act now), `critical`, `high` (high or critical), `recent` (a release newer than `--release-age-days`; a version in a registry deps.dev covers that has no date there yet, as for a release only hours old, fails it with exit 1, while registries deps.dev does not cover are left to `unknown-age`), `unknown-age` (a language package version with no release date on deps.dev: not indexed yet, as for a release only hours old, or a registry deps.dev does not cover, such as RubyGems and CRAN; versions that could not be looked up are named, and components without a usable package URL are listed as not checked instead), `mismatch` (registry checksum: fails with exit 1 when the file could not be compared, and is refused for an image, `--package`, a folder, lockfile, SBOM, renv.lock or package list), `unchecked` (an SBOM component or renv.lock package that could not be checked: a type no source covers, no usable package URL, or an renv.lock package not from CRAN; refused for anything but an SBOM or renv.lock, as only they list what was left out), `permission-drift` (a browser extension update, with `--compare-with`, that asks for more than the older version: a new permission or site pattern, optional ones included, new content-script sites, or a new update address; refused without `--compare-with`). Findings set aside by evidence or a decision do not count, apart from malicious packages. A gate whose check is turned off is refused (exit 2); one whose check could not run fully fails with exit 1 rather than passing |
 | `--release-age-days N` | Flag language package versions published fewer than N days ago (default 7; `0` turns it off). Compromised releases are usually live only for hours or days, before any advisory exists. One deps.dev request per package version, up to `--release-age-max` |
 | `--release-age-max N` | Release-date lookups for at most N package versions, counted after duplicates across hosts are merged (default 400); the rest are reported as not checked, never as old |
 | `--cache-dir DIR`, `--no-cache` | Where slowly changing lookups are kept between runs: OSV advisory details for a day, deps.dev release dates for 30 days, latest versions for a day, proof-of-concept lists for 7 days (default: the user cache folder, e.g. `~/.cache/oss-intake` or `~/Library/Caches/oss-intake`). Which advisories affect a version, KEV, EPSS and the exploit indexes are always fetched fresh, and "not found" is never kept (a release only hours old may not be indexed yet). A folder other users can write to, or one below a folder they can write to, is not used; on Windows, where the folders' security descriptors are read the same way, a folder outside your user profile is also not used unless you add `--trust-cache-dir` to confirm only you can write to it (recorded in `assessment.json`; it never overrides what the permissions show). `--no-cache` keeps nothing |
