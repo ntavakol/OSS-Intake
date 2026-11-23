@@ -2966,12 +2966,16 @@ def test_grype_bundle_is_the_way_and_a_certificate_is_noted_as_deprecated(tmp_pa
 # --- The signed known-bad list (9 Nov) --------------------------------------------------------------------------
 
 def _published_list(http, extra_tool_entry=None, bundle=b"{}"):
+    from datetime import date, timedelta
+
     from oss_intake import integrity
 
     data = integrity._bundled_known_bad()
     if extra_tool_entry:
         data["tools"]["grype"].append(extra_tool_entry)
-        data["updated"] = "2026-11-09"
+        # Changed with Ned's OK (23 Nov): one day newer than the bundled list, not a fixed date, so the bundled
+        # list's date can move when entries are added (it was "2026-11-09", older once the list said 2026-11-23).
+        data["updated"] = (date.fromisoformat(data["updated"]) + timedelta(days=1)).isoformat()
     http.files[integrity.KNOWN_BAD_URL] = json.dumps(data).encode()
     http.files[integrity.KNOWN_BAD_URL + ".sigstore.json"] = bundle
     return data
@@ -2994,7 +2998,7 @@ def test_the_published_known_bad_list_is_used_when_cosign_verifies_it(tmp_path, 
     integrity = fresh_known_bad
     http = FakeHttp()
     entry = {"versions": ["9.9.9"], "reference": "GHSA-test", "note": "found after the release"}
-    _published_list(http, entry)
+    published = _published_list(http, entry)
     ran: list[list[str]] = []
 
     def cosign(cmd, timeout, **kw):
@@ -3004,7 +3008,7 @@ def test_the_published_known_bad_list_is_used_when_cosign_verifies_it(tmp_path, 
     monkeypatch.setattr(integrity.shutil, "which", lambda name: "/usr/bin/cosign")
     monkeypatch.setattr(scanners, "capped_run", cosign)
     status = integrity.refresh_known_bad(http)
-    assert status["source"] == "published" and status["updated"] == "2026-11-09"
+    assert status["source"] == "published" and status["updated"] == published["updated"]
     assert ran[0][ran[0].index("--certificate-identity-regexp") + 1] == integrity.KNOWN_BAD_IDENTITY
     assert integrity.known_bad_entry("grype", "v9.9.9")["reference"] == "GHSA-test"
     assert integrity.known_bad_entry("trivy", "0.69.4")  # the bundled entries stay
