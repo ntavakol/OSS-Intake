@@ -28,6 +28,9 @@ from . import zipsign
 STORE_KEY_SHA256 = bytes.fromhex("61f7f2a6bfcf74cd0bc1fe2497cc9b04254c658f79f2145392867ea8366367cf")
 CONTEXT = b"CRX3 SignedData\x00"
 MAX_PROOFS = 16
+MAX_FIELD = (1 << 29) - 1  # the largest protobuf field number
+# The curves Chromium's verifier (BoringSSL) accepts for ECDSA; the cryptography package accepts more.
+CURVES = {"secp224r1", "secp256r1", "secp384r1", "secp521r1"}
 MAX_KEY_BYTES = 16 * 1024
 _ZIP_END_RECORDS = (b"PK\x05\x06", b"PK\x06\x07", b"PK\x06\x06")  # Chromium refuses a header that holds one
 
@@ -45,6 +48,13 @@ def _crypto():
     except ImportError:
         return None
     return InvalidSignature, UnsupportedAlgorithm, hashes, serialization, ec, padding, rsa, utils
+
+
+def _rsa_shape_ok(key) -> bool:
+    """An RSA public key BoringSSL would use: an odd exponent above 1 of at most 33 bits, a modulus of at most
+    16,384 bits."""
+    nums = key.public_numbers()
+    return nums.e > 1 and nums.e % 2 == 1 and nums.e.bit_length() <= 33 and nums.n.bit_length() <= 16384
 
 
 def _failed(detail: str, **more) -> dict:
@@ -78,6 +88,9 @@ def check(path: Path) -> dict:
         signed_list = zipsign._bytes(fields, 10000)
         signed = signed_list[-1] if signed_list else b""  # optional field: the last one counts, as in protobuf
         ids = zipsign._bytes(zipsign._fields(signed), 1)
+        for f in (fields, *rsa_proofs, *ec_proofs, zipsign._fields(signed)):
+            if any(number > MAX_FIELD for number, _ in f):  # protobuf refuses a tag that does not fit 32 bits
+                raise zipsign._Unreadable("a field number is out of protobuf's range")
     except zipsign._Unreadable as exc:
         return _failed(f"the header cannot be read: {exc}")
     declared = ids[-1] if ids else b""
@@ -126,8 +139,12 @@ def check(path: Path) -> dict:
             return _failed(f"a signing key ({kind}) cannot be read")
         try:
             if kind == "rsa" and isinstance(key, rsa.RSAPublicKey):
+                if not _rsa_shape_ok(key):
+                    return _failed("an RSA signing key has an exponent or size Chromium refuses")
                 key.verify(signature, message, padding.PKCS1v15(), utils.Prehashed(hashes.SHA256()))
             elif kind == "ecdsa" and isinstance(key, ec.EllipticCurvePublicKey):
+                if key.curve.name not in CURVES:
+                    return _failed(f"an ECDSA signing key uses the {key.curve.name} curve, which Chromium refuses")
                 key.verify(signature, message, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
             else:
                 return _failed(f"a {kind} signature comes with a key of another kind")

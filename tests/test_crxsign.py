@@ -146,3 +146,29 @@ def test_without_the_extra_the_structure_is_still_checked(tmp_path, keys, monkey
 def test_not_a_crx_and_wrong_versions_fail(tmp_path):
     assert check(tmp_path, b"PK\x03\x04 not a crx")["status"] == "failed"
     assert check(tmp_path, b"Cr24" + struct.pack("<II", 2, 0) + b"PK")["status"] == "failed"
+
+
+# ------------------------------------------------------------------------------------------- the review (23 Nov)
+
+@pytest.mark.parametrize("curve", ["SECP256K1", "BrainpoolP256R1"])
+def test_review_ec_curves_chromium_does_not_accept_fail(tmp_path, curve):
+    """Review 5: Chromium verifies P-224, P-256, P-384 and P-521 only; cryptography accepts more."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    key = ec.generate_private_key(getattr(ec, curve)())
+    got = check(tmp_path, sign(archive(), key))
+    assert got["status"] == "failed" and "curve" in got["detail"]
+
+
+def test_review_a_field_number_protobuf_refuses_fails(tmp_path, keys):
+    huge = b"\xfa\xff\xff\xff\x7f\x00"  # field number 2^29 - 1 and more (key 2^32 - 6), length 0: refused
+    got = check(tmp_path, sign(archive(), keys["dev"], extra_header=huge))
+    assert got["status"] == "failed"
+
+
+def test_review_rsa_keys_chromium_refuses_fail(keys):
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    n = keys["dev"].public_key().public_numbers().n
+    assert crxsign._rsa_shape_ok(keys["dev"].public_key())
+    assert not crxsign._rsa_shape_ok(rsa.RSAPublicNumbers(2 ** 40 + 1, n).public_key())  # exponent over 33 bits
