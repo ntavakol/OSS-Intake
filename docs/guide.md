@@ -360,9 +360,11 @@ Each extension is reported with:
   `executeScript` with `code` (Manifest V2); the `eval(function(p,a,c,k,e,...))` packer; many `_0x` names, as
   javascript-obfuscator writes them; a long string of near-random characters (200 or more, high entropy) or a long
   encoded string (2,000 or more, not an image or font `data:` URI); and hidden or text-reordering characters. These
-  are heuristics: a reason to read the code, not a verdict, and a determined author can avoid them. Every file of
-  the extension's own is read as text, except binary files, source maps, `manifest.json` (checked as a manifest) and
-  the store's `_metadata` folder, up to 20 MB a file and 400 MB in a run. Minified files (a line over 5,000
+  are heuristics: a reason to read the code, not a verdict, and a determined author can avoid them. Every file the
+  manifest tells the browser to load (its background, content scripts and pages) is read, whatever its name or
+  bytes. Every other file of the extension's own is read as text too, except binary files (not UTF-8: a NUL byte
+  alone does not make a file binary), source maps, `manifest.json` (checked as a manifest) and the store's
+  `_metadata` folder, up to 20 MB a file and 400 MB in a run. Minified files (a line over 5,000
   characters, which is most bundled extensions) are counted, not flagged.
 - **The web hosts each file names**, file by file (standards namespaces such as `www.w3.org` left out). Naming a host
   is not the same as contacting it.
@@ -378,8 +380,10 @@ Each extension is reported with:
 A `.crx` file's signature is checked as Chromium checks it before installing one, with the optional `signatures`
 extra (`pip install 'oss-intake[signatures]'`; with pipx, `pipx inject oss-intake cryptography`): every signature in
 it verifies, one of them is by the key the extension's ID comes from (the developer's key), and a file from the
-Chrome Web Store also carries the store's own signature, by the key Chromium pins. The ID is then taken from the
-signed header, so a `.crx` is looked up in the known-bad list too. A file that fails (changed after it was signed, an
+Chrome Web Store also carries the store's own signature, by the key Chromium pins. The browser installs a `.crx`
+under the ID its signer's key gives, whatever key the manifest names, so the ID is taken from the signed header and
+looked up in the known-bad list; a manifest key that gives another ID is flagged. Without the extra, the extension
+is looked up under both IDs. A file that fails (changed after it was signed, an
 ID no signer owns, a header Chromium would refuse) leads the report; one signed only by its developer, not by the
 Chrome Web Store, is a warning, as it did not come from the store as is. Without the extra, what needs no
 cryptography is still checked, and the report says the signatures were not. Installed extensions are kept unpacked,
@@ -401,8 +405,8 @@ oss-intake --path ./helper-1.4.0.crx --compare-with ./helper-1.3.2.crx --out ./r
 
 A `.crx` is untrusted input: its header is read with limits (CRX3 only; an old CRX2 file is refused), and the zip
 after it is unpacked with the same limits as a `.vsix`. One that breaks a limit, or is damaged, is refused (exit 2)
-before anything is written. Manifest comments and trailing commas are
-accepted, so a manifest that uses them is read rather than missed.
+before anything is written. Manifests are read as Chromium reads them (comments, line breaks inside strings,
+`\xNN` escapes), so one the browser loads is not missed here.
 
 ### Package inventory
 
