@@ -5,6 +5,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-24
+
+A feature release: upgrade from 0.21.0. oss-intake now checks browser extensions for Chrome, Edge and Brave,
+statically: a `.crx`, an extension's folder, or everything a browser has installed (`--browser`). Two things to
+know: the known-bad list gains a `browser_extensions` section (0.21.0 and earlier ignore it), and runs on VS Code
+extensions no longer warn that no release date is known.
+
 ### Added
 
 - Browser extensions for Chrome, Edge and Brave, checked statically: `--path` takes a `.crx` file, an unpacked or

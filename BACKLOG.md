@@ -3,7 +3,7 @@
 Open work only, agreed for later versions. "Next" is the planned order; the other sections are not ranked.
 Finished items are removed in the commit that ships them; CHANGELOG.md records what was done and when.
 
-## Next release (agreed 12 Nov)
+## Next release: 0.23.0 (agreed 12 Nov; moved from 0.22.0 on 24 Nov)
 - Check the GPG signature Amazon Linux 2023 publishes for its repository metadata (`repodata/repomd.xml.asc`)
   before trusting the SHA-256 it gives for updateinfo.xml.gz. Needs `gpg` on PATH and Amazon's public key
   bundled, pinned by fingerprint, as cosign is for the scanners; without gpg, say the metadata was protected by
