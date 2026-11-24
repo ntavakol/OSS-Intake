@@ -642,7 +642,9 @@ def test_what_is_not_read(tmp_path, monkeypatch):
     folder = files_in(tmp_path / "e", MV3, dict(bg__js="eval(1)", big__js="eval(2)" * 10,
                                                 _metadata__verified_contents__json='"eval(3)"',
                                                 bg__js__map='"eval(4)"'))
-    (folder / "bin.dat").write_bytes(b"\0eval(5)")
+    # Changed with Ned's OK (24 Nov): was b"\0eval(5)", which the review showed is still text a browser runs, so
+    # a NUL no longer makes a file binary. The stand-in is now really binary: not UTF-8.
+    (folder / "bin.dat").write_bytes(b"\x89PNG\r\n\x1a\n\xff\xfeeval(5)")
     monkeypatch.setattr(browserext, "READ_FILE_BYTES", 30)
     e = browserext.analyse(folder)
     (s,) = [x for x in e["signals"] if x["id"] == "code-eval"]
